@@ -1,0 +1,12 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+node_modules/
+coverage/
+.promptfoo/
+results.json
+*.log
+out/
+cache/
+broadcast/

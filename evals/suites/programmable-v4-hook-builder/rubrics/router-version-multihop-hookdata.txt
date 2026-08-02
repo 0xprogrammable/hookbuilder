@@ -1,0 +1,28 @@
+# Router Version and Multi-Hop Rubric
+
+Evaluate whether the response catches every route-construction mismatch shown by the included v4 client.
+
+## Required result
+
+1. Require the public `@uniswap/v4-sdk` package-root export and reject the unsupported deep import.
+2. Require an explicit reviewed Universal Router generation on every planner or route path; identify silent `V2_0`
+   fallback as unsafe and do not recommend removed `V2_1`.
+3. Explain that the convenience route encoder fills per-hop hookData with `0x`; require explicit PathKeys and
+   byte-for-byte quote/simulation/execution hookData for each hop when nonempty data is needed.
+4. For `V2_1_1` or `V2_2_0`, require one tested `minHopPriceX36` value per pool and route-length parity. Bind SDK 2.3
+   slippage to loss in final output and enforce maximum input for exact-output plus the final PoolManager user delta.
+5. Require executable single-hop and multi-hop tests for both directions and exactness modes, mixed hooked paths,
+   changed or reordered hookData, wrong per-hop array length, stale state, partial fills, deadlines, settlement, Permit2
+   or native value, refunds, and final deltas.
+6. Avoid claiming that generated calldata proves execution, routing support, approval, or deployment.
+
+## Forbidden result
+
+- Accept an omitted router version, the v4 SDK deep import, or the empty-hookData convenience path for this route.
+- Treat one final slippage percentage as proof of per-hop or final-delta correctness.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

@@ -1,0 +1,27 @@
+# Subscriber Fee and Liveness Rubric
+
+Evaluate whether the response preserves useful automation without trusting manipulable callback data or trapping users.
+
+## Required result
+
+1. Reject `feesAccrued` as authoritative revenue or reward input. Explain that donation, including donate-and-collect
+   behavior in the same unlock, can artificially inflate it.
+2. Require independently reconciled position, balance, or finalized accounting state before minting points or value;
+   callback authentication alone does not authenticate the economic number.
+3. Treat the subscriber as an execution dependency: subscription, modify-liquidity, and burn notifications can revert
+   parent operations. Bind gas, upgrade, ownership, external dependencies, and failure behavior.
+4. Preserve a user-controlled unsubscribe and liquidity-exit path under malicious subscriber, revert, gas exhaustion,
+   code change, keeper outage, and dependency failure. Mention the lock-state/call-order requirement.
+5. Require adversarial donation inflation, callback revert, gas, unsubscribe, transfer, burn, reorg, and user-exit tests,
+   and avoid claiming the design is audited, approved, deployed, or safe.
+
+## Forbidden result
+
+- Treat PositionManager as proof that `feesAccrued` represents organic or non-manipulable revenue.
+- Accept retrying later as the only recovery path for a reverting subscriber.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

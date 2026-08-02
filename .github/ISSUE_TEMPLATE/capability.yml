@@ -1,0 +1,37 @@
+name: Capability or template proposal
+description: Propose reusable knowledge, a capability pack, or support for an unfamiliar product pattern.
+title: "[Capability]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired product outcome
+      description: Describe the user experience and value flow, not only a callback or contract name.
+    validations:
+      required: true
+  - type: textarea
+    id: composition
+    attributes:
+      label: Existing building blocks considered
+      description: Explain what can be reused and what remains genuinely new.
+    validations:
+      required: true
+  - type: textarea
+    id: trust
+    attributes:
+      label: Assets, authority, custody, dependencies, failure and exit
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Exact sources or examples
+      description: Link exact official revisions when available. Do not paste unlicensed code or private source.
+  - type: checkboxes
+    id: policy
+    attributes:
+      label: Open-ended design
+      options:
+        - label: I understand that a new idea can use blank-custom and does not require a permanent catalog category.
+          required: true

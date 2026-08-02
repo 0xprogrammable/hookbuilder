@@ -1,0 +1,124 @@
+{
+  "schemaVersion": "1.0.0",
+  "candidateId": "programmable-v4-builder-v0.4.0-private-20260802",
+  "privateCandidate": true,
+  "publicState": "not-published",
+  "releaseVersion": "0.4.0",
+  "channel": "stable",
+  "releaseKind": "normal",
+  "plannedRelease": {
+    "builder": {
+      "fromVersion": "0.3.0",
+      "toVersion": "0.4.0",
+      "semanticClassification": "minor"
+    },
+    "submissionStandard": {
+      "fromVersion": "1.4.0",
+      "toVersion": "1.5.0"
+    },
+    "feePolicy": {
+      "fromVersion": "1.1.0",
+      "toVersion": "1.1.0"
+    },
+    "source": {
+      "commitSha": null,
+      "treeSha": null,
+      "tagName": null
+    },
+    "artifact": {
+      "path": null,
+      "sha256": null
+    },
+    "releaseManifest": {
+      "path": null,
+      "sha256": null
+    }
+  },
+  "preparedAt": "2026-08-02T10:00:00Z",
+  "requestedReleaseAt": "2026-08-03T16:00:00Z",
+  "changeSetComplete": false,
+  "changes": [
+    {
+      "id": "v4-sdk-integration",
+      "kind": "feature",
+      "summary": "Bind official v4 SDK quote, router, hookData, per-hop price, slippage, and position-client rules."
+    },
+    {
+      "id": "sdk-client-templates",
+      "kind": "feature",
+      "summary": "Add reusable swap-client and liquidity-position-client planning packs without narrowing eligible ideas."
+    },
+    {
+      "id": "minimum-sufficient-knowledge-routing",
+      "kind": "feature",
+      "summary": "Select deterministic mode, capability and surface context without preloading the complete reference library."
+    },
+    {
+      "id": "v4-protocol-liquidity-lego",
+      "kind": "feature",
+      "summary": "Add compact v4 mechanics, position, subscriber, state and reusable advanced-hook composition guidance."
+    },
+    {
+      "id": "sdk-and-periphery-adversarial-gates",
+      "kind": "security-fix",
+      "summary": "Block local hooked-pool quotes, implicit router generations, dropped per-hop hookData, deprecated liquidity actions and blind transaction signing."
+    }
+  ],
+  "unbundledChangeIds": [
+    "pending-private-review"
+  ],
+  "evidence": {
+    "checksums": {
+      "status": "pending",
+      "path": null,
+      "evidenceSha256": null
+    },
+    "sbom": {
+      "status": "pending",
+      "path": null,
+      "evidenceSha256": null
+    },
+    "evals": {
+      "status": "pending",
+      "path": null,
+      "evidenceSha256": null
+    },
+    "canary": {
+      "status": "pending",
+      "path": null,
+      "evidenceSha256": null
+    }
+  },
+  "communications": {
+    "dailyReleaseNotes": {
+      "status": "pending",
+      "path": null,
+      "evidenceSha256": null
+    },
+    "publicPostSummary": {
+      "status": "pending",
+      "path": null,
+      "evidenceSha256": null
+    }
+  },
+  "ownerReleaseGo": {
+    "status": "missing",
+    "path": null,
+    "evidenceSha256": null,
+    "releaseIntentSha256": null,
+    "grantedAt": null
+  },
+  "securityHotfix": {
+    "severity": null,
+    "affectedVersions": [],
+    "reasonCode": null,
+    "incidentRecordSha256": null,
+    "ownerOverride": {
+      "status": "not-applicable",
+      "path": null,
+      "evidenceSha256": null,
+      "releaseIntentSha256": null,
+      "grantedAt": null
+    }
+  }
+}

@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a reproducible Builder, validator, template, documentation, or host problem.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include secrets, wallet material, private source, personal data, or a vulnerability. Use private vulnerability reporting for security issues.
+  - type: input
+    id: version
+    attributes:
+      label: Builder version or commit
+      placeholder: v0.4.0 or a full commit SHA
+    validations:
+      required: true
+  - type: input
+    id: host
+    attributes:
+      label: Agent host and environment
+      placeholder: Codex, Claude Code, Copilot, Node version, operating system
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and sanitized output
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include exact commands and public files when safe.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed credentials, wallet material, personal data, and private repository content.
+          required: true
+        - label: This is not an undisclosed security vulnerability.
+          required: true

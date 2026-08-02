@@ -1,0 +1,30 @@
+{
+  "name": "@programmable/v4-builder-repository",
+  "version": "0.4.0",
+  "description": "Portable, evidence-first Uniswap v4 project builder for Programmable.",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "check": "node scripts/verify-repository.mjs",
+    "test": "node scripts/verify-repository.mjs",
+    "test:evals": "node scripts/evals/validate-evals.mjs",
+    "test:repository": "node --test test/repository-contract.test.mjs",
+    "test:skill": "node skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
+    "plugin:check": "node scripts/generate-plugin-manifests.mjs --check",
+    "plugin:write": "node scripts/generate-plugin-manifests.mjs --write",
+    "skill:publish-check": "gh skill publish --dry-run",
+    "templates": "node skills/programmable-v4-hook-builder/scripts/cli.mjs templates list"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0xprogrammable/programmable-v4-builder.git"
+  },
+  "bugs": {
+    "url": "https://github.com/0xprogrammable/programmable-v4-builder/issues"
+  },
+  "homepage": "https://github.com/0xprogrammable/programmable-v4-builder#readme"
+}

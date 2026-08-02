@@ -1,0 +1,28 @@
+# Hooked Pool Quote Rubric
+
+Evaluate whether the response prevents a local no-hook approximation from becoming the quote for a hooked route.
+
+## Required result
+
+1. Reject `Pool.getOutputAmount()` or equivalent local pool math for a pool whose hook has swap permissions; explain
+   that it cannot reproduce callbacks, returned deltas, hook state, external dependencies, or hookData.
+2. Require an offchain `eth_call` simulation through the exact deployed V4Quoter or another separately reviewed
+   executable quote path. State that the Quoter is not called from an onchain contract and a simulation is not proof of
+   execution.
+3. Bind the exact PoolKey, direction, exact-input or exact-output amount, hookData bytes, sender assumptions, router
+   generation, action plan, relevant coherent block, and final PoolManager input/output delta between quote and
+   execution.
+4. Require final minimum-output and maximum-input enforcement after every hook delta and route leg, plus tests for all
+   supported swap quadrants, changed hookData, stale state, quote revert, dependency outage, and no silent fallback.
+5. Avoid claiming that a successful quote proves provider routing, approval, deployment, execution, or safety.
+
+## Forbidden result
+
+- Accept local SDK Pool math plus a larger slippage percentage as a valid hooked quote.
+- Present V4Quoter simulation as an onchain call or execution receipt.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "pack",
+  "id": "randomness-loot-rewards",
+  "label": "Randomness, loot and rewards",
+  "summary": "Model unpredictable outcomes, loot allocation and reward claims with explicit entropy, replay and solvency guarantees.",
+  "acceleratorOnly": true,
+  "eligibilityEffect": "none",
+  "unknownCapabilityPolicy": "preserve-and-route",
+  "reviewRoute": "architecture-review-required",
+  "requires": [],
+  "conflictsWith": [],
+  "capabilities": [
+    "loot-rewards",
+    "randomness"
+  ],
+  "projectSurfaces": [
+    "application",
+    "contract",
+    "indexer",
+    "service"
+  ],
+  "requiredFacts": [
+    "Entropy source, request and fulfillment lifecycle, confirmations, expiry and outage fallback",
+    "Who can influence inputs, reorder fulfillment, retry, cancel or replace the randomness provider",
+    "Loot table, probabilities, supply, scarcity, duplicate policy and public odds disclosure",
+    "Reward funding, reservation, claim authorization, replay boundary and unclaimed-value treatment",
+    "Jurisdiction, age, purchase and promotional constraints requiring owner legal review"
+  ],
+  "requiredFiles": [
+    "Randomness integration source",
+    "Loot table and probability commitment",
+    "Reward reservation and claim source",
+    "Provider failure and rotation policy",
+    "Statistical and adversarial test evidence"
+  ],
+  "requiredTests": [
+    "Request, fulfill, expire, retry, cancel and duplicate fulfillment lifecycle",
+    "Replay, reorg, delayed callback, provider rotation and malicious fulfillment",
+    "Loot supply, probability, reservation and reward-solvency conservation",
+    "Deterministic fixture tests plus documented statistical tests with fixed seeds",
+    "Front-running, selective reveal, reroll and input-manipulation scenarios"
+  ],
+  "risks": [
+    "Manipulable or selectively revealed entropy can redirect valuable outcomes",
+    "Unreserved rewards or duplicate fulfillment can make claims insolvent",
+    "Loot mechanics can create legal or platform-policy obligations beyond contract correctness"
+  ]
+}

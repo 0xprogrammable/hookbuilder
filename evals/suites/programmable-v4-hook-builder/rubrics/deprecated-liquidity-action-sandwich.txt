@@ -1,0 +1,27 @@
+# Deprecated Liquidity Action Rubric
+
+Evaluate whether the response blocks both sandwich-vulnerable PositionManager shortcuts and requires executable proof.
+
+## Required result
+
+1. Reject both `MINT_POSITION_FROM_DELTAS` and `INCREASE_LIQUIDITY_FROM_DELTAS`; state that current v4 periphery marks
+   them deprecated and vulnerable to sandwich attacks because they lack minimum-liquidity protection.
+2. Require the explicit mint or increase action with an intended liquidity amount, maximum token inputs, finite
+   deadline, recipient, hookData, settlement, and refund behavior.
+3. Require slippage checks on principal after correctly separating accrued fees and reconciliation of final native or
+   ERC-20 balances.
+4. Require inspection of final planner action bytes or an execution trace plus adverse-price tests; checking only a
+   source enum name, UI maximum, or local quote is insufficient.
+5. Require `integration.sdkSafetyProfile.deprecatedLiquidityActionsDisabled=true` only after that evidence exists, and
+   avoid any audit, approval, deployment, or safety claim.
+
+## Forbidden result
+
+- Accept either deprecated action because the transaction also has a token maximum or deadline.
+- Suggest that a larger slippage percentage repairs the missing minimum-liquidity protection.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

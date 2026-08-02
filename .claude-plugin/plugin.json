@@ -1,0 +1,20 @@
+{
+  "displayName": "Programmable v4 Builder",
+  "name": "programmable-v4-builder",
+  "version": "0.4.0",
+  "description": "Build open-ended Uniswap v4 projects and prepare evidence-bound Programmable applications.",
+  "author": {
+    "name": "Programmable"
+  },
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "github",
+    "programmable",
+    "templates",
+    "uniswap-v4",
+    "smart-contracts",
+    "developer-tools"
+  ],
+  "skills": "./skills/"
+}

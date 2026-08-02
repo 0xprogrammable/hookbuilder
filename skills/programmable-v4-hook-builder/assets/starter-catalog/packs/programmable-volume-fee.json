@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "pack",
+  "id": "programmable-volume-fee",
+  "label": "Mandatory Programmable volume fee",
+  "summary": "Specify the non-additive 0.1 percent Programmable share on executed canonical-pool volume.",
+  "acceleratorOnly": true,
+  "eligibilityEffect": "none",
+  "unknownCapabilityPolicy": "preserve-and-route",
+  "reviewRoute": "custom-review",
+  "requires": [],
+  "conflictsWith": [],
+  "capabilities": [
+    "claimable-platform-fee",
+    "quote-side-volume-accounting"
+  ],
+  "projectSurfaces": [
+    "contract",
+    "indexer",
+    "metadata"
+  ],
+  "requiredFacts": [
+    "The effective total is the greater of the selected fee and 10 basis points",
+    "Exactly 10 basis points belongs to 0x4957f49620AFf3Adbbe8195a4f633E49cc93376c and the remainder belongs to the project",
+    "The executed gross quote-side basis for all four swap quadrants",
+    "Rounding, dust, partial-fill and same-hook PoolManager-call behavior",
+    "Pool-scoped liabilities and owner-only claims to a selected per-claim destination"
+  ],
+  "requiredFiles": [
+    "Fee-enforcing hook source",
+    "Fee policy and worked examples",
+    "Fee accounting tests",
+    "Claim and reconstruction evidence"
+  ],
+  "requiredTests": [
+    "Ten-basis-point floor and non-additive split",
+    "All four swap quadrants and both swap directions",
+    "Rounding, dust, partial fills and self-call policy",
+    "Immutable owner-only claims and arbitrary safe per-claim destination",
+    "No bypass, cross-pool netting or liability leakage"
+  ],
+  "risks": [
+    "Incorrect gross-volume basis can overcharge or undercharge",
+    "Rounding and partial fills can break exact conservation",
+    "Mutable or shared claim authority can redirect accrued fees"
+  ]
+}

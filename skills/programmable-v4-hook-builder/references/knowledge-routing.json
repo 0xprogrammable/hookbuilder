@@ -1,0 +1,297 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "programmable-knowledge-routing",
+  "policy": {
+    "selectionSemantics": "minimum-sufficient-progressive-context",
+    "unknownCapabilityOutcome": "preserve-and-route-to-architecture-review",
+    "automaticAdverseDecision": false,
+    "networkAccess": "forbidden",
+    "estimatedTokenAlgorithm": "ceil-utf8-bytes-divided-by-four",
+    "targetInitialTokens": 18000
+  },
+  "modes": {
+    "explore": {
+      "initial": [
+        "intake-playbook.md",
+        "programmable-fee-policy.md",
+        "template-catalog.md"
+      ],
+      "later": [
+        {
+          "reference": "scenario-matrix.md",
+          "trigger": "Load when the product behavior is still ambiguous or crosses several scenario families."
+        },
+        {
+          "reference": "v4-hook-lego.md",
+          "trigger": "Load after the desired outcome is clear and reusable hook primitives must be selected."
+        }
+      ]
+    },
+    "preflight": {
+      "initial": [
+        "intake-playbook.md",
+        "compatibility-standard.md",
+        "programmable-fee-policy.md"
+      ],
+      "later": [
+        {
+          "reference": "workflow.md",
+          "trigger": "Load when the design card is confirmed and the exact package must be created."
+        },
+        {
+          "reference": "submission.schema.json",
+          "trigger": "Load only the relevant schema section while writing or repairing submission.json."
+        }
+      ]
+    },
+    "prototype": {
+      "initial": [
+        "v4-protocol-mechanics.md",
+        "security-and-evidence.md",
+        "programmable-fee-policy.md"
+      ],
+      "later": [
+        {
+          "reference": "upstream-sources.md",
+          "trigger": "Load only when selecting, changing, or proving an exact dependency, deployment, source revision, license, or compatibility profile."
+        },
+        {
+          "reference": "workflow.md",
+          "trigger": "Load for package construction, review target generation, and evidence commands."
+        },
+        {
+          "reference": "output-contract.md",
+          "trigger": "Load when producing the final machine and human reports."
+        }
+      ]
+    },
+    "repair": {
+      "initial": [
+        "compatibility-standard.md",
+        "v4-protocol-mechanics.md",
+        "security-and-evidence.md",
+        "upstream-sources.md"
+      ],
+      "later": [
+        {
+          "reference": "workflow.md",
+          "trigger": "Load after the observed behavior and smallest compatible repair are known."
+        },
+        {
+          "reference": "upgrades-and-release.md",
+          "trigger": "Load if the repair changes a pinned dependency, standard, or released project."
+        }
+      ]
+    },
+    "review": {
+      "initial": [
+        "compatibility-standard.md",
+        "v4-protocol-mechanics.md",
+        "security-and-evidence.md",
+        "programmable-fee-policy.md"
+      ],
+      "later": [
+        {
+          "reference": "output-contract.md",
+          "trigger": "Load when rendering the final findings and exact gate ledger."
+        },
+        {
+          "reference": "upstream-sources.md",
+          "trigger": "Load when dependency or official-source provenance is unresolved."
+        }
+      ]
+    },
+    "submit": {
+      "initial": [
+        "submission-workflow.md",
+        "github-application-journey.md",
+        "output-contract.md"
+      ],
+      "later": [
+        {
+          "reference": "github-public-source-contract-v1.json",
+          "trigger": "Load when exact public GitHub source resolution fails or needs manual diagnosis."
+        },
+        {
+          "reference": "submission.schema.json",
+          "trigger": "Load only the failing schema section when the central package cannot be projected."
+        }
+      ]
+    },
+    "handoff": {
+      "initial": [
+        "agent-entry-and-application.md",
+        "output-contract.md",
+        "official-model-patterns.md"
+      ],
+      "later": [
+        {
+          "reference": "official-launchpad-deployments.json",
+          "trigger": "Load the exact chain records needed by the approved model only."
+        },
+        {
+          "reference": "upgrades-and-release.md",
+          "trigger": "Load for release trains, migrations, and future skill upgrades."
+        }
+      ]
+    }
+  },
+  "capabilityRoutes": [
+    {
+      "id": "hook-implementation",
+      "matches": [
+        "async-swap",
+        "custom-accounting",
+        "custom-curve",
+        "custom-hook-behavior",
+        "dynamic-lp-fee",
+        "hook-owned-liquidity",
+        "multi-pool-hook"
+      ],
+      "references": [
+        "v4-protocol-mechanics.md",
+        "v4-hook-lego.md"
+      ]
+    },
+    {
+      "id": "swap-client",
+      "matches": [
+        "hooked-quote-simulation",
+        "multi-hop-hookdata",
+        "v4-swap-client"
+      ],
+      "references": [
+        "v4-sdk-integration.md",
+        "v4-protocol-mechanics.md"
+      ]
+    },
+    {
+      "id": "liquidity-position",
+      "matches": [
+        "liquidity-position-client",
+        "liquidity-position-custody",
+        "position-discovery",
+        "position-fee-collection",
+        "position-subscriber-automation"
+      ],
+      "references": [
+        "v4-liquidity-and-state.md",
+        "v4-sdk-integration.md"
+      ]
+    },
+    {
+      "id": "advanced-liquidity",
+      "matches": [
+        "active-liquidity-market",
+        "external-liquidity-aggregation",
+        "hook-owned-idle-yield",
+        "wrapped-asset-conversion"
+      ],
+      "references": [
+        "v4-hook-lego.md",
+        "v4-protocol-mechanics.md",
+        "v4-liquidity-and-state.md"
+      ]
+    },
+    {
+      "id": "offchain-trust",
+      "matches": [
+        "external-map-service",
+        "external-services",
+        "keeper-automation",
+        "location-evidence",
+        "offchain-outcome",
+        "oracle-data",
+        "randomness",
+        "signed-claim"
+      ],
+      "references": [
+        "project-surfaces-and-capabilities.md",
+        "companion-manifests.md"
+      ]
+    },
+    {
+      "id": "runtime-product",
+      "matches": [
+        "browser-game",
+        "chain-event-quest",
+        "game-outcome-rewards",
+        "loot-rewards",
+        "multi-surface-product",
+        "threejs",
+        "wallet-action-rewards"
+      ],
+      "references": [
+        "project-surfaces-and-capabilities.md",
+        "runtime-assets.md"
+      ]
+    },
+    {
+      "id": "token-behavior",
+      "matches": [
+        "custom-token-behavior",
+        "fee-on-transfer-token",
+        "tax-financed-auto-liquidity",
+        "token-managed-automatic-liquidity",
+        "token-side-special-behavior",
+        "token-tax-accumulator",
+        "token-transfer-tax"
+      ],
+      "references": [
+        "compatibility-standard.md",
+        "routing-and-discovery.md"
+      ]
+    },
+    {
+      "id": "discovery-and-provider",
+      "matches": [
+        "external-asset",
+        "permissioned-asset",
+        "provider-disclosures",
+        "public-metadata"
+      ],
+      "references": [
+        "routing-and-discovery.md"
+      ]
+    }
+  ],
+  "surfaceRoutes": [
+    {
+      "id": "application",
+      "matches": [
+        "application"
+      ],
+      "references": [
+        "project-surfaces-and-capabilities.md"
+      ]
+    },
+    {
+      "id": "runtime",
+      "matches": [
+        "game"
+      ],
+      "references": [
+        "project-surfaces-and-capabilities.md",
+        "runtime-assets.md"
+      ]
+    },
+    {
+      "id": "connected-service",
+      "matches": [
+        "indexer",
+        "keeper",
+        "service"
+      ],
+      "references": [
+        "project-surfaces-and-capabilities.md",
+        "companion-manifests.md"
+      ]
+    }
+  ],
+  "unknownCapabilityReferences": [
+    "scenario-matrix.md",
+    "project-surfaces-and-capabilities.md",
+    "v4-hook-lego.md",
+    "security-and-evidence.md"
+  ]
+}
