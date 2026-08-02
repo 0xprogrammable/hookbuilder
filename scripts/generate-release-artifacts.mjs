@@ -28,7 +28,7 @@ const commit = git(["rev-parse", "HEAD"]).trim();
 const tree = git(["rev-parse", "HEAD^{tree}"]).trim();
 const created = new Date(git(["show", "-s", "--format=%cI", "HEAD"]).trim()).toISOString();
 const skillRoot = "skills/programmable-v4-hook-builder";
-const trackedFiles = git(["ls-files", "-s", "-z", `${skillRoot}/`], { encoding: "buffer" })
+const trackedFiles = git(["ls-files", "-s", "-z", `${skillRoot}/`], { encoding: null })
   .toString("utf8")
   .split("\0")
   .filter(Boolean)
@@ -62,7 +62,7 @@ const tar = git([
   "--format=tar",
   `--prefix=${baseName}/`,
   `HEAD:${skillRoot}`
-], { encoding: "buffer" });
+], { encoding: null });
 const archive = zlib.gzipSync(tar, { level: 9, mtime: 0 });
 writeBinary(archiveName, archive);
 
@@ -207,10 +207,11 @@ function parseArgs(args) {
 function git(args, options = {}) {
   const result = childProcess.spawnSync("git", args, {
     cwd: repositoryRoot,
-    encoding: options.encoding ?? "utf8",
+    encoding: Object.hasOwn(options, "encoding") ? options.encoding : "utf8",
     shell: false,
     stdio: ["ignore", "pipe", "pipe"]
   });
+  if (result.error) fail(result.error.message);
   if (result.status !== 0) fail(Buffer.isBuffer(result.stderr) ? result.stderr.toString("utf8") : result.stderr);
   return result.stdout;
 }
