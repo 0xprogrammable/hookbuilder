@@ -38,11 +38,16 @@ gh skill publish --dry-run
 After the exact candidate is committed, pushed and authorized:
 
 ```bash
+release_artifacts=$(mktemp -d /private/tmp/programmable-v4-builder-release.XXXXXX)
+npm run release:artifacts -- --tag v0.4.0 --output-dir "$release_artifacts"
 gh skill publish --tag v0.4.0
+gh release upload v0.4.0 "$release_artifacts"/*
 ```
 
-The release command may add the `agent-skills` repository topic and create a GitHub release. It does not prove that CI,
-marketplace discovery, a platform deployment or any project built with the skill is live; verify each state separately.
+The artifact generator refuses a dirty worktree and writes outside the repository. It produces a deterministic skill
+archive, file-level SHA-256 manifest, SPDX 2.3 SBOM, release-state receipt and `SHA256SUMS`. The publication command may
+add the `agent-skills` repository topic and create a GitHub release. Neither command proves that CI, marketplace
+discovery, a platform deployment or any project built with the skill is live; verify each state separately.
 
 ## After publication
 

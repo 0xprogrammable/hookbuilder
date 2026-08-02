@@ -163,6 +163,8 @@ money. Structural eval validation is included in `npm test`; no model result or 
 - [Knowledge routing and token efficiency](docs/KNOWLEDGE_SYSTEM.md)
 - [Templates and extension model](docs/TEMPLATES_AND_EXTENSIONS.md)
 - [Security and review model](docs/SECURITY_AND_REVIEW.md)
+- [Security and audit readiness](docs/SECURITY_AUDIT_READINESS.md)
+- [Code maturity snapshot](docs/CODE_MATURITY.md)
 - [Uniswap source coverage](docs/UNISWAP_MASTER_SKILL_ADOPTION.md)
 - [Programmable platform boundary](docs/PLATFORM_INTEGRATION.md)
 - [Release process](docs/RELEASING.md)

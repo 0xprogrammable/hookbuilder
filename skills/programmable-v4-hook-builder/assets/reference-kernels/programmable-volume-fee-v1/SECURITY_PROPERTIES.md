@@ -60,7 +60,9 @@ adaptation instead owes underlying ERC-20 currency to PoolManager, it must use t
 
 ## Explicitly incomplete evidence
 
-- Slither/static-analysis execution: not bundled in this starter receipt; integration owner runs it separately.
+- Slither 0.11.5 was run locally across 101 detectors with dependencies and tests filtered; it returned zero findings
+  after the intentional native-currency `address(0)` assignment received a narrow inline disposition. Public CI repeats
+  this scan. Static analysis is evidence, not an independent audit.
 - Echidna campaign: not run.
 - Manticore symbolic execution: not run.
 - Mainnet-fork lifecycle and gas profiling: not run in this starter package.

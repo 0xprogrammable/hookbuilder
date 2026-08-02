@@ -118,6 +118,8 @@ contract ProgrammableVolumeFeeHookV1 is BaseHook, IUnlockCallback, ReentrancyGua
     constructor(IPoolManager poolManager_, address registrar_, address quoteCurrencyAddress_) BaseHook(poolManager_) {
         if (address(poolManager_) == address(0) || registrar_ == address(0)) revert ZeroAddress();
         registrar = registrar_;
+        // address(0) is the canonical Uniswap v4 representation of native currency, not a missing configuration.
+        // slither-disable-next-line missing-zero-check
         quoteCurrencyAddress = quoteCurrencyAddress_;
     }
 

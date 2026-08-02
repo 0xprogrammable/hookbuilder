@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import { BaseHook } from "@openzeppelin/uniswap-hooks/src/base/BaseHook.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IHooks } from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 import { FullMath } from "@uniswap/v4-core/src/libraries/FullMath.sol";
 import { CustomRevert } from "@uniswap/v4-core/src/libraries/CustomRevert.sol";
@@ -49,6 +50,8 @@ contract FeeMathInvariantHandler {
 }
 
 contract ProgrammableVolumeFeeHookV1Test is Deployers {
+    using SafeCast for uint256;
+
     uint256 internal constant RATE_DENOMINATOR = 1_000_000;
     uint24 internal constant LP_FEE_PIPS = 3000;
     int24 internal constant TICK_SPACING = 60;
@@ -133,7 +136,7 @@ contract ProgrammableVolumeFeeHookV1Test is Deployers {
 
     function testCumulativeRemaindersResistSmallSwapFragmentation() public {
         uint256 grossPerSwap = 1999;
-        _swapNativeQuote(true, -int256(grossPerSwap), grossPerSwap);
+        _swapNativeQuote(true, -grossPerSwap.toInt256(), grossPerSwap);
         assertEq(hook.programmableFeesAccrued(), 1);
         assertEq(hook.programmableFeeRemainder(), 999_000);
 
@@ -143,7 +146,7 @@ contract ProgrammableVolumeFeeHookV1Test is Deployers {
         assertEq(secondProject, 58);
         assertEq(secondTotal, 60);
 
-        _swapNativeQuote(true, -int256(grossPerSwap), grossPerSwap);
+        _swapNativeQuote(true, -grossPerSwap.toInt256(), grossPerSwap);
         uint256 cumulativeGross = grossPerSwap * 2;
         assertEq(
             hook.programmableFeesAccrued(),
@@ -162,7 +165,7 @@ contract ProgrammableVolumeFeeHookV1Test is Deployers {
         uint256 grossPerSwap = bound(uint256(rawGross), 1000, 0.01 ether);
         uint256 count = bound(uint256(rawCount), 1, 8);
         for (uint256 index; index < count; ++index) {
-            _swapNativeQuote(true, -int256(grossPerSwap), grossPerSwap);
+            _swapNativeQuote(true, -grossPerSwap.toInt256(), grossPerSwap);
         }
 
         uint256 cumulativeGross = grossPerSwap * count;
@@ -186,7 +189,7 @@ contract ProgrammableVolumeFeeHookV1Test is Deployers {
 
     function testZeroForOneExactInput() public {
         uint256 grossQuoteInput = 1 ether;
-        BalanceDelta delta = _swapNativeQuote(true, -int256(grossQuoteInput), grossQuoteInput);
+        BalanceDelta delta = _swapNativeQuote(true, -grossQuoteInput.toInt256(), grossQuoteInput);
         (uint256 total, uint256 project, uint256 programmable) =
             hook.quoteGrossFees(grossQuoteInput, SELECTED_THREE_PERCENT);
 
@@ -196,7 +199,7 @@ contract ProgrammableVolumeFeeHookV1Test is Deployers {
 
     function testZeroForOneExactOutput() public {
         uint256 tokenOutput = 0.01 ether;
-        BalanceDelta delta = _swapNativeQuote(true, int256(tokenOutput), 1 ether);
+        BalanceDelta delta = _swapNativeQuote(true, tokenOutput.toInt256(), 1 ether);
         uint256 grossQuoteInput = uint256(-int256(delta.amount0()));
         uint256 total = hook.totalQuoteFeesAccrued();
         uint256 netQuoteInput = grossQuoteInput - total;
@@ -213,7 +216,7 @@ contract ProgrammableVolumeFeeHookV1Test is Deployers {
 
     function testOneForZeroExactInput() public {
         uint256 tokenInput = 0.01 ether;
-        BalanceDelta delta = _swapNativeQuote(false, -int256(tokenInput), 0);
+        BalanceDelta delta = _swapNativeQuote(false, -tokenInput.toInt256(), 0);
         uint256 total = hook.totalQuoteFeesAccrued();
         uint256 grossQuoteOutput = uint256(int256(delta.amount0())) + total;
         (uint256 quotedTotal, uint256 project, uint256 programmable) =
@@ -227,7 +230,7 @@ contract ProgrammableVolumeFeeHookV1Test is Deployers {
         uint256 netQuoteOutput = 0.005 ether;
         (, uint256 total, uint256 project, uint256 programmable) =
             hook.quoteExactOutputFees(netQuoteOutput, SELECTED_THREE_PERCENT);
-        BalanceDelta delta = _swapNativeQuote(false, int256(netQuoteOutput), 0);
+        BalanceDelta delta = _swapNativeQuote(false, netQuoteOutput.toInt256(), 0);
 
         assertEq(uint256(int256(delta.amount0())), netQuoteOutput);
         _assertAccrued(total, project, programmable);

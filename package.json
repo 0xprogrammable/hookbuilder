@@ -15,6 +15,7 @@
     "test:skill": "node skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
     "plugin:check": "node scripts/generate-plugin-manifests.mjs --check",
     "plugin:write": "node scripts/generate-plugin-manifests.mjs --write",
+    "release:artifacts": "node scripts/generate-release-artifacts.mjs",
     "skill:publish-check": "gh skill publish --dry-run",
     "templates": "node skills/programmable-v4-hook-builder/scripts/cli.mjs templates list"
   },

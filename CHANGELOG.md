@@ -15,6 +15,8 @@ All notable Builder changes are recorded here. Historical releases remain immuta
 - Adversarial evals for hooked local quotes, router/hookData drift, sandwich-vulnerable liquidity actions, subscriber
   fee inflation/liveness, and blind calldata/Permit2 signing.
 - Standalone repository, neutral generated host manifests, public documentation, CI and release contract.
+- Reproducible release archive, file manifest, SPDX SBOM and checksum generator.
+- Slither CI, audit-readiness record and nine-category code-maturity snapshot.
 
 ### Preserved
 
