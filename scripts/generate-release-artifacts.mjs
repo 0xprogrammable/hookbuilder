@@ -208,6 +208,7 @@ function git(args, options = {}) {
   const result = childProcess.spawnSync("git", args, {
     cwd: repositoryRoot,
     encoding: Object.hasOwn(options, "encoding") ? options.encoding : "utf8",
+    maxBuffer: 64 * 1024 * 1024,
     shell: false,
     stdio: ["ignore", "pipe", "pipe"]
   });
