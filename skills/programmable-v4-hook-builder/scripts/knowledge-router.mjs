@@ -19,6 +19,7 @@ try {
     const result = planKnowledge({
       mode: options.mode,
       templatePlan,
+      packs: options.packs,
       capabilities: options.capabilities,
       surfaces: options.surfaces
     });
@@ -37,11 +38,11 @@ try {
   };
   if (error instanceof KnowledgeRouterError && error.details !== undefined) output.error.details = error.details;
   process.stdout.write(`${canonicalJson(output)}\n`);
-  process.exitCode = code === "USAGE_ERROR" || code === "KNOWLEDGE_MODE_INVALID" || code === "KNOWLEDGE_INPUT_INVALID" ? 2 : 1;
+  process.exitCode = code === "USAGE_ERROR" || code === "KNOWLEDGE_MODE_INVALID" || code === "KNOWLEDGE_INPUT_INVALID" || code === "KNOWLEDGE_PACK_INVALID" ? 2 : 1;
 }
 
 function parseArgs(args) {
-  const options = { mode: null, templatePlan: null, capabilities: [], surfaces: [] };
+  const options = { mode: null, templatePlan: null, packs: [], capabilities: [], surfaces: [] };
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === "--mode") {
@@ -52,6 +53,8 @@ function parseArgs(args) {
       options.templatePlan = requireValue(args, ++index, "--template-plan");
     } else if (argument === "--capability") {
       options.capabilities.push(requireValue(args, ++index, "--capability"));
+    } else if (argument === "--pack") {
+      options.packs.push(requireValue(args, ++index, "--pack"));
     } else if (argument === "--surface") {
       options.surfaces.push(requireValue(args, ++index, "--surface"));
     } else {
@@ -92,13 +95,14 @@ function usageError(message) {
 
 function help() {
   return [
-    "Usage: knowledge-router.mjs --mode <explore|preflight|prototype|repair|review|submit|handoff> [--template-plan <programmable-template.json>] [--capability <id>]... [--surface <id>]...",
+    "Usage: knowledge-router.mjs --mode <explore|preflight|prototype|repair|review|submit|handoff> [--template-plan <programmable-template.json>] [--pack <catalog-pack-id>]... [--capability <id>]... [--surface <id>]...",
     "",
     "Return the smallest deterministic local reference profile for one builder task.",
     "",
     "Options:",
     "  --mode <mode>           Select the current builder mode.",
     "  --template-plan <path>  Derive exact capabilities and surfaces from one current template plan.",
+    "  --pack <id>             Expand one catalog pack into its exact capabilities and surfaces; repeat as needed.",
     "  --capability <id>       Add an explicit known or owner-defined capability; repeat as needed.",
     "  --surface <id>          Add an explicit project surface; repeat as needed.",
     "  --help                  Show this help without reading files or using the network.",

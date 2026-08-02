@@ -145,6 +145,7 @@ profile. Add the exact template plan when one exists, or repeat explicit capabil
 
 ```bash
 node "$SKILL_ROOT/scripts/cli.mjs" context --mode explore --capability owner-defined-capability
+node "$SKILL_ROOT/scripts/cli.mjs" context --mode prototype --pack threejs-pvp-rewards --pack signed-outcome-service
 node "$SKILL_ROOT/scripts/cli.mjs" context --mode prototype --template-plan path/to/programmable-template.json
 ```
 

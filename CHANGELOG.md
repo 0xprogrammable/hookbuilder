@@ -7,6 +7,7 @@ All notable Builder changes are recorded here. Historical releases remain immuta
 ### Added
 
 - Deterministic minimum-sufficient knowledge router with mode, capability, surface and template-plan profiles.
+- Direct catalog-pack routing that expands public pack ids without misclassifying them as novel capabilities.
 - Compact protocol-mechanics, liquidity/state, hook-Lego and v4 SDK integration references.
 - Swap-client and liquidity-position starters plus active-liquidity, external-liquidity, idle-yield, subscriber and
   wrapped-asset capability packs.

@@ -35,6 +35,7 @@ export function loadKnowledgeRouting({ skillRoot = defaultSkillRoot } = {}) {
 export function planKnowledge({
   mode,
   templatePlan = null,
+  packs = [],
   capabilities = [],
   surfaces = [],
   skillRoot = defaultSkillRoot
@@ -51,7 +52,25 @@ export function planKnowledge({
   const selectedCapabilities = new Set(normalizeIds(capabilities, "capability"));
   const routedCapabilities = new Set(selectedCapabilities);
   const selectedSurfaces = new Set(normalizeIds(surfaces, "surface"));
+  const selectedPackIds = normalizeIds(packs, "pack");
+  const selectedReviewRoutes = new Set();
   const sources = [];
+
+  for (const packId of selectedPackIds) {
+    const definition = catalog.byId.get(packId);
+    if (definition?.kind !== "pack") {
+      fail("KNOWLEDGE_PACK_INVALID", `Unknown catalog pack ${packId}.`, {
+        supportedPacks: catalog.definitions.filter(({ kind }) => kind === "pack").map(({ id }) => id)
+      });
+    }
+    selectedReviewRoutes.add(definition.reviewRoute);
+    for (const capability of definition.capabilities) {
+      selectedCapabilities.add(capability);
+      routedCapabilities.add(capability);
+    }
+    for (const surface of definition.projectSurfaces) selectedSurfaces.add(surface);
+  }
+  if (selectedPackIds.length > 0) sources.push({ kind: "explicit-packs", ids: selectedPackIds });
 
   if (templatePlan !== null) {
     let builderTemplate;
@@ -79,6 +98,9 @@ export function planKnowledge({
         for (const surface of definition.projectSurfaces) selectedSurfaces.add(surface);
       }
     }
+    for (const id of [selection.starterId, ...selection.selectedPackIds]) {
+      selectedReviewRoutes.add(catalog.byId.get(id).reviewRoute);
+    }
     sources.push({
       kind: "template-plan",
       starterId: selection.starterId,
@@ -92,8 +114,14 @@ export function planKnowledge({
 
   const capabilityList = [...selectedCapabilities].sort(compareUtf8);
   const surfaceList = [...selectedSurfaces].sort(compareUtf8);
+  for (const definition of catalog.definitions) {
+    if (definition.capabilities.some((capability) => selectedCapabilities.has(capability))) {
+      selectedReviewRoutes.add(definition.reviewRoute);
+    }
+  }
   const unknownCapabilities = capabilityList.filter((id) => !knownCapabilityIds.has(id));
   const unknownSurfaces = surfaceList.filter((id) => !knownSurfaceIds.has(id));
+  const reviewRoute = selectReviewRoute({ selectedReviewRoutes, unknownCapabilities, unknownSurfaces });
   const selectedReferences = new Map();
 
   for (const reference of routing.modes[mode].initial) {
@@ -137,24 +165,27 @@ export function planKnowledge({
   const estimatedTokens = loadNow.reduce((total, reference) => total + reference.estimatedTokens, 0);
   const targetInitialTokens = routing.policy.targetInitialTokens;
   const profilePreimage = {
+    catalogDigest: catalog.catalogDigest,
     mode,
+    packs: selectedPackIds,
     capabilities: capabilityList,
     surfaces: surfaceList,
-    loadNow: loadNow.map(({ path: reference }) => reference)
+    loadNow: loadNow.map(({ path: reference }) => reference),
+    reviewRoute
   };
 
   return {
     schemaVersion: "1.0.0",
     kind: "programmable-knowledge-plan",
+    catalogDigest: catalog.catalogDigest,
     mode,
     sources,
+    packs: selectedPackIds,
     capabilities: capabilityList,
     surfaces: surfaceList,
     unknownCapabilities,
     unknownSurfaces,
-    reviewRoute: unknownCapabilities.length > 0 || unknownSurfaces.length > 0
-      ? "architecture-review-required"
-      : "selected-profile",
+    reviewRoute,
     automaticAdverseDecision: false,
     loadNow,
     loadLater,
@@ -168,6 +199,17 @@ export function planKnowledge({
     profileDigest: crypto.createHash("sha256").update(canonicalJson(profilePreimage)).digest("hex"),
     networkAccessed: false
   };
+}
+
+function selectReviewRoute({ selectedReviewRoutes, unknownCapabilities, unknownSurfaces }) {
+  if (
+    unknownCapabilities.length > 0
+    || unknownSurfaces.length > 0
+    || selectedReviewRoutes.has("architecture-review-required")
+  ) return "architecture-review-required";
+  if (selectedReviewRoutes.has("custom-review")) return "custom-review";
+  if (selectedReviewRoutes.has("standard-review")) return "standard-review";
+  return "selected-profile";
 }
 
 function validateRouting(routing, skillRoot) {

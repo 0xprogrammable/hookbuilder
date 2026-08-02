@@ -47,11 +47,16 @@ node skills/programmable-v4-hook-builder/scripts/cli.mjs context \
   --template-plan path/to/programmable-template.json
 ```
 
+For a quick pre-materialization probe, repeat `--pack <catalog-pack-id>`; the router expands each visible pack id into
+its canonical capabilities and project surfaces. Use `--capability` only for a capability id or a genuinely new,
+owner-defined behavior.
+
 returns:
 
 - exact `loadNow` files with selection reasons;
 - conditional `loadLater` files;
 - selected and unknown capabilities and surfaces;
+- the strongest standard, custom or architecture review route inherited from selected packs;
 - a profile digest;
 - byte and estimated-token totals; and
 - confirmation that no network was used and no automatic adverse decision occurred.

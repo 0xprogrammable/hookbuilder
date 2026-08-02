@@ -31,6 +31,7 @@ test("ordinary launch plan does not load unrelated game, SDK, or advanced-hook c
   const templatePlan = composeTemplate({ catalog, starterId: "ordinary-launch" });
   const result = planKnowledge({ mode: "preflight", templatePlan, skillRoot });
   assert.equal(result.unknownCapabilities.length, 0);
+  assert.equal(result.reviewRoute, "custom-review");
   assert.equal(result.surfaces.includes("contract"), true);
   assert.equal(paths(result).includes("references/v4-protocol-mechanics.md"), false);
   assert.equal(paths(result).includes("references/runtime-assets.md"), false);
@@ -70,6 +71,28 @@ test("game and service compositions load runtime and trust-boundary context with
   assert.equal(paths(result).includes("references/companion-manifests.md"), true);
   assert.equal(paths(result).includes("references/agent-entry-and-application.md"), false);
   assert.ok(result.loadNow.length < 12, JSON.stringify(result.loadNow));
+});
+
+test("explicit catalog packs expand to their exact capabilities and canonical surfaces", () => {
+  const result = planKnowledge({
+    mode: "prototype",
+    packs: ["threejs-pvp-rewards", "signed-outcome-service", "v4-swap-client"],
+    skillRoot
+  });
+  assert.deepEqual(result.packs, ["signed-outcome-service", "threejs-pvp-rewards", "v4-swap-client"]);
+  assert.equal(result.capabilities.includes("threejs"), true);
+  assert.equal(result.capabilities.includes("signed-claim"), true);
+  assert.equal(result.capabilities.includes("v4-swap-client"), true);
+  assert.equal(result.surfaces.includes("game"), true);
+  assert.equal(result.surfaces.includes("service"), true);
+  assert.deepEqual(result.unknownCapabilities, []);
+  assert.deepEqual(result.unknownSurfaces, []);
+  assert.equal(result.reviewRoute, "architecture-review-required");
+  for (const reference of [
+    "references/runtime-assets.md",
+    "references/companion-manifests.md",
+    "references/v4-sdk-integration.md"
+  ]) assert.equal(paths(result).includes(reference), true, reference);
 });
 
 test("novel capabilities remain eligible and receive an architecture-review profile", () => {
@@ -165,6 +188,17 @@ test("context command rejects symbolic template plans and invalid ids", () => {
     ], { encoding: "utf8", shell: false });
     assert.equal(result.status, 2);
     assert.equal(JSON.parse(result.stdout).error.code, "KNOWLEDGE_INPUT_INVALID");
+
+    result = childProcess.spawnSync(process.execPath, [
+      cli,
+      "context",
+      "--mode",
+      "explore",
+      "--pack",
+      "ordinary-launch"
+    ], { encoding: "utf8", shell: false });
+    assert.equal(result.status, 2);
+    assert.equal(JSON.parse(result.stdout).error.code, "KNOWLEDGE_PACK_INVALID");
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }
