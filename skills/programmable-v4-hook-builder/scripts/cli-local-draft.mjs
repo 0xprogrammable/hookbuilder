@@ -2,32 +2,23 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { TextDecoder } from "node:util";
-import { deriveApplicationRevision } from "./cli-central-base.mjs";
 import { CENTRAL_APPLICATION_FILES } from "./cli-central-package.mjs";
-import { normalizeBuilderTemplate } from "./builder-template-contract.mjs";
-import { validateCompanionClosureReceipts } from "./companion-manifest-contract.mjs";
-import { validateGitHubPublicSourceRequestV1 } from "./github-public-source-core.mjs";
 import { CliFailure, sanitizeMessage } from "./cli-runtime.mjs";
 import { canonicalJson } from "./submission-core.mjs";
 import { hasForbiddenInvisibleOrBidi } from "./metadata-core.mjs";
+import {
+  AUTONOMOUS_ADMISSION_FILE_LIMITS,
+  validateAutonomousApplicationManifest,
+  validateAutonomousLaunchSpecification
+} from "./autonomous-admission-contract.mjs";
+import { AUTONOMOUS_APPLICATION_INPUT_DISCLAIMER } from "./application-input-contract.mjs";
 
 const APPLICATION_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
-const GITHUB_LOGIN_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/u;
-const OPAQUE_DECIMAL_PATTERN = /^[1-9][0-9]{0,63}$/u;
 const COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
 const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/u;
-const REVIEW_FILES = Object.freeze(CENTRAL_APPLICATION_FILES.slice(1));
-const MAX_PACKAGE_BYTES = 512 * 1024;
-const MAX_FILE_BYTES = Object.freeze({
-  "application.json": 64 * 1024,
-  "PROPOSAL.md": 64 * 1024,
-  "TEST_PLAN.md": 64 * 1024,
-  "THREAT_MODEL.md": 64 * 1024,
-  "compatibility-report.json": 160 * 1024,
-  "evidence-index.json": 160 * 1024
-});
-const PUBLIC_BETA_DISCLAIMER =
-  "Builder-declared compatibility evidence; not an audit, approval, deployment, Uniswap endorsement, or launch.";
+const MAX_PACKAGE_BYTES = 768 * 1024;
+const MAX_FILE_BYTES = AUTONOMOUS_ADMISSION_FILE_LIMITS;
+const PUBLIC_BETA_DISCLAIMER = AUTONOMOUS_APPLICATION_INPUT_DISCLAIMER;
 const decoder = new TextDecoder("utf-8", { fatal: true });
 
 export function snapshotLocalDraftPackage({ targetDirectory, applicationId, expectedDirectoryIdentity }) {
@@ -38,7 +29,7 @@ export function snapshotLocalDraftPackage({ targetDirectory, applicationId, expe
   }
   const names = fs.readdirSync(targetDirectory).sort(compareUtf8);
   if (!arraysEqual(names, [...CENTRAL_APPLICATION_FILES].sort(compareUtf8))) {
-    invalidDraft("the local draft must contain exactly the frozen six files");
+    invalidDraft("the local draft must contain exactly the frozen seven files");
   }
 
   const files = new Map();
@@ -98,47 +89,17 @@ export function validateLocalDraftReplacement({
   const prior = validateSnapshot(draftSnapshot, applicationId);
   const next = validateClosedCentralPackage(nextCentralPackage, applicationId);
   const expectedRevision = centralBaseExistingApplication
-    ? deriveApplicationRevision({
-      applicationId,
-      priorApplication: centralBasePriorApplication,
-      nextBuilder: prior.application.builder,
-      nextSource: prior.application.source
-    })
+    ? centralBasePriorApplication.applicationRevision + 1
     : 1;
   if (prior.application.applicationRevision !== expectedRevision) {
     invalidDraft("the local draft revision is not the single next revision authorized by immutable main");
   }
-  const nextExpectedRevision = centralBaseExistingApplication
-    ? deriveApplicationRevision({
-      applicationId,
-      priorApplication: centralBasePriorApplication,
-      nextBuilder: next.application.builder,
-      nextSource: next.application.source
-    })
-    : 1;
-  if (next.application.applicationRevision !== expectedRevision || nextExpectedRevision !== expectedRevision) {
+  if (next.application.applicationRevision !== expectedRevision) {
     invalidDraft("the replacement must remain on the same single next revision authorized by immutable main");
   }
-  if (prior.application.builder.githubUserId !== next.application.builder.githubUserId) {
-    invalidDraft("replace-draft cannot change the immutable builder GitHub user id");
-  }
-  const priorRepositories = repositoryLineage(prior.application.source);
-  const nextRepositories = repositoryLineage(next.application.source);
-  if (!arraysEqual(priorRepositories.numericIds, nextRepositories.numericIds)) {
-    invalidDraft("replace-draft cannot change the primary or companion numeric repository lineage");
-  }
-  for (let index = 0; index < priorRepositories.authorities.length; index += 1) {
-    const before = priorRepositories.authorities[index];
-    const after = nextRepositories.authorities[index];
-    const commitChanged = before.revisionObjectId !== after.revisionObjectId;
-    const treeChanged = before.treeObjectId !== after.treeObjectId;
-    if (commitChanged !== treeChanged) {
-      throw new CliFailure(
-        "SOURCE_REVISION_INCOHERENT",
-        "replace-draft requires each changed source commit and root tree to move together",
-        { exitCode: 1 }
-      );
-    }
+  assertSameAutonomousSourceLineage(prior.application, next.application);
+  if (centralBaseExistingApplication) {
+    assertSameAutonomousSourceLineage(centralBasePriorApplication, prior.application);
   }
   if (prior.packageDigest === next.packageDigest) {
     invalidDraft("replace-draft requires materially different canonical package bytes");
@@ -206,7 +167,7 @@ function validateClosedCentralPackage(centralPackage, applicationId) {
     ])
     || centralPackage.generated !== true
     || centralPackage.encoding !== "utf8"
-    || centralPackage.validatorContract !== "public-pr-application-v2"
+    || centralPackage.validatorContract !== "autonomous-public-pr-application-v1"
     || centralPackage.targetDirectory !== `submissions/${applicationId}`
     || centralPackage.fileCount !== CENTRAL_APPLICATION_FILES.length
     || !arraysEqual(centralPackage.fileOrder, CENTRAL_APPLICATION_FILES)
@@ -242,7 +203,7 @@ function validateClosedCentralPackage(centralPackage, applicationId) {
   const validated = validateClosedPackageFiles({ applicationId, files });
   if (
     centralPackage.applicationRevision !== validated.application.applicationRevision
-    || centralPackage.stage !== validated.application.stage
+    || centralPackage.stage !== "proposal"
   ) {
     invalidDraft("the central-package summary does not match application.json");
   }
@@ -261,8 +222,15 @@ function validateClosedPackageFiles({ applicationId, files }) {
   if (!(files instanceof Map) || !arraysEqual([...files.keys()], CENTRAL_APPLICATION_FILES)) {
     invalidDraft("the local draft package is incomplete or unordered");
   }
-  const application = parseCanonicalJson(files.get("application.json"), "application.json");
+  const application = parseCanonicalJson(files.get("application.json"), "application.json", { trailingNewline: false });
   validateApplication(application, applicationId);
+  const launch = parseCanonicalJson(files.get("launch.json"), "launch.json", { trailingNewline: false });
+  try {
+    validateAutonomousLaunchSpecification(launch);
+  } catch {
+    invalidDraft("the local draft launch specification is invalid");
+  }
+  if (launch.applicationId !== applicationId) invalidDraft("the local draft launch specification has another application id");
   validateMarkdown(files.get("PROPOSAL.md"), "PROPOSAL.md", "# Proposal");
   validateMarkdown(files.get("TEST_PLAN.md"), "TEST_PLAN.md", "# Test plan");
   validateMarkdown(files.get("THREAT_MODEL.md"), "THREAT_MODEL.md", "# Threat model");
@@ -270,106 +238,16 @@ function validateClosedPackageFiles({ applicationId, files }) {
   const evidence = parseCanonicalJson(files.get("evidence-index.json"), "evidence-index.json");
   validateCompatibility(compatibility, application);
   validateEvidence(evidence, application);
-  for (let index = 0; index < REVIEW_FILES.length; index += 1) {
-    const fileName = REVIEW_FILES[index];
-    const record = application.reviewPackage[index];
-    const bytes = files.get(fileName);
-    if (record.path !== fileName || record.byteLength !== bytes.length || record.sha256 !== digest(bytes)) {
-      invalidDraft("application.json does not cryptographically bind every local draft review file");
-    }
-  }
-  return Object.freeze({ application, compatibility, evidence });
+  return Object.freeze({ application, launch, compatibility, evidence });
 }
 
 function validateApplication(application, applicationId) {
-  if (
-    !isExactObject(application, [
-      "applicationId",
-      "applicationRevision",
-      "builder",
-      "builderTemplate",
-      "companionClosure",
-      "declarations",
-      "programmableFee",
-      "reviewPackage",
-      "schemaVersion",
-      "source",
-      "stage",
-      "summary",
-      "title"
-    ])
-    || application.schemaVersion !== 2
-    || application.applicationId !== applicationId
-    || !Number.isInteger(application.applicationRevision)
-    || application.applicationRevision < 1
-    || application.applicationRevision > 1_000_000
-    || !new Set(["proposal", "prototype"]).has(application.stage)
-    || !boundedText(application.title, 3, 120)
-    || !boundedText(application.summary, 20, 1_000)
-  ) {
-    invalidDraft("the local draft application identity, revision, stage, title, or summary is invalid");
-  }
-  if (
-    !isExactObject(application.builder, ["contact", "githubLogin", "githubUserId"])
-    || !OPAQUE_DECIMAL_PATTERN.test(application.builder.githubUserId ?? "")
-    || !GITHUB_LOGIN_PATTERN.test(application.builder.githubLogin ?? "")
-    || !validContact(application.builder.contact)
-  ) {
-    invalidDraft("the local draft builder identity is invalid");
-  }
   try {
-    application.builderTemplate = normalizeBuilderTemplate(application.builderTemplate);
+    validateAutonomousApplicationManifest(application, { requireImmutableSourceHints: true });
   } catch {
-    invalidDraft("the local draft builder-template provenance is invalid");
+    invalidDraft("the local draft application does not satisfy the autonomous manifest contract");
   }
-  if (
-    !isExactObject(application.declarations, [
-      "noApprovalClaim",
-      "noSecretsDeclared",
-      "noUniswapEndorsementClaim",
-      "publicInformationAcknowledged"
-    ])
-    || Object.values(application.declarations).some((value) => value !== true)
-  ) {
-    invalidDraft("the local draft declarations are incomplete");
-  }
-  let normalizedSource;
-  try {
-    normalizedSource = validateGitHubPublicSourceRequestV1(application.source);
-  } catch {
-    invalidDraft("the local draft source does not satisfy GitHubPublicSourceContractV1");
-  }
-  if (canonicalJson(normalizedSource) !== canonicalJson(application.source)) {
-    invalidDraft("the local draft source does not use canonical defaults and ordering");
-  }
-  application.source = normalizedSource;
-  let normalizedCompanionClosure;
-  try {
-    normalizedCompanionClosure = validateCompanionClosureReceipts(application.companionClosure, normalizedSource);
-  } catch {
-    invalidDraft("the local draft companion closure receipts do not match the exact source authorities");
-  }
-  if (canonicalJson(normalizedCompanionClosure) !== canonicalJson(application.companionClosure)) {
-    invalidDraft("the local draft companion closure receipts are not canonical");
-  }
-  application.companionClosure = normalizedCompanionClosure;
-  if (!Array.isArray(application.reviewPackage) || application.reviewPackage.length !== REVIEW_FILES.length) {
-    invalidDraft("the local draft review index is incomplete");
-  }
-  for (let index = 0; index < REVIEW_FILES.length; index += 1) {
-    const record = application.reviewPackage[index];
-    const fileName = REVIEW_FILES[index];
-    if (
-      !isExactObject(record, ["byteLength", "path", "sha256"])
-      || record.path !== fileName
-      || !Number.isInteger(record.byteLength)
-      || record.byteLength < 1
-      || record.byteLength > MAX_FILE_BYTES[fileName]
-      || !DIGEST_PATTERN.test(record.sha256 ?? "")
-    ) {
-      invalidDraft("the local draft review index is malformed or unordered");
-    }
-  }
+  if (application.applicationId !== applicationId) invalidDraft("the local draft application id does not match its directory");
 }
 
 function validateCompatibility(report, application) {
@@ -385,7 +263,7 @@ function validateCompatibility(report, application) {
   ) {
     invalidDraft("the local draft compatibility report is malformed or overclaims its result");
   }
-  validateSourceProjection(report.source, application.source.primary, "compatibility report");
+  validateSourceProjection(report.source, autonomousPrimarySource(application), "compatibility report");
   let previous = null;
   for (const finding of report.findings) {
     if (
@@ -417,7 +295,7 @@ function validateEvidence(index, application) {
   ) {
     invalidDraft("the local draft evidence index is malformed or does not remain explicitly untrusted");
   }
-  validateSourceProjection(index.source, application.source.primary, "evidence index");
+  validateSourceProjection(index.source, autonomousPrimarySource(application), "evidence index");
   let previous = null;
   for (const record of index.evidence) {
     if (
@@ -438,9 +316,9 @@ function validateEvidence(index, application) {
 function validateSourceProjection(projection, primary, label) {
   if (
     !isExactObject(projection, ["numericRepositoryId", "revisionObjectId", "treeObjectId"])
-    || projection.numericRepositoryId !== primary.numericRepositoryId
-    || projection.revisionObjectId !== primary.revisionObjectId
-    || projection.treeObjectId !== primary.treeObjectId
+    || projection.numericRepositoryId !== primary.repositoryIdHint
+    || projection.revisionObjectId !== primary.requestedRevisionHint
+    || !COMMIT_PATTERN.test(projection.treeObjectId ?? "")
   ) {
     invalidDraft(`the local draft ${label} is not bound to the exact primary source authority`);
   }
@@ -464,7 +342,7 @@ function validateMarkdown(bytes, name, heading) {
   }
 }
 
-function parseCanonicalJson(bytes, name) {
+function parseCanonicalJson(bytes, name, { trailingNewline = true } = {}) {
   const source = decodeUtf8(bytes, name);
   if (source.includes("\r") || hasForbiddenInvisibleOrBidi(source.replaceAll("\n", ""))) invalidDraft(`${name} contains unsafe text`);
   let value;
@@ -473,7 +351,8 @@ function parseCanonicalJson(bytes, name) {
   } catch {
     invalidDraft(`${name} is not valid JSON`);
   }
-  if (source !== `${canonicalJson(value)}\n`) invalidDraft(`${name} is not exact canonical JSON`);
+  const expected = `${canonicalJson(value)}${trailingNewline ? "\n" : ""}`;
+  if (source !== expected) invalidDraft(`${name} is not exact canonical JSON`);
   return value;
 }
 
@@ -489,23 +368,35 @@ function centralPackageFromFiles({ applicationId, files, application }) {
   });
   return {
     targetDirectory: `submissions/${applicationId}`,
-    stage: application.stage,
+    stage: "proposal",
     applicationRevision: application.applicationRevision,
     fileCount: records.length,
     fileOrder: [...CENTRAL_APPLICATION_FILES],
     encoding: "utf8",
     generated: true,
-    validatorContract: "public-pr-application-v2",
+    validatorContract: "autonomous-public-pr-application-v1",
     files: records
   };
 }
 
-function repositoryLineage(source) {
-  const repositories = [source.primary, ...source.companions];
-  return {
-    numericIds: repositories.map(({ numericRepositoryId }) => numericRepositoryId),
-    authorities: repositories.map(({ revisionObjectId, treeObjectId }) => ({ revisionObjectId, treeObjectId }))
-  };
+function autonomousPrimarySource(application) {
+  const primary = application.githubSources.find(({ sourceId }) => sourceId === application.primarySourceId);
+  if (primary === undefined) invalidDraft("the local draft primary source is missing");
+  return primary;
+}
+
+function assertSameAutonomousSourceLineage(left, right) {
+  const project = (application) => [...application.githubSources]
+    .map(({ sourceId, ownerHint, repositoryHint, repositoryIdHint }) => ({
+      sourceId,
+      ownerHint: ownerHint.toLowerCase(),
+      repositoryHint: repositoryHint.toLowerCase(),
+      repositoryIdHint
+    }))
+    .sort((a, b) => compareUtf8(a.sourceId, b.sourceId));
+  if (canonicalJson(project(left)) !== canonicalJson(project(right))) {
+    invalidDraft("replace-draft cannot change the primary or companion repository lineage");
+  }
 }
 
 function packageDigest(centralPackage) {
@@ -576,20 +467,6 @@ function readDirectoryIdentity(target, code) {
     throw new CliFailure(code, "the local draft target must be a real directory", { exitCode: 1 });
   }
   return { dev: stat.dev, ino: stat.ino };
-}
-
-function validContact(value) {
-  if (value === null) return true;
-  if (typeof value !== "string" || value.length > 500) return false;
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === "https:"
-      && parsed.username === ""
-      && parsed.password === ""
-      && parsed.hash === "";
-  } catch {
-    return false;
-  }
 }
 
 function boundedText(value, minimum, maximum) {

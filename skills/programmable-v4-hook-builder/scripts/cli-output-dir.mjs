@@ -279,7 +279,7 @@ function validateCentralPackageBytes(centralPackage) {
     || !Array.isArray(centralPackage.files)
     || centralPackage.files.length !== CENTRAL_APPLICATION_FILES.length
   ) {
-    throw new CliFailure("OUTPUT_PACKAGE_INVALID", "central package does not use the frozen six-file contract", { exitCode: 1 });
+    throw new CliFailure("OUTPUT_PACKAGE_INVALID", "central package does not use the frozen seven-file contract", { exitCode: 1 });
   }
   let totalBytes = 0;
   return CENTRAL_APPLICATION_FILES.map((expectedPath, index) => {
@@ -326,7 +326,7 @@ function verifyMaterializedFiles(
   const observedNames = fs.readdirSync(directory).sort(compareUtf8);
   const expectedNames = [...CENTRAL_APPLICATION_FILES].sort(compareUtf8);
   if (!arraysEqual(observedNames, expectedNames)) {
-    throw new CliFailure("OUTPUT_WRITE_FAILED", "temporary output does not contain exactly the frozen six files", { exitCode: 1 });
+    throw new CliFailure("OUTPUT_WRITE_FAILED", "temporary output does not contain exactly the frozen seven files", { exitCode: 1 });
   }
   if (expectedFileIdentities !== null && expectedFileIdentities.length !== records.length) {
     throw new CliFailure("OUTPUT_TARGET_CHANGED", "the frozen output file identities are incomplete", { exitCode: 1 });

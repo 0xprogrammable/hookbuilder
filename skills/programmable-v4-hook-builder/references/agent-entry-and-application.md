@@ -1,7 +1,7 @@
 # Agent entry and application contract
 
 This reference separates the active **Public GitHub PR Builder Beta** from a later **Connected Submission service**.
-Today, builders keep their complete project in an external public GitHub repository and submit a bounded six-file
+Today, builders keep their complete project in an external public GitHub repository and submit a bounded seven-file
 application record through a draft pull request. The wallet, GitHub App, claim, application-service, status-API, permit,
 and website-launch contracts later in this file are future design contracts and are not active beta capabilities.
 
@@ -57,7 +57,7 @@ idea or existing project
   -> proposal or capability-driven prototype in the builder repository
   -> local package gate
   -> clean, pushed, anonymously reachable public GitHub revision
-  -> deterministic six-file central application package
+  -> deterministic seven-file central application package
   -> draft pull request to 0xprogrammable/programmable
   -> GitHub-native review
 ```
@@ -67,6 +67,7 @@ The complete source stays in the builder repository. The central pull request co
 ```text
 submissions/<application-id>/
 ├── application.json
+├── launch.json
 ├── PROPOSAL.md
 ├── TEST_PLAN.md
 ├── THREAT_MODEL.md
@@ -74,16 +75,16 @@ submissions/<application-id>/
 └── evidence-index.json
 ```
 
-`applicationId` is the stable lowercase project slug and central directory name. The source identity is the canonical
-public GitHub repository URI, numeric repository id, exact commit, root tree, declared paths, and evidence bound inside
-`application.json`. The pull-request number identifies the public review thread. Neither identifier is a remote draft,
+`applicationId` is the stable lowercase project slug and central directory name. `application.json` carries immutable
+GitHub source hints, execution roots, and rights declarations; `launch.json` carries the data-only compiler and launch
+graph. Exact source trees, declared paths, and evidence remain independently resolved intake data. The pull-request
+number identifies the public review thread. Neither identifier is a remote draft,
 wallet-owned application, claim secret, approval, or launch authorization.
 
-The public record separately binds the builder. `prepare-pr` resolves the declared GitHub login through the anonymous
-public `/users/<login>` endpoint and records the exact decimal GitHub user id. The trusted intake workflow compares that
-id and the current display login with the pull-request author event. Preserve the numeric id across revisions while
-allowing the login and contact to follow a GitHub rename. This proves the central PR author identity only, not ownership
-of the linked source repository.
+The prepared action plan separately binds the builder. `prepare-pr` resolves the declared GitHub login through the
+anonymous public `/users/<login>` endpoint and records the exact decimal GitHub user id outside the seven inert files.
+The GitHub client compares it with the authenticated account, while trusted intake authenticates the pull-request
+author event. This proves the central PR author identity only, not ownership of the linked source repository.
 
 A project may bind zero to eight additional public companion repositories through canonical manifests committed in the
 primary HEAD. Each companion is independently pinned to its numeric repository id, full commit, root tree, and declared
@@ -91,8 +92,8 @@ paths. This supports split contract, app, game, service, keeper, oracle, indexer
 without pretending they are one repository.
 
 The implemented beta commands are `doctor`, `scaffold`, `check`, `package`, and `prepare-pr` through
-`scripts/cli.mjs`. `prepare-pr` resolves the pushed public revision and prepares the six files plus draft PR metadata. An
-explicit `--output-dir` may materialize those six files locally, but the command does not push, open a pull request,
+`scripts/cli.mjs`. `prepare-pr` resolves the pushed public revision and prepares the seven files plus draft PR metadata. An
+explicit `--output-dir` may materialize those seven files locally, but the command does not push, open a pull request,
 connect an account, sign, deploy, or launch. Opening the draft pull request remains a separate external action requiring
 explicit authority.
 
@@ -730,7 +731,7 @@ Before the later Connected Submission flow is available, prove at least:
 
 This order applies to the later Connected Submission service. For the current beta, resolve application workflow from
 the central GitHub pull request and its trusted checks, and resolve project source from the exact public GitHub identity
-inside the six-file application record. Neither source can create an approval or launch fact.
+inside the seven-file application record. Neither source can create an approval or launch fact.
 
 For the later service, resolve facts in this order:
 

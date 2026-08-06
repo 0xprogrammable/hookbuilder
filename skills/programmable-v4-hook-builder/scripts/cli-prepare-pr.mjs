@@ -538,6 +538,11 @@ export async function preparePullRequest({
   assertPrimaryAuthorityDocuments({ submission, reviewTarget: finalReviewTarget, files: finalAuthoritySnapshot.files });
   assertSameHeadFileSnapshot(authoritySnapshot, finalAuthoritySnapshot);
   const finalHeadSnapshot = mergeHeadFileSnapshots(finalReviewHeadSnapshot, finalAuthoritySnapshot);
+  const sourceTopology = parseHeadSourceTopology(
+    finalHeadSnapshot.files,
+    `${relativePackage}/source-topology.json`,
+    submission
+  );
   const finalCompanionManifestBindings = readCompanionManifestsFromHead({
     repositoryRoot,
     commit,
@@ -575,7 +580,8 @@ export async function preparePullRequest({
     applicationRevision,
     packageResult,
     reviewTarget,
-    headFiles: finalHeadSnapshot.files
+    headFiles: finalHeadSnapshot.files,
+    sourceTopology
   });
 
   const document = buildPullRequestDocument({
@@ -712,7 +718,7 @@ export function buildPullRequestDocument({
     "",
     ...checklist.map(({ checked, label }) => `- [${checked ? "x" : " "}] ${label}`),
     "",
-    "The complete six-file central package is embedded in the machine-readable output and was not written to the central repository.",
+    "The complete seven-file central package is embedded in the machine-readable output and was not written to the central repository.",
     "This body was prepared locally. No branch was pushed and no pull request was opened by `prepare-pr`.",
     "Passing intake checks is not acceptance, an audit, deployment evidence, routing approval, or availability."
   ].join("\n");
@@ -773,7 +779,7 @@ export function buildPullRequestDocument({
         githubLogin: builderIdentity.githubLogin,
         contact: builderIdentity.profileUrl
       },
-      schemaStatus: "validator-compatible-six-file-package",
+      schemaStatus: "validator-compatible-seven-file-package",
       source: {
         repositoryUri: github.repositoryUrl,
         numericRepositoryId: github.repositoryId,
@@ -1527,6 +1533,38 @@ function parseHeadSubmission(headFiles, submissionPath) {
   } catch (error) {
     throw new CliFailure("PACKAGE_INVALID", `submission.json: ${sanitizeMessage(error.message)}`, { exitCode: 1 });
   }
+}
+
+function parseHeadSourceTopology(headFiles, topologyPath, submission) {
+  if (!submission?.implementation?.sourcePaths?.includes(topologyPath)) {
+    throw new CliFailure(
+      "SOURCE_TOPOLOGY_REQUIRED",
+      `implementation.sourcePaths must include ${topologyPath}`,
+      { exitCode: 1 }
+    );
+  }
+  const bytes = headFiles.get(topologyPath);
+  if (!Buffer.isBuffer(bytes) || bytes.length < 2 || bytes.length > 65_536) {
+    throw new CliFailure(
+      "SOURCE_TOPOLOGY_REQUIRED",
+      `${topologyPath} must be a bounded file committed in the exact source revision`,
+      { exitCode: 1 }
+    );
+  }
+  let value;
+  try {
+    value = JSON.parse(utf8Decoder.decode(bytes));
+  } catch {
+    throw new CliFailure("SOURCE_TOPOLOGY_INVALID", `${topologyPath} must be valid UTF-8 JSON`, { exitCode: 1 });
+  }
+  if (!bytes.equals(Buffer.from(`${canonicalJson(value)}\n`, "utf8"))) {
+    throw new CliFailure(
+      "SOURCE_TOPOLOGY_INVALID",
+      `${topologyPath} must use canonical JSON with one trailing newline`,
+      { exitCode: 1 }
+    );
+  }
+  return value;
 }
 
 function assertSubmissionIdentity(submission, reviewTarget) {

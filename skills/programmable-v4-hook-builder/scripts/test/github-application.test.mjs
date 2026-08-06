@@ -33,10 +33,10 @@ const CENTRAL_REPOSITORY_ID = "303";
 const FORK_REPOSITORY_ID = "404";
 const APPLICATION_ID = "example-hook";
 
-test("the prepared six-file package is closed, hash-bound, and path-bound", () => {
+test("the prepared seven-file package is closed, hash-bound, and path-bound", () => {
   const prepared = normalizePreparedApplication(makePrepared());
   assert.equal(prepared.applicationId, APPLICATION_ID);
-  assert.equal(prepared.package.files.length, 6);
+  assert.equal(prepared.package.files.length, 7);
   assert.deepEqual(
     prepared.package.files.map(({ relativePath }) => relativePath),
     CENTRAL_APPLICATION_FILES
@@ -414,7 +414,7 @@ test("status re-reads the PR and reports a different prepared package without ca
   assert.equal(transport.writeCalls.length, 0);
 });
 
-test("status exposes a changed remote six-file hash without accepting it as the prepared target", async () => {
+test("status exposes a changed remote seven-file hash without accepting it as the prepared target", async () => {
   const prepared = makePrepared();
   const transport = new FakeTransport({ prepared });
   transport.seedExactPull();
@@ -510,6 +510,7 @@ function makePrepared({ priorRevision = null, companions = [] } = {}) {
     companions: structuredClone(companions)
   };
   const reviewContents = new Map([
+    ["launch.json", canonicalJson(makeLaunch())],
     ["PROPOSAL.md", "# Proposal\n\nA concrete proposal.\n"],
     ["TEST_PLAN.md", "# Test plan\n\nA concrete test plan.\n"],
     ["THREAT_MODEL.md", "# Threat model\n\nA concrete threat model.\n"],
@@ -517,40 +518,61 @@ function makePrepared({ priorRevision = null, companions = [] } = {}) {
     ["evidence-index.json", `${canonicalJson({ evidence: [], schemaVersion: 1 })}\n`]
   ]);
   const reviewPackage = [...reviewContents].map(([filePath, content]) => fileRecord(filePath, content));
+  const githubSources = [source.primary, ...source.companions].map((repository, index) => {
+    const parsed = new URL(repository.repositoryUri);
+    return {
+      sourceId: index === 0 ? "source:primary" : `source:companion-${index}`,
+      ownerHint: parsed.pathname.split("/")[1],
+      repositoryHint: parsed.pathname.split("/")[2],
+      repositoryIdHint: repository.numericRepositoryId,
+      requestedRevisionHint: repository.revisionObjectId,
+      visibilityHint: "public",
+      purposeHint: index === 0 ? "project.primary" : "project.companion",
+      executionRoots: ["."],
+      rightsDeclaration: {
+        basis: "applicant-original",
+        licenseBindings: [],
+        authorizationGrantId: null
+      }
+    };
+  });
   const application = {
-    schemaVersion: 2,
+    schemaVersion: "1.0.0",
     applicationId: APPLICATION_ID,
     applicationRevision: priorRevision === null ? 1 : priorRevision + 1,
-    stage: "proposal",
-    title: "Example hook",
-    summary: "An example hook with concrete public review evidence.",
-    builder: {
-      githubUserId: VIEWER_ID,
-      githubLogin: "builder",
-      contact: "https://github.com/builder"
+    project: {
+      title: "Example hook",
+      summary: "An example hook with concrete public review evidence."
     },
-    builderTemplate: {
-      schemaVersion: "1.0.0",
-      source: "manual",
-      templateSelection: null
-    },
-    source,
-    companionClosure: [],
-    programmableFee: { policyId: "programmable-volume-fee-v1" },
-    reviewPackage: reviewPackage.map(({ path: filePath, byteLength, sha256 }) => ({
-      path: filePath,
-      byteLength,
-      sha256
-    })),
-    declarations: {
-      publicInformationAcknowledged: true,
-      noSecretsDeclared: true,
-      noApprovalClaim: true,
-      noUniswapEndorsementClaim: true
-    }
+    primarySourceId: "source:primary",
+    githubSources,
+    chainProfileRequests: [{
+      requestId: "chain:launch",
+      namespaceHint: "eip155",
+      referenceHint: "1",
+      profileHint: "ethereum-mainnet-v1"
+    }],
+    components: [{
+      componentId: "component:root",
+      kindHint: "evm.contract",
+      summary: "Canonical root deployment target.",
+      sourceIds: ["source:primary"],
+      chainRequestIds: ["chain:launch"],
+      visibilityHint: "public-source",
+      reviewRelevanceHint: "unknown"
+    }],
+    capabilityHints: [{
+      capabilityId: "capability:project",
+      kindHint: "project.source-defined",
+      summary: "Deploy the canonical root target.",
+      componentIds: ["component:root"],
+      chainRequestIds: ["chain:launch"],
+      movesUserValueHint: null,
+      controlsUserValueHint: null
+    }]
   };
   const filesByPath = new Map(reviewPackage.map((record) => [record.path, record]));
-  filesByPath.set("application.json", fileRecord("application.json", `${canonicalJson(application)}\n`));
+  filesByPath.set("application.json", fileRecord("application.json", canonicalJson(application)));
   const files = CENTRAL_APPLICATION_FILES.map((filePath) => filesByPath.get(filePath));
   const revision = application.applicationRevision;
   return {
@@ -616,24 +638,76 @@ function makePrepared({ priorRevision = null, companions = [] } = {}) {
     applicationAdapter: {
       targetPath: `submissions/${APPLICATION_ID}/application.json`,
       applicationRevision: revision,
-      schemaStatus: "validator-compatible-six-file-package",
+      builder: {
+        githubUserId: VIEWER_ID,
+        githubLogin: "builder",
+        contact: "https://github.com/builder"
+      },
+      schemaStatus: "validator-compatible-seven-file-package",
       publicGitHubApplicationReady: true
     },
     centralPackage: {
       targetDirectory: `submissions/${APPLICATION_ID}`,
       stage: "proposal",
       applicationRevision: revision,
-      fileCount: 6,
+      fileCount: 7,
       fileOrder: [...CENTRAL_APPLICATION_FILES],
       encoding: "utf8",
       generated: true,
-      validatorContract: "public-pr-application-v2",
+      validatorContract: "autonomous-public-pr-application-v1",
       files
     },
     requiresHumanConfirmation: true,
     localWritesPerformed: [],
     externalReadChecksPerformed: [],
     externalActionsPerformed: []
+  };
+}
+
+function makeLaunch() {
+  return {
+    schemaVersion: "programmable.launch-specification.v1",
+    applicationId: APPLICATION_ID,
+    language: "solidity",
+    compiler: {
+      profileId: "programmable:solidity-solc-0.8.26-v1",
+      family: "solc",
+      version: "0.8.26",
+      settings: {}
+    },
+    chain: { namespace: "eip155", reference: "1", profileId: "ethereum-mainnet-v1" },
+    launcher: { route: { kind: "evm.create2", adapterId: "adapter:create2" } },
+    rootComponentId: "component:root",
+    rootTargetId: "target:root",
+    components: [{
+      componentId: "component:root",
+      kind: "evm.contract",
+      sourceIds: ["source:primary"],
+      targetIds: ["target:root"],
+      attributes: {}
+    }],
+    targets: [{
+      targetId: "target:root",
+      componentId: "component:root",
+      sourceId: "source:primary",
+      sourceUnitName: "src/Root.sol",
+      sourceSha256: `sha256:${"1".repeat(64)}`,
+      contractName: "Root",
+      deploymentMode: "create2",
+      saltStrategy: "compiler-deterministic-v1",
+      deploymentValueWei: "0",
+      constructor: { abiEncodedArguments: "0x", addressLocators: [] },
+      initializer: null,
+      initializerValueWei: "0",
+      libraries: [],
+      declaredHookPermissions: null
+    }],
+    edges: [],
+    externalOnchainDependencies: [],
+    internalChildDeployments: [],
+    releaseModules: [],
+    declaredIdentities: [],
+    extensions: {}
   };
 }
 
@@ -955,7 +1029,7 @@ function rawPull({
     html_url: `https://github.com/0xprogrammable/programmable/pull/${number}`,
     title,
     body,
-    changed_files: 6,
+    changed_files: 7,
     user: { id: VIEWER_ID, login: "builder" },
     head: {
       ref: headRef,

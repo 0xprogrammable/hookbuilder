@@ -26,7 +26,7 @@ Use the skill to:
 - Use `scaffold` only when a new project needs a starting structure.
 - Run `check` against one exact project revision and keep planned, blocked and completed checks distinct.
 - Use `package` to validate the local review package and report deterministic hashes without executing project code.
-- Use `prepare-pr` to resolve the clean pushed public revision and create the six-file application record and
+- Use `prepare-pr` to resolve the clean pushed public revision and create the seven-file application record and
   copy-ready pull-request body.
 - Work through architecture questions or evidence-based findings, then review a new commit in the same pull request.
 
@@ -137,7 +137,7 @@ addresses, fees, repository identifiers, evidence, test results, review decision
 
 There is no connected Programmable chat or application service in this beta. The builder works in their existing
 coding agent and keeps the complete project in their own public GitHub repository. The Programmable pull request holds
-only the small six-file application record and public evidence. Its stable `applicationId` is the project slug and
+only the small seven-file application record and public evidence. Its stable `applicationId` is the project slug and
 directory name; the pull-request number is the review thread, not a connected-service identity.
 
 Read the complete [Public GitHub PR Builder Beta guide](PUBLIC_GITHUB_PR_BETA.md) before preparing an application.
@@ -243,7 +243,7 @@ the strict source-closure limits.
 
 The exact project commit must now be clean, pushed and publicly reachable. `prepare-pr` independently resolves the
 canonical GitHub repository URL, immutable numeric repository id, full commit and full tree, then generates the
-copy-ready pull-request body and exactly six central files: `application.json`, `PROPOSAL.md`, `TEST_PLAN.md`,
+copy-ready pull-request body and exactly seven central files: `application.json`, `launch.json`, `PROPOSAL.md`, `TEST_PLAN.md`,
 `THREAT_MODEL.md`, `compatibility-report.json` and `evidence-index.json`. It does not copy the full project into
 Programmable.
 

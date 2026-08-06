@@ -7,7 +7,7 @@ that binds one exact public repository revision and its public check evidence. G
 history are the beta's status and audit trail.
 
 This is not the connected application service described in the Open Hook v2 plans. It uses no Programmable wallet
-claim, GitHub App installation, private repository access or connected-service application identity. The six-file
+claim, GitHub App installation, private repository access or connected-service application identity. The seven-file
 public record still has a stable lower-case `applicationId` equal to its project slug and directory name; the GitHub
 pull-request number is the review thread.
 
@@ -50,10 +50,10 @@ A beta application needs:
 - a clear project summary, known limitations and source license; and
 - a GitHub identity the reviewers can contact in the pull request.
 
-`prepare-pr` anonymously resolves that identity through GitHub's public user endpoint. `application.builder.githubUserId`
-is the immutable decimal identity; `githubLogin` and `contact` are public display data. The trusted intake check compares
-the numeric id and current login with the authenticated pull-request author. A GitHub login rename therefore keeps the
-same builder identity, while a different numeric user id cannot replace the builder on a later application revision.
+`prepare-pr` anonymously resolves that identity through GitHub's public user endpoint and keeps the immutable decimal
+user id in the authenticated action plan, outside the closed autonomous manifest. The trusted intake check compares
+that numeric id and the current login with the authenticated pull-request author. A GitHub login rename therefore keeps
+the same builder identity, while a different numeric user id cannot replace the builder on a later application revision.
 This PR-author binding is not proof that the author controls the linked source repository.
 
 Private repositories, local-only worktrees, ZIP files, pasted source, mutable branch names and deployed bytecode without
@@ -117,11 +117,11 @@ The application pull request is intentionally small. It records:
 - declared authorities, fees, dependencies and known limitations; and
 - source license and required third-party notices.
 
-The pull request does not copy the full project into Programmable. It adds exactly six generated files under one
-`submissions/<application-id>/` directory—`application.json`, `PROPOSAL.md`, `TEST_PLAN.md`, `THREAT_MODEL.md`,
+The pull request does not copy the full project into Programmable. It adds exactly seven generated files under one
+`submissions/<application-id>/` directory—`application.json`, `launch.json`, `PROPOSAL.md`, `TEST_PLAN.md`, `THREAT_MODEL.md`,
 `compatibility-report.json` and `evidence-index.json`—plus the completed pull-request description. `package` validates
 the local review package and reports deterministic hashes. `prepare-pr` independently resolves the clean pushed public
-revision and generates the six central files. Do not hand-invent fields, identifiers or tool results.
+revision and generates the seven central files. Do not hand-invent fields, identifiers or tool results.
 
 `PROTOTYPE_READY` in the builder repository is a legacy compatibility projection, not implementation evidence or a
 trusted public status. The builder never emits `PROTOTYPE_VALIDATED` or `SANDBOX_REBUILD_VERIFIED`. Until the trusted
@@ -141,7 +141,7 @@ submitting under another user's name, but it does not prove ownership or control
 ### Pull-request path isolation
 
 Any pull request that changes `submissions/**` is an application pull request. It must change only one closed
-six-file application directory and cannot include documentation, workflow, skill, plugin, eval or product-code
+seven-file application directory and cannot include documentation, workflow, skill, plugin, eval or product-code
 changes. The sole exception is a maintainer-only update to `submissions/README.md`, which uses the separate
 `builder-maintenance` path and still cannot be mixed into an application pull request.
 
@@ -206,7 +206,7 @@ symlink, Gitlink, unmaterialized LFS object, or exceeded limit remain hard error
 ### 6. Run `prepare-pr`
 
 `prepare-pr` requires a clean pushed revision, independently resolves its public GitHub repository id, commit and tree,
-and generates the small six-file Programmable application record plus a copy-ready pull-request body. It does not
+and generates the small seven-file Programmable application record plus a copy-ready pull-request body. It does not
 publish source, push a branch or open a pull request without the builder's explicit confirmation.
 
 When using `--output-dir`, create its parent first, keep it outside the builder repository, avoid symbolic-link aliases,
@@ -309,7 +309,7 @@ Only a maintainer-reviewed change on `main` can pause or resume intake. An appli
 state. The trusted validator reads the exact base-revision blob, never the candidate's copy. A missing, noncanonical,
 malformed or unsupported trusted status blocks the intake check as an operational system error. A pause is an
 operational limit, not a rejection, approval or promised queue position. `prelaunch` and `paused-all` stop application
-Git data before fetch. In `paused-new`, an id already present as a closed six-file package on the trusted base may
+Git data before fetch. In `paused-new`, an id already present as a closed seven-file package on the trusted base may
 update. A still-unmerged new id proceeds only when `continuingPullRequests` contains its exact PR number, application
 id, immutable builder GitHub user id, primary numeric repository id, and ordered companion numeric-id vector. The
 PR/id pair is checked from bounded GitHub changed-file metadata before candidate Git fetch. Builder and repository

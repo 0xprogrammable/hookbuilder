@@ -8,7 +8,7 @@ import { CENTRAL_APPLICATION_FILES } from "../cli-central-package.mjs";
 import { materializeCentralPackage } from "../cli-output-dir.mjs";
 import { CliFailure } from "../cli-runtime.mjs";
 
-test("materializes exactly six verified files through one atomic directory rename", () => {
+test("materializes exactly seven verified files through one atomic directory rename", () => {
   const fixture = createOutputFixture();
   try {
     const target = path.join(fixture.parent, "example-app");
@@ -226,7 +226,7 @@ test("re-verifies materialized bytes and cleans corrupted temporary output", () 
   }
 });
 
-test("replace-existing swaps only an exact prior six-file package", () => {
+test("replace-existing swaps only an exact prior seven-file package", () => {
   const fixture = createOutputFixture();
   const prior = makeCentralPackage("prior");
   const next = makeCentralPackage("next");

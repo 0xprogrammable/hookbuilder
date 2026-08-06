@@ -6,19 +6,19 @@ import { CliFailure } from "./cli-runtime.mjs";
 import { isClosedReviewTargetClosure } from "./review-target-contract.mjs";
 import { validateCompanionClosureReceipts } from "./companion-manifest-contract.mjs";
 import { hasForbiddenInvisibleOrBidi } from "./metadata-core.mjs";
+import {
+  AUTONOMOUS_ADMISSION_FILES,
+  bindAutonomousSourceDeclarations,
+  buildAutonomousApplicationManifest,
+  canonicalApplicationBytes,
+  canonicalLaunchBytes,
+  deriveAutonomousLaunchSpecification
+} from "./autonomous-admission-contract.mjs";
+import { AUTONOMOUS_APPLICATION_INPUT_DISCLAIMER } from "./application-input-contract.mjs";
 
-export const CENTRAL_APPLICATION_FILES = Object.freeze([
-  "application.json",
-  "PROPOSAL.md",
-  "TEST_PLAN.md",
-  "THREAT_MODEL.md",
-  "compatibility-report.json",
-  "evidence-index.json"
-]);
+export const CENTRAL_APPLICATION_FILES = AUTONOMOUS_ADMISSION_FILES;
 
-const REVIEW_FILES = Object.freeze(CENTRAL_APPLICATION_FILES.slice(1));
-const PUBLIC_BETA_DISCLAIMER =
-  "Builder-declared compatibility evidence; not an audit, approval, deployment, Uniswap endorsement, or launch.";
+const PUBLIC_BETA_DISCLAIMER = AUTONOMOUS_APPLICATION_INPUT_DISCLAIMER;
 const decoder = new TextDecoder("utf-8", { fatal: true });
 const GITHUB_LOGIN_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/u;
 const OPAQUE_DECIMAL_PATTERN = /^[1-9][0-9]{0,63}$/u;
@@ -32,7 +32,8 @@ export function buildCentralApplicationPackage({
   applicationRevision,
   packageResult,
   reviewTarget = null,
-  headFiles
+  headFiles,
+  sourceTopology
 }) {
   const applicationId = submission?.model?.id;
   const declaredGithubLogin = submission?.builder?.github;
@@ -50,6 +51,8 @@ export function buildCentralApplicationPackage({
     invalid("an anonymously resolved immutable builder GitHub identity is required by the central application contract");
   }
   if (!(headFiles instanceof Map)) invalid("exact HEAD file bytes are unavailable");
+  centralTitle(submission?.model?.name, applicationId);
+  centralSummary(submission?.model?.summary);
   if (!Number.isInteger(applicationRevision) || applicationRevision < 1 || applicationRevision > 1_000_000) {
     invalid("application revision is outside the central application contract");
   }
@@ -66,7 +69,15 @@ export function buildCentralApplicationPackage({
     files.set(name, normalizeMarkdown(bytes, heading, name));
   }
 
-  const primary = source?.primary;
+  const boundSource = bindAutonomousSourceDeclarations({ source, sourceTopology });
+  const launchSpecification = deriveAutonomousLaunchSpecification({
+    submission,
+    source: boundSource,
+    headFiles
+  });
+  files.set("launch.json", canonicalLaunchBytes(launchSpecification));
+
+  const primary = boundSource.primary;
   const submissionRepositoryPath = `${packagePath}/submission.json`;
   const committedSubmission = headFiles.get(submissionRepositoryPath);
   if (!Buffer.isBuffer(committedSubmission)) {
@@ -130,7 +141,7 @@ export function buildCentralApplicationPackage({
   ].filter((gate) => !completedGateIds.has(gate.id));
   const centralFindings = buildCentralFindings(projectedFindings, unresolvedGates);
   const result = centralCompatibilityResult({
-    stage: submission.stage,
+    stage: "proposal",
     decision: localCompatibility.decision,
     findings: projectedFindings,
     unresolvedGates
@@ -162,6 +173,14 @@ export function buildCentralApplicationPackage({
         sha256: digest(committedCompatibility)
       },
       {
+        id: "launch-specification",
+        kind: "static-analysis",
+        status: "passed",
+        scope: "Exact source launch specification projected into the autonomous seven-file admission package.",
+        url: `${primary.repositoryUri}/blob/${primary.revisionObjectId}/${encodeRepositoryPath(submission.implementation.specificationPath)}`,
+        sha256: digest(headFiles.get(submission.implementation.specificationPath))
+      },
+      {
         id: "zz-programmable-fee-submission",
         kind: "static-analysis",
         status: "passed",
@@ -174,34 +193,13 @@ export function buildCentralApplicationPackage({
   files.set("compatibility-report.json", jsonBytes(compatibility));
   files.set("evidence-index.json", jsonBytes(evidenceIndex));
 
-  const application = {
-    schemaVersion: 2,
-    applicationId,
+  const application = buildAutonomousApplicationManifest({
+    submission,
+    source: boundSource,
     applicationRevision,
-    stage: submission.stage,
-    title: centralTitle(submission.model.name, applicationId),
-    summary: centralSummary(submission.model.summary),
-    builder: {
-      githubUserId,
-      githubLogin,
-      contact: publicContact(submission.builder.contact, githubLogin)
-    },
-    builderTemplate: projectedBuilderTemplate,
-    source,
-    companionClosure: normalizedCompanionClosure,
-    programmableFee: projectProgrammableFee(submission.programmableFee, {
-      path: submissionRepositoryPath,
-      sha256: digest(committedSubmission)
-    }),
-    reviewPackage: REVIEW_FILES.map((name) => fileRecord(name, files.get(name))),
-    declarations: {
-      publicInformationAcknowledged: true,
-      noSecretsDeclared: true,
-      noApprovalClaim: true,
-      noUniswapEndorsementClaim: true
-    }
-  };
-  files.set("application.json", jsonBytes(application));
+    launchSpecification
+  });
+  files.set("application.json", canonicalApplicationBytes(application));
 
   const records = CENTRAL_APPLICATION_FILES.map((name) => {
     const bytes = files.get(name);
@@ -220,79 +218,9 @@ export function buildCentralApplicationPackage({
     fileOrder: [...CENTRAL_APPLICATION_FILES],
     encoding: "utf8",
     generated: true,
-    validatorContract: "public-pr-application-v2",
+    validatorContract: "autonomous-public-pr-application-v1",
     files: records
   };
-}
-
-function projectProgrammableFee(fee, submissionBinding) {
-  if (!isPlainObject(fee)) invalid("the mandatory Programmable fee policy cannot be projected");
-  const projected = {
-    policyId: fee.policyId,
-    policyVersion: fee.policyVersion,
-    poolScope: fee.poolScope,
-    rates: {
-      unit: fee.rates?.unit,
-      selectedHundredthsOfBip: fee.rates?.selectedHundredthsOfBip,
-      minimumEffectiveHundredthsOfBip: fee.rates?.minimumEffectiveHundredthsOfBip,
-      effectiveHundredthsOfBip: fee.rates?.effectiveHundredthsOfBip,
-      platformHundredthsOfBip: fee.rates?.platformHundredthsOfBip,
-      projectHundredthsOfBip: fee.rates?.projectHundredthsOfBip,
-      formula: fee.rates?.formula,
-      lpFeeExcluded: fee.rates?.lpFeeExcluded
-    },
-    basis: {
-      volume: fee.basis?.volume,
-      quoteAsset: fee.basis?.quoteAsset
-    },
-    ownership: {
-      owner: fee.ownership?.owner,
-      immutable: fee.ownership?.immutable,
-      claimAuthority: fee.ownership?.claimAuthority,
-      claimAvailability: fee.ownership?.claimAvailability,
-      claimDestinationPolicy: fee.ownership?.claimDestinationPolicy,
-      storedMutableRecipient: fee.ownership?.storedMutableRecipient,
-      builderCanMutate: fee.ownership?.builderCanMutate,
-      projectCanMutate: fee.ownership?.projectCanMutate,
-      administratorCanMutate: fee.ownership?.administratorCanMutate
-    },
-    collection: {
-      status: fee.collection?.status,
-      integration: fee.collection?.integration,
-      enforcement: fee.collection?.enforcement,
-      hookFeeMechanismBinding: fee.collection?.hookFeeMechanismBinding,
-      supportedSwapModes: [...(fee.collection?.supportedSwapModes ?? [])],
-      swapModePaths: {
-        zeroForOneExactInput: fee.collection?.swapModePaths?.zeroForOneExactInput,
-        zeroForOneExactOutput: fee.collection?.swapModePaths?.zeroForOneExactOutput,
-        oneForZeroExactInput: fee.collection?.swapModePaths?.oneForZeroExactInput,
-        oneForZeroExactOutput: fee.collection?.swapModePaths?.oneForZeroExactOutput
-      },
-      selfCallPolicy: fee.collection?.selfCallPolicy
-    },
-    accounting: {
-      accrualMode: fee.accounting?.accrualMode,
-      liabilityKeyDimensions: [...(fee.accounting?.liabilityKeyDimensions ?? [])],
-      crossPoolNetting: fee.accounting?.crossPoolNetting,
-      roundingPolicy: fee.accounting?.roundingPolicy,
-      remainderScope: fee.accounting?.remainderScope,
-      claimResetsRemainders: fee.accounting?.claimResetsRemainders,
-      minimumGrossQuoteUnits: fee.accounting?.minimumGrossQuoteUnits,
-      fragmentationResistant: fee.accounting?.fragmentationResistant,
-      valueFlowId: fee.accounting?.valueFlowId,
-      collectionEvent: fee.accounting?.collectionEvent,
-      claimEvent: fee.accounting?.claimEvent
-    },
-    evidence: {
-      sourcePaths: [...(fee.evidence?.sourcePaths ?? [])],
-      testPaths: [...(fee.evidence?.testPaths ?? [])]
-    },
-    submissionBinding
-  };
-  if (projected.policyId !== "programmable-volume-fee-v1") {
-    invalid("the central application requires Programmable volume fee policy v1");
-  }
-  return projected;
 }
 
 function additionalReviewTargetClosureProjection({ localCompatibility, reviewTarget, stage }) {
@@ -520,28 +448,6 @@ function safeText(value, maximum, label) {
   const normalized = value.trim().replace(/\s+/gu, " ");
   if (normalized.length > maximum) invalid(`${label} exceeds the central application limit`);
   return normalized;
-}
-
-function publicContact(value, githubLogin) {
-  if (typeof value === "string") {
-    try {
-      const parsed = new URL(value);
-      if (
-        parsed.protocol === "https:"
-        && parsed.username === ""
-        && parsed.password === ""
-        && parsed.hash === ""
-        && value.length <= 500
-      ) return parsed.href;
-    } catch {
-      // The frozen central schema accepts null; use the public GitHub profile below.
-    }
-  }
-  return `https://github.com/${githubLogin}`;
-}
-
-function fileRecord(name, bytes) {
-  return { path: name, sha256: digest(bytes), byteLength: bytes.length };
 }
 
 function jsonBytes(value) {

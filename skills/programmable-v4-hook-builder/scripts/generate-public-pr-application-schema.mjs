@@ -1,108 +1,178 @@
 #!/usr/bin/env node
 
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
-const referenceDirectory = path.resolve(scriptDirectory, "../references");
-const applicationSchemaPath = path.join(referenceDirectory, "public-pr-application.schema.json");
-const sourceSchemaPath = path.join(referenceDirectory, "github-public-source-contract-v1.schema.json");
+const applicationSchemaPath = path.resolve(
+  scriptDirectory,
+  "../references/public-pr-application.schema.json"
+);
 
-const SOURCE_SCHEMA_ID = "urn:programmable:github-public-source-contract-v1";
-const SOURCE_DEFINITION = "GitHubPublicSourceRequestV1";
-const GENERATED_PREFIX = "githubSource__";
-const DERIVATION_KEY = "x-programmable-derived-from";
+const localId = { type: "string", pattern: "^[a-z][a-z0-9]*(?:[._:-][a-z0-9]+)*$" };
+const kind = { type: "string", pattern: "^[A-Za-z][A-Za-z0-9]*(?:[._:@/+~-][A-Za-z0-9]+)*$" };
+const plainText = (minimum, maximum) => ({ type: "string", minLength: minimum, maxLength: maximum });
 
-function canonicalJson(value) {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
-  if (value && typeof value === "object") {
-    return `{${Object.keys(value).sort(compareUtf8).map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
-  }
-  return JSON.stringify(value);
-}
-
-function compareUtf8(left, right) {
-  return Buffer.compare(Buffer.from(left, "utf8"), Buffer.from(right, "utf8"));
-}
-
-function sha256(value) {
-  return `sha256:${crypto.createHash("sha256").update(value).digest("hex")}`;
-}
-
-function readJson(filePath) {
-  return JSON.parse(fs.readFileSync(filePath, "utf8"));
-}
-
-function localDefinitionName(reference) {
-  const match = /^#\/\$defs\/([A-Za-z0-9_-]+)$/.exec(reference);
-  return match?.[1] ?? null;
-}
-
-function collectReferences(value, result = new Set()) {
-  if (Array.isArray(value)) {
-    for (const entry of value) collectReferences(entry, result);
-    return result;
-  }
-  if (!value || typeof value !== "object") return result;
-  for (const [key, entry] of Object.entries(value)) {
-    if (key === "$ref" && typeof entry === "string") result.add(entry);
-    else collectReferences(entry, result);
-  }
-  return result;
-}
-
-function sourceClosure(sourceSchema) {
-  if (sourceSchema.$id !== SOURCE_SCHEMA_ID) {
-    throw new Error(`Unexpected GitHub source schema id: ${sourceSchema.$id ?? "missing"}`);
-  }
-  const queue = [SOURCE_DEFINITION];
-  const definitions = new Map();
-  while (queue.length > 0) {
-    const name = queue.shift();
-    if (definitions.has(name)) continue;
-    const definition = sourceSchema.$defs?.[name];
-    if (!definition) throw new Error(`Missing GitHub source definition: ${name}`);
-    definitions.set(name, definition);
-    for (const reference of collectReferences(definition)) {
-      const referencedName = localDefinitionName(reference);
-      if (!referencedName) throw new Error(`GitHub source definition ${name} has a non-local reference: ${reference}`);
-      queue.push(referencedName);
+export function generatePublicApplicationSchema() {
+  return {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $id: "https://schemas.programmable.family/autonomous-approval/v1/application-manifest.schema.json",
+    title: "Programmable autonomous application manifest",
+    description: "Inert builder-declared source and capability hints. The autonomous admission service independently resolves and approves exact revisions.",
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "applicationId",
+      "applicationRevision",
+      "capabilityHints",
+      "chainProfileRequests",
+      "components",
+      "githubSources",
+      "primarySourceId",
+      "project",
+      "schemaVersion"
+    ],
+    properties: {
+      schemaVersion: { const: "1.0.0" },
+      applicationId: { type: "string", pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$", maxLength: 80 },
+      applicationRevision: { type: "integer", minimum: 1, maximum: 1_000_000 },
+      project: {
+        type: "object",
+        additionalProperties: false,
+        required: ["summary", "title"],
+        properties: {
+          title: plainText(3, 120),
+          summary: plainText(20, 4_000)
+        }
+      },
+      primarySourceId: localId,
+      githubSources: {
+        type: "array",
+        minItems: 1,
+        maxItems: 16,
+        items: { $ref: "#/$defs/githubSourceHint" }
+      },
+      chainProfileRequests: {
+        type: "array",
+        maxItems: 32,
+        items: { $ref: "#/$defs/chainRequest" }
+      },
+      components: {
+        type: "array",
+        minItems: 1,
+        maxItems: 256,
+        items: { $ref: "#/$defs/component" }
+      },
+      capabilityHints: {
+        type: "array",
+        minItems: 1,
+        maxItems: 256,
+        items: { $ref: "#/$defs/capability" }
+      }
+    },
+    $defs: {
+      repositoryPath: {
+        type: "string",
+        minLength: 1,
+        maxLength: 256,
+        pattern: "^(?:\\.|(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*//)(?!.*\\\\).+)$"
+      },
+      rightsDeclaration: {
+        type: "object",
+        additionalProperties: false,
+        required: ["authorizationGrantId", "basis", "licenseBindings"],
+        properties: {
+          basis: { enum: ["applicant-original", "spdx-license", "controller-authorization"] },
+          authorizationGrantId: { anyOf: [localId, { type: "null" }] },
+          licenseBindings: {
+            type: "array",
+            maxItems: 16,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["licensePath", "pathRoots", "spdxId"],
+              properties: {
+                spdxId: { type: "string", pattern: "^[A-Za-z0-9][A-Za-z0-9.+-]{1,79}$" },
+                licensePath: { $ref: "#/$defs/repositoryPath" },
+                pathRoots: {
+                  type: "array",
+                  minItems: 1,
+                  maxItems: 32,
+                  uniqueItems: true,
+                  items: { $ref: "#/$defs/repositoryPath" }
+                }
+              }
+            }
+          }
+        }
+      },
+      githubSourceHint: {
+        type: "object",
+        additionalProperties: false,
+        required: [
+          "executionRoots", "ownerHint", "purposeHint", "repositoryHint", "repositoryIdHint",
+          "requestedRevisionHint", "rightsDeclaration", "sourceId", "visibilityHint"
+        ],
+        properties: {
+          sourceId: localId,
+          ownerHint: { type: "string", minLength: 1, maxLength: 39 },
+          repositoryHint: { type: "string", minLength: 1, maxLength: 100 },
+          repositoryIdHint: { type: "string", pattern: "^[1-9][0-9]{0,63}$" },
+          requestedRevisionHint: { type: "string", pattern: "^(?:[0-9a-f]{40}|[0-9a-f]{64})$" },
+          visibilityHint: { const: "public" },
+          purposeHint: kind,
+          executionRoots: {
+            type: "array",
+            minItems: 1,
+            maxItems: 32,
+            uniqueItems: true,
+            items: { $ref: "#/$defs/repositoryPath" }
+          },
+          rightsDeclaration: { $ref: "#/$defs/rightsDeclaration" }
+        }
+      },
+      chainRequest: {
+        type: "object",
+        additionalProperties: false,
+        required: ["namespaceHint", "profileHint", "referenceHint", "requestId"],
+        properties: {
+          requestId: localId,
+          namespaceHint: plainText(1, 64),
+          referenceHint: plainText(1, 128),
+          profileHint: kind
+        }
+      },
+      component: {
+        type: "object",
+        additionalProperties: false,
+        required: ["chainRequestIds", "componentId", "kindHint", "reviewRelevanceHint", "sourceIds", "summary", "visibilityHint"],
+        properties: {
+          componentId: localId,
+          kindHint: kind,
+          summary: plainText(1, 4_000),
+          sourceIds: { type: "array", maxItems: 16, uniqueItems: true, items: localId },
+          chainRequestIds: { type: "array", maxItems: 32, uniqueItems: true, items: localId },
+          visibilityHint: { enum: ["public-source", "private-source", "external-service", "opaque", "not-applicable"] },
+          reviewRelevanceHint: { enum: ["value-or-authority", "noncritical", "unknown"] }
+        }
+      },
+      capability: {
+        type: "object",
+        additionalProperties: false,
+        required: ["capabilityId", "chainRequestIds", "componentIds", "controlsUserValueHint", "kindHint", "movesUserValueHint", "summary"],
+        properties: {
+          capabilityId: localId,
+          kindHint: kind,
+          summary: plainText(1, 4_000),
+          componentIds: { type: "array", maxItems: 256, uniqueItems: true, items: localId },
+          chainRequestIds: { type: "array", maxItems: 32, uniqueItems: true, items: localId },
+          movesUserValueHint: { type: ["boolean", "null"] },
+          controlsUserValueHint: { type: ["boolean", "null"] }
+        }
+      }
     }
-  }
-  return Object.fromEntries([...definitions].sort(([left], [right]) => compareUtf8(left, right)));
-}
-
-function rewriteSourceReferences(value) {
-  if (Array.isArray(value)) return value.map(rewriteSourceReferences);
-  if (!value || typeof value !== "object") return value;
-  return Object.fromEntries(Object.entries(value).map(([key, entry]) => {
-    if (key !== "$ref" || typeof entry !== "string") return [key, rewriteSourceReferences(entry)];
-    const name = localDefinitionName(entry);
-    if (!name) throw new Error(`Cannot embed non-local GitHub source reference: ${entry}`);
-    return [key, `#/$defs/${GENERATED_PREFIX}${name}`];
-  }));
-}
-
-export function generatePublicApplicationSchema(applicationSchema, sourceSchema) {
-  const closure = sourceClosure(sourceSchema);
-  const applicationDefinitions = Object.fromEntries(
-    Object.entries(applicationSchema.$defs ?? {}).filter(([name]) => !name.startsWith(GENERATED_PREFIX))
-  );
-  const embeddedDefinitions = Object.fromEntries(Object.entries(closure).map(([name, definition]) => [
-    `${GENERATED_PREFIX}${name}`,
-    rewriteSourceReferences(definition)
-  ]));
-  const generated = structuredClone(applicationSchema);
-  generated.properties.source = { $ref: `#/$defs/${GENERATED_PREFIX}${SOURCE_DEFINITION}` };
-  generated[DERIVATION_KEY] = {
-    schemaId: SOURCE_SCHEMA_ID,
-    definition: `#/$defs/${SOURCE_DEFINITION}`,
-    semanticSha256: sha256(canonicalJson(closure))
   };
-  generated.$defs = { ...applicationDefinitions, ...embeddedDefinitions };
-  return generated;
 }
 
 export function serializePublicApplicationSchema(schema) {
@@ -116,15 +186,13 @@ function main() {
     process.exitCode = 2;
     return;
   }
-  const current = readJson(applicationSchemaPath);
-  const generatedBytes = serializePublicApplicationSchema(generatePublicApplicationSchema(current, readJson(sourceSchemaPath)));
+  const generatedBytes = serializePublicApplicationSchema(generatePublicApplicationSchema());
   if (argument === "--write") {
     fs.writeFileSync(applicationSchemaPath, generatedBytes);
     process.stdout.write(`${path.relative(process.cwd(), applicationSchemaPath)} updated\n`);
     return;
   }
-  const currentBytes = fs.readFileSync(applicationSchemaPath, "utf8");
-  if (currentBytes !== generatedBytes) {
+  if (fs.readFileSync(applicationSchemaPath, "utf8") !== generatedBytes) {
     process.stderr.write("public-pr-application.schema.json is stale; run the generator with --write.\n");
     process.exitCode = 1;
     return;

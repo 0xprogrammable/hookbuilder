@@ -1,7 +1,7 @@
 # Submission workflow
 
 The current public path is the **Public GitHub PR Builder Beta**. The complete project stays in the builder's own public
-GitHub repository. A draft pull request to `0xprogrammable/programmable` carries only one bounded six-file application
+GitHub repository. A draft pull request to `0xprogrammable/programmable` carries only one bounded seven-file application
 record that points to the exact public source revision. No wallet connection, GitHub App installation, claim link,
 remote application draft, launch permit, or connected application service is part of this beta.
 
@@ -124,6 +124,8 @@ monitoring, routing, discovery, and production evidence.
 ├── submissions/<application-id>/
 │   ├── submission.json
 │   ├── compatibility-report.json
+│   ├── launch.json
+│   ├── source-topology.json
 │   ├── PROPOSAL.md
 │   ├── THREAT_MODEL.md
 │   ├── TEST_PLAN.md
@@ -148,6 +150,7 @@ accepted source binding.
 ```text
 submissions/<application-id>/
 ├── application.json
+├── launch.json
 ├── PROPOSAL.md
 ├── TEST_PLAN.md
 ├── THREAT_MODEL.md
@@ -155,11 +158,17 @@ submissions/<application-id>/
 └── evidence-index.json
 ```
 
-These are the exact six allowed central files. `prepare-pr` deterministically derives them from the builder package and
+These are the exact seven allowed central files. `prepare-pr` deterministically derives them from the builder package and
 the independently resolved public GitHub revision. Do not copy `submission.json`, `EVIDENCE.md`, project source, tests,
 build output, dependency directories, or workflows into the central repository. `applicationId` is the stable lowercase
 project slug and directory name. The GitHub pull-request number is the public review thread, not a connected-service
 application identity.
+
+`application.json` is the canonical autonomous manifest and `launch.json` is the canonical data-only launch graph.
+Both omit a trailing newline, while the remaining JSON files use one canonical trailing newline. The launch graph must
+bind the active compiler profile, exact target source hashes, constructors, address locators, dependencies, declared
+identities, internal children, and launcher route needed by the project; an empty constructor or dependency graph is
+valid only when the exact source target actually needs neither.
 
 The local report's `readiness.design` and `readiness.implementation` fields are authoritative. Its legacy `decision`
 field is retained for one report-v3 migration release and marked `decisionCompatibility: LEGACY_COMPATIBILITY_ONLY`:
@@ -171,10 +180,11 @@ claim fails with `PROTOTYPE_READY_REQUIRES_TRUSTED_REVIEW_TARGET`. Submit the ge
 `architecture-review-required`, `changes-required`, or `tooling-blocked` result and let maintainer review advance the
 public record.
 
-`prepare-pr` also resolves the declared builder login through GitHub's anonymous public user endpoint. It writes the
-lossless decimal `githubUserId` as immutable builder identity and keeps `githubLogin` plus `contact` as display data.
-The trusted workflow requires the id and current login to match the pull-request author, preserves the id on revisions,
-and permits a login rename. Never hand-enter or infer the numeric id from a profile URL.
+`prepare-pr` also resolves the declared builder login through GitHub's anonymous public user endpoint. The prepared
+action plan keeps the lossless decimal `githubUserId`, current `githubLogin`, and public profile URL outside the inert
+seven-file package. The GitHub client requires that identity to match the authenticated account before any write; the
+trusted intake independently authenticates the pull-request author event. Never hand-enter or infer the numeric id
+from a profile URL.
 
 ## Scaffold
 
@@ -282,10 +292,31 @@ client; neither invents app evidence for the builder repository. `dataReconstruc
 fully inactive data profile and is invalid when accounting, claims, external liquidity or a declared indexer needs
 reconstruction. A `model-specific-pinned` lock remains builder evidence and candidate review, never maintainer approval.
 
-## Prepare the six-file application package
+## Prepare the seven-file application package
 
 Commit every reviewed project file, make the builder worktree clean, push its named branch, and confirm that the public
-GitHub repository exposes that exact commit. Then run:
+GitHub repository exposes that exact commit. Before preparing, add canonical
+`submissions/<application-id>/source-topology.json` to `implementation.sourcePaths`. It must declare one to thirty-two
+non-overlapping execution roots and one explicit deployment-rights basis for the primary repository and every
+companion. Use `applicant-original` only when the applicant actually owns every governed root; otherwise bind an SPDX
+license and its exact license path, or a reviewed controller authorization. The Builder must not infer rights from a
+repository owner, a free-text license sentence, or a dependency checkout.
+
+For a single MIT-licensed repository governed from its root, the exact topology shape is:
+
+```json
+{"companions":[],"primary":{"executionRoots":["."],"rightsDeclaration":{"authorizationGrantId":null,"basis":"spdx-license","licenseBindings":[{"licensePath":"LICENSE","pathRoots":["."],"spdxId":"MIT"}]}}}
+```
+
+Use `applicant-original` with empty `licenseBindings` and a null `authorizationGrantId` only for roots the applicant
+actually owns. Use `controller-authorization` with empty `licenseBindings` and the reviewed local grant id in
+`authorizationGrantId` when deployment authority comes from a controller. Companion entries additionally bind the
+exact `sourceId`, canonical `repositoryUri`, full `revisionObjectId`, execution roots, and rights declaration. Store the
+document as canonical JSON with one trailing newline; `prepare-pr` rejects ambiguous or noncanonical declarations.
+
+`implementation.specificationPath` must identify the committed data-only source launch plan. Its canonical compiler
+settings must match the exact project build, including optimizer runs, EVM version, IR mode, and metadata policy.
+Then run:
 
 ```bash
 node "$SKILL_ROOT/scripts/cli.mjs" prepare-pr \
@@ -307,9 +338,10 @@ Use companion manifest v2 when an npm game, app, or service can declare an exact
 repository id, commit, root tree, separate source/test/runtime/build paths, package-lock v3 and successful
 exact-revision Actions evidence from the closed JSON workflow in `assets/templates/companion-closure-workflow.yml`.
 That workflow unconditionally runs the pinned install, named build, and named test steps; the resulting canonical
-receipt binds the exact primary manifest path and is also embedded in the central `application.json`. Central intake
-re-reads the exact manifest, package, source, runtime and workflow objects and recomputes the receipt before accepting
-it. Validate and canonicalize the manifest first with `cli.mjs companion <manifest> --write-canonical`.
+receipt binds the exact primary manifest path in the prepared action plan. The autonomous `application.json` carries
+only immutable GitHub source hints, execution roots, and explicit rights declarations. Central intake independently
+resolves and validates the declared source lineages. Validate and canonicalize the manifest first with
+`cli.mjs companion <manifest> --write-canonical`.
 Keep v1 for proposal-only or unsupported build/runtime mechanics. Read `companion-manifests.md` and use
 `companion-manifest-v2.schema.json`; a v1 companion intentionally retains the closure-review diagnostic.
 
@@ -321,7 +353,7 @@ project commits or package-only corrections in that same pull request do not inc
 a moving central base fails before output is written.
 
 The result separates `sourceHead` from `centralPullRequestTarget`, includes the observed central base commit and next
-application revision, and embeds the deterministic six-file package plus a copy-ready draft PR body. It does not push a
+application revision, and embeds the deterministic seven-file package plus a copy-ready draft PR body. It does not push a
 branch or open a pull request.
 
 Large declared path sets are not verified with one anonymous REST request per file. The resolver keeps GitHub REST as
@@ -361,7 +393,7 @@ node "$SKILL_ROOT/scripts/cli.mjs" prepare-pr \
   --output-dir "$CENTRAL_APPLICATION_DIR"
 ```
 
-The `--output-dir` form creates that target and writes only the six canonical files listed above. It refuses an existing
+The `--output-dir` form creates that target and writes only the seven canonical files listed above. It refuses an existing
 target or a basename that differs from the application id. With the separate path shown above, the builder source
 repository remains unchanged. The command still performs no push or pull-request creation. Review the generated files
 and reported hashes before committing them to the separate clean central-repository branch. The CLI does not discover a
@@ -392,7 +424,7 @@ node "$SKILL_ROOT/scripts/cli.mjs" prepare-pr \
   --replace-draft
 ```
 
-`--replace-draft` snapshots the exact six non-executable regular files before public resolution, binds them to current
+`--replace-draft` snapshots the exact seven non-executable regular files before public resolution, binds them to current
 immutable main, preserves the pending revision and full numeric repository lineage, then rechecks directory, file
 inodes, bytes, and main stability before a rollback-capable swap. It does not prove which pull request owns the local
 directory, so use it only for the already-open application pull request you are updating.
@@ -402,7 +434,7 @@ directory, so use it only for the already-open application pull request you are 
 1. Keep the complete project in its own public GitHub repository and push the exact clean revision prepared above.
 2. Fork [`0xprogrammable/programmable`](https://github.com/0xprogrammable/programmable).
 3. Create a branch from the current central `main` branch.
-4. Materialize or copy exactly the generated six files into `submissions/<application-id>/`.
+4. Materialize or copy exactly the generated seven files into `submissions/<application-id>/`.
 5. Confirm that the central diff contains no project source, extra submission files, registry edits, or workflows.
 6. Push the central branch to the fork.
 7. Open a draft pull request against `0xprogrammable/programmable:main` with the generated PR body.

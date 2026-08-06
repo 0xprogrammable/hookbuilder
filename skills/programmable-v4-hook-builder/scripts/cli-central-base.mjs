@@ -2,8 +2,6 @@ import crypto from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { TextDecoder } from "node:util";
 import { CENTRAL_APPLICATION_FILES } from "./cli-central-package.mjs";
-import { normalizeBuilderTemplate } from "./builder-template-contract.mjs";
-import { validateCompanionClosureReceipts } from "./companion-manifest-contract.mjs";
 import {
   createGitHubPublicFetchTransportV1,
   GITHUB_PUBLIC_SOURCE_CONTRACT_V1,
@@ -14,6 +12,11 @@ import {
 import { CliFailure } from "./cli-runtime.mjs";
 import { canonicalJson } from "./submission-core.mjs";
 import { hasForbiddenInvisibleOrBidi } from "./metadata-core.mjs";
+import {
+  AUTONOMOUS_ADMISSION_FILE_LIMITS,
+  validateAutonomousApplicationManifest,
+  validateAutonomousLaunchSpecification
+} from "./autonomous-admission-contract.mjs";
 
 export const CENTRAL_GITHUB_TARGET = Object.freeze({
   owner: "0xprogrammable",
@@ -23,7 +26,6 @@ export const CENTRAL_GITHUB_TARGET = Object.freeze({
 });
 
 const COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
-const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 const APPLICATION_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const GITHUB_LOGIN_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/u;
 const OPAQUE_DECIMAL_PATTERN = /^[1-9][0-9]{0,63}$/u;
@@ -34,15 +36,8 @@ const MAX_COMMIT_RESPONSE_BYTES = 256 * 1024;
 const MAX_TREE_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_BLOB_RESPONSE_BYTES = 384 * 1024;
 const MAX_APPLICATION_REVISION = 1_000_000;
-const MAX_PACKAGE_BYTES = 512 * 1024;
-const MAX_FILE_BYTES = Object.freeze({
-  "application.json": 64 * 1024,
-  "PROPOSAL.md": 64 * 1024,
-  "TEST_PLAN.md": 64 * 1024,
-  "THREAT_MODEL.md": 64 * 1024,
-  "compatibility-report.json": 160 * 1024,
-  "evidence-index.json": 160 * 1024
-});
+const MAX_PACKAGE_BYTES = 768 * 1024;
+const MAX_FILE_BYTES = AUTONOMOUS_ADMISSION_FILE_LIMITS;
 const decoder = new TextDecoder("utf-8", { fatal: true });
 
 export async function resolveCentralApplicationBase({
@@ -116,28 +111,14 @@ export async function assertCentralBaseUnchanged({
 
 export function deriveApplicationRevision({ applicationId, priorApplication, nextBuilder, nextSource }) {
   validateApplicationId(applicationId);
-  const normalizedNextBuilder = normalizeBuilderAuthority(nextBuilder, "next application builder");
+  normalizeBuilderAuthority(nextBuilder, "next application builder");
   const normalizedNext = normalizeSource(nextSource, "next application source");
   if (priorApplication === null) return 1;
   const prior = validatePriorApplicationManifest(priorApplication, applicationId);
   if (prior.applicationRevision >= MAX_APPLICATION_REVISION) {
     throw new CliFailure("APPLICATION_REVISION_EXHAUSTED", "the central application revision limit is exhausted", { exitCode: 1 });
   }
-  if (prior.builder.githubUserId !== normalizedNextBuilder.githubUserId) {
-    throw new CliFailure(
-      "BUILDER_IDENTITY_CHANGED",
-      "an application update cannot replace its immutable GitHub builder user id",
-      { exitCode: 1 }
-    );
-  }
-  if (prior.source.primary.numericRepositoryId !== normalizedNext.primary.numericRepositoryId) {
-    throw new CliFailure(
-      "PRIMARY_SOURCE_LINEAGE_CHANGED",
-      "an application update cannot replace its primary numeric GitHub repository lineage",
-      { exitCode: 1 }
-    );
-  }
-  if (!hasMaterialSourceChange(prior.source, normalizedNext)) {
+  if (!hasMaterialAutonomousSourceChange(prior, normalizedNext)) {
     throw new CliFailure(
       "SOURCE_REVISION_UNCHANGED",
       "an application update must change the primary or a companion source revision",
@@ -168,7 +149,7 @@ async function readPriorPackage({ applicationId, applicationTree, state }) {
   if (!arraysEqual(observedNames, expectedNames)) {
     throw new CliFailure(
       "CENTRAL_BASE_INVALID",
-      "the observed central application directory is not the exact frozen six-file package",
+      "the observed central application directory is not the exact frozen seven-file package",
       { exitCode: 1 }
     );
   }
@@ -198,26 +179,7 @@ function validateObservedPriorPackage({ applicationId, files }) {
   }
   const applicationBytes = files.get("application.json");
   const application = parseCanonicalApplication(applicationBytes, applicationId);
-  const reviewNames = CENTRAL_APPLICATION_FILES.slice(1);
-  if (!Array.isArray(application.reviewPackage) || application.reviewPackage.length !== reviewNames.length) {
-    throw new CliFailure("CENTRAL_BASE_INVALID", "the prior application review index is incomplete", { exitCode: 1 });
-  }
-  for (let index = 0; index < reviewNames.length; index += 1) {
-    const name = reviewNames[index];
-    const record = application.reviewPackage[index];
-    const bytes = files.get(name);
-    if (
-      !isExactObject(record, ["byteLength", "path", "sha256"])
-      || record.path !== name
-      || !Number.isInteger(record.byteLength)
-      || record.byteLength < 1
-      || record.byteLength !== bytes.length
-      || !DIGEST_PATTERN.test(record.sha256 ?? "")
-      || record.sha256 !== digest(bytes)
-    ) {
-      throw new CliFailure("CENTRAL_BASE_INVALID", "the central prior review files do not match application.json", { exitCode: 1 });
-    }
-  }
+  parseCanonicalLaunch(files.get("launch.json"), applicationId);
   const records = CENTRAL_APPLICATION_FILES.map((name) => {
     const bytes = files.get(name);
     return {
@@ -231,13 +193,13 @@ function validateObservedPriorPackage({ applicationId, files }) {
     application,
     centralPackage: Object.freeze({
       targetDirectory: `submissions/${applicationId}`,
-      stage: application.stage,
+      stage: "proposal",
       applicationRevision: application.applicationRevision,
       fileCount: records.length,
       fileOrder: [...CENTRAL_APPLICATION_FILES],
       encoding: "utf8",
       generated: true,
-      validatorContract: "public-pr-application-v2",
+      validatorContract: "autonomous-public-pr-application-v1",
       files: records
     })
   };
@@ -245,8 +207,7 @@ function validateObservedPriorPackage({ applicationId, files }) {
 
 function parseCanonicalApplication(bytes, applicationId) {
   const source = decodeUtf8(bytes, "application.json");
-  const body = source.endsWith("\n") ? source.slice(0, -1) : source;
-  if (hasForbiddenInvisibleOrBidi(body) || source.includes("\r")) {
+  if (hasForbiddenInvisibleOrBidi(source) || source.includes("\r")) {
     throw new CliFailure("CENTRAL_BASE_INVALID", "the prior application manifest contains unsafe text", { exitCode: 1 });
   }
   let application;
@@ -255,90 +216,37 @@ function parseCanonicalApplication(bytes, applicationId) {
   } catch {
     throw new CliFailure("CENTRAL_BASE_INVALID", "the prior application manifest is not valid JSON", { exitCode: 1 });
   }
-  if (source !== `${canonicalJson(application)}\n`) {
+  if (source !== canonicalJson(application)) {
     throw new CliFailure("CENTRAL_BASE_INVALID", "the prior application manifest is not exact canonical JSON", { exitCode: 1 });
   }
   return validatePriorApplicationManifest(application, applicationId);
 }
 
 function validatePriorApplicationManifest(application, applicationId) {
-  const applicationKeys = [
-    "applicationId",
-    "applicationRevision",
-    "builder",
-    "builderTemplate",
-    ...(Object.hasOwn(application ?? {}, "companionClosure") ? ["companionClosure"] : []),
-    "declarations",
-    "programmableFee",
-    "reviewPackage",
-    "schemaVersion",
-    "source",
-    "stage",
-    "summary",
-    "title"
-  ];
-  if (
-    !isExactObject(application, applicationKeys)
-    || application.schemaVersion !== 2
-    || application.applicationId !== applicationId
-    || !Number.isInteger(application.applicationRevision)
-    || application.applicationRevision < 1
-    || application.applicationRevision > MAX_APPLICATION_REVISION
-    || !new Set(["proposal", "prototype"]).has(application.stage)
-  ) {
+  try {
+    validateAutonomousApplicationManifest(application, { requireImmutableSourceHints: true });
+  } catch {
     throw new CliFailure("CENTRAL_BASE_INVALID", "the prior application manifest identity or revision is invalid", { exitCode: 1 });
   }
-  const normalizedSource = normalizeSource(application.source, "prior application source");
-  let builderTemplate;
-  try {
-    builderTemplate = normalizeBuilderTemplate(application.builderTemplate);
-  } catch {
-    throw new CliFailure("CENTRAL_BASE_INVALID", "the prior application builder-template provenance is invalid", { exitCode: 1 });
+  if (application.applicationId !== applicationId) {
+    throw new CliFailure("CENTRAL_BASE_INVALID", "the prior application id does not match its directory", { exitCode: 1 });
   }
-  let companionClosure;
-  if (Object.hasOwn(application, "companionClosure")) {
-    try {
-      companionClosure = validateCompanionClosureReceipts(application.companionClosure, normalizedSource);
-    } catch {
-      throw new CliFailure("CENTRAL_BASE_INVALID", "prior application companion closure receipts are invalid", { exitCode: 1 });
-    }
-    if (canonicalJson(companionClosure) !== canonicalJson(application.companionClosure)) {
-      throw new CliFailure("CENTRAL_BASE_INVALID", "prior application companion closure receipts are not canonical", { exitCode: 1 });
-    }
-  }
-  return {
-    ...application,
-    builder: normalizePriorBuilder(application.builder),
-    builderTemplate,
-    source: normalizedSource,
-    ...(companionClosure === undefined ? {} : { companionClosure })
-  };
+  return application;
 }
 
-function normalizePriorBuilder(builder) {
-  if (!isExactObject(builder, ["contact", "githubLogin", "githubUserId"])) {
-    throw new CliFailure("CENTRAL_BASE_INVALID", "the prior application builder identity is invalid", { exitCode: 1 });
+function parseCanonicalLaunch(bytes, applicationId) {
+  const source = decodeUtf8(bytes, "launch.json");
+  let launch;
+  try {
+    launch = JSON.parse(source);
+    validateAutonomousLaunchSpecification(launch);
+  } catch {
+    throw new CliFailure("CENTRAL_BASE_INVALID", "the prior launch specification is invalid", { exitCode: 1 });
   }
-  const authority = normalizeBuilderAuthority(builder, "prior application builder");
-  if (builder.contact !== null) {
-    let parsed;
-    try {
-      parsed = new URL(builder.contact);
-    } catch {
-      parsed = null;
-    }
-    if (
-      parsed === null
-      || builder.contact.length > 500
-      || parsed.protocol !== "https:"
-      || parsed.username !== ""
-      || parsed.password !== ""
-      || parsed.hash !== ""
-    ) {
-      throw new CliFailure("CENTRAL_BASE_INVALID", "the prior application builder contact is invalid", { exitCode: 1 });
-    }
+  if (source !== canonicalJson(launch) || launch.applicationId !== applicationId) {
+    throw new CliFailure("CENTRAL_BASE_INVALID", "the prior launch specification is not canonical or lineage-bound", { exitCode: 1 });
   }
-  return { ...authority, contact: builder.contact };
+  return launch;
 }
 
 function normalizeBuilderAuthority(builder, label) {
@@ -370,45 +278,33 @@ function normalizeSource(source, label) {
   return normalized;
 }
 
-function sourceAuthority(source) {
-  const project = (repository) => ({
-    numericRepositoryId: repository.numericRepositoryId,
-    revisionObjectId: repository.revisionObjectId,
-    treeObjectId: repository.treeObjectId
-  });
-  return {
-    primary: project(source.primary),
-    companions: source.companions.map(project)
-  };
-}
-
-function hasMaterialSourceChange(priorSource, nextSource) {
-  const prior = sourceAuthority(priorSource);
-  const next = sourceAuthority(nextSource);
-  if (prior.primary.numericRepositoryId !== next.primary.numericRepositoryId) return true;
-  const priorCompanionIds = prior.companions.map(({ numericRepositoryId }) => numericRepositoryId);
-  const nextCompanionIds = next.companions.map(({ numericRepositoryId }) => numericRepositoryId);
-  const companionLineageChanged = !arraysEqual(priorCompanionIds, nextCompanionIds);
-  const pairs = [
-    [prior.primary, next.primary],
-    ...(companionLineageChanged
-      ? []
-      : prior.companions.map((value, index) => [value, next.companions[index]]))
+function hasMaterialAutonomousSourceChange(priorApplication, nextSource) {
+  const priorById = new Map(priorApplication.githubSources.map((source) => [source.sourceId, source]));
+  const nextSources = [
+    { sourceId: "source:primary", repository: nextSource.primary },
+    ...nextSource.companions.map((repository, index) => ({
+      sourceId: `source:companion-${index + 1}`,
+      repository
+    }))
   ];
-  let changed = false;
-  for (const [before, after] of pairs) {
-    const commitChanged = before.revisionObjectId !== after.revisionObjectId;
-    const treeChanged = before.treeObjectId !== after.treeObjectId;
-    if (commitChanged !== treeChanged) {
-      throw new CliFailure(
-        "SOURCE_REVISION_INCOHERENT",
-        "a changed source commit and root tree must move together",
-        { exitCode: 1 }
-      );
-    }
-    changed ||= commitChanged && treeChanged;
+  if (priorById.size !== nextSources.length) {
+    throw new CliFailure("PRIMARY_SOURCE_LINEAGE_CHANGED", "an application update cannot change source topology", { exitCode: 1 });
   }
-  return companionLineageChanged || changed;
+  let changed = false;
+  for (const { sourceId, repository: next } of nextSources) {
+    const prior = priorById.get(sourceId);
+    const parsed = new URL(next.repositoryUri);
+    if (
+      prior === undefined
+      || prior.repositoryIdHint !== next.numericRepositoryId
+      || prior.ownerHint.toLowerCase() !== parsed.pathname.split("/")[1].toLowerCase()
+      || prior.repositoryHint.toLowerCase() !== parsed.pathname.split("/")[2].toLowerCase()
+    ) {
+      throw new CliFailure("PRIMARY_SOURCE_LINEAGE_CHANGED", "an application update cannot replace a source lineage", { exitCode: 1 });
+    }
+    changed ||= prior.requestedRevisionHint !== next.revisionObjectId;
+  }
+  return changed;
 }
 
 async function readCentralBranchHead(baseBranch, state) {

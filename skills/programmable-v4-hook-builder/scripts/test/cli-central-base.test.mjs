@@ -9,6 +9,10 @@ import {
 import { CENTRAL_APPLICATION_FILES } from "../cli-central-package.mjs";
 import { CliFailure } from "../cli-runtime.mjs";
 import { canonicalJson } from "../submission-core.mjs";
+import {
+  canonicalApplicationBytes,
+  canonicalLaunchBytes
+} from "../autonomous-admission-contract.mjs";
 
 const baseCommit = "a".repeat(40);
 const baseTree = "b".repeat(40);
@@ -76,9 +80,9 @@ test("loads one exact canonical prior package and derives the next revision", as
   }), 8);
 });
 
-test("rejects stale or malicious prior bytes even when Git blob identities are self-consistent", async () => {
+test("rejects malformed autonomous prior bytes even when Git blob identities are self-consistent", async () => {
   const prior = makePriorPackage();
-  prior.files.set("PROPOSAL.md", Buffer.from("# Proposal\nmalicious replacement bytes that do not match the prior review index\n"));
+  prior.files.set("launch.json", Buffer.from("{}"));
   const fixture = createCentralFetch({ files: prior.files });
   await rejectsCode(
     () => resolveCentralApplicationBase({
@@ -104,7 +108,7 @@ test("rejects stale or malicious prior bytes even when Git blob identities are s
   );
 });
 
-test("accepts a companion-only authority revision but blocks unchanged, locator-only and incoherent sources", () => {
+test("accepts source revision changes but blocks unchanged or replaced source lineages", () => {
   const companionBefore = makeRepository({
     id: "22",
     uri: "https://github.com/example/companion",
@@ -129,12 +133,6 @@ test("accepts a companion-only authority revision but blocks unchanged, locator-
   rejectsSyncCode(() => deriveApplicationRevision({
     applicationId: "example-app",
     priorApplication: prior,
-    nextBuilder: { githubUserId: "999", githubLogin: "example" },
-    nextSource: makeSource({ companions: [companionAfter] })
-  }), "BUILDER_IDENTITY_CHANGED");
-  rejectsSyncCode(() => deriveApplicationRevision({
-    applicationId: "example-app",
-    priorApplication: prior,
     nextBuilder: builderIdentity,
     nextSource: priorSource
   }), "SOURCE_REVISION_UNCHANGED");
@@ -146,25 +144,7 @@ test("accepts a companion-only authority revision but blocks unchanged, locator-
       primary: makeRepository({ uri: "https://github.com/renamed/project" }),
       companions: [companionBefore]
     })
-  }), "SOURCE_REVISION_UNCHANGED");
-  rejectsSyncCode(() => deriveApplicationRevision({
-    applicationId: "example-app",
-    priorApplication: prior,
-    nextBuilder: builderIdentity,
-    nextSource: makeSource({
-      primary: makeRepository({ commit: "6".repeat(40), tree: primaryTree }),
-      companions: [companionBefore]
-    })
-  }), "SOURCE_REVISION_INCOHERENT");
-  rejectsSyncCode(() => deriveApplicationRevision({
-    applicationId: "example-app",
-    priorApplication: prior,
-    nextBuilder: builderIdentity,
-    nextSource: makeSource({
-      primary: makeRepository({ commit: primaryCommit, tree: "6".repeat(40) }),
-      companions: [companionBefore]
-    })
-  }), "SOURCE_REVISION_INCOHERENT");
+  }), "PRIMARY_SOURCE_LINEAGE_CHANGED");
   rejectsSyncCode(() => deriveApplicationRevision({
     applicationId: "example-app",
     priorApplication: prior,
@@ -213,47 +193,118 @@ test("rejects unsafe central branch input before network access", async () => {
 
 function makePriorPackage({ applicationRevision = 1, source = makeSource() } = {}) {
   const files = new Map([
+    ["launch.json", canonicalLaunchBytes(makeLaunch())],
     ["PROPOSAL.md", Buffer.from("# Proposal\nA substantive canonical proposal body for central revision testing.\n")],
     ["TEST_PLAN.md", Buffer.from("# Test plan\nA substantive canonical test plan body for central revision testing.\n")],
     ["THREAT_MODEL.md", Buffer.from("# Threat model\nA substantive canonical threat model body for central revision testing.\n")],
     ["compatibility-report.json", Buffer.from("{\"result\":\"test\"}\n")],
     ["evidence-index.json", Buffer.from("{\"evidence\":[]}\n")]
   ]);
+  const sourceRecords = [source.primary, ...source.companions];
+  const githubSources = sourceRecords.map((repository, index) => {
+    const parsed = new URL(repository.repositoryUri);
+    return {
+      sourceId: index === 0 ? "source:primary" : `source:companion-${index}`,
+      ownerHint: parsed.pathname.split("/")[1],
+      repositoryHint: parsed.pathname.split("/")[2],
+      repositoryIdHint: repository.numericRepositoryId,
+      requestedRevisionHint: repository.revisionObjectId,
+      visibilityHint: "public",
+      purposeHint: index === 0 ? "project.primary" : "project.companion",
+      executionRoots: ["."],
+      rightsDeclaration: {
+        basis: "applicant-original",
+        licenseBindings: [],
+        authorizationGrantId: null
+      }
+    };
+  });
   const application = {
-    schemaVersion: 2,
+    schemaVersion: "1.0.0",
     applicationId: "example-app",
     applicationRevision,
-    stage: "proposal",
-    title: "Example App",
-    summary: "A sufficiently complete summary for deterministic central revision tests.",
-    builder: {
-      githubUserId: builderIdentity.githubUserId,
-      githubLogin: "example",
-      contact: "https://github.com/example"
+    project: {
+      title: "Example App",
+      summary: "A sufficiently complete summary for deterministic central revision tests."
     },
-    builderTemplate: {
-      schemaVersion: "1.0.0",
-      source: "manual",
-      templateSelection: null
-    },
-    source,
-    programmableFee: {},
-    reviewPackage: CENTRAL_APPLICATION_FILES.slice(1).map((name) => ({
-      path: name,
-      sha256: digest(files.get(name)),
-      byteLength: files.get(name).length
-    })),
-    declarations: {
-      publicInformationAcknowledged: true,
-      noSecretsDeclared: true,
-      noApprovalClaim: true,
-      noUniswapEndorsementClaim: true
-    }
+    primarySourceId: "source:primary",
+    githubSources,
+    chainProfileRequests: [{
+      requestId: "chain:launch",
+      namespaceHint: "eip155",
+      referenceHint: "1",
+      profileHint: "ethereum-mainnet-v1"
+    }],
+    components: [{
+      componentId: "component:root",
+      kindHint: "evm.contract",
+      summary: "Canonical root deployment target.",
+      sourceIds: ["source:primary"],
+      chainRequestIds: ["chain:launch"],
+      visibilityHint: "public-source",
+      reviewRelevanceHint: "unknown"
+    }],
+    capabilityHints: [{
+      capabilityId: "capability:project",
+      kindHint: "project.source-defined",
+      summary: "Deploy the canonical root target.",
+      componentIds: ["component:root"],
+      chainRequestIds: ["chain:launch"],
+      movesUserValueHint: null,
+      controlsUserValueHint: null
+    }]
   };
-  files.set("application.json", Buffer.from(`${canonicalJson(application)}\n`));
+  files.set("application.json", canonicalApplicationBytes(application));
   return {
     application,
     files: new Map(CENTRAL_APPLICATION_FILES.map((name) => [name, files.get(name)]))
+  };
+}
+
+function makeLaunch() {
+  return {
+    schemaVersion: "programmable.launch-specification.v1",
+    applicationId: "example-app",
+    language: "solidity",
+    compiler: {
+      profileId: "programmable:solidity-solc-0.8.26-v1",
+      family: "solc",
+      version: "0.8.26",
+      settings: {}
+    },
+    chain: { namespace: "eip155", reference: "1", profileId: "ethereum-mainnet-v1" },
+    launcher: { route: { kind: "evm.create2", adapterId: "adapter:create2" } },
+    rootComponentId: "component:root",
+    rootTargetId: "target:root",
+    components: [{
+      componentId: "component:root",
+      kind: "evm.contract",
+      sourceIds: ["source:primary"],
+      targetIds: ["target:root"],
+      attributes: {}
+    }],
+    targets: [{
+      targetId: "target:root",
+      componentId: "component:root",
+      sourceId: "source:primary",
+      sourceUnitName: "src/Root.sol",
+      sourceSha256: `sha256:${"1".repeat(64)}`,
+      contractName: "Root",
+      deploymentMode: "create2",
+      saltStrategy: "compiler-deterministic-v1",
+      deploymentValueWei: "0",
+      constructor: { abiEncodedArguments: "0x", addressLocators: [] },
+      initializer: null,
+      initializerValueWei: "0",
+      libraries: [],
+      declaredHookPermissions: null
+    }],
+    edges: [],
+    externalOnchainDependencies: [],
+    internalChildDeployments: [],
+    releaseModules: [],
+    declaredIdentities: [],
+    extensions: {}
   };
 }
 

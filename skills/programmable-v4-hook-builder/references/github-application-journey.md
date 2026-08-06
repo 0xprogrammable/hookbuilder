@@ -1,7 +1,7 @@
 # GitHub application journey
 
 This reference defines the safe client-side transport for the **Public GitHub PR Builder Beta**. It consumes the
-already verified six-file output of `prepare-pr`, plans a public GitHub draft pull request, updates that same draft,
+already verified seven-file output of `prepare-pr`, plans a public GitHub draft pull request, updates that same draft,
 and reads GitHub review state. It does not create a Connected Submission/W2 application and it never approves,
 merges, deploys, launches, lists, or marks a project ready for review.
 
@@ -29,7 +29,7 @@ Keep these systems separate:
 | System | What it records | What it does not prove |
 | --- | --- | --- |
 | Builder repository | Exact public project commit and tree | Review, approval, deployment, or launch |
-| `prepare-pr` | Verified local six-file central package for one exact revision | A public submission or GitHub write |
+| `prepare-pr` | Verified local seven-file central package for one exact revision | A public submission or GitHub write |
 | GitHub application client | Public fork, branch, draft PR, update, and GitHub status | A W2 application, approval, audit, or launch permit |
 | Trusted central workflow | Structural intake result against trusted base code | Safety, acceptance, deployment, or provider support |
 | Later W2 service | Durable signed application and review workflow | Present in this GitHub-only beta |
@@ -45,10 +45,10 @@ Before using this client:
 1. Run the current `check`, `package`, and `prepare-pr` flow successfully.
 2. Keep the source branch at the exact public commit and tree resolved by `prepare-pr`.
 3. Store the `prepare-pr` JSON output outside the source repository.
-4. Authenticate `gh` to `github.com` as the same immutable GitHub user id recorded in `application.json`.
+4. Authenticate `gh` to `github.com` as the same immutable GitHub user id recorded in the prepared action plan.
 5. Retain write access to the exact source repository. This is revision-control evidence only; see
    [GitHub identity and source control](#github-identity-and-source-control).
-6. Review the proposed public title, body, six files, source revision, and privacy consequences before confirming.
+6. Review the proposed public title, body, seven files, source revision, and privacy consequences before confirming.
 
 The client uses the authenticated GitHub API through `gh`. It never accepts a pasted GitHub token as a command-line
 argument, never invokes a shell, and never runs source-repository code.
@@ -64,10 +64,10 @@ The client revalidates, rather than trusts, all of the following before any GitH
 - the fixed central target `0xprogrammable/programmable:main`;
 - the application id and `submissions/<application-id>/` path;
 - the exact file order:
-  `application.json`, `PROPOSAL.md`, `TEST_PLAN.md`, `THREAT_MODEL.md`, `compatibility-report.json`, and
+  `application.json`, `launch.json`, `PROPOSAL.md`, `TEST_PLAN.md`, `THREAT_MODEL.md`, `compatibility-report.json`, and
   `evidence-index.json`;
 - every UTF-8 byte length and SHA-256;
-- the five `application.json.reviewPackage` bindings;
+- the closed autonomous application manifest and data-only launch graph;
 - the source repository numeric id, commit, root tree, source request, and every public companion repository id,
   canonical URL, commit, and root tree;
 - the builder's immutable GitHub user id;
@@ -138,10 +138,10 @@ node "$SKILL_ROOT/scripts/github-application.mjs" update \
 ```
 
 `update` requires one open draft authored by the active immutable GitHub user, on the deterministic branch, against
-`main`, with exactly the six application paths. It appends a commit and fast-forwards the existing branch. It never
+`main`, with exactly the seven application paths. It appends a commit and fast-forwards the existing branch. It never
 force-pushes, opens a duplicate, converts a ready PR back to draft, posts a review decision, or marks the PR ready.
 
-If the same six bytes already occupy the PR and its metadata is current, `update` is an idempotent no-op. If `submit`
+If the same seven bytes already occupy the PR and its metadata is current, `update` is an idempotent no-op. If `submit`
 finds the same application with different bytes, it stops and tells the caller to use `update`; it never silently
 changes an existing review target.
 
@@ -157,7 +157,7 @@ node "$SKILL_ROOT/scripts/github-application.mjs" status \
 ```
 
 Pass the PR number for a closed or merged record. Without it, discovery is limited to the current canonical open
-title and deterministic branch. The client rereads the PR, exact changed paths, all six remote files, reviews, and
+title and deterministic branch. The client rereads the PR, exact changed paths, all seven remote files, reviews, and
 check runs. It reports whether the remote package still matches the supplied prepared package.
 
 The projection is deliberately small:
@@ -183,7 +183,7 @@ The immutable action plan includes:
 - observed source `push`, `maintain`, and `admin` permission booleans without treating them as ownership proof;
 - exact central repository numeric id, branch, commit, and tree;
 - trusted intake state, canonical status-file SHA-256, and any bounded continuation records;
-- application id, revision, directory, six paths, byte lengths, and SHA-256 values;
+- application id, revision, directory, seven paths, byte lengths, and SHA-256 values;
 - existing fork id, branch head, exact one-commit recovery comparison, and PR identity when present;
 - proposed draft title, body SHA-256, base, and head;
 - the exact external write list; and
@@ -194,7 +194,8 @@ timestamp, so unchanged evidence produces the same digest. A state change produc
 
 ## GitHub identity and source control
 
-The active `gh` user id and current login must match `application.json.builder.githubUserId` and `githubLogin`. The
+The active `gh` user id and current login must match `applicationAdapter.builder.githubUserId` and `githubLogin` in the
+prepared action plan. Those authentication fields are intentionally outside the inert autonomous manifest. The
 numeric id remains the stable identity; the current login must also match because the trusted PR workflow binds the
 visible author. After a GitHub rename, regenerate the builder declaration and `prepare-pr` result rather than relying
 on stale display data.
@@ -235,7 +236,7 @@ The client uses the active user's canonical `programmable` fork. If that name is
 different parent network, or reports a different owner id, the operation stops with a fork collision. It does not
 delete, rename, overwrite, or repurpose the repository.
 
-Application commits use the current trusted central tree plus the exact six files. An update commit retains the prior
+Application commits use the current trusted central tree plus the exact seven files. An update commit retains the prior
 application branch head and current central base as parents, then advances the ref with `force: false`. Immediately
 before the ref update, the client rereads the old head to detect races.
 
@@ -248,7 +249,7 @@ or competing claim blocks duplicate creation. After opening or updating, it rere
 - exact head commit;
 - open draft state;
 - canonical title and confirmed body;
-- exactly the six application paths with no rename or deletion; and
+- exactly the seven application paths with no rename or deletion; and
 - every remote byte length and SHA-256.
 
 The client never calls approve, merge, review, ready-for-review, comment, label, deployment, release, or provider APIs.
@@ -278,9 +279,9 @@ Every partial step is recoverable without opening a duplicate:
 
 - If fork creation succeeds but later work fails, rerun the read-only plan. It observes the exact fork and removes the
   fork step from the next digest.
-- If the branch commit succeeds but draft creation fails, rerun the plan. When all six branch bytes match, the next
+- If the branch commit succeeds but draft creation fails, rerun the plan. When all seven branch bytes match, the next
   plan contains only `open-draft-pull-request` if GitHub also proves that the recovery branch is exactly one commit
-  ahead of the prepared central base and changes only the six frozen paths. It does not add another commit.
+  ahead of the prepared central base and changes only the seven frozen paths. It does not add another commit.
 - If branch update succeeds but PR metadata update fails, rerun the plan. It preserves the exact branch and updates
   only the stale title/body.
 - If a PR appears between confirmation and creation, duplicate discovery stops before a second PR opens.

@@ -8,7 +8,7 @@ accounts or production indexer.
 1. A builder uses any compatible coding agent with the pinned skill.
 2. The agent turns an idea into a materialized plan and checked project in the builder's repository.
 3. The builder publishes one exact public GitHub revision.
-4. `prepare-pr` creates a bounded six-file application record and copy-ready draft pull-request body.
+4. `prepare-pr` creates a bounded seven-file application record and copy-ready draft pull-request body.
 5. After an exact two-step external-write confirmation, the client may open or update the draft application PR.
 6. Read-only status reports submitted, checks running, changes requested, waiting for review, review record merged, or
    closed.

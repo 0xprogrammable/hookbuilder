@@ -219,11 +219,11 @@ Run the host-neutral `package` and `prepare-pr` commands from the canonical skil
 target and reports deterministic hashes. `prepare-pr` binds the canonical public repository URI, immutable numeric
 repository id, exact commit, root tree, declared source paths, zero to eight committed public companion bindings, and
 evidence. It also anonymously resolves the builder login to the immutable decimal GitHub user id. It observes the exact
-central base, preserves that user id while allowing display-login renames, derives the next application revision, then
-prepares the closed six-file application package under `submissions/<application-id>/` plus a copy-ready draft PR body.
+central base, preserves that user id in the authenticated action plan while allowing display-login renames, derives the next application revision, then
+prepares the closed seven-file application package under `submissions/<application-id>/` plus a copy-ready draft PR body.
 The source project is not copied into Programmable. `--replace-existing` creates the first pending update draft only
 from exact bytes observed on immutable central main. Every further change to that same open pull request uses
-`--replace-draft`, which freezes and rechecks the self-consistent local six-file draft while central main remains the
+`--replace-draft`, which freezes and rechecks the self-consistent local seven-file draft while central main remains the
 revision authority. Both require an explicit output directory outside the builder source repository and perform no
 external action.
 For this beta, `application-id` equals the stable lower-case project/model slug; the pull-request number is the review

@@ -407,7 +407,7 @@ test("prepare-pr deterministically binds the pushed public GitHub revision witho
       revisionObjectId: head,
       treeObjectId: tree,
       sourcePaths: first.github.sourceResolution.primary.sourcePaths,
-      contractPaths: [],
+      contractPaths: first.github.sourceResolution.primary.contractPaths,
       githubActionsRunIds: []
     });
     assert.ok(first.applicationAdapter.source.sourcePaths.includes("submissions/ready-model/submission.json"));
@@ -423,7 +423,7 @@ test("prepare-pr deterministically binds the pushed public GitHub revision witho
     assert.equal(first.applicationAdapter.publicGitHubApplicationReady, true);
     assert.equal("connectedSubmissionReady" in first.applicationAdapter, false);
     assert.equal(first.centralPackage.generated, true);
-    assert.equal(first.centralPackage.fileCount, 6);
+    assert.equal(first.centralPackage.fileCount, 7);
     assert.deepEqual(first.centralPackage.fileOrder, CENTRAL_APPLICATION_FILES);
     assert.deepEqual(first.centralPackage.files.map(({ path: filePath }) => filePath), CENTRAL_APPLICATION_FILES);
     await trustedHostSubtest(t, "trusted host validates the deterministic central package", () => {
@@ -441,15 +441,11 @@ test("prepare-pr deterministically binds the pushed public GitHub revision witho
         packageFiles: centralFiles
       });
       assert.equal(centralValidation.application.applicationRevision, 1);
-      assert.deepEqual(centralValidation.application.builder, {
-        githubUserId: builderUserId,
-        githubLogin: "Example-Builder",
-        contact: "https://github.com/Example-Builder"
-      });
-      assert.equal(centralValidation.application.stage, "proposal");
+      assert.equal(Object.hasOwn(centralValidation.application, "builder"), false);
+      assert.equal(centralValidation.application.primarySourceId, "source:primary");
       assert.equal(centralValidation.compatibility.result, "changes-required");
       assert.ok(centralValidation.compatibility.findings.length > 0);
-      assert.equal(centralValidation.evidenceIndex.evidence.length, 2);
+      assert.equal(centralValidation.evidenceIndex.evidence.length, 3);
       assert.equal(centralValidation.evidenceIndex.evidence[0].status, "failed");
       assert.equal(
         centralValidation.evidenceIndex.evidence[0].url,
@@ -541,7 +537,7 @@ test("prepare-pr materializes the frozen package only when output-dir is explici
 
     assert.equal(result.localWritesPerformed.length, 1);
     assert.equal(result.localWritesPerformed[0].directory, outputDirectory);
-    assert.equal(result.localWritesPerformed[0].fileCount, 6);
+    assert.equal(result.localWritesPerformed[0].fileCount, 7);
     assert.deepEqual(
       result.localWritesPerformed[0].files.map(({ path: filePath }) => filePath),
       CENTRAL_APPLICATION_FILES
@@ -682,7 +678,7 @@ test("replace-draft keeps the exact file inodes snapshotted before public resolu
   }
 });
 
-test("replace-draft allows package-only correction at the same source authority", async () => {
+test("replace-draft does not invent a package change from builder-login casing", async () => {
   const fixture = createReadyRepository();
   const outputRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "programmable-cli-draft-prose-")));
   const outputParent = path.join(outputRoot, "submissions");
@@ -696,27 +692,23 @@ test("replace-draft allows package-only correction at the same source authority"
       fetchImplementation: publicFetch(fixture),
       sleepImplementation: async () => {}
     });
-    const second = await preparePullRequest({
-      repositoryRoot: fixture.repository,
-      packageInput: fixture.packageRoot,
-      outputDirectory,
-      replaceDraft: true,
-      fetchImplementation: publicFetch(fixture),
-      sleepImplementation: async () => {},
-      publicBuilderResolver: async () => ({
-        githubUserId: builderUserId,
-        githubLogin: "EXAMPLE-BUILDER",
-        profileUrl: "https://github.com/EXAMPLE-BUILDER"
-      })
-    });
-
-    assert.equal(second.centralPackage.applicationRevision, 1);
-    assert.equal(second.sourceHead.commit, first.sourceHead.commit);
-    assert.notEqual(
-      second.centralPackage.files[0].sha256,
-      first.centralPackage.files[0].sha256
+    await rejectsCode(
+      () => preparePullRequest({
+        repositoryRoot: fixture.repository,
+        packageInput: fixture.packageRoot,
+        outputDirectory,
+        replaceDraft: true,
+        fetchImplementation: publicFetch(fixture),
+        sleepImplementation: async () => {},
+        publicBuilderResolver: async () => ({
+          githubUserId: builderUserId,
+          githubLogin: "EXAMPLE-BUILDER",
+          profileUrl: "https://github.com/EXAMPLE-BUILDER"
+        })
+      }),
+      "OUTPUT_DRAFT_INVALID"
     );
-    assert.equal(second.localWritesPerformed[0].replacedDraft, true);
+    assert.equal(first.centralPackage.applicationRevision, 1);
   } finally {
     fixture.cleanup();
     fs.rmSync(outputRoot, { recursive: true, force: true });
@@ -855,7 +847,9 @@ test("prepare-pr binds one canonical HEAD companion manifest and preserves a 64-
     const centralCompatibility = JSON.parse(
       result.centralPackage.files.find(({ path: filePath }) => filePath === "compatibility-report.json").content
     );
-    assert.deepEqual(centralApplication.source.companions, result.github.sourceRequest.companions);
+    assert.equal(centralApplication.githubSources.length, 2);
+    const centralCompanion = centralApplication.githubSources.find(({ sourceId }) => sourceId === "source:companion-1");
+    assert.equal(centralCompanion.repositoryIdHint, companion.numericRepositoryId);
     assert.equal(centralCompatibility.result, "changes-required");
     assert.ok(centralCompatibility.findings.some(({ code }) => code === "COMPANION_CLOSURE_REVIEW_REQUIRED"));
     assert.match(result.body, /Companion repositories: `1` exact public bindings/u);
@@ -991,24 +985,21 @@ test("prepare-pr verifies companion manifest v2 without the blanket incomplete-c
         applicationId: "ready-model",
         packageFiles: centralFiles
       });
-      assert.equal(centralValidation.application.companionClosure.length, 1);
-      assert.equal(
-        centralValidation.application.companionClosure[0].closureHash,
-        result.github.companionClosure[0].closureHash
-      );
+      const companionHint = centralValidation.application.githubSources.find(({ sourceId }) => sourceId === "source:companion-1");
+      assert.equal(companionHint.repositoryIdHint, companion.numericRepositoryId);
       const tamperedApplication = structuredClone(centralValidation.application);
-      tamperedApplication.companionClosure[0].numericRepositoryId = "999999";
-      centralFiles.set("application.json", Buffer.from(`${canonicalJson(tamperedApplication)}\n`, "utf8"));
+      tamperedApplication.githubSources.find(({ sourceId }) => sourceId === "source:companion-1").repositoryIdHint = "0";
+      centralFiles.set("application.json", Buffer.from(canonicalJson(tamperedApplication), "utf8"));
       assert.throws(
         () => trustedHostValidator.validatePublicApplicationPackageFiles({ applicationId: "ready-model", packageFiles: centralFiles }),
-        (error) => error?.code === "COMPANION_CLOSURE_RECEIPT_INVALID"
+        (error) => error?.code === "APPLICATION_MANIFEST_INVALID"
       );
-      const missingReceiptApplication = structuredClone(centralValidation.application);
-      delete missingReceiptApplication.companionClosure;
-      centralFiles.set("application.json", Buffer.from(`${canonicalJson(missingReceiptApplication)}\n`, "utf8"));
+      const missingSourceApplication = structuredClone(centralValidation.application);
+      missingSourceApplication.githubSources = missingSourceApplication.githubSources.filter(({ sourceId }) => sourceId !== "source:primary");
+      centralFiles.set("application.json", Buffer.from(canonicalJson(missingSourceApplication), "utf8"));
       assert.throws(
         () => trustedHostValidator.validatePublicApplicationPackageFiles({ applicationId: "ready-model", packageFiles: centralFiles }),
-        (error) => error?.code === "OBJECT_NOT_CLOSED"
+        (error) => error?.code === "APPLICATION_MANIFEST_INVALID"
       );
     });
     const compatibility = JSON.parse(
@@ -1044,7 +1035,7 @@ test("prepare-pr accepts eight exact companions only while the shared 48-request
     });
     assert.equal(result.github.sourceRequest.companions.length, 8);
     assert.ok(requests <= 48);
-    assert.equal(result.centralPackage.fileCount, 6);
+    assert.equal(result.centralPackage.fileCount, 7);
   } finally {
     fixture.cleanup();
   }
@@ -1917,6 +1908,42 @@ function createReadyRepository({
   submission.builder.github = "example-builder";
   submission.builder.contact = "@example-builder";
   submission.builder.licenseDeclaration = "I own this work and submit it under MIT.";
+  const rootSourcePath = "src/Root.sol";
+  const launchPath = "submissions/ready-model/launch.json";
+  const topologyPath = "submissions/ready-model/source-topology.json";
+  const rootSource = "// SPDX-License-Identifier: MIT\npragma solidity 0.8.26;\ncontract Root {}\n";
+  fs.mkdirSync(path.join(repository, "src"), { recursive: true });
+  fs.writeFileSync(path.join(repository, rootSourcePath), rootSource);
+  const launch = makeAutonomousLaunch({
+    applicationId: submission.model.id,
+    sourceUnitName: rootSourcePath,
+    sourceSha256: `sha256:${crypto.createHash("sha256").update(rootSource).digest("hex")}`
+  });
+  fs.writeFileSync(path.join(repository, launchPath), `${canonicalJson(launch)}\n`);
+  fs.writeFileSync(path.join(repository, topologyPath), `${canonicalJson({
+    primary: {
+      executionRoots: ["."],
+      rightsDeclaration: {
+        basis: "applicant-original",
+        licenseBindings: [],
+        authorizationGrantId: null
+      }
+    },
+    companions: companionManifests.map(({ value }, index) => ({
+      sourceId: `source:companion-${index + 1}`,
+      repositoryUri: value.repositoryUri,
+      revisionObjectId: value.revisionObjectId,
+      executionRoots: ["."],
+      rightsDeclaration: {
+        basis: "applicant-original",
+        licenseBindings: [],
+        authorizationGrantId: null
+      }
+    }))
+  })}\n`);
+  submission.implementation.sourcePaths.push(rootSourcePath, topologyPath);
+  submission.implementation.sourcePaths.sort();
+  submission.implementation.specificationPath = launchPath;
   for (const [relativePath, contents] of Object.entries(additionalSourceFiles)) {
     const target = path.join(repository, relativePath);
     fs.mkdirSync(path.dirname(target), { recursive: true });
@@ -1971,6 +1998,58 @@ function createReadyRepository({
     cleanup() {
       fs.rmSync(container, { recursive: true, force: true });
     }
+  };
+}
+
+function makeAutonomousLaunch({ applicationId, sourceUnitName, sourceSha256 }) {
+  return {
+    schemaVersion: "programmable.launch-specification.v1",
+    applicationId,
+    language: "solidity",
+    compiler: {
+      profileId: "programmable:solidity-solc-0.8.26-v1",
+      family: "solc",
+      version: "0.8.26",
+      settings: {
+        optimizer: { enabled: true, runs: 20_000 },
+        evmVersion: "cancun",
+        viaIR: true,
+        metadata: { bytecodeHash: "none", appendCBOR: false }
+      }
+    },
+    chain: { namespace: "eip155", reference: "1", profileId: "ethereum-mainnet-v1" },
+    launcher: { route: { kind: "evm.create2", adapterId: "adapter:create2" } },
+    rootComponentId: "component:root",
+    rootTargetId: "target:root",
+    components: [{
+      componentId: "component:root",
+      kind: "evm.contract",
+      sourceIds: ["source:primary"],
+      targetIds: ["target:root"],
+      attributes: { summary: "Canonical root launch target." }
+    }],
+    targets: [{
+      targetId: "target:root",
+      componentId: "component:root",
+      sourceId: "source:primary",
+      sourceUnitName,
+      sourceSha256,
+      contractName: "Root",
+      deploymentMode: "create2",
+      saltStrategy: "compiler-deterministic-v1",
+      deploymentValueWei: "0",
+      constructor: { abiEncodedArguments: "0x", addressLocators: [] },
+      initializer: null,
+      initializerValueWei: "0",
+      libraries: [],
+      declaredHookPermissions: null
+    }],
+    edges: [],
+    externalOnchainDependencies: [],
+    internalChildDeployments: [],
+    releaseModules: [],
+    declaredIdentities: [],
+    extensions: {}
   };
 }
 

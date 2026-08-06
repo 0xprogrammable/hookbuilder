@@ -38,7 +38,7 @@ submissions/<model-id>/
 ```
 
 This is the local package in the builder-controlled public project repository. It is not the bounded central application
-directory. Submit mode derives the separate six-file central package defined in
+directory. Submit mode derives the separate seven-file central package defined in
 [submission-workflow.md](submission-workflow.md); project source and this local `submission.json` remain in the pinned
 builder repository.
 
@@ -201,10 +201,10 @@ and separately asserted source match. Builder evidence remains untrusted until a
 - `github.sourceRequest`: the immutable primary authority and zero to eight sorted companion authorities;
 - `github.companionClosure`: one verified exact-closure receipt per v2 companion; v1 has no receipt and retains its
   proposal closure diagnostic. Each v2 receipt binds its exact manifest path in primary HEAD;
-- `centralPackage`: exactly six canonical application files with byte lengths and SHA-256 digests; its
-  `application.json.companionClosure` durably carries the same canonical v2 receipts and is checked against the exact
-  companion authorities, immutable package/workflow objects and Actions run ids by downstream intake, which
-  independently recomputes the canonical receipt rather than trusting its declared hash or counts;
+- `centralPackage`: exactly seven canonical application files with byte lengths and SHA-256 digests. Its autonomous
+  `application.json` carries immutable source hints, execution roots, and explicit rights declarations; `launch.json`
+  carries the exact data-only compiler and launch graph. Companion closure receipts remain in the prepared action plan
+  and are not invented as fields in the closed autonomous manifest;
 - a copy-ready draft pull-request `title`, `body`, and confirmation `checklist`;
 - `localWritesPerformed`: empty unless an explicit output directory was requested;
 - `externalActionsPerformed`: always empty; and
@@ -216,12 +216,13 @@ on n+1; a new application's open pull request remains on revision 1. Display-onl
 revision. The observed central base is checked again immediately before every local materialization.
 
 Without `--output-dir`, the command writes nothing. With a new exact `<application-id>` target, it materializes only the
-six files. Every output target must be outside the builder source repository. `--replace-existing` is permitted only
+seven files. Every output target must be outside the builder source repository. `--replace-existing` is permitted only
 with `--output-dir` and only when the existing local directory exactly matches immutable main; it creates the first
 pending n+1 draft. `--replace-draft` is mutually exclusive and replaces only a pre-network-snapshotted, self-consistent
-local six-file draft at revision 1 or n+1. It preserves builder and full numeric repository lineage, accepts the same
-source authority only when canonical package bytes actually change, and rechecks directory and file identities before
-the swap. Central main remains the authority in both modes. No prepare output is an opened pull request, acceptance,
+local seven-file draft at revision 1 or n+1. The authenticated action plan preserves the Builder identity outside the
+closed manifest, while the package preserves full numeric repository lineage. It accepts the same source authority only
+when canonical package bytes actually change and rechecks directory and file identities before the swap. Central main
+remains the authority in both modes. No prepare output is an opened pull request, acceptance,
 audit, deployment, provider submission, or availability receipt.
 
 ## Repair output

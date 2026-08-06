@@ -280,8 +280,15 @@ required.
 ### 6. Prepare, submit, and track the GitHub application
 
 Require a clean, pushed public source revision. Resolve the canonical repository URL, immutable numeric repository id,
-full commit, full tree, declared paths, and bound CI evidence independently. Prepare the closed six-file central
+full commit, full tree, declared paths, and bound CI evidence independently. Prepare the closed seven-file central
 package with `cli.mjs prepare-pr`; it performs no GitHub write.
+
+Before `prepare-pr`, require a canonical committed `submissions/<application-id>/source-topology.json` in
+`implementation.sourcePaths`. It declares non-overlapping execution roots and an explicit rights basis for the primary
+repository and every companion; never infer ownership or license coverage from repository control or free text.
+Require `implementation.specificationPath` to identify the committed data-only launch graph. Its active compiler
+profile, exact settings, source hashes, constructor locators, dependencies, declared identities, initialization, and
+launcher route must match the exact source rather than a generic contract-name placeholder.
 
 Exact anonymous source verification currently requires Git 2.49.0 or newer with `git backfill --sparse`. If that safe
 capability is unavailable, report a tooling blocker and preserve the application draft; never downgrade to an

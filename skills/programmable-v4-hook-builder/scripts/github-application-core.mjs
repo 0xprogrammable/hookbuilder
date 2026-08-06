@@ -4,22 +4,20 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { TextDecoder } from "node:util";
-import { normalizeBuilderTemplate } from "./builder-template-contract.mjs";
 import { canonicalJson } from "./submission-core.mjs";
 import { hasForbiddenInvisibleOrBidi } from "./metadata-core.mjs";
+import {
+  AUTONOMOUS_ADMISSION_FILES,
+  AUTONOMOUS_ADMISSION_FILE_LIMITS,
+  validateAutonomousApplicationManifest,
+  validateAutonomousLaunchSpecification
+} from "./autonomous-admission-contract.mjs";
 
 export const GITHUB_APPLICATION_CLIENT_VERSION = "1.0.0-beta.1";
 export const CENTRAL_REPOSITORY = "0xprogrammable/programmable";
 export const CENTRAL_BASE_BRANCH = "main";
 export const INTAKE_STATUS_PATH = "docs/builder/intake-status.json";
-export const CENTRAL_APPLICATION_FILES = Object.freeze([
-  "application.json",
-  "PROPOSAL.md",
-  "TEST_PLAN.md",
-  "THREAT_MODEL.md",
-  "compatibility-report.json",
-  "evidence-index.json"
-]);
+export const CENTRAL_APPLICATION_FILES = AUTONOMOUS_ADMISSION_FILES;
 export const GITHUB_APPLICATION_STATUSES = Object.freeze([
   "submitted",
   "checks-running",
@@ -37,15 +35,8 @@ const GITHUB_LOGIN_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/u;
 const OPAQUE_DECIMAL_PATTERN = /^[1-9][0-9]{0,63}$/u;
 const REPOSITORY_SLUG_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38}[A-Za-z0-9])?\/[A-Za-z0-9._-]{1,100}$/u;
 const MAX_PREPARED_BYTES = 2_000_000;
-const MAX_CENTRAL_PACKAGE_BYTES = 512 * 1024;
-const MAX_CENTRAL_FILE_BYTES = Object.freeze({
-  "application.json": 64 * 1024,
-  "compatibility-report.json": 160 * 1024,
-  "evidence-index.json": 160 * 1024,
-  "PROPOSAL.md": 64 * 1024,
-  "THREAT_MODEL.md": 64 * 1024,
-  "TEST_PLAN.md": 64 * 1024
-});
+const MAX_CENTRAL_PACKAGE_BYTES = 768 * 1024;
+const MAX_CENTRAL_FILE_BYTES = AUTONOMOUS_ADMISSION_FILE_LIMITS;
 const MAX_API_OUTPUT_BYTES = 4_000_000;
 const MAX_API_INPUT_BYTES = 1_000_000;
 const MAX_INTAKE_BYTES = 32_768;
@@ -160,11 +151,11 @@ export function normalizePreparedApplication(input) {
     || !arraysEqual(centralPackage.fileOrder, CENTRAL_APPLICATION_FILES)
     || centralPackage.encoding !== "utf8"
     || centralPackage.generated !== true
-    || centralPackage.validatorContract !== "public-pr-application-v2"
+    || centralPackage.validatorContract !== "autonomous-public-pr-application-v1"
     || !Array.isArray(centralPackage.files)
     || centralPackage.files.length !== CENTRAL_APPLICATION_FILES.length
   ) {
-    invalidPrepared("the central package is not the closed six-file public beta package");
+    invalidPrepared("the central package is not the closed seven-file autonomous admission package");
   }
 
   const files = centralPackage.files.map((record, index) => normalizeCentralFile(record, CENTRAL_APPLICATION_FILES[index]));
@@ -173,8 +164,10 @@ export function normalizePreparedApplication(input) {
   }
   const fileMap = new Map(files.map((record) => [record.path, record]));
   const application = parseJsonFile(fileMap.get("application.json"), "application.json");
+  const launch = parseJsonFile(fileMap.get("launch.json"), "launch.json");
   validateApplicationProjection({
     application,
+    launch,
     applicationId,
     files: fileMap,
     sourceRepository,
@@ -234,8 +227,8 @@ export function normalizePreparedApplication(input) {
       writeAccessMeaning: "revision-control-evidence-only-not-repository-admin-ownership"
     }),
     builder: Object.freeze({
-      githubUserId: requireOpaqueDecimal(application.builder?.githubUserId, "builder GitHub user id"),
-      githubLogin: requireGitHubLogin(application.builder?.githubLogin, "builder GitHub login")
+      githubUserId: requireOpaqueDecimal(applicationAdapter.builder?.githubUserId, "builder GitHub user id"),
+      githubLogin: requireGitHubLogin(applicationAdapter.builder?.githubLogin, "builder GitHub login")
     }),
     companions: Object.freeze(companionSources),
     central: Object.freeze({
@@ -889,7 +882,7 @@ async function inspectRemoteState({ prepared, transport, explicitPull }) {
     CENTRAL_BASE_BRANCH
   );
   if (baseRef.commit !== prepared.central.baseCommit) {
-    fail("PREPARE_PR_STALE", "Programmable main changed after prepare-pr; regenerate the six-file package");
+    fail("PREPARE_PR_STALE", "Programmable main changed after prepare-pr; regenerate the seven-file package");
   }
   const centralCommit = normalizeGitCommit(
     await transport.getGitCommit(CENTRAL_REPOSITORY, prepared.central.baseCommit),
@@ -1079,7 +1072,7 @@ function validatePullIdentity({ pull, files, prepared, viewer, explicit }) {
     files.length !== expected.size
     || files.some((record) => !expected.has(record.filename) || record.status === "removed" || record.previousFilename !== null)
   ) {
-    fail("APPLICATION_PULL_REQUEST_PATHS_INVALID", "the application pull request must change exactly the six frozen application paths");
+    fail("APPLICATION_PULL_REQUEST_PATHS_INVALID", "the application pull request must change exactly the seven frozen application paths");
   }
 }
 
@@ -1093,7 +1086,7 @@ async function verifyPullPackage({ prepared, transport, pull, requireMatch }) {
     files.length !== expected.size
     || files.some((record) => !expected.has(record.filename) || record.status === "removed" || record.previousFilename !== null)
   ) {
-    fail("APPLICATION_PULL_REQUEST_PATHS_INVALID", "the pull request does not contain exactly the six frozen application paths");
+    fail("APPLICATION_PULL_REQUEST_PATHS_INVALID", "the pull request does not contain exactly the seven frozen application paths");
   }
   const repository = pull.head.repositorySlug;
   const observed = [];
@@ -1109,7 +1102,7 @@ async function verifyPullPackage({ prepared, transport, pull, requireMatch }) {
       || utf8Decoder.decode(bytes) !== expectedRecord.content
     ) {
       if (requireMatch) {
-        fail("REMOTE_PACKAGE_MISMATCH", "the pull request does not contain the exact confirmed six-file package");
+        fail("REMOTE_PACKAGE_MISMATCH", "the pull request does not contain the exact confirmed seven-file package");
       }
     }
   }
@@ -1132,7 +1125,7 @@ async function verifyPackageAtRef({ prepared, transport, repository, commit }) {
       || sha256Bytes(bytes) !== record.sha256
       || utf8Decoder.decode(bytes) !== record.content
     ) {
-      fail("APPLICATION_BRANCH_VERIFY_FAILED", "the application branch does not contain the exact six-file package");
+      fail("APPLICATION_BRANCH_VERIFY_FAILED", "the application branch does not contain the exact confirmed seven-file package");
     }
   }
 }
@@ -1449,6 +1442,7 @@ function assertOpenDraftPullTarget({ pull, plan, prepared, fork, requireMetadata
 
 function validateApplicationProjection({
   application,
+  launch,
   applicationId,
   files,
   sourceRepositoryUrl,
@@ -1463,47 +1457,48 @@ function validateApplicationProjection({
 }) {
   if (
     !isPlainObject(application)
-    || application.schemaVersion !== 2
     || application.applicationId !== applicationId
     || requireRevision(application.applicationRevision, "application revision") !== centralPackage.applicationRevision
     || application.applicationRevision !== centralTarget.nextApplicationRevision
     || application.applicationRevision !== applicationAdapter.applicationRevision
     || submission.intakeValidated !== true
     || applicationAdapter.publicGitHubApplicationReady !== true
-    || applicationAdapter.schemaStatus !== "validator-compatible-six-file-package"
+    || applicationAdapter.schemaStatus !== "validator-compatible-seven-file-package"
   ) {
     invalidPrepared("application.json disagrees with the prepare-pr application projection");
   }
   try {
-    application.builderTemplate = normalizeBuilderTemplate(application.builderTemplate);
+    validateAutonomousApplicationManifest(application, { requireImmutableSourceHints: true });
+    validateAutonomousLaunchSpecification(launch);
   } catch {
-    invalidPrepared("application.json contains invalid builder-template provenance");
+    invalidPrepared("application.json or launch.json violates the autonomous admission contract");
   }
-  const primary = requireObject(application.source, "application source").primary;
+  if (launch.applicationId !== applicationId) invalidPrepared("launch.json identifies another application");
+  const primary = application.githubSources.find(({ sourceId }) => sourceId === application.primarySourceId);
+  const parsedRepository = new URL(sourceRepositoryUrl);
   if (
     !isPlainObject(primary)
-    || primary.repositoryUri !== sourceRepositoryUrl
-    || requireOpaqueDecimal(primary.numericRepositoryId, "application source repository id") !== sourceRepositoryId
-    || requireCommit(primary.revisionObjectId, "application source commit") !== sourceCommit
-    || requireCommit(primary.treeObjectId, "application source tree") !== sourceTree
-    || canonicalJson(application.source) !== canonicalJson(sourceRequest)
+    || primary.ownerHint.toLowerCase() !== parsedRepository.pathname.split("/")[1].toLowerCase()
+    || primary.repositoryHint.toLowerCase() !== parsedRepository.pathname.split("/")[2].toLowerCase()
+    || requireOpaqueDecimal(primary.repositoryIdHint, "application source repository id") !== sourceRepositoryId
+    || requireCommit(primary.requestedRevisionHint, "application source commit") !== sourceCommit
   ) {
     invalidPrepared("application.json is not bound to the exact prepared source request");
   }
-  if (!Array.isArray(application.reviewPackage) || application.reviewPackage.length !== 5) {
-    invalidPrepared("application.json does not bind the five review-package files");
+  const expectedSources = [sourceRequest.primary, ...sourceRequest.companions];
+  if (application.githubSources.length !== expectedSources.length) {
+    invalidPrepared("application.json source topology disagrees with the prepared source request");
   }
-  const expectedReviewFiles = CENTRAL_APPLICATION_FILES.slice(1);
-  for (let index = 0; index < expectedReviewFiles.length; index += 1) {
-    const record = application.reviewPackage[index];
-    const expected = files.get(expectedReviewFiles[index]);
+  for (let index = 0; index < expectedSources.length; index += 1) {
+    const sourceId = index === 0 ? "source:primary" : `source:companion-${index}`;
+    const hint = application.githubSources.find((entry) => entry.sourceId === sourceId);
+    const expected = expectedSources[index];
     if (
-      !isPlainObject(record)
-      || record.path !== expected.path
-      || record.byteLength !== expected.byteLength
-      || record.sha256 !== expected.sha256
+      hint === undefined
+      || hint.repositoryIdHint !== expected.numericRepositoryId
+      || hint.requestedRevisionHint !== expected.revisionObjectId
     ) {
-      invalidPrepared("application.json review-package hashes disagree with the six-file package");
+      invalidPrepared("application.json source hints disagree with the prepared source request");
     }
   }
 }
@@ -1532,7 +1527,8 @@ function normalizeCentralFile(record, expectedPath) {
     } catch {
       invalidPrepared(`the central package file ${expectedPath} is not valid JSON`);
     }
-    if (record.content !== `${canonicalJson(document)}\n`) {
+    const expected = `${canonicalJson(document)}${new Set(["application.json", "launch.json"]).has(expectedPath) ? "" : "\n"}`;
+    if (record.content !== expected) {
       invalidPrepared(`the central package file ${expectedPath} is not canonical JSON`);
     }
   }

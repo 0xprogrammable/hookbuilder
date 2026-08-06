@@ -9,6 +9,10 @@ import { materializeExample } from "../example-materializer-core.mjs";
 import { analyzeSubmission, canonicalJson } from "../submission-core.mjs";
 import { builderTemplateFromPlan } from "../builder-template-contract.mjs";
 import { composeTemplate, loadTemplateCatalog } from "../template-catalog-core.mjs";
+import {
+  validateAutonomousApplicationManifest,
+  validateAutonomousLaunchSpecification
+} from "../autonomous-admission-contract.mjs";
 
 const trustedHostValidatorUrl = new URL("../../../../scripts/verify-public-hook-application-core.mjs", import.meta.url);
 const trustedHostValidator = fs.existsSync(fileURLToPath(trustedHostValidatorUrl))
@@ -25,7 +29,7 @@ const submissionSchema = JSON.parse(
 const templateCatalog = loadTemplateCatalog({ skillRoot });
 
 function trustedHostTest(name, implementation) {
-  return test(name, { skip: trustedHostValidator ? false : trustedHostSkipReason }, implementation);
+  return test(name, implementation);
 }
 
 trustedHostTest("official analyzer output cannot project a pending platform-fee integration as ready", () => {
@@ -47,28 +51,9 @@ trustedHostTest("official analyzer output cannot project a pending platform-fee 
   assert.equal(validated.compatibility.result, "changes-required");
   assert.notEqual(validated.compatibility.result, "prototype-ready");
   assert.ok(validated.compatibility.findings.some(({ code }) => code === "PROGRAMMABLE_FEE_INTEGRATION_PENDING"));
-  assert.deepEqual(validated.application.builderTemplate, {
-    schemaVersion: "1.0.0",
-    source: "manual",
-    templateSelection: null
-  });
-  assert.equal(validated.application.programmableFee.policyVersion, "1.1.0");
-  assert.deepEqual(
-    {
-      roundingPolicy: validated.application.programmableFee.accounting.roundingPolicy,
-      remainderScope: validated.application.programmableFee.accounting.remainderScope,
-      claimResetsRemainders: validated.application.programmableFee.accounting.claimResetsRemainders,
-      minimumGrossQuoteUnits: validated.application.programmableFee.accounting.minimumGrossQuoteUnits,
-      fragmentationResistant: validated.application.programmableFee.accounting.fragmentationResistant
-    },
-    {
-      roundingPolicy: "cumulative-independent-platform-project-remainders",
-      remainderScope: "canonical-pool-lifetime",
-      claimResetsRemainders: false,
-      minimumGrossQuoteUnits: 1000,
-      fragmentationResistant: true
-    }
-  );
+  assert.equal(validated.application.schemaVersion, "1.0.0");
+  assert.equal(validated.launch.schemaVersion, "programmable.launch-specification.v1");
+  assert.equal(validated.evidenceIndex.evidence.some(({ id }) => id === "launch-specification"), true);
 });
 
 trustedHostTest("a manual candidate gate survives central projection as architecture review", () => {
@@ -202,10 +187,10 @@ trustedHostTest("central projection rejects default-ignorable Unicode but preser
       submission.model.name = "日本語モデル";
     }
   });
-  assert.equal(validateCentral(central).application.title, "日本語モデル");
+  assert.equal(validateCentral(central).application.project.title, "日本語モデル");
 });
 
-trustedHostTest("central projection preserves the exact catalog selection, packs, custom capabilities and local tags", () => {
+trustedHostTest("central projection keeps builder-template provenance out of the autonomous public manifest", () => {
   const localReport = {
     decision: "PROTOTYPE_READY",
     findings: [],
@@ -217,7 +202,7 @@ trustedHostTest("central projection preserves the exact catalog selection, packs
   };
   const builderTemplate = catalogBuilderTemplate();
   const central = buildFixture(localReport, { builderTemplate });
-  assert.deepEqual(validateCentral(central).application.builderTemplate, builderTemplate);
+  assert.equal(Object.hasOwn(validateCentral(central).application, "builderTemplate"), false);
 });
 
 function buildFixture(localReport, {
@@ -234,6 +219,8 @@ function buildFixture(localReport, {
   const submissionPath = `${packagePath}/submission.json`;
   const feeSourcePath = "src/ProgrammableFeeHook.sol";
   const feeTestPath = "test/ProgrammableFeeHook.t.sol";
+  const launchPath = `${packagePath}/launch.json`;
+  const feeSourceBytes = Buffer.from("// SPDX-License-Identifier: MIT\npragma solidity 0.8.26;\ncontract ProgrammableFeeHook {}\n");
   const revisionObjectId = "a".repeat(40);
   const treeObjectId = "b".repeat(40);
   const source = {
@@ -243,8 +230,8 @@ function buildFixture(localReport, {
       numericRepositoryId: "123456789",
       revisionObjectId,
       treeObjectId,
-      sourcePaths: [compatibilityPath, feeSourcePath, feeTestPath, gateStatusPath, submissionPath].sort(),
-      contractPaths: [],
+      sourcePaths: [compatibilityPath, feeTestPath, gateStatusPath, launchPath, submissionPath].sort(),
+      contractPaths: [feeSourcePath],
       githubActionsRunIds: []
     },
     companions: []
@@ -257,19 +244,24 @@ function buildFixture(localReport, {
     model: {
       id: applicationId,
       name: "Central Model",
-      summary: "A deterministic central compatibility projection fixture."
+      summary: "A deterministic central compatibility projection fixture.",
+      userOutcome: "Deploy one deterministic fee hook from exact public source."
     },
     builder: { github: "example-builder", contact: "@example-builder" },
     builderTemplate: structuredClone(builderTemplate),
-    implementation: { gateStatusPath },
+    target: { chainId: 1, solidityVersion: "0.8.26" },
+    implementation: { gateStatusPath, specificationPath: launchPath },
     programmableFee
   };
   mutateSubmission?.(submission);
+  const launch = launchFixture({ applicationId, feeSourcePath, feeSourceBytes });
   const headFiles = new Map([
     [`${packagePath}/PROPOSAL.md`, markdown("Proposal")],
     [`${packagePath}/TEST_PLAN.md`, markdown("Test plan")],
     [`${packagePath}/THREAT_MODEL.md`, markdown("Threat model")],
     [compatibilityPath, jsonBytes(localReport)],
+    [launchPath, jsonBytes(launch)],
+    [feeSourcePath, feeSourceBytes],
     [submissionPath, jsonBytes(submission)],
     [gateStatusPath, jsonBytes({
       schemaVersion: 1,
@@ -288,8 +280,66 @@ function buildFixture(localReport, {
     source,
     packageResult: { preflightDecision: localReport.decision },
     reviewTarget,
-    headFiles
+    headFiles,
+    sourceTopology: {
+      primary: {
+        executionRoots: ["."],
+        rightsDeclaration: {
+          basis: "applicant-original",
+          licenseBindings: [],
+          authorizationGrantId: null
+        }
+      },
+      companions: []
+    }
   });
+}
+
+function launchFixture({ applicationId, feeSourcePath, feeSourceBytes }) {
+  return {
+    schemaVersion: "programmable.launch-specification.v1",
+    applicationId,
+    language: "solidity",
+    compiler: {
+      profileId: "programmable:solidity-solc-0.8.26-v1",
+      family: "solc",
+      version: "0.8.26",
+      settings: {}
+    },
+    chain: { namespace: "eip155", reference: "1", profileId: "ethereum-mainnet-v1" },
+    launcher: { route: { kind: "evm.create2", adapterId: "adapter:create2" } },
+    rootComponentId: "component:root",
+    rootTargetId: "target:root",
+    components: [{
+      componentId: "component:root",
+      kind: "evm.contract",
+      sourceIds: ["source:primary"],
+      targetIds: ["target:root"],
+      attributes: { summary: "Canonical root fee hook target." }
+    }],
+    targets: [{
+      targetId: "target:root",
+      componentId: "component:root",
+      sourceId: "source:primary",
+      sourceUnitName: feeSourcePath,
+      sourceSha256: `sha256:${crypto.createHash("sha256").update(feeSourceBytes).digest("hex")}`,
+      contractName: "ProgrammableFeeHook",
+      deploymentMode: "create2",
+      saltStrategy: "compiler-deterministic-v1",
+      deploymentValueWei: "0",
+      constructor: { abiEncodedArguments: "0x", addressLocators: [] },
+      initializer: null,
+      initializerValueWei: "0",
+      libraries: [],
+      declaredHookPermissions: null
+    }],
+    edges: [],
+    externalOnchainDependencies: [],
+    internalChildDeployments: [],
+    releaseModules: [],
+    declaredIdentities: [],
+    extensions: {}
+  };
 }
 
 function implementedProgrammableFee({ feeSourcePath, feeTestPath }) {
@@ -382,10 +432,27 @@ function validateCentral(central) {
   const packageFiles = new Map(
     central.files.map(({ path, content }) => [path, Buffer.from(content, "utf8")])
   );
-  return validatePublicApplicationPackageFiles({
-    applicationId: "central-model",
-    packageFiles
-  });
+  assert.deepEqual([...packageFiles.keys()], [
+    "application.json",
+    "launch.json",
+    "PROPOSAL.md",
+    "TEST_PLAN.md",
+    "THREAT_MODEL.md",
+    "compatibility-report.json",
+    "evidence-index.json"
+  ]);
+  const application = JSON.parse(packageFiles.get("application.json"));
+  const launch = JSON.parse(packageFiles.get("launch.json"));
+  validateAutonomousApplicationManifest(application, { requireImmutableSourceHints: true });
+  validateAutonomousLaunchSpecification(launch);
+  assert.equal(packageFiles.get("application.json").toString("utf8"), canonicalJson(application));
+  assert.equal(packageFiles.get("launch.json").toString("utf8"), canonicalJson(launch));
+  return {
+    application,
+    launch,
+    compatibility: JSON.parse(packageFiles.get("compatibility-report.json")),
+    evidenceIndex: JSON.parse(packageFiles.get("evidence-index.json"))
+  };
 }
 
 function markdown(title) {
