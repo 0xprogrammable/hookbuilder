@@ -13,6 +13,7 @@ import {
   runLaunchBundleV2Cli
 } from "../launch-bundle-v2.mjs";
 import { createExactContentBindingV2 } from "../launch-bundle-v2-core.mjs";
+import { safeGitEnvironment } from "../repository-root.mjs";
 import { canonicalJson } from "../submission-core.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -433,7 +434,10 @@ function commitRepository(root) {
 }
 
 function git(root, args) {
-  const execution = childProcess.spawnSync("git", ["-C", root, ...args], { encoding: "utf8" });
+  const execution = childProcess.spawnSync("git", ["-C", root, ...args], {
+    encoding: "utf8",
+    env: safeGitEnvironment()
+  });
   assert.equal(execution.status, 0, execution.stderr);
   return execution.stdout;
 }
