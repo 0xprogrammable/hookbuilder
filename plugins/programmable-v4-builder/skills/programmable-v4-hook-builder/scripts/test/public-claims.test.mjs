@@ -265,7 +265,7 @@ test("HTML entity extraction decodes exactly once", () => {
   assert.match(visible, /&quot;not approved&quot;/u);
   assert.match(visible, /<prototype>/u);
   assert.match(visible, /'local'/u);
-  assert.doesNotMatch(visible, /<script>/u);
+  assert.equal(visible.toLowerCase().includes("<script>"), false);
   assert.doesNotMatch(visible, /"not approved"/u);
 });
 

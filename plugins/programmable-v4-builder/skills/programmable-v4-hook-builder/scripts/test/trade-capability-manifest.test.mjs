@@ -48,7 +48,7 @@ test("Forge test matcher escapes every regular-expression metacharacter", () => 
   const matcher = new RegExp(exactForgeTestPattern(signature), "u");
   assert.equal(matcher.test(signature), true);
   assert.equal(matcher.test(`${signature}suffix`), false);
-  assert.equal(matcher.test(signature.replace("\\", "x")), false);
+  assert.equal(matcher.test(signature.replaceAll("\\", "x")), false);
 });
 
 test("productive gross quote evidence decodes one positive hook event and rejects absent, zero, or conflicting values", () => {
