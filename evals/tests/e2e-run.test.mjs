@@ -232,10 +232,9 @@ process.exit(child.status ?? 1);
       network: 'role-scoped-egress-allowlist-no-raw-rpc-secrets',
     }, null, 2)}\n`, { mode: 0o600 });
 
-    const helperLoaderHex = Buffer.from(`import(${JSON.stringify(wrapperPath)})`, 'utf8').toString('hex');
-    const reconstructedInlineLoader = `eval(Buffer.from('${helperLoaderHex}','hex').toString('utf8'))`;
+    const inertInlineProgram = 'void 0';
     assert.throws(() => loadSubjectSandbox({
-      wrapperCommand: [process.execPath, '--eval', reconstructedInlineLoader],
+      wrapperCommand: [process.execPath, '--eval', inertInlineProgram],
       contractPath,
       repositoryRoot: REPOSITORY_ROOT,
       holdoutKeyFilePath: syntheticKey,

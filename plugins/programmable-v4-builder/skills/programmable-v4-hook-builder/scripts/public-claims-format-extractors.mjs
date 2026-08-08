@@ -117,22 +117,136 @@ export function leadingWhitespace(value) {
   return value.match(/^\s*/u)?.[0].length ?? 0;
 }
 
-export function extractHtmlPublicText(source) {
-  const withoutCommentsOrCode = source
-    .replace(/<!--[\s\S]*?-->/gu, " ")
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/giu, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/giu, " ");
+const RAW_TEXT_TAGS = new Set(["script", "style"]);
+const MAX_HTML_TAG_LENGTH = 16 * 1024;
+const COMMON_HTML_ENTITIES = Object.freeze({
+  "#39": "'",
+  amp: "&",
+  gt: ">",
+  lt: "<",
+  nbsp: " ",
+  quot: '"'
+});
+
+function isHtmlSpace(character) {
+  return character === " " || character === "\t" || character === "\n" || character === "\f" || character === "\r";
+}
+
+function isHtmlNameCharacter(character) {
+  if (character === undefined) return false;
+  const code = character.charCodeAt(0);
+  return (code >= 48 && code <= 57)
+    || (code >= 65 && code <= 90)
+    || (code >= 97 && code <= 122)
+    || character === ":"
+    || character === "-";
+}
+
+function findHtmlTagEnd(source, startIndex) {
+  let quote = null;
+  const endLimit = Math.min(source.length, startIndex + MAX_HTML_TAG_LENGTH);
+  for (let index = startIndex; index < endLimit; index += 1) {
+    const character = source[index];
+    if (quote !== null) {
+      if (character === quote) quote = null;
+      continue;
+    }
+    if (character === "'" || character === '"') quote = character;
+    else if (character === ">") return index;
+  }
+  return -1;
+}
+
+function parseHtmlTagAt(source, startIndex) {
+  if (source[startIndex] !== "<") return null;
+  let cursor = startIndex + 1;
+  const closing = source[cursor] === "/";
+  if (closing) cursor += 1;
+  const nameStart = cursor;
+  while (isHtmlNameCharacter(source[cursor])) cursor += 1;
+  if (cursor === nameStart) return null;
+  const boundary = source[cursor];
+  if (boundary !== undefined && !isHtmlSpace(boundary) && boundary !== "/" && boundary !== ">") return null;
+  const endIndex = findHtmlTagEnd(source, cursor);
+  if (endIndex === -1) return null;
+  let selfClosingCursor = endIndex - 1;
+  while (selfClosingCursor > cursor && isHtmlSpace(source[selfClosingCursor])) selfClosingCursor -= 1;
+  return Object.freeze({
+    closing,
+    endIndex,
+    name: source.slice(nameStart, cursor).toLowerCase(),
+    selfClosing: source[selfClosingCursor] === "/",
+    startIndex
+  });
+}
+
+function findRawTextClosingTag(source, startIndex, tagName) {
+  let candidate = source.indexOf("</", startIndex);
+  while (candidate !== -1) {
+    const candidateName = source.slice(candidate + 2, candidate + 2 + tagName.length);
+    const boundary = source[candidate + 2 + tagName.length];
+    if (candidateName.toLowerCase() === tagName
+      && (boundary === undefined || isHtmlSpace(boundary) || boundary === "/" || boundary === ">")) {
+      const parsed = parseHtmlTagAt(source, candidate);
+      if (parsed?.closing === true && parsed.name === tagName) return parsed;
+    }
+    candidate = source.indexOf("</", candidate + 2);
+  }
+  return null;
+}
+
+function partitionHtmlSource(source) {
+  const markup = [];
+  const scriptBodies = [];
+  let cursor = 0;
+  while (cursor < source.length) {
+    const tagStart = source.indexOf("<", cursor);
+    if (tagStart === -1) {
+      markup.push(source.slice(cursor));
+      break;
+    }
+    markup.push(source.slice(cursor, tagStart));
+    if (source.startsWith("<!--", tagStart)) {
+      const commentEnd = source.indexOf("-->", tagStart + 4);
+      markup.push(" ");
+      cursor = commentEnd === -1 ? source.length : commentEnd + 3;
+      continue;
+    }
+    const openingTag = parseHtmlTagAt(source, tagStart);
+    if (openingTag === null) {
+      markup.push("<");
+      cursor = tagStart + 1;
+      continue;
+    }
+    if (!openingTag.closing && !openingTag.selfClosing && RAW_TEXT_TAGS.has(openingTag.name)) {
+      const bodyStart = openingTag.endIndex + 1;
+      const closingTag = findRawTextClosingTag(source, bodyStart, openingTag.name);
+      const bodyEnd = closingTag?.startIndex ?? source.length;
+      if (openingTag.name === "script") scriptBodies.push(source.slice(bodyStart, bodyEnd));
+      markup.push(" ");
+      cursor = closingTag === null ? source.length : closingTag.endIndex + 1;
+      continue;
+    }
+    markup.push(source.slice(tagStart, openingTag.endIndex + 1));
+    cursor = openingTag.endIndex + 1;
+  }
+  return Object.freeze({ markup: markup.join(""), scriptBodies: Object.freeze(scriptBodies) });
+}
+
+export function extractHtmlPublicParts(source) {
+  const { markup: withoutCommentsOrCode, scriptBodies } = partitionHtmlSource(source);
   const attributes = [...withoutCommentsOrCode.matchAll(/\b(?:alt|aria-label|content|placeholder|title)\s*=\s*(["'])(.*?)\1/giu)]
     .map((match) => decodeCommonEntities(match[2]));
   const visible = decodeCommonEntities(withoutCommentsOrCode.replace(/<[^>]*>/gu, " "));
-  return [...attributes, visible].filter(Boolean).join("\n");
+  return Object.freeze({ scriptBodies, text: [...attributes, visible].filter(Boolean).join("\n") });
 }
+
+export function extractHtmlPublicText(source) {
+  return extractHtmlPublicParts(source).text;
+}
+
 export function decodeCommonEntities(value) {
-  return value
-    .replace(/&nbsp;/giu, " ")
-    .replace(/&amp;/giu, "&")
-    .replace(/&lt;/giu, "<")
-    .replace(/&gt;/giu, ">")
-    .replace(/&quot;/giu, '"')
-    .replace(/&#39;/giu, "'");
+  return value.replace(/&(?:nbsp|amp|lt|gt|quot|#39);/giu, (entity) => (
+    COMMON_HTML_ENTITIES[entity.slice(1, -1).toLowerCase()]
+  ));
 }

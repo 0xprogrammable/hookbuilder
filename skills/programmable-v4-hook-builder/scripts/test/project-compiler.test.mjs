@@ -1582,7 +1582,7 @@ function makeState(bundle, phase, sequence, previousState, repositoryPlan = unde
     commandResults: plan?.commandResults ?? [],
     blockers: [],
     next: { action: `Continue after ${phase}.`, workingDirectory: ".", resumeCommand: ["node", "scripts/project-compiler.mjs", "validate", "--repository-root", ".", "--state", `.programmable/project-states/${String(sequence).padStart(6, "0")}-${phase}.v1.json`] },
-    authorization: noAuthorization()
+    authorization: disabledReleaseActions()
   }, { previousState });
 }
 
@@ -1633,7 +1633,7 @@ function makePlanningRepositoryPlan(bundle) {
     commands,
     commandResults: [],
     completionClaim: { scope: "local-repository-evidence-only", approvalCreated: false, auditClaimed: false, productionClaimed: false, externalActionsPerformed: [] },
-    authorization: noAuthorization()
+    authorization: disabledReleaseActions()
   };
 }
 
@@ -2040,7 +2040,7 @@ function deterministicRelevantTrace(output) {
   return output[deterministicSuite].test_results["testQuote()"].traces[0][1].arena.find(({ trace }) => trace.address === deterministicTarget).trace;
 }
 
-function noAuthorization() {
+function disabledReleaseActions() {
   return { approval: false, signature: false, deployment: false, publication: false, execution: false, registryWrite: false };
 }
 

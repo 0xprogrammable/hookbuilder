@@ -35,6 +35,15 @@ const API_ORIGIN = "https://api.github.com";
 const centralBaseCommit = "c".repeat(40);
 const centralBaseTree = "d".repeat(40);
 
+test("GitHub blob URL parsing requires the exact HTTPS origin and repository path", () => {
+  const objectId = "a".repeat(40);
+  const repositoryUrl = `${API_ORIGIN}/repos/example-builder/programmable-proposal`;
+  assert.equal(exactGitHubBlobObjectId(`${repositoryUrl}/git/blobs/${objectId}`, repositoryUrl), objectId);
+  assert.equal(exactGitHubBlobObjectId(`https://api.github.com.evil.invalid/repos/example-builder/programmable-proposal/git/blobs/${objectId}`, repositoryUrl), null);
+  assert.equal(exactGitHubBlobObjectId(`${API_ORIGIN}/repos/example-builder/programmable-proposal-extra/git/blobs/${objectId}`, repositoryUrl), null);
+  assert.equal(exactGitHubBlobObjectId(`${repositoryUrl}/git/blobs/${objectId}?redirect=1`, repositoryUrl), null);
+});
+
 function trustedHostSubtest(context, name, implementation) {
   return context.test(name, { skip: trustedHostValidator ? false : trustedHostSkipReason }, implementation);
 }
@@ -2172,11 +2181,11 @@ function githubResponse(fixture, url, companions = []) {
       });
     return response(200, JSON.stringify({ sha: tree, truncated: false, tree: entries }));
   }
-  const blobMatch = new RegExp(`^${repositoryUrl}/git/blobs/([0-9a-f]{40})$`, "u").exec(url);
-  if (blobMatch) {
-    const bytes = runGitBinary(fixture.repository, ["cat-file", "blob", blobMatch[1]]);
+  const blobObjectId = exactGitHubBlobObjectId(url, repositoryUrl);
+  if (blobObjectId !== null) {
+    const bytes = runGitBinary(fixture.repository, ["cat-file", "blob", blobObjectId]);
     return response(200, JSON.stringify({
-      sha: blobMatch[1],
+      sha: blobObjectId,
       size: bytes.length,
       encoding: "base64",
       content: bytes.toString("base64")
@@ -2236,9 +2245,9 @@ function githubResponse(fixture, url, companions = []) {
         }))
       }));
     }
-    const companionBlobMatch = new RegExp(`^${companionRepositoryUrl}/git/blobs/([0-9a-f]{40})$`, "u").exec(url);
-    if (companionBlobMatch) {
-      const record = records.find((candidate) => candidate.sha === companionBlobMatch[1]);
+    const companionBlobObjectId = exactGitHubBlobObjectId(url, companionRepositoryUrl);
+    if (companionBlobObjectId !== null) {
+      const record = records.find((candidate) => candidate.sha === companionBlobObjectId);
       if (record === undefined) throw new Error(`unknown companion blob: ${url}`);
       return response(200, JSON.stringify({
         sha: record.sha,
@@ -2249,6 +2258,38 @@ function githubResponse(fixture, url, companions = []) {
     }
   }
   throw new Error(`unexpected public GitHub URL: ${url}`);
+}
+
+function exactGitHubBlobObjectId(candidateUrl, repositoryUrl) {
+  let candidate;
+  let repository;
+  try {
+    candidate = new URL(candidateUrl);
+    repository = new URL(repositoryUrl);
+  } catch {
+    return null;
+  }
+  if (
+    candidate.protocol !== "https:"
+    || repository.protocol !== "https:"
+    || candidate.origin !== repository.origin
+    || candidate.username !== ""
+    || candidate.password !== ""
+    || repository.username !== ""
+    || repository.password !== ""
+    || candidate.search !== ""
+    || candidate.hash !== ""
+    || repository.search !== ""
+    || repository.hash !== ""
+  ) return null;
+  const expectedSegments = [...repository.pathname.split("/"), "git", "blobs"];
+  const candidateSegments = candidate.pathname.split("/");
+  if (
+    candidateSegments.length !== expectedSegments.length + 1
+    || !expectedSegments.every((segment, index) => candidateSegments[index] === segment)
+  ) return null;
+  const objectId = candidateSegments.at(-1);
+  return /^[0-9a-f]{40}$/u.test(objectId) ? objectId : null;
 }
 
 function advanceReadyRepository(fixture) {

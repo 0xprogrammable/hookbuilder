@@ -228,6 +228,47 @@ test("HTML and component extraction checks visible copy and accessible labels", 
   assert.match(visible, /Production-ready/);
 });
 
+test("HTML raw-text filtering handles browser-tolerated closing tags without exposing hidden code", () => {
+  const html = `
+    <main>İstanbul hosts a local prototype.</main>
+    <ScRiPt data-label=">">const hidden = "This hook is approved by Uniswap.";</sCrIpT\t\n ignored>
+    <style>.fixture::after { content: "This hook is unruggable."; }</style\r data-extra>
+  `;
+  const visible = extractPublicClaimText(html, ".html");
+
+  assert.match(visible, /İstanbul hosts a local prototype/u);
+  assert.doesNotMatch(visible, /approved by Uniswap/u);
+  assert.doesNotMatch(visible, /unruggable/u);
+  assert.deepEqual(findUnsupportedPublicClaims(visible), []);
+});
+
+test("component script analysis preserves code behind browser-tolerated closing tags", () => {
+  for (const extension of [".vue", ".svelte"]) {
+    const analysis = analyzePublicClaimSource(`
+      <script lang="ts">export const badge = "This hook is approved by Uniswap.";</script\t\n ignored>
+      <main>Prototype only.</main>
+    `, extension);
+
+    assert.equal(analysis.analysisComplete, true, extension);
+    assert.deepEqual(findUnsupportedPublicClaims(analysis.text), [
+      "Uniswap verification, approval, certification or official status"
+    ], extension);
+  }
+});
+
+test("HTML entity extraction decodes exactly once", () => {
+  const visible = extractPublicClaimText(`
+    <p title="&amp;lt;script&amp;gt;">&amp;quot;not approved&amp;quot; &lt;prototype&gt; &#39;local&#39;</p>
+  `, ".html");
+
+  assert.match(visible, /&lt;script&gt;/u);
+  assert.match(visible, /&quot;not approved&quot;/u);
+  assert.match(visible, /<prototype>/u);
+  assert.match(visible, /'local'/u);
+  assert.doesNotMatch(visible, /<script>/u);
+  assert.doesNotMatch(visible, /"not approved"/u);
+});
+
 test("declared JSON and YAML locale values expose public claims without treating keys or comments as copy", () => {
   const jsonText = extractPublicClaimText(JSON.stringify({
     "This hook is unruggable.": "Internal translation key only",

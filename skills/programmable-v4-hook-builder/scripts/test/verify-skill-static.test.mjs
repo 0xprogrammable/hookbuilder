@@ -7,7 +7,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { validateInstalledProvenance } from "../verify-skill-provenance-core.mjs";
-import { parseCanonicalYamlMapping } from "../verify-skill-yaml-core.mjs";
+import { markdownHeadingAnchors, parseCanonicalYamlMapping } from "../verify-skill-yaml-core.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "..", "..");
@@ -49,6 +49,13 @@ const interfaceShape = {
     ].map(([key, required]) => [key, { type: "quoted-string", required }]))
   }
 };
+
+test("Markdown anchors remove complete nested HTML-like tags without exposing a second tag", () => {
+  assert.deepEqual(
+    [...markdownHeadingAnchors("# Safe <scr<script>ipt> heading\n# Two <em>words</em>\n# Comparison 2 < 3")],
+    ["safe-heading", "two-words", "comparison-2-3"]
+  );
+});
 
 function readDeclaredRequiredInventories() {
   const source = fs.readFileSync(verifier, "utf8");

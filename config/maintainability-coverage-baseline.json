@@ -34,8 +34,8 @@
           "found": 14
         },
         "branches": {
-          "covered": 71,
-          "found": 77
+          "covered": 73,
+          "found": 78
         }
       },
       "minimumBasisPoints": {
@@ -86,8 +86,8 @@
       ],
       "observed": {
         "lines": {
-          "covered": 2611,
-          "found": 3221
+          "covered": 2610,
+          "found": 3220
         },
         "functions": {
           "covered": 161,
@@ -117,7 +117,7 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/public-claims-format-extractors.mjs",
-          "sourceSha256": "sha256:252f26cd8b9ba31758ee5263a88899e394b29956aa21f4e2f578bda077fdd939"
+          "sourceSha256": "sha256:8005e5c6bb9cef35d2be960a924460648f62818a5b84ae3258435f088c1d1c82"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/public-claims-javascript-core.mjs",
@@ -141,21 +141,21 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/public-claims-source-analysis.mjs",
-          "sourceSha256": "sha256:2898fad94b11d4be3a687aca1c6e364e52ef2f1a8be0d1d7385a2e912f74deb6"
+          "sourceSha256": "sha256:e1c6dd1627fbbf761bc56b7238a8a0d0ac33c81a41888ec3a49795407717343a"
         }
       ],
       "observed": {
         "lines": {
-          "covered": 893,
-          "found": 941
+          "covered": 1003,
+          "found": 1051
         },
         "functions": {
-          "covered": 51,
-          "found": 53
+          "covered": 62,
+          "found": 63
         },
         "branches": {
-          "covered": 296,
-          "found": 384
+          "covered": 344,
+          "found": 444
         }
       },
       "minimumBasisPoints": {

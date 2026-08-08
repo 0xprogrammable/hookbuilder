@@ -4,7 +4,7 @@ import {
 } from "./public-claims-analysis-primitives.mjs";
 
 import {
-  extractHtmlPublicText,
+  extractHtmlPublicParts,
   extractJsonPublicText,
   extractMarkdownPublicText,
   extractYamlPublicText
@@ -18,11 +18,11 @@ export function analyzePublicClaimSource(source, extension) {
   if (normalizedExtension === ".json") return completePublicClaimAnalysis(extractJsonPublicText(source));
   if ([".yaml", ".yml"].includes(normalizedExtension)) return completePublicClaimAnalysis(extractYamlPublicText(source));
   if ([".md", ".mdx", ".markdown"].includes(normalizedExtension)) return completePublicClaimAnalysis(extractMarkdownPublicText(source));
-  if ([".html", ".htm"].includes(normalizedExtension)) return completePublicClaimAnalysis(extractHtmlPublicText(source));
+  if ([".html", ".htm"].includes(normalizedExtension)) return completePublicClaimAnalysis(extractHtmlPublicParts(source).text);
   if ([".vue", ".svelte"].includes(normalizedExtension)) {
-    const scriptAnalyses = [...source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/giu)]
-      .map((match) => analyzeJavascriptPublicText(match[1]));
-    return mergePublicClaimAnalyses(completePublicClaimAnalysis(extractHtmlPublicText(source)), ...scriptAnalyses);
+    const html = extractHtmlPublicParts(source);
+    const scriptAnalyses = html.scriptBodies.map((scriptBody) => analyzeJavascriptPublicText(scriptBody));
+    return mergePublicClaimAnalyses(completePublicClaimAnalysis(html.text), ...scriptAnalyses);
   }
   if ([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"].includes(normalizedExtension)) {
     return analyzeJavascriptPublicText(source);

@@ -752,7 +752,7 @@ test("the gh command transport rejects malicious or ambiguous output", async (t)
     assert.equal(invocation.command, "gh");
     assert.ok(Array.isArray(invocation.args));
     assert.equal(Object.hasOwn(invocation, "shell"), false);
-    assert.ok(invocation.args.includes("github.com"));
+    assert.deepEqual(invocation.args.slice(0, 3), ["api", "--hostname", "github.com"]);
   });
 
   await t.test("review reads continue past the first full page", async () => {

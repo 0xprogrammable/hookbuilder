@@ -96,8 +96,7 @@ export function markdownHeadingAnchors(source) {
   for (const line of source.split("\n")) {
     const heading = /^ {0,3}#{1,6}\s+(.+?)\s*#*\s*$/u.exec(line)?.[1];
     if (!heading) continue;
-    const base = heading
-      .replace(/<[^>]*>/gu, "")
+    const base = stripMarkdownHtmlTags(heading)
       .replace(/\[([^\]]+)\]\([^)]*\)/gu, "$1")
       .replace(/[`*_~]/gu, "")
       .normalize("NFKC")
@@ -111,6 +110,27 @@ export function markdownHeadingAnchors(source) {
     anchors.add(count === 0 ? base : `${base}-${count}`);
   }
   return anchors;
+}
+
+function stripMarkdownHtmlTags(source) {
+  let output = "";
+  let pendingTag = "";
+  let tagDepth = 0;
+  for (const character of source) {
+    if (character === "<") {
+      pendingTag += character;
+      tagDepth += 1;
+    } else if (tagDepth > 0) {
+      pendingTag += character;
+      if (character === ">") {
+        tagDepth -= 1;
+        if (tagDepth === 0) pendingTag = "";
+      }
+    } else {
+      output += character;
+    }
+  }
+  return tagDepth === 0 ? output : `${output}${pendingTag}`;
 }
 
 export function redactInstalledLocalPathForPortableScan(source, parsedFrontmatter) {

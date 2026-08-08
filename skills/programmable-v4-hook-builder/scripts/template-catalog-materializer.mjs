@@ -562,29 +562,11 @@ export function grossQuoteFromLogs(logs,hook,full=false){
   return full?{grossQuoteAmount:g.toString(),hookFeeAmount:f.toString(),selectedRateHundredthsOfBip:s.toString()}:g.toString();
 }
 
-function discoveryLog(stdout, label) {
-  const observation = forgeEvidenceObservation(stdout);
-  const prefix = "PROGRAMMABLE_TRADE_DISCOVERY_V1:";
-  const logs = (observation.test.decoded_logs ?? []).filter((entry) => typeof entry === "string" && entry.startsWith(prefix));
-  if (logs.length !== 1) throw new Error(`Forge discovery ${label} must emit exactly one typed discovery log.`);
-  return parseBoundedStrictJsonBytes(Buffer.from(logs[0].slice(prefix.length), "utf8"));
-}
-
-function runForgeEvidence(root, runnerPath, signature) {
-  const stdout = runEvidenceCommand(root, "forge", ["test", "--offline", "--json", "-vvvv", "--match-path", runnerPath, "--match-test", `^${signature.replace(/[()]/gu, "\\$&")}$`]);
-  return { stdout };
-}
-
-function runEvidenceCommand(root, command, args) {
-  const result = childProcess.spawnSync(command, args, { cwd: root, encoding: "utf8", shell: false, maxBuffer: 128 * 1024 * 1024, env: process.env });
-  if (result.error) throw new Error(`${command} failed to start: ${result.error.message}`);
-  if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} failed (${result.status}): ${String(result.stderr).slice(-4000)}`);
-  return result.stdout;
-}
-
-function evidenceCommandVersion(root, command) {
-  return runEvidenceCommand(root, command, ["--version"]).trim().slice(0, 500);
-}
+function discoveryLog(stdout,label){const o=forgeEvidenceObservation(stdout),p="PROGRAMMABLE_TRADE_DISCOVERY_V1:",l=(o.test.decoded_logs??[]).filter((e)=>typeof e==="string"&&e.startsWith(p));if(l.length!==1)throw new Error(`Forge discovery ${label} must emit exactly one typed discovery log.`);return parseBoundedStrictJsonBytes(Buffer.from(l[0].slice(p.length),"utf8"));}
+function runForgeEvidence(root,runnerPath,signature){return{stdout:runEvidenceCommand(root,"forge",["test","--offline","--json","-vvvv","--match-path",runnerPath,"--match-test",exactForgeTestPattern(signature)])};}
+export function exactForgeTestPattern(signature){if(typeof signature!=="string"||signature.length===0)throw new TypeError("Forge test signature must be nonempty.");return`^${signature.replace(/[.*+?^${}()|[\]\\]/gu,"\\$&")}$`;}
+function runEvidenceCommand(root,command,args){const r=childProcess.spawnSync(command,args,{cwd:root,encoding:"utf8",shell:false,maxBuffer:128*1024*1024,env:process.env});if(r.error)throw new Error(`${command} failed to start: ${r.error.message}`);if(r.status!==0)throw new Error(`${command} ${args.join(" ")} failed (${r.status}): ${String(r.stderr).slice(-4000)}`);return r.stdout;}
+function evidenceCommandVersion(root,command){return runEvidenceCommand(root,command,["--version"]).trim().slice(0,500);}
 
 function endpointEvidence(address, runtimeCodeKeccak256, sourceDependencyRef, deploymentEvidenceRef) {
   return { address: lowerAddress(address), runtimeCodeKeccak256: runtimeCodeKeccak256.toLowerCase(), sourceDependencyRef, deploymentEvidenceRef };

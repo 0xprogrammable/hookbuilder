@@ -8,7 +8,7 @@ import { canonicalJsonSha256V2 } from "../canonical-json-core.mjs";
 import { hashV4PoolKey, keccak256Hex } from "../evm-encoding-core.mjs";
 import { createStandardV4ModeFeeBindingV1 } from "../open-world-v2-primitives.mjs";
 import { createStandardV4TradeArtifactsV1 } from "../open-world-v2-draft-core.mjs";
-import { bindQuoteDiscovery, grossQuoteFromLogs, renderStandardV4TradeEvidenceRunnerV1 } from "../template-catalog-materializer.mjs";
+import { bindQuoteDiscovery, exactForgeTestPattern, grossQuoteFromLogs, renderStandardV4TradeEvidenceRunnerV1 } from "../template-catalog-materializer.mjs";
 import {
   PROGRAMMABLE_TRADE_EXECUTION_ABI_DESCRIPTOR_V1,
   PROGRAMMABLE_TRADE_EXECUTION_ABI_SHA256_V1,
@@ -42,6 +42,14 @@ const reseal = (result) => {
   result.contentSha256 = tradeTestResultSha256V1(result);
   return result;
 };
+
+test("Forge test matcher escapes every regular-expression metacharacter", () => {
+  const signature = String.raw`test.all\\meta.^$*+?()[]{}|`;
+  const matcher = new RegExp(exactForgeTestPattern(signature), "u");
+  assert.equal(matcher.test(signature), true);
+  assert.equal(matcher.test(`${signature}suffix`), false);
+  assert.equal(matcher.test(signature.replace("\\", "x")), false);
+});
 
 test("productive gross quote evidence decodes one positive hook event and rejects absent, zero, or conflicting values", () => {
   const hook = address("c"), topic = keccak256Hex(Buffer.from("QuoteFeesAccrued(bytes32,address,address,bool,uint32,uint32,uint256,uint256,uint256,uint256,uint256)"));
