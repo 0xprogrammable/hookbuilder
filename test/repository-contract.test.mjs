@@ -337,6 +337,18 @@ test("historical V1 reference-kernel assets remain byte-for-byte frozen", () => 
 
 test("CI deterministically covers both Programmable fee reference kernels", () => {
   const workflow = fs.readFileSync(path.join(repositoryRoot, ".github", "workflows", "ci.yml"), "utf8");
+  const repositoryJobStart = workflow.indexOf("  repository:\n");
+  const repositoryJobEnd = workflow.indexOf("\n  reference-kernel:\n", repositoryJobStart);
+  assert.ok(repositoryJobStart >= 0 && repositoryJobEnd > repositoryJobStart, "repository job boundary missing");
+  const repositoryJob = workflow.slice(repositoryJobStart, repositoryJobEnd);
+  assert.match(repositoryJob, /^\s*uses: foundry-rs\/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1$/mu);
+  assert.match(repositoryJob, /^\s*version: v1\.7\.1$/mu);
+  assert.match(repositoryJob, /^\s*mkdir -p -- "\$RUNNER_TEMP\/programmable-foundry-bootstrap"$/mu);
+  assert.match(repositoryJob, /^\s*forge build --use 0\.8\.24 --root "\$RUNNER_TEMP\/programmable-foundry-bootstrap"$/mu);
+  const foundryInstall = repositoryJob.indexOf("Install Foundry");
+  const compilerPreload = repositoryJob.indexOf("Preload the portable-test Solidity compiler");
+  const repositoryGate = repositoryJob.indexOf("run: npm test");
+  assert.ok(foundryInstall >= 0 && foundryInstall < compilerPreload && compilerPreload < repositoryGate);
   const kernelJobStart = workflow.indexOf("  reference-kernel:\n");
   const kernelJobEnd = workflow.indexOf("\n  reference-kernel-required:\n", kernelJobStart);
   assert.ok(kernelJobStart >= 0 && kernelJobEnd > kernelJobStart, "reference-kernel job boundary missing");
