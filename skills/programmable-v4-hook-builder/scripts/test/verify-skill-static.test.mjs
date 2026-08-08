@@ -6,6 +6,10 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import {
+  createDeterministicTestBatches,
+  runDeterministicTestBatches
+} from "../verify-skill-execution-core.mjs";
 import { validateInstalledProvenance } from "../verify-skill-provenance-core.mjs";
 import { markdownHeadingAnchors, parseCanonicalYamlMapping } from "../verify-skill-yaml-core.mjs";
 
@@ -57,10 +61,129 @@ test("Markdown anchors remove complete nested HTML-like tags without exposing a 
   );
 });
 
-test("source verification bounds deterministic test fanout for portable runners", () => {
+test("source verification partitions every portable test exactly once with bounded fanout", () => {
   const source = fs.readFileSync(path.join(skillRoot, "scripts", "verify-skill-execution-core.mjs"), "utf8");
-  assert.match(source, /args: \["--test", "--test-concurrency=2", \.\.\.testFiles\]/u);
+  const testFiles = fs.readdirSync(path.join(skillRoot, "scripts", "test"))
+    .filter((name) => name.endsWith(".test.mjs"))
+    .sort();
+  const batches = createDeterministicTestBatches(testFiles);
+  assert.equal(testFiles.length, 75);
+  assert.deepEqual(batches.map((batch) => batch.length), [38, 37]);
+  assert.deepEqual(batches[0], testFiles.filter((_, index) => index % 2 === 0));
+  assert.deepEqual(batches[1], testFiles.filter((_, index) => index % 2 === 1));
+  assert.deepEqual([...batches.flat()].sort(), testFiles);
+  assert.equal(new Set(batches.flat()).size, testFiles.length);
+  assert.match(source, /args: \["--test", "--test-concurrency=2", \.\.\.batch\]/u);
+  assert.match(source, /const TEST_TIMEOUT_MS = 15 \* 60 \* 1000;/u);
+  assert.match(source, /const TEST_OUTPUT_BYTES = 128 \* 1024 \* 1024;/u);
   assert.doesNotMatch(source, /--test-concurrency=[3-9]/u);
+});
+
+test("deterministic test shards run sequentially with one shared deadline and output budget", async () => {
+  const testFiles = Array.from({ length: 75 }, (_, index) => `test-${String(index).padStart(2, "0")}.test.mjs`);
+  const calls = [];
+  let activeChildren = 0;
+  let elapsedMs = 0;
+  const result = await runDeterministicTestBatches({
+    command: "/node",
+    cwd: "/skill",
+    env: { PATH: "/bin" },
+    now: () => elapsedMs,
+    runChildProcess: async (options) => {
+      assert.equal(activeChildren, 0);
+      activeChildren += 1;
+      calls.push(options);
+      elapsedMs += calls.length === 1 ? 250 : 500;
+      activeChildren -= 1;
+      return {
+        outputExceeded: false,
+        signal: null,
+        status: 0,
+        stderr: calls.length === 1 ? "de" : "",
+        stdout: calls.length === 1 ? "abc" : "ok",
+        timedOut: false
+      };
+    },
+    testFiles
+  });
+  assert.equal(result.failure, null);
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0].args, ["--test", "--test-concurrency=2", ...result.batches[0]]);
+  assert.deepEqual(calls[1].args, ["--test", "--test-concurrency=2", ...result.batches[1]]);
+  assert.equal(calls[0].timeoutMs, 15 * 60 * 1000);
+  assert.equal(calls[1].timeoutMs, 15 * 60 * 1000 - 250);
+  assert.equal(calls[0].maximumOutputBytes, 128 * 1024 * 1024);
+  assert.equal(calls[1].maximumOutputBytes, 128 * 1024 * 1024 - 5);
+});
+
+test("deterministic test shards fail first and never double shared resource budgets", async () => {
+  let calls = 0;
+  const firstFailure = await runDeterministicTestBatches({
+    command: "/node",
+    cwd: "/skill",
+    env: {},
+    runChildProcess: async () => {
+      calls += 1;
+      return { outputExceeded: false, signal: "SIGTERM", status: null, stderr: "failed", stdout: "", timedOut: false };
+    },
+    testFiles: ["a.test.mjs", "b.test.mjs"]
+  });
+  assert.equal(calls, 1);
+  assert.deepEqual(
+    { batchIndex: firstFailure.failure.batchIndex, kind: firstFailure.failure.kind, signal: firstFailure.failure.signal },
+    { batchIndex: 0, kind: "status", signal: "SIGTERM" }
+  );
+
+  calls = 0;
+  let elapsedMs = 0;
+  const timeout = await runDeterministicTestBatches({
+    command: "/node",
+    cwd: "/skill",
+    env: {},
+    now: () => elapsedMs,
+    runChildProcess: async () => {
+      calls += 1;
+      elapsedMs = 11;
+      return { outputExceeded: false, signal: null, status: 0, stderr: "", stdout: "", timedOut: false };
+    },
+    testFiles: ["a.test.mjs", "b.test.mjs"],
+    timeoutMs: 10
+  });
+  assert.equal(calls, 1);
+  assert.deepEqual(timeout.failure, { batchIndex: 1, kind: "timeout", signal: null, status: null });
+
+  calls = 0;
+  const output = await runDeterministicTestBatches({
+    command: "/node",
+    cwd: "/skill",
+    env: {},
+    maximumOutputBytes: 5,
+    runChildProcess: async () => {
+      calls += 1;
+      return { outputExceeded: false, signal: null, status: 0, stderr: "de", stdout: "abc", timedOut: false };
+    },
+    testFiles: ["a.test.mjs", "b.test.mjs"]
+  });
+  assert.equal(calls, 1);
+  assert.deepEqual(output.failure, { batchIndex: 1, kind: "output", signal: null, status: null });
+});
+
+test("installed-mode portable execution keeps its single CLI test in one nonempty shard", async () => {
+  const batches = createDeterministicTestBatches(["scripts/test/cli.test.mjs"]);
+  assert.deepEqual(batches, [["scripts/test/cli.test.mjs"]]);
+  let calls = 0;
+  const result = await runDeterministicTestBatches({
+    command: "/node",
+    cwd: "/skill",
+    env: {},
+    runChildProcess: async () => {
+      calls += 1;
+      return { outputExceeded: false, signal: null, status: 0, stderr: "", stdout: "ok", timedOut: false };
+    },
+    testFiles: batches[0]
+  });
+  assert.equal(calls, 1);
+  assert.equal(result.failure, null);
 });
 
 function readDeclaredRequiredInventories() {
