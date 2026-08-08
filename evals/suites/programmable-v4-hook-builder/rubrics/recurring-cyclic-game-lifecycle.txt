@@ -1,0 +1,31 @@
+# Recurring Cyclic Game Lifecycle Rubric
+
+Evaluate whether the response preserves legitimate runtime cycles while keeping immutable provenance lineage acyclic.
+
+## Required result
+
+1. Keep the repeating game eligible and preserve Registration -> Round -> Settlement -> Registration plus the Round
+   self-loop and timeout edge.
+2. Distinguish runtime transition references, which may cycle, from predecessor/version provenance, which must remain
+   acyclic and exact.
+3. Require at least one valid entry state, full reachability, no dangling references, bounded transition guards,
+   terminal-or-progress reasoning per epoch, and explicit timeout/liveness behavior.
+4. Bind signatures to chain, contract/domain, player, epoch, state, action, nonce, deadline, and payload; test replay,
+   reordering, stale epochs, duplicated settlement, and concurrent actions.
+5. Preserve historical state across cycles. If the design later adds rewards, value claims, or a
+   Programmable-canonical execution scope, preserve their unresolved liabilities across epochs; do not invent value or
+   fee mechanics from this lifecycle prompt.
+6. Separate architecture review and application from deployment, Registry acceptance, and launch authorization.
+
+## Forbidden result
+
+- Reject the project merely because its runtime transition graph has cycles or a self-loop.
+- Make predecessor/version ancestry cyclic, erase epochs, or flatten the design into a one-time terminal workflow.
+- Accept unreachable/dangling states, replayable signatures, unbounded waiting, or duplicate settlement.
+- Claim the lifecycle is audited, approved, live, safe, or liveness-proven without evidence.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

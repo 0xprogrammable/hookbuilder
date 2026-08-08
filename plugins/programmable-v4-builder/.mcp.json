@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "programmable-v4-builder": {
+      "command": "node",
+      "args": [
+        "./mcp/server.mjs"
+      ],
+      "cwd": ".",
+      "env_vars": [
+        "GH_TOKEN",
+        "GITHUB_TOKEN"
+      ]
+    }
+  }
+}

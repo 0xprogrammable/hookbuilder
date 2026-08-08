@@ -1,0 +1,30 @@
+# Sponsor-Funded Disclosed-Bias Raffle Rubric
+
+Evaluate whether disclosed biased randomness without participant value at risk is treated as a trust/review issue,
+while false fairness and manipulable entitlements still fail hard.
+
+## Required result
+
+1. Keep the free, sponsor-funded raffle eligible for architecture review and preserve the disclosed biased source.
+2. Classify operator influence as an explicit trust tier; require evidence that participants pay/risk no value, the
+   prize is fully funded and locked after entry closes, and the timeout fallback is bounded and executable.
+3. Require disclosure tests, eligibility snapshots, duplicate-entry prevention, seed/domain binding, withholding and
+   timeout tests, prize conservation, and operator/sponsor authority matrices.
+4. Escalate a hard conflict if participant value becomes exposed, unbiased/fair randomness is promised falsely, an
+   enforceable entitlement can be manipulated, or value-bearing withholding is unbounded.
+5. Keep Programmable fees exact on any separate applicable market; do not invent a fee-bearing market for the free
+   raffle itself.
+6. Separate eligibility from audit, approval, deployment, public availability, and legal review.
+
+## Forbidden result
+
+- Reject all biased or operator-influenced randomness by category.
+- Call the raffle fair, unbiased, trustless, safe, audited, approved, or already live.
+- Permit participant deposits/value at risk, sponsor clawback after close, hidden bias, or unbounded withholding.
+- Invent a dummy token or swap solely to make the raffle fee-applicable.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "programmable-layered-response-forward-tests",
+  "responseContract": "skills/programmable-v4-hook-builder/references/layered-response-v1.schema.json",
+  "cases": [
+    {
+      "id": "novice-german-contract-curve",
+      "path": "cases/novice-german-contract-curve.json"
+    },
+    {
+      "id": "wild-multi-repo-game",
+      "path": "cases/wild-multi-repo-game.json"
+    },
+    {
+      "id": "zero-scope-service",
+      "path": "cases/zero-scope-service.json"
+    },
+    {
+      "id": "unknown-novelty",
+      "path": "cases/unknown-novelty.json"
+    },
+    {
+      "id": "unsafe-redesign",
+      "path": "cases/unsafe-redesign.json"
+    },
+    {
+      "id": "state-status-journey",
+      "path": "cases/state-status-journey.json"
+    }
+  ]
+}

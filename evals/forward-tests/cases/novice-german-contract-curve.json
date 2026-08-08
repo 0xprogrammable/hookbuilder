@@ -1,0 +1,186 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "novice-german-contract-curve",
+  "title": "Novice German contract-priced sell-and-burn intent",
+  "mode": "explore",
+  "locale": "de-CH",
+  "input": {
+    "summary": "Der Vertrag setzt den Preis mit einer Formel. Zurückverkaufte Coins werden verbrannt, die Schrumpfung wird steiler, und Auszahlungen dürfen die Reserve nie überschreiten.",
+    "sourceCase": "evals/suites/programmable-v4-hook-builder/cases/german-plain-language-sell-burn-intent.md"
+  },
+  "expected": {
+    "primaryRoute": null,
+    "feeApplicability": "unresolved",
+    "hardConflictCode": null,
+    "decisionId": "price-formula-control",
+    "currentStates": {
+      "design": "DESIGN_REVIEW_REQUIRED",
+      "implementation": "NOT_STARTED",
+      "application": "NOT_PREPARED",
+      "runtime": "NOT_DEPLOYED",
+      "availability": "NOT_AVAILABLE"
+    }
+  },
+  "response": {
+    "schemaVersion": "1.0.0",
+    "user": {
+      "outcome": "Ich habe die Idee verstanden: Der Vertrag bildet den Preis aus einer Formel, Rückverkäufe werden verbrannt, und Auszahlungen bleiben auf die vorhandene Reserve begrenzt. Das braucht eine eigene Architekturprüfung, keinen normalen AMM-Start.",
+      "status": "Der Entwurf bleibt offen, bis die Kontrolle über die Preisformel feststeht. Implementierung, Antrag, Deployment und Verfügbarkeit sind nicht begonnen.",
+      "decision": {
+        "id": "price-formula-control",
+        "question": "Soll die Preisformel nach dem Start unveränderlich sein oder nur nach einer sichtbaren Wartezeit angepasst werden können?",
+        "options": [
+          {
+            "id": "immutable-formula",
+            "label": "Unveränderliche Formel",
+            "consequence": "Alle kennen die dauerhafte Regel; Fehler können nur durch eine neue Version behoben werden."
+          },
+          {
+            "id": "delayed-formula",
+            "label": "Verzögert anpassbar",
+            "consequence": "Eine klar begrenzte Rolle darf Parameter erst nach öffentlicher Wartezeit ändern."
+          }
+        ],
+        "recommendedOptionId": "immutable-formula"
+      },
+      "nextAction": "Nach dieser Antwort formuliere ich Preisdomäne, Reservegrenze, Teilfüllung, Burn-Regel und Tests in normalen Worten und erst danach die technische Architektur.",
+      "limitations": [
+        "DESIGN_NOT_APPROVAL",
+        "LOCAL_CHECKS_NOT_AUDIT",
+        "NOT_DEPLOYED",
+        "PROVIDER_SUPPORT_UNRESOLVED",
+        "NOT_PUBLICLY_AVAILABLE"
+      ],
+      "artifactRefs": [
+        "evals/forward-tests/cases/novice-german-contract-curve.json#/response/artifact"
+      ]
+    },
+    "artifact": {
+      "primaryRoute": null,
+      "feeApplicability": "unresolved",
+      "hardConflictCode": null,
+      "facts": [
+        {
+          "id": "contract-price",
+          "state": "confirmed",
+          "statement": "Der Preis entsteht aus einer Formel im Vertrag und nicht aus einem gewöhnlichen AMM-Verhältnis.",
+          "source": "input.summary"
+        },
+        {
+          "id": "sell-burn",
+          "state": "confirmed",
+          "statement": "Bei einem Rückverkauf angenommene Coins werden endgültig aus dem Umlauf entfernt.",
+          "source": "input.summary"
+        },
+        {
+          "id": "reserve-bound",
+          "state": "confirmed",
+          "statement": "Die Verkäuferauszahlung darf nie höher sein als die tatsächlich verfügbare Reserve.",
+          "source": "input.summary"
+        },
+        {
+          "id": "formula-authority",
+          "state": "unresolved",
+          "statement": "Ob und durch wen Preisparameter später geändert werden können, ist noch nicht bestätigt.",
+          "source": "derived material decision"
+        }
+      ],
+      "deferredDecisions": [
+        "reserve-asset-and-cap",
+        "supply-curve-parameters",
+        "partial-fill-user-semantics"
+      ],
+      "architecture": [
+        "A reserve-backed contract computes the quoted sell amount from the confirmed formula and current state.",
+        "Sell execution burns only the amount actually paid for and returns or leaves any unfilled amount with the seller.",
+        "The design records reserve solvency, formula domain, rounding, monotonicity, supply conservation, and exit behavior independently."
+      ],
+      "findings": [
+        {
+          "id": "formula-control-unresolved",
+          "effect": "Mutable and immutable formulas create different trust, recovery, and price guarantees for sellers.",
+          "repair": "Confirm one plain-language control model before selecting contract mechanisms or implementation authority."
+        },
+        {
+          "id": "ordinary-amm-would-drift",
+          "effect": "Replacing the requested formula with an AMM would change price formation and violate confirmed intent.",
+          "repair": "Preserve contract pricing as an owner-defined capability and route it to architecture review."
+        }
+      ],
+      "evidence": [
+        {
+          "id": "idea-source",
+          "state": "recorded",
+          "locator": "evals/suites/programmable-v4-hook-builder/cases/german-plain-language-sell-burn-intent.md",
+          "meaning": "The public-safe German source words are retained without requiring protocol terminology."
+        },
+        {
+          "id": "source-evidence",
+          "state": "not-run",
+          "locator": null,
+          "meaning": "No implementation source, compiler result, or behavior test exists at explore stage."
+        },
+        {
+          "id": "application-evidence",
+          "state": "missing",
+          "locator": null,
+          "meaning": "No immutable public GitHub revision or Application V3 package has been prepared."
+        }
+      ],
+      "gates": [
+        {
+          "id": "intent-capture",
+          "state": "passed",
+          "reason": "The price, burn, and reserve semantics are preserved from the idea source.",
+          "evidenceRefs": [
+            "idea-source"
+          ]
+        },
+        {
+          "id": "design-confirmation",
+          "state": "blocked",
+          "reason": "Formula authority is a material unresolved owner decision.",
+          "evidenceRefs": []
+        },
+        {
+          "id": "implementation",
+          "state": "not-run",
+          "reason": "Implementation must not begin before the material design decision is confirmed.",
+          "evidenceRefs": []
+        },
+        {
+          "id": "application",
+          "state": "not-run",
+          "reason": "There is no source-assessed revision to bind into Application V3.",
+          "evidenceRefs": []
+        }
+      ],
+      "statusJourney": {
+        "design": [
+          "IDEA_CAPTURED",
+          "DESIGN_REVIEW_REQUIRED"
+        ],
+        "implementation": [
+          "NOT_STARTED"
+        ],
+        "application": [
+          "NOT_PREPARED"
+        ],
+        "runtime": [
+          "NOT_DEPLOYED"
+        ],
+        "availability": [
+          "NOT_AVAILABLE"
+        ]
+      },
+      "operations": {
+        "reviewQueue": "DESIGN_ONLY",
+        "rbac": "DESIGN_ONLY",
+        "auditLog": "DESIGN_ONLY",
+        "privacyRetentionTakedown": "DESIGN_ONLY",
+        "incidentResponse": "DESIGN_ONLY",
+        "monitoring": "DESIGN_ONLY"
+      }
+    }
+  }
+}

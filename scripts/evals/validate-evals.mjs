@@ -1,21 +1,46 @@
 #!/usr/bin/env node
 
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import {
+  ForwardTestValidationError,
+  validateForwardTests,
+} from './forward-test-core.mjs';
+import {
+  E2EStructureError,
+  validateE2EStructure,
+} from './e2e-corpus-core.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPOSITORY_ROOT = path.resolve(SCRIPT_DIRECTORY, '../..');
 const DEFAULT_SUITE_ID = 'programmable-v4-hook-builder';
 const EXPECTED_UPSTREAM_REPOSITORY = 'https://github.com/Uniswap/uniswap-ai.git';
 const EXPECTED_UPSTREAM_COMMIT = '9660491dc662fea76c2f8565c2f7ba2abf6e8840';
+const SUBJECT_PROVIDER_TEMPLATE = '{{ env.PROGRAMMABLE_EVAL_SUBJECT_PROVIDER }}';
+const JUDGE_PROVIDER_TEMPLATE = '{{ env.PROGRAMMABLE_EVAL_JUDGE_PROVIDER }}';
+const EXPECTED_PROVIDER_CONTRACT = Object.freeze({
+  mode: 'explicit-subject-and-judge',
+  subjectEnvironmentVariable: 'PROGRAMMABLE_EVAL_SUBJECT_PROVIDER',
+  judgeEnvironmentVariable: 'PROGRAMMABLE_EVAL_JUDGE_PROVIDER',
+  defaultProvider: null,
+});
 
 const REQUIRED_CASE_IDS = Object.freeze([
   'ordinary-coin-official-launchpad',
   'novel-game-external-service',
+  'german-plain-language-sell-burn-intent',
+  'zero-amm-custom-curve-open-world',
+  'unknown-maps-game-server-open-world',
+  'transparent-high-fee-open-world',
+  'multi-asset-multi-pool-open-world',
+  'bounded-admin-trust-tier-open-world',
   'hidden-fee-hard-fail',
   'unrestricted-drain-hard-fail',
+  'unsafe-drain-safe-redesign-intent',
   'backed-return-delta-review',
   'unbacked-noop-delta-hard-fail',
   'poolmanager-hookminer-settlement',
@@ -29,6 +54,29 @@ const REQUIRED_CASE_IDS = Object.freeze([
   'deprecated-liquidity-action-sandwich',
   'subscriber-fee-inflation-liveness',
   'untrusted-calldata-permit2-signing',
+  'pure-service-indexer-zero-scope',
+  'invariant-preserving-vault-rebalancer',
+  'contingent-future-fee-bond',
+  'recurring-cyclic-game-lifecycle',
+  'oversized-capability-graph',
+  'conditional-return-delta',
+  'sponsor-funded-disclosed-bias-raffle',
+  'authorized-donation-managed-redemption',
+  'exact-output-full-fill-repeated-currency',
+  'bounded-router-decoding-dual-identity',
+  'spanish-missing-domain-capability-handoff',
+  'zero-core-amm-custom-accounting',
+  'standing-allowance-delegated-payer',
+  'rwa-nav-redemption-insolvency',
+  'scientific-score-value-link',
+  'prediction-wagering-market',
+  'participant-funded-redistribution',
+  'independent-evidence-degraded-tooling',
+  'exact-input-only-trading',
+  'novelty-positive-control',
+  'autopilot-complete-measurement-market',
+  'autopilot-underspecified-measurement',
+  'autopilot-post-exposure-rule-mutation',
 ]);
 
 const ALLOWED_CONTEXT_PROFILES = Object.freeze([
@@ -42,6 +90,7 @@ const ALLOWED_CONTEXT_PROFILES = Object.freeze([
   'chain-scope',
   'sdk-integration',
   'liquidity-integration',
+  'autopilot',
 ]);
 
 const CASE_KEYS = Object.freeze([
@@ -59,6 +108,12 @@ export class EvalValidationError extends Error {
     this.name = 'EvalValidationError';
     this.issues = issues;
   }
+}
+
+export function isOutsideRootRelative(relativePath) {
+  return relativePath === '..'
+    || relativePath.startsWith(`..${path.sep}`)
+    || path.isAbsolute(relativePath);
 }
 
 function addIssue(issues, condition, message) {
@@ -93,14 +148,14 @@ function safeRelativeFile(root, relativePath, pattern, issues, label) {
   if (typeof relativePath !== 'string') return null;
 
   addIssue(issues, pattern.test(relativePath), `${label}: disallowed path ${relativePath}`);
-  addIssue(issues, !relativePath.includes('..'), `${label}: traversal is forbidden in ${relativePath}`);
+  addIssue(issues, !relativePath.split('/').includes('..'), `${label}: traversal is forbidden in ${relativePath}`);
   addIssue(issues, !relativePath.includes('\\'), `${label}: backslashes are forbidden in ${relativePath}`);
 
   const absolutePath = path.resolve(root, relativePath);
   const relativeToRoot = path.relative(root, absolutePath);
   addIssue(
     issues,
-    relativeToRoot !== '' && !relativeToRoot.startsWith('..') && !path.isAbsolute(relativeToRoot),
+    relativeToRoot !== '' && !isOutsideRootRelative(relativeToRoot),
     `${label}: path escapes its root: ${relativePath}`,
   );
 
@@ -127,7 +182,7 @@ function parsePromptfooTests(configText, issues) {
     const contextProfile = block.match(/^\s+context_profile:\s*([a-z0-9-]+)\s*$/m)?.[1];
     const prompt = block.match(/^\s+case_content:\s*file:\/\/([^\s]+)\s*$/m)?.[1];
     const rubricMatch = block.match(
-      /- type:\s*llm-rubric\s*\n\s*value:\s*file:\/\/([^\s]+)\s*\n\s*threshold:\s*([0-9.]+)\s*\n\s*provider:\s*([^\s]+)/m,
+      /- type:\s*llm-rubric\s*\n\s*value:\s*file:\/\/([^\s]+)\s*\n\s*threshold:\s*([0-9.]+)\s*\n\s*provider:\s*([^\r\n]+)\s*$/m,
     );
 
     addIssue(issues, Boolean(caseId), 'promptfoo: every test needs a lowercase case_id');
@@ -142,12 +197,21 @@ function parsePromptfooTests(configText, issues) {
         prompt,
         rubric: rubricMatch[1],
         threshold: Number(rubricMatch[2]),
-        provider: rubricMatch[3],
+        provider: unquoteYamlScalar(rubricMatch[3]),
       });
     }
   }
 
   return tests;
+}
+
+function unquoteYamlScalar(value) {
+  const trimmed = String(value).trim();
+  if (trimmed.length >= 2 && (
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+    || (trimmed.startsWith('"') && trimmed.endsWith('"'))
+  )) return trimmed.slice(1, -1);
+  return trimmed;
 }
 
 function walkFiles(root) {
@@ -197,7 +261,7 @@ function validateSourceReceipts(repositoryRoot, issues) {
     const label = `source receipts: files[${index}]`;
     addIssue(issues, exactKeys(file, ['gitBlob', 'path', 'sha256', 'use']), `${label}: keys must match closed file shape`);
     addIssue(issues, /^[a-zA-Z0-9._/-]+$/.test(file.path ?? ''), `${label}: invalid repository path`);
-    addIssue(issues, !String(file.path ?? '').includes('..'), `${label}: path traversal is forbidden`);
+    addIssue(issues, !String(file.path ?? '').split('/').includes('..'), `${label}: path traversal is forbidden`);
     addIssue(issues, /^[0-9a-f]{40}$/.test(file.gitBlob ?? ''), `${label}: gitBlob must be full lowercase SHA-1`);
     addIssue(issues, /^[0-9a-f]{64}$/.test(file.sha256 ?? ''), `${label}: sha256 must be 64 lowercase hex`);
     addIssue(issues, typeof file.use === 'string' && file.use.length >= 12, `${label}: use must explain relevance`);
@@ -248,6 +312,64 @@ function validateNoGeneratedResultsOrSecrets(repositoryRoot, issues) {
   }
 }
 
+function validatePolicyBoundEvalMirror(repositoryRoot, suiteRoot, issues) {
+  const archivePath = path.join(
+    repositoryRoot,
+    'skills/programmable-v4-hook-builder/assets/test-vectors/blind-eval-definitions-v1.json',
+  );
+  // Bind portable evaluation definitions and the prompt constructor. The live
+  // Promptfoo transport config is validated separately and uses host-local
+  // `file://` loader syntax, so it must not enter the portable skill payload.
+  const includeRelative = (relativePath) => relativePath === 'suite.json'
+    || relativePath === 'prompt-wrapper.cjs'
+    || relativePath.startsWith('cases/')
+    || relativePath.startsWith('rubrics/');
+  const liveFiles = walkFiles(suiteRoot)
+    .map((filePath) => path.relative(suiteRoot, filePath).split(path.sep).join('/'))
+    .filter(includeRelative)
+    .sort();
+  const archive = readJson(archivePath, issues, 'policy-bound eval archive').value;
+  addIssue(
+    issues,
+    archive && exactKeys(archive, ['$schema', 'files', 'kind', 'modelOutputsNormative', 'schemaVersion']),
+    'policy-bound eval archive: root keys must match the closed archive shape',
+  );
+  addIssue(issues, archive?.$schema === 'urn:programmable:blind-eval-definitions-v1:1.0.0', 'policy-bound eval archive: schema id drift');
+  addIssue(issues, archive?.schemaVersion === '1.0.0', 'policy-bound eval archive: schemaVersion must be 1.0.0');
+  addIssue(issues, archive?.kind === 'programmable-blind-eval-definitions', 'policy-bound eval archive: kind drift');
+  addIssue(issues, archive?.modelOutputsNormative === false, 'policy-bound eval archive: model outputs must remain non-normative');
+  addIssue(issues, Array.isArray(archive?.files), 'policy-bound eval archive: files must be an array');
+  const archivedFiles = new Map();
+  for (const [index, entry] of (archive?.files ?? []).entries()) {
+    const label = `policy-bound eval archive: files[${index}]`;
+    addIssue(issues, exactKeys(entry, ['content', 'path', 'sha256']), `${label}: keys must match the closed file shape`);
+    addIssue(issues, includeRelative(entry?.path ?? ''), `${label}: path is outside the normative eval definition set`);
+    addIssue(issues, !archivedFiles.has(entry?.path), `${label}: duplicate path ${entry?.path}`);
+    addIssue(issues, typeof entry?.content === 'string', `${label}: content must be UTF-8 text`);
+    const digest = typeof entry?.content === 'string'
+      ? `sha256:${crypto.createHash('sha256').update(entry.content).digest('hex')}`
+      : null;
+    addIssue(issues, entry?.sha256 === digest, `${label}: content digest mismatch`);
+    archivedFiles.set(entry?.path, entry?.content);
+  }
+  const mirrorFiles = [...archivedFiles.keys()].sort();
+  addIssue(
+    issues,
+    JSON.stringify(liveFiles) === JSON.stringify(mirrorFiles),
+    'policy-bound eval mirror inventory drift',
+  );
+  for (const relativePath of liveFiles) {
+    if (!mirrorFiles.includes(relativePath)) continue;
+    const live = fs.readFileSync(path.join(suiteRoot, relativePath), 'utf8');
+    const mirror = archivedFiles.get(relativePath);
+    addIssue(
+      issues,
+      live === mirror,
+      `policy-bound eval mirror content drift: ${relativePath}`,
+    );
+  }
+}
+
 export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteId = DEFAULT_SUITE_ID } = {}) {
   const issues = [];
   const resolvedRoot = path.resolve(repositoryRoot);
@@ -274,18 +396,19 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
 
   addIssue(
     issues,
-    manifest && exactKeys(manifest, ['cases', 'defaultProvider', 'schemaVersion', 'subject', 'suiteId']),
+    manifest && exactKeys(manifest, ['cases', 'providerContract', 'schemaVersion', 'subject', 'suiteId']),
     'suite manifest: root keys must match the closed manifest shape',
   );
 
   const manifestCases = new Map();
   if (manifest) {
-    addIssue(issues, manifest.schemaVersion === '1.0.0', 'suite manifest: schemaVersion must be 1.0.0');
+    addIssue(issues, manifest.schemaVersion === '2.0.0', 'suite manifest: schemaVersion must be 2.0.0');
     addIssue(issues, manifest.suiteId === suiteId, 'suite manifest: suiteId mismatch');
     addIssue(
       issues,
-      manifest.defaultProvider === 'anthropic:claude-sonnet-4-6',
-      'suite manifest: defaultProvider must match the reviewed official-model lane',
+      exactKeys(manifest.providerContract, Object.keys(EXPECTED_PROVIDER_CONTRACT).sort())
+        && Object.entries(EXPECTED_PROVIDER_CONTRACT).every(([key, value]) => manifest.providerContract[key] === value),
+      'suite manifest: provider contract must require explicit, provider-neutral subject and judge selection',
     );
     addIssue(
       issues,
@@ -379,8 +502,18 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
   addIssue(issues, configText.includes('file://prompt-wrapper.cjs'), 'promptfoo: canonical prompt wrapper is not registered');
   addIssue(
     issues,
-    configText.includes('id: anthropic:claude-sonnet-4-6'),
-    'promptfoo: reviewed default subject provider is missing',
+    configText.includes(`id: '${SUBJECT_PROVIDER_TEMPLATE}'`),
+    'promptfoo: explicit subject-provider template is missing',
+  );
+  addIssue(
+    issues,
+    configText.includes(`provider: '${JUDGE_PROVIDER_TEMPLATE}'`),
+    'promptfoo: explicit judge-provider template is missing',
+  );
+  addIssue(
+    issues,
+    !/(?:anthropic|openai|google|vertex|bedrock):[a-z0-9]/iu.test(configText),
+    'promptfoo: suite must not hard-code one model provider',
   );
   addIssue(issues, configText.includes('temperature: 0'), 'promptfoo: deterministic temperature configuration missing');
   addIssue(issues, !/results\.json|\.promptfoo|\.results/.test(configText), 'promptfoo: config must not write committed results');
@@ -403,8 +536,8 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
     addIssue(issues, test.threshold === evalCase.threshold, `promptfoo:${caseId} threshold drift`);
     addIssue(
       issues,
-      test.provider === manifest?.defaultProvider,
-      `promptfoo:${caseId} rubric provider must match manifest default`,
+      test.provider === JUDGE_PROVIDER_TEMPLATE,
+      `promptfoo:${caseId} rubric provider must use the explicit judge-provider contract`,
     );
     if (evalCase.safetyCritical) {
       addIssue(issues, test.threshold === 1, `promptfoo:${caseId} safety threshold must be exactly 1.0`);
@@ -413,6 +546,21 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
 
   addIssue(issues, wrapperText.includes("const contextProfiles = Object.freeze({"), 'prompt wrapper: context allowlist missing');
   addIssue(issues, wrapperText.includes("readCanonicalSkillFile('SKILL.md')"), 'prompt wrapper: canonical SKILL.md missing');
+  addIssue(
+    issues,
+    (wrapperText.match(/'references\/layered-response-contract\.md'/g) ?? []).length === ALLOWED_CONTEXT_PROFILES.length,
+    'prompt wrapper: every context profile must load the layered response contract',
+  );
+  addIssue(
+    issues,
+    (wrapperText.match(/'references\/builder-reviewer-alignment\.md'/g) ?? []).length >= 3,
+    'prompt wrapper: architecture, security and authority profiles must load builder-reviewer alignment',
+  );
+  addIssue(
+    issues,
+    (wrapperText.match(/'references\/execution-gates-and-attestation\.md'/g) ?? []).length >= 3,
+    'prompt wrapper: security, repository-safety and authority profiles must load execution gates',
+  );
   addIssue(issues, wrapperText.includes('Unknown context profile'), 'prompt wrapper: unknown profiles must fail closed');
   addIssue(issues, wrapperText.includes('Unsafe Nunjucks raw-block terminator'), 'prompt wrapper: raw-block terminators must fail closed');
   addIssue(issues, wrapperText.includes("rawBlock(vars.case_content, 'case content')"), 'prompt wrapper: case content must be template-isolated');
@@ -430,6 +578,23 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
     rootProject?.targets?.['eval:release']?.options?.command?.includes('--require-provider'),
     'evals Nx project: release model run must require provider credentials',
   );
+  addIssue(
+    issues,
+    rootProject?.targets?.['e2e:validate']?.options?.command === 'node scripts/evals/run-e2e-evals.mjs --validate-only',
+    'evals Nx project: e2e structure target drift',
+  );
+  addIssue(
+    issues,
+    rootProject?.targets?.e2e?.cache === false
+      && rootProject.targets.e2e.options?.command === 'node scripts/evals/run-e2e-evals.mjs',
+    'evals Nx project: e2e execution must be uncached',
+  );
+  addIssue(
+    issues,
+    rootProject?.targets?.['e2e:release']?.cache === false
+      && rootProject.targets['e2e:release'].options?.command === 'node scripts/evals/run-e2e-evals.mjs --require-provider',
+    'evals Nx project: release e2e run must be uncached and require external providers',
+  );
   addIssue(issues, suiteProject?.name === `eval-suite-${suiteId}`, 'suite Nx project: wrong name');
   addIssue(issues, suiteProject?.targets?.eval?.cache === false, 'suite Nx project: model eval caching must be disabled');
 
@@ -442,6 +607,29 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
 
   validateSourceReceipts(resolvedRoot, issues);
   validateNoGeneratedResultsOrSecrets(resolvedRoot, issues);
+  validatePolicyBoundEvalMirror(resolvedRoot, suiteRoot, issues);
+
+  let forwardTests = null;
+  try {
+    forwardTests = validateForwardTests({ repositoryRoot: resolvedRoot });
+  } catch (error) {
+    if (error instanceof ForwardTestValidationError) {
+      for (const issue of error.issues) issues.push(`forward tests: ${issue}`);
+    } else {
+      issues.push(`forward tests: ${error.message}`);
+    }
+  }
+
+  let e2eStructure = null;
+  try {
+    e2eStructure = validateE2EStructure({ repositoryRoot: resolvedRoot });
+  } catch (error) {
+    if (error instanceof E2EStructureError) {
+      for (const issue of error.issues) issues.push(`e2e holdout: ${issue}`);
+    } else {
+      issues.push(`e2e holdout: ${error.message}`);
+    }
+  }
 
   if (issues.length > 0) throw new EvalValidationError(issues);
 
@@ -450,6 +638,18 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
     suiteId,
     caseCount: manifestCases.size,
     safetyCaseCount: [...manifestCases.values()].filter((evalCase) => evalCase.safetyCritical).length,
+    forwardTestCaseCount: forwardTests.caseCount,
+    forwardTestDecisionCaseCount: forwardTests.decisionCaseCount,
+    e2ePublicResponseCaseCount: e2eStructure.publicResponseEvalCaseCount,
+    e2eSealedRepositoryEnvelopeCount: e2eStructure.sealedRepositoryCaseEnvelopeCount,
+    e2eComparablePublicRepositoryCaseCount: 0,
+    e2eCrossMethodRatioClaimed: false,
+    e2ePayloadValidation: e2eStructure.payloadValidation,
+    e2eTierProfiles: e2eStructure.tierProfiles,
+    e2ePublicResponseCorpusSha256: e2eStructure.publicResponseCorpusSha256,
+    e2eSealedRepositoryCorpusSha256: e2eStructure.sealedRepositoryCorpusSha256,
+    e2eCrossMethodInventorySha256: e2eStructure.crossMethodInventorySha256,
+    e2eModelExecution: e2eStructure.modelExecution,
     modelEvaluation: 'not-run',
     upstreamCommit: EXPECTED_UPSTREAM_COMMIT,
   };

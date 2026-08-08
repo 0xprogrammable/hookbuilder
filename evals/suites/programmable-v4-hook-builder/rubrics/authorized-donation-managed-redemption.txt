@@ -1,0 +1,33 @@
+# Authorized Donation and Managed Redemption Rubric
+
+Evaluate whether voluntary irreversible disposition and disclosed managed redemption remain reviewable while seizure
+and false autonomous-exit promises remain hard conflicts.
+
+## Required result
+
+1. Keep both features eligible for review and distinguish voluntary, amount/destination-bound donation from seizure of
+   owed value.
+2. Require explicit authorization bound to the user, asset, amount, destination, exact execution context, and exact
+   irreversible effect, plus clear pre-confirmation disclosure. A direct synchronous transaction may bind `msg.sender`
+   and exact calldata; signed or delegated flows additionally require domain/chain, nonce, deadline, and replay protection.
+3. Classify the 48-hour managed redemption as a controlled trust/recourse path, bind manager authority to published
+   rules, and require status, receipts, escalation, timeout, key-loss, denial, and recovery tests.
+4. Escalate a hard conflict for unauthorized/undisclosed irreversible disposition, seizure or redirection of owed
+   value, unbound authorization, or a false promise of autonomous exit.
+5. If a separate Programmable-canonical execution scope exists, preserve its fee liabilities and recipients outside
+   treasury/manager authority and test that donation or redemption cannot consume or delay them; do not invent a
+   fee-bearing market from these features alone.
+6. Separate design eligibility from audit, legal review, Registry acceptance, deployment, and launch authorization.
+
+## Forbidden result
+
+- Reject every burn, donation, irreversible action, or managed redemption as a category.
+- Treat a checkbox, vague terms acceptance, or reusable signature as sufficient authorization.
+- Call managed redemption autonomous, permissionless, trustless, safe, audited, approved, or guaranteed.
+- Permit the manager or treasury to seize, redirect, delay indefinitely, or reclassify already owed user value.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

@@ -1,0 +1,342 @@
+{
+  "$schema": "urn:programmable:maintainability-size-budget:2.0.0",
+  "schemaVersion": "2.0.0",
+  "kind": "programmable-maintainability-size-budget",
+  "observation": {
+    "scope": "discovered-builder-production-mjs-and-portable-package-bytes",
+    "recordedAt": "2026-08-07T20:21:54Z",
+    "broadQualityClaimed": false
+  },
+  "productionModules": {
+    "roots": [
+      {
+        "path": "scripts/quality",
+        "extension": ".mjs",
+        "excludedDirectoryNames": []
+      },
+      {
+        "path": "skills/programmable-v4-hook-builder/scripts",
+        "extension": ".mjs",
+        "excludedDirectoryNames": [
+          "test"
+        ]
+      }
+    ],
+    "legacyDebtThresholdLines": 750,
+    "legacyBaseline": {
+      "manifestPath": "config/maintainability-production-baseline-v2.json",
+      "manifestSha256": "sha256:3084aa8cdc9acd4cbeb13ec98d047f2affa7d44014a6261a754f8ffc43ec8937",
+      "reviewedOverrides": [
+        {
+          "path": "scripts/quality/coverage-baseline.mjs",
+          "observedLines": 487,
+          "observedBytes": 21981,
+          "observedComplexityScore": 127,
+          "observedMaxBlockDepth": 4,
+          "reviewRef": "v0.5.1 content-addressed trade routing responsibility coverage"
+        },
+        {
+          "path": "scripts/quality/mutation-gate.mjs",
+          "observedLines": 248,
+          "observedBytes": 10336,
+          "observedComplexityScore": 20,
+          "observedMaxBlockDepth": 4,
+          "reviewRef": "v0.5.1 source-bound trade routing mutation evidence"
+        },
+        {
+          "path": "scripts/quality/size-budget.mjs",
+          "observedLines": 399,
+          "observedBytes": 22124,
+          "observedComplexityScore": 152,
+          "observedMaxBlockDepth": 4,
+          "reviewRef": "v0.5.1 all-production discovery complexity cycle and exact snapshot gate"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/build-info-core.mjs",
+          "observedLines": 99,
+          "observedBytes": 3109,
+          "observedComplexityScore": 8,
+          "observedMaxBlockDepth": 2,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/build-profile-core.mjs",
+          "observedLines": 7,
+          "observedBytes": 208,
+          "observedComplexityScore": 1,
+          "observedMaxBlockDepth": 1,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/builder-lifecycle-core.mjs",
+          "observedLines": 22,
+          "observedBytes": 588,
+          "observedComplexityScore": 1,
+          "observedMaxBlockDepth": 1,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/check-upstream-drift.mjs",
+          "observedLines": 747,
+          "observedBytes": 30714,
+          "observedComplexityScore": 212,
+          "observedMaxBlockDepth": 4,
+          "reviewRef": "v0.5.1 scheduled read-only drift and GitHub token origin isolation"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/cli-github-source.mjs",
+          "observedLines": 736,
+          "observedBytes": 28735,
+          "observedComplexityScore": 162,
+          "observedMaxBlockDepth": 5,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/cli-prepare-pr.mjs",
+          "observedLines": 8,
+          "observedBytes": 380,
+          "observedComplexityScore": 1,
+          "observedMaxBlockDepth": 1,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/companion-manifest-contract.mjs",
+          "observedLines": 700,
+          "observedBytes": 31515,
+          "observedComplexityScore": 118,
+          "observedMaxBlockDepth": 6,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/contract-registry-core.mjs",
+          "observedLines": 396,
+          "observedBytes": 17168,
+          "observedComplexityScore": 79,
+          "observedMaxBlockDepth": 4,
+          "reviewRef": "v0.5.1 transitive local ESM closure and source digest registry binding"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/evm-encoding-core.mjs",
+          "observedLines": 401,
+          "observedBytes": 19788,
+          "observedComplexityScore": 69,
+          "observedMaxBlockDepth": 4,
+          "reviewRef": "v0.5.1 programmable trade request quote and execution envelope ABI encoding"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/fee-conformance-core.mjs",
+          "observedLines": 468,
+          "observedBytes": 20488,
+          "observedComplexityScore": 105,
+          "observedMaxBlockDepth": 4,
+          "reviewRef": "v0.5.1 routing trade fee manifest and execution evidence conformance binding"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/fee-policy-v2-core.mjs",
+          "observedLines": 601,
+          "observedBytes": 22671,
+          "observedComplexityScore": 104,
+          "observedMaxBlockDepth": 4,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/github-application-core.mjs",
+          "observedLines": 29,
+          "observedBytes": 1070,
+          "observedComplexityScore": 1,
+          "observedMaxBlockDepth": 1,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/github-exact-object-resolver.mjs",
+          "observedLines": 661,
+          "observedBytes": 24187,
+          "observedComplexityScore": 118,
+          "observedMaxBlockDepth": 6,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/github-public-source-core.mjs",
+          "observedLines": 133,
+          "observedBytes": 5707,
+          "observedComplexityScore": 17,
+          "observedMaxBlockDepth": 3,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/knowledge-router-core.mjs",
+          "observedLines": 526,
+          "observedBytes": 23149,
+          "observedComplexityScore": 91,
+          "observedMaxBlockDepth": 5,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/launch-bundle-core.mjs",
+          "observedLines": 14,
+          "observedBytes": 381,
+          "observedComplexityScore": 1,
+          "observedMaxBlockDepth": 1,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/launch-bundle-v2-core.mjs",
+          "observedLines": 415,
+          "observedBytes": 14070,
+          "observedComplexityScore": 33,
+          "observedMaxBlockDepth": 3,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/open-world-migration-core.mjs",
+          "observedLines": 19,
+          "observedBytes": 671,
+          "observedComplexityScore": 1,
+          "observedMaxBlockDepth": 1,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/open-world-security-core.mjs",
+          "observedLines": 180,
+          "observedBytes": 6992,
+          "observedComplexityScore": 28,
+          "observedMaxBlockDepth": 5,
+          "reviewRef": "v0.5.1 semantic coverage and behavior-preserving module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/open-world-source-signals-core.mjs",
+          "observedLines": 6,
+          "observedBytes": 300,
+          "observedComplexityScore": 1,
+          "observedMaxBlockDepth": 1,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/open-world-v2-core.mjs",
+          "observedLines": 30,
+          "observedBytes": 957,
+          "observedComplexityScore": 1,
+          "observedMaxBlockDepth": 1,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/open-world.mjs",
+          "observedLines": 141,
+          "observedBytes": 10207,
+          "observedComplexityScore": 16,
+          "observedMaxBlockDepth": 3,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/public-claims-core.mjs",
+          "observedLines": 5,
+          "observedBytes": 181,
+          "observedComplexityScore": 1,
+          "observedMaxBlockDepth": 1,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/public-pr-application-v3-core.mjs",
+          "observedLines": 24,
+          "observedBytes": 1018,
+          "observedComplexityScore": 1,
+          "observedMaxBlockDepth": 1,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/registry-acceptance-v3-github-core.mjs",
+          "observedLines": 13,
+          "observedBytes": 590,
+          "observedComplexityScore": 1,
+          "observedMaxBlockDepth": 1,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/registry-discovery-core.mjs",
+          "observedLines": 17,
+          "observedBytes": 417,
+          "observedComplexityScore": 1,
+          "observedMaxBlockDepth": 1,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/resolve-contract-core.mjs",
+          "observedLines": 154,
+          "observedBytes": 5570,
+          "observedComplexityScore": 20,
+          "observedMaxBlockDepth": 4,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/review-target-core.mjs",
+          "observedLines": 660,
+          "observedBytes": 32669,
+          "observedComplexityScore": 238,
+          "observedMaxBlockDepth": 7,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/runtime-assets-core.mjs",
+          "observedLines": 2,
+          "observedBytes": 176,
+          "observedComplexityScore": 1,
+          "observedMaxBlockDepth": 1,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/source-manifest.mjs",
+          "observedLines": 145,
+          "observedBytes": 4921,
+          "observedComplexityScore": 8,
+          "observedMaxBlockDepth": 3,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/submission-core.mjs",
+          "observedLines": 265,
+          "observedBytes": 10385,
+          "observedComplexityScore": 24,
+          "observedMaxBlockDepth": 4,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/template-catalog-core.mjs",
+          "observedLines": 21,
+          "observedBytes": 620,
+          "observedComplexityScore": 1,
+          "observedMaxBlockDepth": 1,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/verify-package.mjs",
+          "observedLines": 587,
+          "observedBytes": 25761,
+          "observedComplexityScore": 173,
+          "observedMaxBlockDepth": 4,
+          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
+          "observedLines": 719,
+          "observedBytes": 35321,
+          "observedComplexityScore": 84,
+          "observedMaxBlockDepth": 5,
+          "reviewRef": "v0.5.1 portable compiler and routing artifact inventory under the 640-file cap"
+        }
+      ]
+    },
+    "newFileHardCaps": {
+      "maxLines": 750,
+      "maxBytes": 50000,
+      "maxComplexityScore": 200,
+      "maxBlockDepth": 8
+    }
+  },
+  "portablePackage": {
+    "path": "skills/programmable-v4-hook-builder",
+    "observedFiles": 640,
+    "observedBytes": 9619846,
+    "maxFiles": 640,
+    "maxBytes": 12000000
+  }
+}

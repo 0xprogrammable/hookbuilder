@@ -1,18 +1,35 @@
 {
   "name": "programmable-v4-builder",
-  "version": "0.4.0",
+  "version": "0.5.1",
   "owner": {
     "name": "Programmable"
   },
-  "metadata": {
-    "description": "Loads one portable skill for designing, building, checking and applying with open-ended Uniswap v4 projects.",
-    "repository": "https://github.com/0xprogrammable/programmable-v4-builder"
-  },
+  "description": "Loads one portable skill that compiles a plain-language idea into the smallest complete Programmable system, then designs, builds, checks, reviews, and prepares its exact GitHub application without limiting unfamiliar products to known templates.",
   "plugins": [
     {
       "name": "programmable-v4-builder",
-      "source": "./",
-      "description": "Build open-ended Uniswap v4 projects and prepare evidence-bound Programmable applications."
+      "displayName": "Programmable v4 Builder",
+      "version": "0.5.1",
+      "source": "./skills/programmable-v4-hook-builder",
+      "description": "Design, build, review, or track Programmable hooks, tokens, apps, games, services, and standalone settlement projects.",
+      "author": {
+        "name": "Programmable"
+      },
+      "repository": "https://github.com/0xprogrammable/programmable-v4-builder",
+      "license": "MIT",
+      "keywords": [
+        "agent-skills",
+        "github",
+        "project-registry",
+        "programmable",
+        "templates",
+        "uniswap-v4",
+        "smart-contracts",
+        "developer-tools"
+      ],
+      "category": "Developer Tools",
+      "skills": "./",
+      "strict": false
     }
   ]
 }

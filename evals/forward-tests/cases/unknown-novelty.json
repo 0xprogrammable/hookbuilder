@@ -1,0 +1,170 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "unknown-novelty",
+  "title": "Owner-defined cooperative signal capability",
+  "mode": "explore",
+  "locale": "en",
+  "input": {
+    "summary": "A browser world and service aggregate authenticated cooperative signals into a short reward window that changes a project-owned allocation. No current catalog capability or template has this name.",
+    "sourceCase": null
+  },
+  "expected": {
+    "primaryRoute": "CUSTOM_ARCHITECTURE",
+    "feeApplicability": "unresolved",
+    "hardConflictCode": null,
+    "decisionId": null,
+    "currentStates": {
+      "design": "DESIGN_REVIEW_REQUIRED",
+      "implementation": "NOT_STARTED",
+      "application": "NOT_PREPARED",
+      "runtime": "NOT_DEPLOYED",
+      "availability": "NOT_AVAILABLE"
+    }
+  },
+  "response": {
+    "schemaVersion": "1.0.0",
+    "user": {
+      "outcome": "The unfamiliar capability remains eligible as an owner-defined project surface. It needs custom architecture review; the missing catalog label is not a rejection or safety finding.",
+      "status": "Intent is concrete enough to route. Fee applicability, implementation, application, deployment, provider integration, and public availability remain unresolved or not started.",
+      "decision": null,
+      "nextAction": "I will preserve the supplied semantics, model signal authority and replay, bound the allocation, trace failures, and derive implementation evidence without forcing a nearby template.",
+      "limitations": [
+        "DESIGN_NOT_APPROVAL",
+        "LOCAL_CHECKS_NOT_AUDIT",
+        "NOT_DEPLOYED",
+        "PROVIDER_SUPPORT_UNRESOLVED",
+        "NOT_PUBLICLY_AVAILABLE"
+      ],
+      "artifactRefs": [
+        "evals/forward-tests/cases/unknown-novelty.json#/response/artifact"
+      ]
+    },
+    "artifact": {
+      "primaryRoute": "CUSTOM_ARCHITECTURE",
+      "feeApplicability": "unresolved",
+      "hardConflictCode": null,
+      "facts": [
+        {
+          "id": "owner-defined-capability",
+          "state": "confirmed",
+          "statement": "The cooperative signal window is retained as an owner-defined capability with its supplied semantics.",
+          "source": "input.summary"
+        },
+        {
+          "id": "browser-and-service",
+          "state": "confirmed",
+          "statement": "A browser surface collects participation while a separate service authenticates and aggregates signals.",
+          "source": "input.summary"
+        },
+        {
+          "id": "bounded-allocation-window",
+          "state": "confirmed",
+          "statement": "An authenticated aggregate opens a time-bounded change to a project-owned reward allocation.",
+          "source": "input.summary"
+        },
+        {
+          "id": "catalog-match",
+          "state": "confirmed",
+          "statement": "No current catalog capability or template uses the builder's name for this behavior.",
+          "source": "input.summary"
+        }
+      ],
+      "deferredDecisions": [
+        "signal-withholding-policy",
+        "allocation-cap-and-funding",
+        "service-key-recovery"
+      ],
+      "architecture": [
+        "The owner-defined capability keeps a versioned signal schema, authentication domain, nonce, freshness window, aggregate rule, and bounded allocation effect.",
+        "The browser, aggregation service, storage, optional verifier, allocation contract, indexer, and monitoring remain separate project surfaces with explicit authority and failure rules.",
+        "The architecture review determines whether any canonical v4 execution scope exists before fee policy or hook mechanics are introduced."
+      ],
+      "findings": [
+        {
+          "id": "catalog-novelty",
+          "effect": "Automation cannot select a ready implementation pack for the owner-defined behavior.",
+          "repair": "Route the exact capability to architecture review and produce project-specific source, tests, provenance, and threat evidence."
+        },
+        {
+          "id": "signal-trust-review",
+          "effect": "Authentication proves who signed a signal but not that the offchain observation is objectively true.",
+          "repair": "Disclose the source of truth and prove replay, freshness, withholding, bounds, recovery, and user-visible failure behavior."
+        }
+      ],
+      "evidence": [
+        {
+          "id": "idea-source",
+          "state": "recorded",
+          "locator": "evals/forward-tests/cases/unknown-novelty.json#/input",
+          "meaning": "The owner-defined semantics are retained independently of catalog recognition."
+        },
+        {
+          "id": "architecture-evidence",
+          "state": "not-run",
+          "locator": null,
+          "meaning": "No architecture reviewer has confirmed the signal, funding, authority, failure, or fee model."
+        },
+        {
+          "id": "source-evidence",
+          "state": "missing",
+          "locator": null,
+          "meaning": "No implementation, schema, test, repository closure, or runtime receipt exists."
+        }
+      ],
+      "gates": [
+        {
+          "id": "intent-capture",
+          "state": "passed",
+          "reason": "The unfamiliar capability remains present with its complete supplied behavior.",
+          "evidenceRefs": [
+            "idea-source"
+          ]
+        },
+        {
+          "id": "architecture-review",
+          "state": "blocked",
+          "reason": "A project-specific mechanism and trust review is required before implementation.",
+          "evidenceRefs": []
+        },
+        {
+          "id": "fee-applicability",
+          "state": "blocked",
+          "reason": "Canonical execution scope cannot be inferred from the unfamiliar capability name.",
+          "evidenceRefs": []
+        },
+        {
+          "id": "implementation",
+          "state": "not-run",
+          "reason": "No confirmed architecture or source evidence exists.",
+          "evidenceRefs": []
+        }
+      ],
+      "statusJourney": {
+        "design": [
+          "IDEA_CAPTURED",
+          "DESIGN_REVIEW_REQUIRED"
+        ],
+        "implementation": [
+          "NOT_STARTED"
+        ],
+        "application": [
+          "NOT_PREPARED"
+        ],
+        "runtime": [
+          "NOT_DEPLOYED"
+        ],
+        "availability": [
+          "NOT_AVAILABLE"
+        ]
+      },
+      "operations": {
+        "reviewQueue": "DESIGN_ONLY",
+        "rbac": "DESIGN_ONLY",
+        "auditLog": "DESIGN_ONLY",
+        "privacyRetentionTakedown": "DESIGN_ONLY",
+        "incidentResponse": "DESIGN_ONLY",
+        "monitoring": "DESIGN_ONLY"
+      }
+    }
+  }
+}

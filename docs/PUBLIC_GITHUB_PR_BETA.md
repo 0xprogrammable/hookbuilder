@@ -1,471 +1,399 @@
 # Public GitHub PR Builder Beta
 
-The Public GitHub PR Builder Beta is a simple, public review path for builders working on Uniswap v4 projects.
+The Public GitHub PR Builder Beta is the proposed public review path for open-world Programmable projects. A builder
+keeps the complete project in one or more builder-controlled public GitHub repositories. A small application pull
+request binds one exact revision, its intent, source closure and evidence; GitHub keeps the public review thread.
 
-Your project stays in your own public GitHub repository. A beta application is a small pull request to Programmable
-that binds one exact public repository revision and its public check evidence. GitHub commits, reviews and pull-request
-history are the beta's status and audit trail.
+## Current status
 
-This is not the connected application service described in the Open Hook v2 plans. It uses no Programmable wallet
-claim, GitHub App installation, private repository access or connected-service application identity. The six-file
-public record still has a stable lower-case `applicationId` equal to its project slug and directory name; the GitHub
-pull-request number is the review thread.
+Open-world submission v2 and application v3 are a local development implementation. This document defines the target
+beta; it does not announce that v3 intake is open or that a release candidate exists. Public activation requires the
+v3 generator, trusted Registry validator, status/update path, protected workflow and live canary to pass the same
+contract for one exact release. Check
+[`OPEN_WORLD_V2_RELEASE_GATES.md`](OPEN_WORLD_V2_RELEASE_GATES.md) and the trusted Registry intake state before making
+an availability claim.
 
-## What the beta promises
+The authenticated approval-to-Website bridge and Website Custom Launcher are represented in the local target product
+flow, not a separate product claim. They remain pending production activation and externally verified integration. The target user path
+is GitHub submission, repair, and exact-revision status, followed by Website launch eligibility for the same unchanged
+approved source SHA. Do not describe that connected path as live while production remains frozen or trusted intake is
+not active.
 
-The beta helps a builder:
+The published v1 beta remains historical. Its closed six-file directory, `application.json`, source-array caps and up
+to eight companions apply only to exact v1 applications. They are not v2 limits and must not be silently rewritten or
+described as application v3.
 
-1. turn an idea or existing repository into a concrete project;
-2. run the published checks against one exact revision;
-3. prepare a small, reviewable application pull request;
-4. discuss unfamiliar mechanics without forcing them into a preset model;
-5. receive evidence-based findings and a repair path; and
-6. update the same pull request when a new project commit is ready.
+## What the beta is for
 
-The installed Builder selects its initial knowledge with the local `context` router. Ordinary projects do not pay the
-context cost of unrelated game, SDK, advanced-liquidity or deployment chapters; complex and unfamiliar projects add
-the required chapters without losing eligibility.
+The beta is designed to let a builder:
 
-The beta does not approve, audit, deploy or launch a project. It does not prove that a project is safe, rug-free,
-supported by a provider or endorsed by Uniswap.
+1. describe an idea in plain language or bring an existing public project;
+2. preserve the original public-safe intent before templates or archive search;
+3. build hooks, tokens, games, interfaces, services and new compositions without a product-category allowlist;
+4. run deterministic checks against exact source and evidence;
+5. prepare a content-addressed public application;
+6. discuss unknown mechanics without treating novelty as rejection;
+7. receive objective findings, attach counter-evidence and repair a new exact revision; and
+8. keep review, acceptance, launch and runtime history separate.
 
-## Transition for already-open model pull requests
-
-Model pull requests opened before the beta is activated keep the review path and contribution format they started
-with. At activation, that includes the currently open legacy model pull requests #35, #43 and #44. Maintainers review
-or close those pull requests on their existing record; this beta does not rewrite them or assign them a new status.
-
-New applications opened after beta activation use a builder-controlled public GitHub repository plus a small
-`submissions/**` manifest pull request to Programmable. The opening time determines the intake path; later commits do
-not silently move an existing pull request between paths.
+The Builder and GitHub transport do not self-approve, audit, deploy, or launch a project. After activation, the
+independent authenticated approval service may approve only the exact revision it evaluated, and the Website may derive
+launch eligibility only from that current approval. Neither approval nor launch eligibility proves that a project is
+safe, rug-free, supported by a provider, or endorsed by Uniswap.
 
 ## Eligibility
 
-A beta application needs:
+Every describable idea is eligible for intent capture and architecture review. A valid application needs:
 
-- one builder-controlled **public GitHub repository**;
-- an exact pushed commit that remains reachable during review;
-- the exact Git tree for that commit;
-- public evidence produced by the published beta checks;
-- a clear project summary, known limitations and source license; and
-- a GitHub identity the reviewers can contact in the pull request.
+- a builder-controlled public GitHub repository for every declared source surface;
+- exact reachable commits and trees that remain available during review;
+- a public-safe original idea record or an explicit redaction/legacy-unavailable state;
+- a complete v2 project graph, architecture decisions and intent-fidelity record;
+- source, tests, evidence, fee and security artifacts appropriate to the stage; and
+- a public GitHub identity reviewers can contact.
 
-`prepare-pr` anonymously resolves that identity through GitHub's public user endpoint. `application.builder.githubUserId`
-is the immutable decimal identity; `githubLogin` and `contact` are public display data. The trusted intake check compares
-the numeric id and current login with the authenticated pull-request author. A GitHub login rename therefore keeps the
-same builder identity, while a different numeric user id cannot replace the builder on a later application revision.
-This PR-author binding is not proof that the author controls the linked source repository.
+A project may contain multiple assets, markets, hooks, pools and repositories plus interfaces, Three.js games,
+services, indexers, keepers, metadata, custom pricing, custom settlement or external systems. It may use an AMM,
+partial custom accounting or reviewed full-consumption zero-AMM accounting. A missing catalog name, template, chain,
+provider integration or language handler is not a rejection.
 
-Private repositories, local-only worktrees, ZIP files, pasted source, mutable branch names and deployed bytecode without
-the reviewed source are outside this beta. A builder can continue local work, but cannot open a valid beta application
-until the exact source is public and pushed.
+When a design cannot launch on the current platform, it can still be designed, implemented and submitted with
+`INTEGRATION_PENDING`, independent review or an explicit tooling hold. Launch support requires a separate exact
+integration release and runtime evidence.
 
-The project can be a focused hook repository or a larger application that includes contracts, an interface, services,
-games, indexers or external dependencies. An unfamiliar mechanic is not rejected merely because it lacks a catalog
-name. Reviewers open an architecture discussion to understand its value flow, authority, trust and failure behavior.
+Concrete unsafe behavior remains a real boundary. A hard conflict requires an exact structured predicate such as an
+unauthenticated privileged action; hidden or unauthorized mint, seizure, fee, pause, upgrade or payout redirection;
+movement below an enforceable backing/liability floor; seizure of owed value; a false autonomous-exit or guaranteed-
+solvency promise; dishonest custom accounting; or participant-value randomness with an undisclosed or manipulable
+outcome. Disclosed bounded controls, authorized dispositions, managed redemption, contingent claims and invariant-
+preserving rebalancing instead receive their explicit trust/review path unless one exact predicate applies. The reviewer
+must name the behavior and preserve the legitimate outcome where possible; “unfamiliar” is not a security finding.
 
-The no-hook path stays open for proposals, including separately pinned tokens, launchers, transparent transfer taxes,
-and automatic liquidity. It is not launch-ready. Before implementation can reach `STRUCTURALLY_COMPLETE`, a simple
-project implements the standard Programmable fee-hook profile and a custom project integrates the policy into its single
-hook. Exact declared source, tests, and static package closure are required; maintainer review remains a separate
-external state. Hidden fees, sell blocks, address
-lists, wallet or transaction caps, cooldowns, and a tax bound that can consume the complete transfer remain ineligible
-for the permissionless path.
+Private repositories, local-only worktrees, ZIP-only source, pasted code, mutable branch names and deployed bytecode
+without reviewed source are outside the public transport. The builder can continue local work but cannot bind a valid
+public application until the required exact source is public and reachable. Report the transport as
+`INTEGRATION_PENDING`, keep the idea eligible and perform no public-package or external write.
 
-Local Builder reports use two authoritative axes: `readiness.design` for whether a design can enter isolated
-implementation, and `readiness.implementation` for the state of the actual implementation. The older `decision` field
-is retained for one report-v3 migration release as `decisionCompatibility: LEGACY_COMPATIBILITY_ONLY`. Its
-`PROTOTYPE_READY` value never means code exists or passed builds and tests. A clean local prototype remains
-`IN_PROGRESS`; closed repository/package structure may reach only `STRUCTURALLY_COMPLETE`. Package intake is static
-structure plus builder-declared evidence, and `sandboxVerification.state` remains `NOT_RUN`.
+Application V3 is GitHub-only. Another Git host, upload form, email, ZIP or connected private-source service is not an
+alternate V3 transport; adding one would require a separate versioned contract and threat model.
 
-### Mandatory Programmable fee
+## Application v3 contract
 
-Every new launch application uses Builder `v0.4.0`, submission standard `1.5.0`, fee policy `1.1.0`, and declares the
-root `programmableFee` policy:
+The target root artifact is `application.v3.json`, validated against
+[`public-pr-application-v3.schema.json`](../skills/programmable-v4-hook-builder/references/public-pr-application-v3.schema.json).
+It binds:
 
-- `effective total = max(builder-selected total, 10 bps)`;
-- exactly `10 bps` (`0.10%`) belongs to Programmable and the project receives the remainder;
-- the split is inclusive, so selected `3%` means `0.1% + 2.9%`, never `3.1%`;
-- the basis is actually executed gross quote-side volume for every successful swap of the canonical PoolKey, in both
-  directions and exact-input/exact-output modes;
-- LP fees, transfer taxes, router charges, app payments, and alternative pools are not substitutes; and
-- immutable owner and sole claim authority `0x4957f49620AFf3Adbbe8195a4f633E49cc93376c` may claim anytime to itself or
-  an owner-selected destination for that claim. Builders, projects, and administrators cannot mutate or claim it.
+- application id, revision and explicit lineage;
+- immutable builder and repository identities;
+- exact commit and tree for every primary or companion repository;
+- the content-addressed idea source as the only normative intent record;
+- intent, architecture and fidelity state;
+- `submission.v2.json`;
+- Fee V2 schema, derived `feeApplicability`, and a real scoped instance only when applicability is `applicable`;
+- security schema plus source-assessed security and verification records derived after source freeze;
+- review records, tests and evidence; and
+- the complete source closure for each repository.
 
-Every idea may still be submitted. Missing integration produces an architecture or changes-required review result, not
-an automatic rejection of the idea. The skill and checker do not prove live collection; that requires reviewed source,
-authorized deployment, runtime matching, lifecycle receipts, liability reconciliation, and monitoring.
+The application is always submitted as `unreviewed`. It cannot prefill a maintainer acceptance or inherit approval from
+a template, similar Registry entry, v1 application, prior commit or local test result.
 
-The target may be any positive JavaScript-safe EVM chain. Known chain ids must use their canonical network slug; an
-unknown chain opens an architecture review instead of an automatic safety rejection. This makes the project eligible to
-apply, not eligible to launch. The current Programmable launch integration is Ethereum Mainnet-only. Base, Unichain,
-Sepolia and every other chain remain behind a separate maintainer-owned integration and release gate. A committed
-official Uniswap deployment reference is useful provenance, but runtime-unverified records do not become
-Programmable-tested or launch-supported merely because they were selected.
+Application V3 derives fee applicability from the exact bound Submission V2 graph. A proposal is `unresolved` with null
+instance fields. A prototype with at least one `programmable-canonical` scope is `applicable` and binds the real instance.
+An exact zero-scope prototype is `not-applicable`, keeps every fee-instance field null and supplies no fake market,
+PoolKey, hook or fee receipt. An `unknown` execution class must resolve before prototype review and grants no exemption.
 
-## What the application pull request contains
+V2 serializes each EVM `chainId` as a canonical positive `uint256` decimal string (`"1"`, never the JSON number `1`).
+Zero, signs, whitespace, leading zeros, fractions and values above `2^256 - 1` fail closed across submission, fee and
+launch bindings.
 
-The application pull request is intentionally small. It records:
+Application V3, Registry Acceptance V3 and Launch V2 serialize `applicationRevision` as a canonical positive decimal
+string. There is no semantic `1,000,000` or JavaScript safe-integer ceiling. Historical V1 application revisions keep
+their frozen integer representation. A new V3 application starts at `"1"`; each update content-binds the prior exact
+revision and increments it by one with arbitrary-precision semantics.
 
-- the canonical public repository URL;
-- the repository's immutable GitHub numeric id;
-- the full commit SHA under review;
-- the full Git tree SHA for that commit;
-- the public check-evidence reference and digest;
-- a plain-language behavior and value-flow summary;
-- declared authorities, fees, dependencies and known limitations; and
-- source license and required third-party notices.
+A source-owned proposal may keep its security assessment null or explicitly pending/unassessed. A source-assessed
+instance and source-verification report cannot live in the source commit whose id they contain. Freeze source first,
+then derive those records into the central application package with `repositoryRef: null`; content-bind them to the
+already-existing source commit, tree and manifest.
 
-The pull request does not copy the full project into Programmable. It adds exactly six generated files under one
-`submissions/<application-id>/` directory—`application.json`, `PROPOSAL.md`, `TEST_PLAN.md`, `THREAT_MODEL.md`,
-`compatibility-report.json` and `evidence-index.json`—plus the completed pull-request description. `package` validates
-the local review package and reports deterministic hashes. `prepare-pr` independently resolves the clean pushed public
-revision and generates the six central files. Do not hand-invent fields, identifiers or tool results.
+The pull request contains only the generated v3 application package and its presentation; it does not copy the full
+project into Programmable. The exact package layout is owned by the released v3 generator and trusted Registry
+validator. Do not hand-invent filenames or use the historical six-file v1 layout for a v2 project.
 
-`PROTOTYPE_READY` in the builder repository is a legacy compatibility projection, not implementation evidence or a
-trusted public status. The builder never emits `PROTOTYPE_VALIDATED` or `SANDBOX_REBUILD_VERIFIED`. Until the trusted
-base validator can reconstruct the exact review target and all bound source/evidence blob digests, the public beta does
-not accept a central `prototype-ready` result; a hand-edited claim fails with
-`PROTOTYPE_READY_REQUIRES_TRUSTED_REVIEW_TARGET`. The official generator legitimately leaves mandatory candidate and
-maintainer gates open, so a reviewable prototype enters as `architecture-review-required`, `changes-required`, or
-`tooling-blocked`. Public review completion remains a maintainer decision and is still not product approval or launch
-authorization.
+### Source closure without a project-size allowlist
 
-A repository URL, owner/name pair, branch or tag is display information, not the review identity. The review identity is
-the repository numeric id plus the exact commit, tree and evidence.
+Each repository uses one transport:
 
-The application also binds the declared builder login to the pull request author. This prevents one GitHub user from
-submitting under another user's name, but it does not prove ownership or control of the linked source repository.
+- `inline` binds one to 4,096 exact repository-relative paths; or
+- `manifest` binds a versioned root manifest and ordered canonical-JSON-Lines fragments for a larger closure.
 
-### Pull-request path isolation
+Inline is a small-package fast path, not a preferred product class. Crossing the inline bound selects manifest
+transport. It does not make a large game, multi-service project or unfamiliar mechanism unsafe or ineligible.
 
-Any pull request that changes `submissions/**` is an application pull request. It must change only one closed
-six-file application directory and cannot include documentation, workflow, skill, plugin, eval or product-code
-changes. The sole exception is a maintainer-only update to `submissions/README.md`, which uses the separate
-`builder-maintenance` path and still cannot be mixed into an application pull request.
+The outer application repository record binds repository id/URI, commit and tree. The root manifest is bound as an
+exact blob inside that tree, repeats repository id/URI and binds every fragment. It deliberately does not embed its own
+containing commit/tree because doing so would create a Git self-reference.
 
-Programmable maintainers update the canonical skill, trusted validator, generated plugin, eval suite and builder
-documentation through a separate `builder-maintenance` pull request. The trusted `pull_request_target` job uses only
-base-branch code to classify that change and never runs candidate validators, generators, tests, workflows or scripts.
-Candidate maintenance checks run in the repository's ordinary read-only pull-request CI and still require maintainer
-review before merge.
+The verifier checks every fragment and source entry against raw Git objects: path order, uniqueness, role, mode, blob,
+size, SHA-256, ranges, counts and closure digest. It does not follow symlinks or execute candidate code, hooks, filters,
+submodules or build scripts. Bounded resource limits may produce a content-addressed split-review hold. A tooling hold
+blocks that verification run, not the product idea.
+
+Coverage remains repository-local. A path in one companion cannot satisfy a submission, fee, security or evidence
+binding owned by another repository.
+
+Manifest V1 supports SHA-1 Git object databases: its Git object fields are 40-hex ids, separate SHA-256 fields bind
+content bytes, and committed paths must be UTF-8. A Git SHA-256 object database or non-UTF-8 path is
+`INTEGRATION_PENDING` for current V3 transport with the idea still `ELIGIBLE_FOR_REVIEW`; the generator does not write.
+A UTF-8 path above the current 16 KiB byte budget reports `HOLD_SPLIT_REVIEW` and `tooling-split-review`. Other object
+formats or path encodings require a new versioned closure contract and verifier; do not widen V1 in place.
+
+## Programmable Fee V2 for canonical scopes
+
+Every `programmable-canonical` execution scope owes exactly 10 bps (`0.10%`) of executed gross quote-side swap or fill
+volume to the immutable fee owner and sole claim authority:
+
+```text
+0x4957f49620AFf3Adbbe8195a4f633E49cc93376c
+```
+
+The builder-selected total charge is inclusive. Selected 3% means 0.1% for Programmable and 2.9% for the project,
+never 3.1%; a zero project fee still produces the 0.1% share. LP fees, transfer taxes, router charges, app payments and
+unrelated pools are not substitutes.
+
+Markets declared `external` or `non-launchable` bind no Programmable fee scope, but that label cannot disguise an
+execution actually performed by Programmable. Fee V2 supports standard AMM, synchronous custom zero-AMM, async
+fill/batch and custom-reviewed profiles. Each profile needs exact implementation, funding, rounding, claim and
+conformance evidence; the bundled standard-AMM kernel does not prove the others.
+
+The separate administration wallet is:
+
+```text
+0x2Bb333d48DFAF1596D9036671d2E43168994249E
+```
+
+Administration and fee ownership remain independent. The admin cannot claim, redirect, sweep or replace the
+Programmable liability.
 
 ## Builder journey
 
-The public command vocabulary is:
+### 1. Capture and build
 
-```text
-doctor -> scaffold -> check -> package -> prepare-pr
+Give any compatible coding agent the Programmable v4 Builder skill and the idea or repository. For a fresh idea, use
+the local open-world `init` operation in dry-run mode first, review the unconfirmed bootstrap proposal set, then
+explicitly write it. That set is not a project file-count limit. Templates can accelerate the build but cannot redefine
+the idea.
+
+Confirm only material choices, create the open project graph, implement the complete mechanism and trace each material
+intent fact through architecture, source, tests and evidence. Keep planned, blocked, declared and executed checks
+separate.
+
+### 2. Validate locally
+
+Run the released open-world validator on the complete package. It performs no network request, candidate-code
+execution, GitHub write, review decision or approval. A schema-valid package is structural evidence only.
+
+Layer security observations across intent, configuration, exact source and runtime. An absent scanner match remains
+`unknown`. An adverse automated finding must name its rule, location, observed evidence and remediation. The builder
+may attach counter-evidence but cannot waive its own finding.
+
+### 3. Prepare application v3
+
+First keep `applicationRevision` and `lineage` absent from the canonical revision draft, then derive them from exact
+current source plus the highest eligible Registry/open-draft predecessor:
+
+```bash
+REVISION_DRAFT="/absolute/outside-source/application-v3-draft.json"
+REVISION_ROOT="/absolute/outside-source/prepared-revision"
+node "$SKILL_ROOT/scripts/cli.mjs" open-world prepare-revision "$REVISION_DRAFT" \
+  --source-root primary="$REPOSITORY_ROOT" \
+  --output "$REVISION_ROOT" \
+  --write
 ```
 
-The released tooling defines the exact invocation. This document intentionally does not invent flags that have not
-been frozen and tested.
+Repeat `--source-root` for every current repository. Preview is the default. `prepare-revision` uses authenticated
+GET-only GitHub requests and exact local Git replay; it performs no GitHub write and creates only a new output root when
+`--write` is explicit. Then use the resulting `$REVISION_ROOT/application.v3.json` with the exact inputs shown by
+`cli.mjs open-world application --help`. `application` is a separate zero-network operation that builds the complete
+source-assessed package, refuses an existing or contained destination and writes only after explicit `--write`.
 
-### 1. Start in your public project repository
+Neither step publishes source, pushes a branch, opens a pull request or proves that the Registry verified the remote
+Git objects. Output roots must remain outside every input/source worktree, linked-worktree Git directory, common Git
+directory and object store. Until the v3 generator and trusted intake are activated together, describe the result as
+candidate-only.
 
-Describe what the project should do in plain language, either to a compatible coding agent or directly in the project.
-If a repository already exists, keep its architecture and inspect it before changing it. Do not rebuild a working
-project merely to fit a template.
+Every source, closure, evidence or recheck change requires another `prepare-revision` pass before rebuilding the
+package. Same-numeric-repository history may be replayed from the current object database. Use repeatable
+`--predecessor-source-root id=/exact/old/git-root` only for a selected removed or replaced historical repository whose
+objects are otherwise unavailable, including a removed inline companion in mixed manifest/inline history. Missing old
+objects are integration-pending; mismatched old objects are invalid.
 
-### 2. Run `doctor`
+### 4. Plan and confirm the GitHub write
 
-`doctor` checks local readiness. It reports actionable blockers such as a missing Git repository, unsupported GitHub
-remote, unpushed revision, unavailable required tools, missing exact-object Git capability or a dirty source state. Live public reachability remains
-`notChecked` until `prepare-pr`. It does not create an application or claim that the project passed review.
+After trusted V3 intake is activated, use only `cli.mjs open-world submit`, `update`, and `status`; the top-level
+application commands remain historical V1 interfaces. The first V3 submission or update call is a read-only
+authenticated plan. It identifies the target, application revision, branch or pull-request action, exact bytes, every
+external write and one current confirmation digest. Status remains read-only.
 
-Before build or package checks, the agent inspects pinned dependency files and materializes the declared dependency
-closure. A clean clone can still need a lockfile-driven install before OpenZeppelin, generated bindings, Foundry
-libraries or other imports exist locally. Inspect install scripts first and use an isolated environment without
-credentials for untrusted code. `doctor` does not claim that project dependencies are installed.
+The canonical public target is
+[`0xprogrammable/programmable-registry:main`](https://github.com/0xprogrammable/programmable-registry). The confirmed
+client creates or updates one draft application pull request there from the builder's fork; no application is submitted
+to the Website repository or the general product repository.
 
-### 3. Use `scaffold` only when needed
+Review that plan. Only after explicit authorization may the client execute those exact writes with that exact digest.
+It must recompute the plan immediately before execution and fail closed if source, package, identity, intake state,
+base revision or requested writes changed.
 
-`scaffold` creates the minimum local builder structure for a new idea. Existing projects skip unnecessary scaffolding.
-Generated files are a starting point, not reviewed code.
+The confirmed client may create or update the draft application pull request. It never marks it ready, approves,
+merges, deploys, signs, launches, changes an account or moves funds.
 
-### 4. Run `check`
+### 5. Review and repair
 
-`check` evaluates the current exact project revision against the published deterministic and semantic requirements. It
-records findings, missing evidence and tooling blockers. A green local result means only that the checks completed for
-that revision; it is not a security review or maintainer decision.
-
-### 5. Run `package`
-
-`package` validates the complete local review package, declared source closure, hashes and evidence without executing
-project code. It performs no public GitHub resolution and makes no pushed-commit claim.
-
-Run `check` with `--repository-root`; that is the complete repository-aware preflight and the report includes closed
-`closure.status` diagnostics. An unsupported language, alias, bundler glob, runtime loader, non-root-Foundry Solidity
-profile, or companion repository may proceed as a proposal under `architecture-review-required`. The same incomplete
-closure blocks `readiness.implementation: STRUCTURALLY_COMPLETE`; independent design blockers can still produce
-`changes-required`. Objective
-source-binding failures such as a wrong or missing literal relative path,
-symlink, Gitlink, unmaterialized LFS object, or exceeded limit remain hard errors.
-
-### 6. Run `prepare-pr`
-
-`prepare-pr` requires a clean pushed revision, independently resolves its public GitHub repository id, commit and tree,
-and generates the small six-file Programmable application record plus a copy-ready pull-request body. It does not
-publish source, push a branch or open a pull request without the builder's explicit confirmation.
-
-When using `--output-dir`, create its parent first, keep it outside the builder repository, avoid symbolic-link aliases,
-and pass the canonical real path. On macOS, use `/private/tmp/...` instead of the `/tmp` alias.
-
-Projects may span the primary repository plus up to eight explicitly declared public companion repositories. Each
-companion is pinned to a full commit and independently resolved; branches and repository names are not authority. The
-output clearly separates the builder's `sourceHead` from the observed central `main` target. New applications start at
-revision 1. A merged revision n authorizes one pending n+1 update when primary or companion source authority differs
-from main; further commits in that same open pull request remain on the pending revision until merge.
-
-Companion manifest v2 removes the blanket incomplete-closure result for a supported npm game, app, or service only
-after `prepare-pr` verifies the declared numeric repository id, commit, root tree, source/test/runtime/build paths,
-static module graph, complete package-lock v3 dependency closure and a successful Actions run of the closed
-install/build/test workflow bound to that exact revision. Its receipt is preserved in central `application.json` for
-downstream authority checks. Manifest v1 remains proposal-compatible and enters architecture review. A v2 closure
-result is not an audit or approval; see the
-canonical `references/companion-manifests.md` contract in the installed skill.
-
-The source check supports broad repositories without spending one anonymous GitHub API call per declared file. It
-binds the public repository, commit and direct root-tree object first, then reads all declared Git objects in one
-bounded anonymous, no-checkout Git batch per repository. Evidence blobs are already declared primary-source paths, so
-the central check retains only those exact bytes and reuses them for evidence binding instead of walking GitHub REST or
-fetching the repository again. Candidate hooks, Git configuration, filters, submodules and project code are never
-executed. Git 2.49.0 or newer plus `git backfill` is required. A missing safe Git capability is reported as a tooling
-blocker; it is not turned into a claim that an unusual project is unsafe.
-
-Before the central workflow downloads any candidate Git object, it reads the intake state from the exact trusted base
-revision. When intake is closed, bounded GitHub pull-request path metadata distinguishes an application from legacy or
-builder-maintenance work; application data stops before Git fetch. The exact base-repository PR merge is then fetched
-bloblessly under a 32 MiB per-file/pack limit, 64 MiB object-store limit, 64 KiB output limit, 30-second wall limit,
-20-second CPU limit and, on the Linux production runner, a 512 MiB address-space limit. The complete Git process group
-is terminated on failure. The central read credential is removed before any external project source is resolved.
-
-The anonymous REST control plane admits at most 48 source requests. The transport reserves the remaining 12 requests
-of its 60-request physical ceiling for bounded retries; with 125 ms pacing, the worst admitted scheduling and retry
-delay is 19.375 seconds inside the single 30-second source deadline. Evidence adds no REST requests on the production
-path. Provider throttling, exhausted shared-IP quota, an incomplete REST fallback tree, or missing exact-Git tooling is
-a system/tooling blocker, never evidence that a project is unsafe.
-
-A worst-case application can consume the complete 60-request anonymous GitHub allowance available to one runner IP,
-so concurrent or abusive pull requests can temporarily make otherwise valid checks unavailable. Maintainers monitor
-`public-intake` system-block codes in GitHub Actions, do not spin in unbounded retries, and rerun once after the
-provider reset. Repeated quota failures move intake to `paused-new` or `paused-all` while the queue and public history
-remain intact. This is an explicit beta availability limit, not a project finding or rejection.
-
-Accepted source remains hard-capped at 2 MB per file and 20 MB per repository. Exact-Git runs in a detached process
-group: the leader and helpers inherit a 64 MiB regular-file limit and a 20 CPU-second limit, Linux additionally applies
-a 512 MiB address-space limit, and output plus aggregate temporary storage stay bounded. The 64 MiB aggregate
-repository guard is process-monitored rather than a native filesystem quota, so multiple fast writes can briefly
-overshoot it; any limit failure kills the complete process group and the temporary repository is removed.
-
-Those limits remain strict for code, tests, shaders, WebAssembly and build inputs. Large non-executable models, audio,
-textures, levels, maps, tiles and media use the separate runtime-assets v1 manifest. It records the repository path,
-exact Git blob, SHA-256 where verifiable, MIME, size, loading behavior, license and provenance. `prepare-pr` binds the
-small manifest and its blob declarations to the exact public commit and root tree without fetching or executing the
-assets. Unmaterialized LFS objects and external HTTPS/IPFS resources enter attributable asset review; that status is
-not an unsafe-code conclusion and does not alone block `readiness.design: DESIGN_READY`.
-
-### 7. Open one draft pull request
-
-Open a draft pull request against `0xprogrammable/programmable:main` with a title beginning `[Builder Beta]`. Complete
-the pull-request template and keep the referenced project commit reachable. One pull request represents one public
-project and its revision history during the beta review.
-
-When the record and evidence are ready, mark the pull request ready for review.
-
-## GitHub status model
-
-The beta uses ordinary GitHub state. It does not invent an off-platform application status.
-
-| GitHub state | Beta meaning |
-| --- | --- |
-| Draft pull request | The builder is preparing the record or answering early architecture questions. |
-| Open and ready for review | The latest bound revision is queued for review. |
-| Review in progress | A reviewer is checking the exact repository revision and evidence. |
-| Architecture discussion | An unfamiliar or unresolved mechanism needs design clarification; this is not a rejection. |
-| Changes requested | One or more objective findings need repair or stronger evidence. |
-| Application record merged | The public beta review record for the exact bound revision is complete. This is not product approval or launch authorization. |
-| Pull request closed | The application stopped without a merged beta record. The closing comment states the public reason and possible next step. |
-
-GitHub's native review and branch-protection signals are repository workflow controls only. They do not certify the
-project or change any deployment, provider or product state.
-
-### Intake capacity and pause state
-
-Programmable maintainers (`@0xprogrammable`) own the GitHub review queue. The beta has no review-time or response-time
-promise. Its canonical state is
-[`intake-status.json`](https://github.com/0xprogrammable/programmable/blob/main/docs/builder/intake-status.json), read from
-the trusted `main` revision:
-
-| Intake state | Behavior |
-| --- | --- |
-| `prelaunch` | Applications are not open. |
-| `open` | New application ids and updates may run the trusted intake check. |
-| `paused-new` | Applications already present on `main` and only exact trusted unmerged PR/application continuations may proceed; every other new id is blocked. |
-| `paused-all` | All application changes are temporarily blocked; existing public history remains visible. |
-
-Only a maintainer-reviewed change on `main` can pause or resume intake. An application pull request cannot change this
-state. The trusted validator reads the exact base-revision blob, never the candidate's copy. A missing, noncanonical,
-malformed or unsupported trusted status blocks the intake check as an operational system error. A pause is an
-operational limit, not a rejection, approval or promised queue position. `prelaunch` and `paused-all` stop application
-Git data before fetch. In `paused-new`, an id already present as a closed six-file package on the trusted base may
-update. A still-unmerged new id proceeds only when `continuingPullRequests` contains its exact PR number, application
-id, immutable builder GitHub user id, primary numeric repository id, and ordered companion numeric-id vector. The
-PR/id pair is checked from bounded GitHub changed-file metadata before candidate Git fetch. Builder and repository
-identity are checked again after bounded `application.json` hydration and during final validation. Renames, deletions,
-mixed paths, a different PR, a different id, or source-lineage slot laundering fail closed.
-
-Maintainers populate that bounded canonical list in the same reviewed `main` commit that activates the pause. They
-record only open applications intended to continue; the list is never discovered from candidate content. It is empty
-in `prelaunch`, `open`, and `paused-all`, may be empty in `paused-new`, and is removed when intake reopens. Removing a
-record stops its next workflow run without deleting GitHub history. Builder-maintenance and unrelated legacy pull
-requests remain on their existing CI path without loading candidate application data.
-
-Before changing the state to `open`, maintainers record live GitHub evidence that `main` requires the trusted
-`public-intake` check, normal security and Foundry checks, CODEOWNER review, resolved conversations, and either a
-strictly up-to-date branch or a merge queue. For non-administrator Builder pull requests, these rules force a second
-pull request for the same application to rerun against the first merged revision instead of overwriting history from a
-stale green check. Local configuration or a documented target is not evidence that the live repository is protected.
-
-Repository administrators remain the GitHub trust root and can change or bypass repository settings. Programmable's
-solo-maintainer release path retains the administrator exception for owner-authored maintenance that GitHub does not
-allow the same account to self-approve. It must never be used for a Builder application. Every application needs the
-visible trusted checks, latest-base result and maintainer review; applicants receive no bypass authority.
-
-## Review and repair loop
-
-Review applies only to the exact repository numeric id, commit, tree and evidence named by the latest application
-record.
-
+Review applies only to the exact repository ids, commits, trees, source closure and evidence in the latest application.
 An objective finding includes:
 
-- the exact affected revision and source or evidence location;
-- the observed fact and reproducible evidence;
-- the published rule or trust boundary involved;
-- the practical impact;
-- the repair or missing-evidence path; and
+- exact application revision and artifact/source location;
+- observed fact and reproducible evidence;
+- published rule or trust boundary;
+- practical impact;
+- repair or missing-evidence path; and
 - the check that must be rerun.
 
-A reviewer does not reject a project because its mechanic is novel. When intent, authority, value flow, external trust
-or failure behavior is unclear, the reviewer starts an architecture discussion and asks the smallest question that can
-resolve it.
+Unfamiliar or conflicting behavior can enter `INDEPENDENT_REVIEW` or `HOLD` without being labelled unsafe. A later
+Registry/maintainer disposition may confirm, remediate, mark not applicable or identify a false positive only when it
+content-binds the exact application revision, finding, evidence and accountable reviewer. It preserves the original
+finding and never carries into a new commit.
 
-Automated public-claim checks catch known misleading audit, safety, endorsement, deployment and availability wording,
-including common obfuscation. They are a heuristic, not proof that free text is true or complete. A maintainer must read
-the rendered application and evidence before recording a review conclusion.
+When a builder changes the project, push a new commit, rerun invalidated checks, regenerate the v2 package and v3
+application, then prepare and explicitly confirm an update to the same review thread. Do not force-push or delete exact
+revisions that remain part of the review history.
 
-If the builder changes the project:
+A merged review thread is not canonical acceptance. Acceptance requires a Registry-controlled record that binds the
+exact application, source, submission, fee applicability and conditional Fee V2 instance, security assessment,
+verification reports, findings and maintainer decision. Registry Acceptance V3 additionally requires a fresh external
+review projection bound to the approved head's exact raw-Git package inventory; stored acceptance bytes never authenticate
+themselves. V3 permits `applicable` with a real instance or exact zero-scope
+`not-applicable` with null instance fields. The accepted record omits the commit/tree that would
+contain itself; the later launch input binds the exact Registry repository, commit, tree, path, blob and digest. Before
+that record exists, its nullable launch binding is null and launch preparation remains `UNRESOLVED` and `NOT_AUTHORIZED`.
+Launch Bundle V2 is a separate canonical fee-bearing contract: a zero-scope acceptance cannot fabricate the missing fee
+instance and remains a launch conflict.
 
-1. commit and push the change in the same public project repository;
-2. rerun `check` and `package` for the new exact commit;
-3. rerun `prepare-pr`, replace the current self-consistent local draft with `--replace-draft`, and update the same
-   Programmable pull request (`--replace-existing` is only for creating the first pending update from merged main); and
-4. add a comment summarizing the repair and the superseded revision.
+After activation, an authenticated approval for that exact Application V3 revision can continue to the Website Custom
+Launcher. The same GitHub subject signs in, the service re-resolves the approved application and source SHA, and the
+Website rechecks current approval, source, rights, policy, compiler, launch specification, release, chain, and incident
+state before it derives a short-lived launch entitlement. Any source change makes the approval stale and starts a new
+review target. A PR review, label, comment, merge, or caller-supplied status never unlocks launch.
 
-The new commit is a new review target, but the open application stays at revision 1 or main n+1 until merge. Findings
-and conclusions about the previous commit remain in GitHub history but do not automatically apply to the new target.
-Avoid force-pushing or deleting referenced commits while review is open; preserving the commit and review history keeps
-the audit trail understandable.
+## Status model
 
-## Reviewer journey
+GitHub state is transport, not one universal product status:
 
-Reviewers use this minimum sequence:
+| Axis | Examples | Does not prove |
+| --- | --- | --- |
+| Pull request | draft, open, checks running, changes requested, merged, closed | technical acceptance or launch |
+| Design | unresolved, changes required, design ready | implementation exists |
+| Implementation | not started, in progress, structurally complete | audit or deployment |
+| Independent review | required, hold, disposition recorded, accepted revision | launch authority |
+| Authenticated approval | absent, approved exact revision, stale or revoked | wallet signature, deployment or launch |
+| Website launch handoff | pending activation, details required, permit ready, blocked or consumed | transaction confirmation |
+| Launch preparation | matched, unresolved, conflict; Builder-local output is not authorized | signature or transaction |
+| Runtime | not deployed, deployed/verified, monitored | provider availability or safety |
+| Availability | not indexed, indexed, quoted, tradable | endorsement or absence of risk |
 
-1. Confirm that the pull request is a small beta record and that the public repository, numeric id, commit and tree are
-   reachable and consistent.
-2. Confirm that the evidence was produced for the same exact revision using trusted beta tooling.
-3. Read the project summary, value flows, authorities, mandatory Programmable fee record, project fees, dependencies,
-   failure behavior and known limitations.
-4. Run any deeper checks against the bound revision in an isolated environment without credentials, signing access or
-   repository write permission.
-5. Open an architecture discussion for an unknown mechanic, or request changes with an objective finding and repair
-   path.
-6. After a new commit, re-resolve the identifiers and rerun every invalidated check before recording a new conclusion.
-7. Immediately before merge, rerun the trusted intake against the latest central commit so every declared external
-   source and evidence byte is fetched and bound again.
-8. Merge the small application record only when the public beta review record is complete, or close the pull request
-   with a factual reason and next step.
+The trusted Registry intake state is separate and must be read from its exact current base revision. `prelaunch`,
+`paused-new` or `paused-all` are operational states, not a rejection of the project. Do not hard-code or infer `open`
+from this document.
 
-The final reviewer comment names the exact repository id, commit, tree and evidence it covers. It must also say that the
-decision is limited to the Public GitHub PR Builder Beta and is not an audit, product approval, deployment decision,
-provider statement or Uniswap endorsement.
+Repository administrators remain part of GitHub's trust boundary. Application authors receive no bypass authority.
+Trusted intake must use base-branch validator code, isolate application paths and never execute contributor scripts
+with credentials, signing access or repository write permission.
 
 ## Public data and privacy
 
-The project repository, application pull request, commit history, review comments and beta evidence are public and
-non-confidential. Include only information you intend to publish.
+The project repositories, application pull request, commits, evidence and review comments are public. Include only
+information intended for publication.
+
+Every raw JSON input and manifest line is decoded with fatal UTF-8 and checked for duplicate decoded keys before the
+privacy scanner, hash comparison or semantic validator sees it. Matching duplicates, conflicting duplicates and
+Unicode-escaped equivalents all fail closed, so a later visible value cannot shadow an earlier secret or authority.
+The scanner never echoes the secret value in its public error.
 
 Never include:
 
 - private keys, seed phrases, wallet files or signing material;
 - passwords, access tokens, API keys, cookies or credentials;
-- private RPC URLs, database URLs or environment files;
-- unrelated personal information or private customer data;
+- private RPC/database URLs or environment files;
+- unrelated personal or customer data;
 - confidential third-party source or documents; or
 - an unpatched vulnerability or exploit instructions.
 
-Use a GitHub handle for public contact unless another public contact is necessary. The beta does not need a wallet
-address, legal identity, private repository permission or GitHub App installation.
+Use a GitHub handle for contact. The beta does not need a wallet address, legal identity, private repository permission
+or GitHub App installation.
 
-## Private security reports
+Each intentionally public financial identifier may remain visible only through an exact top-level
+`publicDisclosureAttestations[]` record. It binds the candidate's RFC 6901 string pointer and SHA-256 substring digest,
+the same application id and owner-stated purpose, plus exactly one content-bound
+`public-disclosure-authorization` review record. The raw identifier is not duplicated in the attestation. It remains
+`human-review-required` and proves neither account ownership nor publication approval. A wrong, unused or blanket
+attestation stays a privacy hold; private keys, seed phrases, passwords, credentials and API/auth tokens are never
+attestable.
 
-Do not describe an unpatched vulnerability in the application pull request, a public issue or a review comment. Use
-[GitHub private vulnerability reporting](https://github.com/0xprogrammable/programmable-v4-builder/security/advisories/new) as
-described in [`SECURITY.md`](../SECURITY.md).
+Report an unpatched vulnerability through
+[GitHub private vulnerability reporting](https://github.com/0xprogrammable/programmable-v4-builder/security/advisories/new)
+as described in [`SECURITY.md`](../SECURITY.md). Stop public technical discussion until it is safe to resume.
 
-If public review uncovers a potentially exploitable issue, stop the public technical discussion. A maintainer may post a
-minimal public note that review is paused and move the details to the private report. The public thread can resume after
-the issue is safe to discuss.
+## Historical v1 applications
 
-## What a completed beta review does not mean
+Keep exact v1 source revisions, six-file application directories, pull requests, receipts, validator results and
+review conclusions immutable. A v2 migration creates a separate revision with explicit lineage. It marks unavailable
+original intent as legacy-unconfirmed, leaves fidelity unassessed, creates no fabricated Fee V2 instance and inherits
+no approval.
 
-A draft, open, reviewed, merged or closed application pull request does not mean that the project is:
+Do not rename `application.json`, expand a v1 package in place, reinterpret Fee V1 evidence as Fee V2 conformance or
+apply v3 reviewer dispositions to a historical revision.
+
+## What a completed review does not mean
+
+A draft, open, reviewed, merged or closed application pull request does not mean the project is:
 
 - audited, safe, rug-free or free of vulnerabilities;
-- accepted as a Programmable model;
-- deployed, launchable, tradable or available;
-- supported, routed or indexed by any provider;
+- approved to sign, deploy or launch;
+- deployed, source/runtime matched, monitored, indexed, quoted or tradable;
+- supported by any wallet, interface, aggregator, provider or listing service;
 - endorsed by Uniswap Labs, Uniswap Foundation or another third party; or
-- entitled to project fees, revenue, grants or future integration merely because it was submitted.
+- entitled to fees, revenue, grants or future integration merely because it was submitted.
 
-Any later candidate selection, contract review, integration, deployment, source verification, runtime verification,
-provider work or public release is a separate process with its own exact evidence.
+Acceptance, launch authorization, deployment, verification, indexing and provider activation are separate processes
+with their own exact evidence.
 
 ## Honest release copy
 
-Use the following copy only after the beta tooling, trusted intake checks and maintainer review path are active on the
-public repository. Before that point, describe the beta as upcoming rather than open.
+Until v3 trusted intake is active, say:
 
-### Short description
+> Programmable's open-world v2 Builder and public application v3 are in release-candidate testing. They are not yet an
+> open application or launch claim.
 
-> Bring an idea or a public GitHub project. The Programmable Builder helps your coding agent check one exact revision,
-> prepare a small public application PR and work through evidence-based review findings.
+Use launch copy only after the exact public release, trusted intake, protected workflow and live canary are verified:
 
-### Launch announcement
+> Describe your Programmable project to your coding agent or bring an existing public repository—including a Uniswap v4
+> hook or token, app, game, service, or standalone settlement. The Builder preserves the idea, helps build and check the
+> complete project, binds one exact GitHub revision and prepares a public application for evidence-based review. New
+> mechanics enter architecture review instead of a preset-model rejection.
+> Review is not an audit, deployment, launch, provider-support or Uniswap-endorsement claim.
 
-> **The Programmable Public GitHub PR Builder Beta is open.** Describe your Uniswap v4 project to your coding agent, or
-> bring an existing public repository. Use `doctor`, `scaffold`, `check`, `package` and `prepare-pr` to bind one exact
-> public GitHub revision and open a small application pull request. Unknown mechanics enter architecture discussion;
-> objective findings include evidence and a repair path. The project stays in your repository, and GitHub keeps the
-> public review history. New launch applications declare the fixed 10 bps Programmable canonical-pool volume fee.
-> Beta review is not an audit, product approval, deployment, proof of live fee collection, provider support or Uniswap
-> endorsement.
-
-### Compact social copy
-
-> Your idea. Your public repo. One exact revision. The Programmable Public GitHub PR Builder Beta helps coding agents
-> prepare a checkable Uniswap v4 project and a small public review PR. Review findings come with evidence and a repair
-> path. No audit, launch or endorsement claim.
-
-Do not publish copy that says the agent “does everything,” that applications are approved, or that a beta-reviewed
-project can launch a coin. A factual shorthand is: **Your agent handles the build-and-repair loop; GitHub keeps the
-exact public review trail.**
+Do not say the agent “does everything,” that every mechanism is safe, that an application is automatically approved or
+that a reviewed project is automatically launchable. A factual shorthand before activation is: **Your agent handles
+the build-and-repair loop; GitHub keeps the exact public review trail; the Website launch handoff is pending
+activation.** After activation and verification of the exact public release, it may become: **Your agent handles the
+build-and-repair loop, GitHub shows the exact-revision status, and an unchanged approved revision continues to the
+Website Custom Launcher.**
 
 ## Related documents
 
-- [Programmable v4 Builder](../README.md)
-- [Builder submission directory](https://github.com/0xprogrammable/programmable/tree/main/submissions)
+- [Open-world v2 architecture](OPEN_WORLD_V2_ARCHITECTURE.md)
+- [Open-world v2 release gates](OPEN_WORLD_V2_RELEASE_GATES.md)
 - [Use the agent skill](AGENT_SKILL.md)
+- [Platform boundary](PLATFORM_INTEGRATION.md)
 - [Security reporting](../SECURITY.md)
 - [Contribution guide](../CONTRIBUTING.md)

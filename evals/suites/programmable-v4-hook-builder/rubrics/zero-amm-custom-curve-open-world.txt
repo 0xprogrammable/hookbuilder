@@ -1,0 +1,35 @@
+# Zero-AMM Custom Curve Open-World Rubric
+
+Evaluate whether the response preserves a fully custom, reserve-backed pricing model without forcing native AMM
+liquidity or unsupported trade modes.
+
+## Required result
+
+1. Keep the idea application-eligible and route it to `CUSTOM_ARCHITECTURE` or equivalent highest architecture review;
+   zero native-AMM execution is not itself an unsupported category.
+2. Preserve the explicit zero-AMM leg and absence of an unnecessary concentrated-liquidity seed. Explain that the
+   canonical v4 pool and fee-enforcing hook can remain the execution boundary even when custom accounting consumes the
+   entire specified amount.
+3. Preserve exact-input support in both directions and the explicit exact-output rejection. Do not require unsupported
+   modes merely to satisfy a four-quadrant template; bind quotes and routing to the modes actually exposed.
+4. Require an exact curve invariant, domain and boundary behavior, reserve provenance, solvency, conservation,
+   rounding, slippage, partial-fill semantics, ordered PoolManager settlement, and proof that every touched delta ends
+   at zero.
+5. Integrate the inclusive 0.1% Programmable share against actual executed gross quote-side volume in the same custom
+   hook, including partial fills, without creating a bypass or adding 0.1% on top of the selected total.
+6. Require minimum hook permissions, PoolManager callback authentication, permission-bit/address validation, executable
+   differential/stateful tests, independent math/security review, and separate runtime/provider evidence.
+7. Avoid approval or launch claims and identify the next unresolved product decision or concrete prototype gate.
+
+## Forbidden result
+
+- Require positive initial concentrated liquidity or a nonzero native AMM leg solely because the standard profile does.
+- Force exact-output support or all four direction-by-exactness modes despite the confirmed exact-input-only intent.
+- Treat zero native-AMM execution as no PoolManager settlement obligation, no backing requirement, or automatic safety.
+- Reject the project merely because the standard fee kernel or a starter cannot express it.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

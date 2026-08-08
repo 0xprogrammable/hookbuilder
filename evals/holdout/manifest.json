@@ -1,0 +1,152 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "programmable-e2e-sealed-holdout",
+  "devCaseCount": 47,
+  "holdoutCaseCount": 24,
+  "minimumRepetitions": 3,
+  "novelMinimumPassBps": 8500,
+  "hardGateCaseIds": [
+    "hc-9e87089c8effb4c449813f66",
+    "hc-e1b85d80d0e270e4cc8963da",
+    "hc-0106c0aae2a65eeb1c35e488",
+    "hc-d82f7573e91b4ce4f1789cd7",
+    "hc-b0ae75fd49e4e414edecf6d8",
+    "hc-24ea80d5f2284b14139e822e",
+    "hc-08c1e8f8b889002b973801a7",
+    "hc-8369aec1c981de5188b76d37"
+  ],
+  "tierProfiles": [
+    {
+      "id": "frontier",
+      "modelEnv": "PROGRAMMABLE_E2E_FRONTIER_MODEL",
+      "standardMinimumPassBps": 9500
+    },
+    {
+      "id": "mid",
+      "modelEnv": "PROGRAMMABLE_E2E_MID_MODEL",
+      "standardMinimumPassBps": 9500
+    },
+    {
+      "id": "small",
+      "modelEnv": "PROGRAMMABLE_E2E_SMALL_MODEL",
+      "standardMinimumPassBps": 9000
+    }
+  ],
+  "adapterContract": {
+    "arguments": [
+      "installedSkillPath",
+      "naturalPrompt"
+    ],
+    "resultPath": ".programmable-e2e/agent-result.json"
+  },
+  "judgeContract": {
+    "arguments": [
+      "evaluationRequestPath",
+      "judgeResultPath"
+    ],
+    "requestPath": "judge-request.json",
+    "resultPath": "judge-result.json",
+    "independentModelEnv": "PROGRAMMABLE_E2E_JUDGE_MODEL"
+  },
+  "repositoryContract": {
+    "path": ".programmable-e2e/repository-contract.json",
+    "schemaVersion": "1.0.0",
+    "freshCheckout": "local-git-clone",
+    "rpcEnvironment": "PROGRAMMABLE_E2E_FORK_RPC_PROXY_URL",
+    "artifactIds": [
+      "intent",
+      "architecture",
+      "deploymentManifest",
+      "submission"
+    ],
+    "stageIds": [
+      "install",
+      "compile",
+      "typecheck",
+      "lint",
+      "unit",
+      "negative",
+      "fuzz",
+      "invariant",
+      "fork",
+      "gas",
+      "code-size",
+      "deployment",
+      "submission"
+    ]
+  },
+  "efficiencyContract": {
+    "coldStartContextTargetTokens": 4000,
+    "standardArchitectureContextTargetTokens": 8000,
+    "assistedRunsCountAsPass": false,
+    "escalatedRunsCountAsPass": false
+  },
+  "coverageContract": {
+    "languages": [
+      "de",
+      "en"
+    ],
+    "categories": [
+      "async-swap",
+      "basic-v4",
+      "composed-game",
+      "custom-accounting",
+      "custom-curve",
+      "hook-owned-liquidity",
+      "nft-rwa",
+      "no-pool-hybrid",
+      "oracle",
+      "prediction-market",
+      "repair-manipulated",
+      "treasury",
+      "unknown-holdout",
+      "upgrade-migration"
+    ],
+    "mutations": [
+      "delta-sign",
+      "fee-bypass",
+      "intent-drift",
+      "noop-rug",
+      "open-deltas",
+      "oracle-failure",
+      "permission-bits",
+      "poolmanager-auth",
+      "rounding",
+      "source-runtime-drift",
+      "unbound-admin"
+    ],
+    "variants": [
+      "adversarial",
+      "colloquial",
+      "irrelevant-change",
+      "missing-details",
+      "naive",
+      "no-hook",
+      "paraphrase",
+      "repair",
+      "typo",
+      "unusual-combination"
+    ]
+  },
+  "bundleFiles": [
+    {
+      "path": "bundles/foundations.json",
+      "sha256": "40029271ed4f5a2503809a7b60a15bd37e99765dd7841ab13c49ae2b28a2f808"
+    },
+    {
+      "path": "bundles/novelty.json",
+      "sha256": "f6ff3738013966bdc9df5e4698b4c32bad2328a5f1cf4dbfcfbc664c3a56489c"
+    },
+    {
+      "path": "bundles/repairs.json",
+      "sha256": "6fa64a6919c32015d03b43f75c4f109a1bf218d0789df939530f8bcdd64cd048"
+    },
+    {
+      "path": "bundles/systems.json",
+      "sha256": "86badcdfd647b92f0af14f542845c8594fe83fbf2997af2da58206a0ad3345e8"
+    }
+  ],
+  "publicCorpusSha256": "8531f0dc8221b894b77486f8c5663f67d56fb73f0ee707b88bb9af2c286839be",
+  "holdoutCorpusSha256": "a5ff5c220b2d9fe943fe5d453efa199856c4e2ff0e278bc5b3cfec341e9f1d9b",
+  "combinedCorpusSha256": "cc320a4ba6ecb1d269c1821ad94b6d315d8c3bf712256cc032abea479c7b6a8c"
+}

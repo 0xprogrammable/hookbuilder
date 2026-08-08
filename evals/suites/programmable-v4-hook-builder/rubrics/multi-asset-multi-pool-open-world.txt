@@ -1,0 +1,35 @@
+# Multi-Asset Multi-Pool Open-World Rubric
+
+Evaluate whether the response preserves a coupled multi-asset product without pretending that the current single-pool
+launch profile already supports it.
+
+## Required result
+
+1. Preserve RED, BLUE, their joint creation, both ETH pools, the RED/BLUE pool, reserve rebalancing, and cross-token
+   reward effect as one owner-defined project architecture.
+2. Do not force one token, one quote asset, one pool, or unrelated applications when doing so would change confirmed
+   economics. Route the idea to `CUSTOM_ARCHITECTURE`; if current schema/runtime automation remains single-launch,
+   classify that separately as `INTEGRATION_PENDING`, not as an unsafe or ineligible idea.
+3. Require an explicit identity and lifecycle for every asset and pool, deterministic creation/initialization order,
+   minimum hook permissions, pool-specific value flows, reserve custody, exits, retirement, and failure behavior.
+4. Require pool-id and currency scoped liabilities, no cross-pool netting, same-unlock/reentrancy analysis, manipulation
+   and circular-pricing analysis, backing/conservation invariants, and proof that one pool cannot drain another.
+5. Apply the mandatory inclusive Programmable share independently to every in-scope canonical executed quote-volume
+   path and define the quote-side basis for each pool without double charging, bypassing, or silently treating a
+   cross-token leg as ETH.
+6. Keep design eligibility separate from schema/tooling work, implementation conformance, approval, deployment, and
+   routing/indexing support; do not claim the composition is already safe or launchable.
+
+## Forbidden result
+
+- Reject or flatten the idea merely because the current launch form, starter, or schema models one token and one pool.
+- Invent independent applications that remove the cross-token invariant without builder confirmation.
+- Aggregate liabilities across pools/currencies, obscure reserve transfers, or assume ordinary per-pool tests prove
+  coupled-system solvency.
+- Claim current platform or provider support without exact integration evidence.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

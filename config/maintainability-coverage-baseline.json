@@ -1,0 +1,232 @@
+{
+  "$schema": "urn:programmable:maintainability-coverage-baseline:2.0.0",
+  "schemaVersion": "2.0.0",
+  "engine": "node-built-in-test-coverage-lcov",
+  "observation": {
+    "nodeVersion": "24.14.0",
+    "scope": "exact-working-tree-source-bytes",
+    "repositoryWideCoverageClaimed": false
+  },
+  "tests": [
+    "skills/programmable-v4-hook-builder/scripts/test/canonical-json-core.test.mjs",
+    "skills/programmable-v4-hook-builder/scripts/test/strict-json-core.test.mjs",
+    "skills/programmable-v4-hook-builder/scripts/test/public-claims.test.mjs",
+    "skills/programmable-v4-hook-builder/scripts/test/github-application.test.mjs",
+    "skills/programmable-v4-hook-builder/scripts/test/trade-capability-manifest.test.mjs",
+    "skills/programmable-v4-hook-builder/scripts/test/v4-hook-semantic-contract.test.mjs"
+  ],
+  "groups": [
+    {
+      "id": "canonical-json-core",
+      "modules": [
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/canonical-json-core.mjs",
+          "sourceSha256": "sha256:b51c529d7777876ecd88bfd70e721b805dcf4c17944b45659e0a218f8dcc1cde"
+        }
+      ],
+      "observed": {
+        "lines": {
+          "covered": 155,
+          "found": 165
+        },
+        "functions": {
+          "covered": 14,
+          "found": 14
+        },
+        "branches": {
+          "covered": 71,
+          "found": 77
+        }
+      },
+      "minimumBasisPoints": {
+        "lines": 9000,
+        "functions": 9500,
+        "branches": 8500
+      }
+    },
+    {
+      "id": "github-application-responsibility",
+      "modules": [
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/github-application-constants.mjs",
+          "sourceSha256": "sha256:16b7682306d2573780f16eca926248a3a79087736b4c348d4d07f58b927dca79"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/github-application-core.mjs",
+          "sourceSha256": "sha256:c4561640a691f3cf383ad5b5dd04d58bd9a809e93a3a462e36e8cfe564f5d6c4"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/github-application-flow-core.mjs",
+          "sourceSha256": "sha256:3c28083cc0d119e59d69ac91fa1a1a2547ba26ce378d16673f9d1c22bd50af52"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/github-application-normalizers.mjs",
+          "sourceSha256": "sha256:f406d429accbb246d6991df4ebf2be5d0d17cf548cc2b68225e58dbe0562bb46"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/github-application-prepared-core.mjs",
+          "sourceSha256": "sha256:4841fc995439629727bf31037314300cffb6c4f2e3c5d982d1ce17baf8a34d4a"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/github-application-primitives.mjs",
+          "sourceSha256": "sha256:5b4e5a54487830ac595ee11693944c1d85677ea290d554b8bdc5fca654139c74"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/github-application-remote-core.mjs",
+          "sourceSha256": "sha256:a1ff2dcc15e1decd3004e14472cec8ec7f1890d15a8e73bfa12e7a3850c44737"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/github-application-status-core.mjs",
+          "sourceSha256": "sha256:045f4d6412917a17e0f61302d7ba7d4d916ff0cf668508662ca4dfba9b33eff5"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/github-application-transport-core.mjs",
+          "sourceSha256": "sha256:a23fc1e4106d3231e8e5bdafd4fcc93397232f9a168caa85dc2983752ddb816b"
+        }
+      ],
+      "observed": {
+        "lines": {
+          "covered": 2611,
+          "found": 3221
+        },
+        "functions": {
+          "covered": 161,
+          "found": 194
+        },
+        "branches": {
+          "covered": 511,
+          "found": 731
+        }
+      },
+      "minimumBasisPoints": {
+        "lines": 7700,
+        "functions": 8000,
+        "branches": 6500
+      }
+    },
+    {
+      "id": "public-claims-responsibility",
+      "modules": [
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/public-claims-analysis-primitives.mjs",
+          "sourceSha256": "sha256:158c6f41e56fc194e87536cd5faff387519c3ebc88cd3bafdf7a94f870c13d06"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/public-claims-core.mjs",
+          "sourceSha256": "sha256:fcc910fd0b7d8178fab244e8651403f146c5aab7ab31ce8d0c4b75fd19927d0f"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/public-claims-format-extractors.mjs",
+          "sourceSha256": "sha256:252f26cd8b9ba31758ee5263a88899e394b29956aa21f4e2f578bda077fdd939"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/public-claims-javascript-core.mjs",
+          "sourceSha256": "sha256:8fa28ff59c63564fc4c8aaf065b34f248c5dc08c7401f92d60c95eb688a07929"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/public-claims-javascript-evaluator.mjs",
+          "sourceSha256": "sha256:4a3d40a30425f071f83320ba7497275fe8933aa91dd1f93c821e5eea79f6e4ec"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/public-claims-javascript-primitives.mjs",
+          "sourceSha256": "sha256:f4b890af857171f4e461d704d255cc8c02e9c2a35179d8abd7dc5a27c8d55be6"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/public-claims-javascript-tokenizer.mjs",
+          "sourceSha256": "sha256:c4f88c2073cacf6118fcd327a99e34830aa5b81b566e58657d57158d8cdbdf5f"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/public-claims-rules.mjs",
+          "sourceSha256": "sha256:1895a37c9f14ba002b6e66c26d8accd37d30de7714dde9c2188a0918a8d7c8b4"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/public-claims-source-analysis.mjs",
+          "sourceSha256": "sha256:2898fad94b11d4be3a687aca1c6e364e52ef2f1a8be0d1d7385a2e912f74deb6"
+        }
+      ],
+      "observed": {
+        "lines": {
+          "covered": 893,
+          "found": 941
+        },
+        "functions": {
+          "covered": 51,
+          "found": 53
+        },
+        "branches": {
+          "covered": 296,
+          "found": 384
+        }
+      },
+      "minimumBasisPoints": {
+        "lines": 9200,
+        "functions": 9300,
+        "branches": 7200
+      }
+    },
+    {
+      "id": "strict-json-core",
+      "modules": [
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/strict-json-core.mjs",
+          "sourceSha256": "sha256:b8f6cef52c8c9c6bb1e61331095c12bf69bd4a0b60ff0612c93331be9d6d5478"
+        }
+      ],
+      "observed": {
+        "lines": {
+          "covered": 199,
+          "found": 226
+        },
+        "functions": {
+          "covered": 14,
+          "found": 15
+        },
+        "branches": {
+          "covered": 82,
+          "found": 97
+        }
+      },
+      "minimumBasisPoints": {
+        "lines": 8500,
+        "functions": 9000,
+        "branches": 8000
+      }
+    },
+    {
+      "id": "trade-routing-responsibility",
+      "modules": [
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/trade-capability-manifest-core.mjs",
+          "sourceSha256": "sha256:4ecff39f351ad4f05cc66580ad8638cd78844e2837929f408f1cc2d7f58b3eec"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/v4-deployment-evidence-core.mjs",
+          "sourceSha256": "sha256:f7e65be2235f2c3895d724b375bef0d3186ee338d6e7faa3735cf07e8d2812d7"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/v4-hook-semantic-contract-core.mjs",
+          "sourceSha256": "sha256:c5dc1dfb427fbe5751e808bf3f3f1657ae37c780d37ba9a044fa22ea2586880c"
+        }
+      ],
+      "observed": {
+        "lines": {
+          "covered": 1227,
+          "found": 1592
+        },
+        "functions": {
+          "covered": 125,
+          "found": 151
+        },
+        "branches": {
+          "covered": 493,
+          "found": 586
+        }
+      },
+      "minimumBasisPoints": {
+        "lines": 7700,
+        "functions": 7800,
+        "branches": 8000
+      }
+    }
+  ]
+}

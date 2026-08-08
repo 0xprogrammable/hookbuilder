@@ -2,7 +2,7 @@
 description: 'Programmable AI workflow evaluations'
 
 providers:
-  - id: anthropic:claude-sonnet-4-6
+  - id: '{{ env.PROGRAMMABLE_EVAL_SUBJECT_PROVIDER }}'
     config:
       temperature: 0
       max_tokens: 8192
