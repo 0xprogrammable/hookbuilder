@@ -172,6 +172,23 @@ test("local source-closure resource ceilings hold for split review without rejec
   )), JSON.stringify(rawGitObjectBound.findings));
 });
 
+test("source Git cleanup and deadline fallbacks keep awaited promises live and close race-free", () => {
+  const source = fs.readFileSync(new URL("../public-pr-application-v3-source-git.mjs", import.meta.url), "utf8");
+  const closeStart = source.indexOf("  async close() {");
+  const closeEnd = source.indexOf("\n  }\n}\n\nfunction validateSourceClosureEntry", closeStart);
+  assert.ok(closeStart >= 0 && closeEnd > closeStart);
+  const closeSource = source.slice(closeStart, closeEnd);
+  assert.ok(closeSource.indexOf('this.process.once("close", resolve)') < closeSource.indexOf("this.process.stdin.end()"));
+  assert.match(closeSource, /this\.process\.exitCode !== null \|\| this\.process\.signalCode !== null/u);
+  assert.match(closeSource, /clearTimeout\(killTimer\)/u);
+  assert.doesNotMatch(closeSource, /\.unref/u);
+
+  const deadlineSource = source.slice(source.indexOf("function withDeadline("));
+  assert.match(deadlineSource, /const timer = setTimeout/u);
+  assert.match(deadlineSource, /clearTimeout\(timer\)/u);
+  assert.doesNotMatch(deadlineSource, /\.unref/u);
+});
+
 test("raw Git resource and deadline failures are tooling holds while identity failures stay invalid", () => {
   for (const integrityCode of ["RAW_GIT_RESOURCE_LIMIT", "RAW_GIT_DEADLINE", "RAW_GIT_LIMIT_INVALID"]) {
     const error = Object.assign(new Error("bounded verifier stopped"), { code: integrityCode });

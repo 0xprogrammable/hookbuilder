@@ -183,19 +183,20 @@ export class GitCatFileBatch {
   async close() {
     if (this.closed) return;
     this.closed = true;
-    this.process.stdin.end();
     const closed = new Promise((resolve) => {
-      if (this.process.exitCode !== null) return resolve();
+      if (this.process.exitCode !== null || this.process.signalCode !== null) return resolve();
       this.process.once("close", resolve);
     });
+    this.process.stdin.end();
+    let killTimer;
     const timeout = new Promise((resolve) => {
-      const timer = setTimeout(() => {
+      killTimer = setTimeout(() => {
         this.process.kill("SIGKILL");
         resolve();
       }, 1000);
-      timer.unref?.();
     });
     await Promise.race([closed, timeout]);
+    clearTimeout(killTimer);
   }
 }
 
@@ -643,7 +644,6 @@ function withDeadline(promise, deadlineAt, processOwner) {
       processOwner?.process?.kill("SIGKILL");
       reject(verifierFailure("SOURCE_MANIFEST_WALL_TIME_LIMIT", "source closure verification exceeded this run's wall-time budget"));
     }, delay);
-    timer.unref?.();
     promise.then(
       (value) => {
         clearTimeout(timer);
