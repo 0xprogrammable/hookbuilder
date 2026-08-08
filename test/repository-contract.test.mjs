@@ -344,7 +344,7 @@ test("CI deterministically covers both Programmable fee reference kernels", () =
   assert.match(repositoryJob, /^\s*uses: foundry-rs\/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1$/mu);
   assert.match(repositoryJob, /^\s*version: v1\.7\.1$/mu);
   assert.match(repositoryJob, /^\s*mkdir -p -- "\$RUNNER_TEMP\/programmable-foundry-bootstrap"$/mu);
-  assert.match(repositoryJob, /^\s*forge build --use 0\.8\.24 --root "\$RUNNER_TEMP\/programmable-foundry-bootstrap"$/mu);
+  assert.match(repositoryJob, /^\s*forge build --use 0\.8\.26 --root "\$RUNNER_TEMP\/programmable-foundry-bootstrap"$/mu);
   const foundryInstall = repositoryJob.indexOf("Install Foundry");
   const compilerPreload = repositoryJob.indexOf("Preload the portable-test Solidity compiler");
   const repositoryGate = repositoryJob.indexOf("run: npm test");

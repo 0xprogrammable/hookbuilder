@@ -41,7 +41,7 @@ jobs:
       - name: Preload the portable-test Solidity compiler
         run: |
           mkdir -p -- "$RUNNER_TEMP/programmable-foundry-bootstrap"
-          forge build --use 0.8.24 --root "$RUNNER_TEMP/programmable-foundry-bootstrap"
+          forge build --use 0.8.26 --root "$RUNNER_TEMP/programmable-foundry-bootstrap"
       - name: Run complete deterministic repository and maintainability gate
         run: npm test
       - name: Validate Agent Skills publication shape
