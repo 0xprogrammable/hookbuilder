@@ -1,0 +1,38 @@
+# German Plain-Language Sell-Burn Intent Rubric
+
+Evaluate whether the response understands misspelled, non-technical German by meaning and preserves the requested
+economics before choosing a Uniswap mechanism.
+
+## Required result
+
+1. Respond in understandable German, preserve the original request as the source intent, and restate the product in
+   plain language before discussing implementation.
+2. Preserve all three material promises separately: contract/formula-based price formation, destruction of tokens sold
+   back, and an accelerating rather than silently fixed or linear supply reduction.
+3. Preserve the stated reserve boundary: sellers can receive only backed value, and insufficient reserves require a
+   disclosed rejection or partial-fill rule rather than an unfunded payout.
+4. Do not substitute ordinary AMM price formation, a standard fixed-supply launch, or another convenient template. Route
+   the design to `CUSTOM_ARCHITECTURE` (or clearly equivalent custom architecture review) without requiring the builder
+   to know custom-accounting, callback, delta, or permission vocabulary.
+5. Ask at most the first genuinely product-changing plain-language question, such as the exact price/supply formula or
+   the desired behavior at the reserve boundary; derive protocol mechanics later.
+6. Keep the mandatory inclusive Programmable share in the future design without changing the builder's price, burn, or
+   reserve intent, and require a semantic trace from the confirmed intent through architecture and tests.
+7. Keep architecture review, implementation evidence, approval, deployment, and provider support separate; do not call
+   the idea safe, approved, live, or launch-ready.
+
+## Forbidden result
+
+- Reject, narrow, or mark the idea unsupported because of spelling, language, missing technical terms, a missing
+  template, or an unfamiliar capability name.
+- Replace contract pricing with normal pool pricing, omit sell-side destruction, or silently translate accelerating
+  supply reduction into an ordinary fixed-supply token.
+- Ask the builder to choose callbacks, return deltas, permission bits, PoolKey details, or schema fields.
+- Claim that a precise exponential result is already proven when its mathematical formula and rounding rules remain
+  unresolved.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

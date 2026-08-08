@@ -1,0 +1,192 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "state-status-journey",
+  "title": "Application waiting for review with independent runtime and availability lanes",
+  "mode": "submit",
+  "locale": "en",
+  "input": {
+    "summary": "A zero-scope service passed its declared source checks and an exact Application V3 revision was submitted. Maintainer review is pending; nothing is deployed, provider-integrated, or publicly available.",
+    "sourceCase": null
+  },
+  "expected": {
+    "primaryRoute": "DIRECT_BUILD",
+    "feeApplicability": "not-applicable",
+    "hardConflictCode": null,
+    "decisionId": null,
+    "currentStates": {
+      "design": "DESIGN_READY",
+      "implementation": "STRUCTURALLY_COMPLETE",
+      "application": "APPLIED_WAITING_REVIEW",
+      "runtime": "NOT_DEPLOYED",
+      "availability": "NOT_AVAILABLE"
+    }
+  },
+  "response": {
+    "schemaVersion": "1.0.0",
+    "user": {
+      "outcome": "The exact synthetic application revision is recorded as applied and waiting for maintainer review. It is not accepted, deployed, provider-supported, or publicly available.",
+      "status": "Design is ready and declared source checks are structurally complete. Application review is pending; runtime and availability remain at their initial states.",
+      "decision": null,
+      "nextAction": "Monitor the application receipt without changing source or claiming acceptance; respond only if the maintainer requests evidence or records a decision.",
+      "limitations": [
+        "DESIGN_NOT_APPROVAL",
+        "LOCAL_CHECKS_NOT_AUDIT",
+        "NOT_DEPLOYED",
+        "PROVIDER_SUPPORT_UNRESOLVED",
+        "NOT_PUBLICLY_AVAILABLE"
+      ],
+      "artifactRefs": [
+        "evals/forward-tests/cases/state-status-journey.json#/response/artifact"
+      ]
+    },
+    "artifact": {
+      "primaryRoute": "DIRECT_BUILD",
+      "feeApplicability": "not-applicable",
+      "hardConflictCode": null,
+      "facts": [
+        {
+          "id": "zero-scope",
+          "state": "confirmed",
+          "statement": "The exact project graph contains no programmable-canonical execution or fee-bearing surface.",
+          "source": "input.summary"
+        },
+        {
+          "id": "source-checks-complete",
+          "state": "confirmed",
+          "statement": "The declared deterministic source checks completed for the exact synthetic revision represented by this fixture.",
+          "source": "input.summary"
+        },
+        {
+          "id": "application-pending",
+          "state": "confirmed",
+          "statement": "A receipt binds the application revision to an applied state while maintainer review remains pending.",
+          "source": "input.summary"
+        },
+        {
+          "id": "runtime-unavailable",
+          "state": "confirmed",
+          "statement": "No deployment, runtime verification, provider integration, monitoring, or public availability exists.",
+          "source": "input.summary"
+        }
+      ],
+      "deferredDecisions": [],
+      "architecture": [
+        "The status renderer reads independent evidence-bound design, implementation, application, runtime, and availability lanes.",
+        "The application receipt may advance only the application lane; it cannot mutate acceptance, runtime, provider, or availability state.",
+        "A later source change creates a higher revision and returns that revision to pre-review states without erasing the recorded predecessor."
+      ],
+      "findings": [
+        {
+          "id": "application-not-acceptance",
+          "effect": "Treating an application receipt as acceptance would bypass the independent maintainer decision.",
+          "repair": "Render APPLIED_WAITING_REVIEW until an exact Registry-controlled acceptance binds the same revision."
+        },
+        {
+          "id": "acceptance-not-runtime",
+          "effect": "Even a future acceptance would not prove deployment, runtime matching, provider support, or availability.",
+          "repair": "Advance each later lane only from its own exact evidence and authority."
+        }
+      ],
+      "evidence": [
+        {
+          "id": "intent-record",
+          "state": "recorded",
+          "locator": "fixture://state-status-journey/intent",
+          "meaning": "Synthetic fixture evidence binds the zero-scope product intent for deterministic state testing only."
+        },
+        {
+          "id": "source-check-receipt",
+          "state": "recorded",
+          "locator": "fixture://state-status-journey/source-check",
+          "meaning": "Synthetic fixture evidence represents declared source checks, not an audit or real repository run."
+        },
+        {
+          "id": "application-receipt",
+          "state": "recorded",
+          "locator": "fixture://state-status-journey/application",
+          "meaning": "Synthetic fixture evidence represents an applied receipt and does not claim a real external submission."
+        },
+        {
+          "id": "runtime-receipt",
+          "state": "missing",
+          "locator": null,
+          "meaning": "No deployment, bytecode/configuration match, lifecycle transaction, provider, or monitoring receipt exists."
+        }
+      ],
+      "gates": [
+        {
+          "id": "design",
+          "state": "passed",
+          "reason": "The synthetic intent and zero-scope design records are complete for this state-transition fixture.",
+          "evidenceRefs": [
+            "intent-record"
+          ]
+        },
+        {
+          "id": "implementation-structure",
+          "state": "passed",
+          "reason": "The fixture supplies a bounded synthetic source-check receipt for the exact represented revision.",
+          "evidenceRefs": [
+            "source-check-receipt"
+          ]
+        },
+        {
+          "id": "application",
+          "state": "passed",
+          "reason": "The synthetic application receipt advances only the application lane to waiting for review.",
+          "evidenceRefs": [
+            "application-receipt"
+          ]
+        },
+        {
+          "id": "acceptance",
+          "state": "blocked",
+          "reason": "No maintainer decision or Registry-controlled acceptance record is represented.",
+          "evidenceRefs": []
+        },
+        {
+          "id": "runtime",
+          "state": "not-run",
+          "reason": "No deployment or runtime-verification evidence exists.",
+          "evidenceRefs": []
+        },
+        {
+          "id": "availability",
+          "state": "not-run",
+          "reason": "No provider integration, monitoring, or public activation evidence exists.",
+          "evidenceRefs": []
+        }
+      ],
+      "statusJourney": {
+        "design": [
+          "IDEA_CAPTURED",
+          "DESIGN_READY"
+        ],
+        "implementation": [
+          "NOT_STARTED",
+          "IN_PROGRESS",
+          "STRUCTURALLY_COMPLETE"
+        ],
+        "application": [
+          "NOT_PREPARED",
+          "PREPARED_NOT_SUBMITTED",
+          "APPLIED_WAITING_REVIEW"
+        ],
+        "runtime": [
+          "NOT_DEPLOYED"
+        ],
+        "availability": [
+          "NOT_AVAILABLE"
+        ]
+      },
+      "operations": {
+        "reviewQueue": "DESIGN_ONLY",
+        "rbac": "DESIGN_ONLY",
+        "auditLog": "DESIGN_ONLY",
+        "privacyRetentionTakedown": "DESIGN_ONLY",
+        "incidentResponse": "DESIGN_ONLY",
+        "monitoring": "DESIGN_ONLY"
+      }
+    }
+  }
+}

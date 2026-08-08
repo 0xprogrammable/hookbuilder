@@ -7,12 +7,19 @@ import process from 'node:process';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-import { EvalValidationError, validateSuite } from './validate-evals.mjs';
+import {
+  EvalValidationError,
+  isOutsideRootRelative,
+  validateSuite,
+} from './validate-evals.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = path.resolve(SCRIPT_DIRECTORY, '../..');
 const DEFAULT_SUITE = 'programmable-v4-hook-builder';
 const EXPECTED_PROMPTFOO_VERSION = '0.121.11';
+const SUBJECT_PROVIDER_ENV = 'PROGRAMMABLE_EVAL_SUBJECT_PROVIDER';
+const JUDGE_PROVIDER_ENV = 'PROGRAMMABLE_EVAL_JUDGE_PROVIDER';
+const PROVIDER_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/@+~=-]{0,499}$/u;
 
 process.umask(0o077);
 
@@ -21,6 +28,8 @@ function parseArguments(argv) {
     suiteId: DEFAULT_SUITE,
     requireProvider: false,
     output: null,
+    subjectProvider: null,
+    judgeProvider: null,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -32,6 +41,16 @@ function parseArguments(argv) {
       options.suiteId = argument.slice('--suite='.length);
     } else if (argument === '--require-provider') {
       options.requireProvider = true;
+    } else if (argument === '--subject-provider') {
+      options.subjectProvider = argv[index + 1] ?? '';
+      index += 1;
+    } else if (argument.startsWith('--subject-provider=')) {
+      options.subjectProvider = argument.slice('--subject-provider='.length);
+    } else if (argument === '--judge-provider') {
+      options.judgeProvider = argv[index + 1] ?? '';
+      index += 1;
+    } else if (argument.startsWith('--judge-provider=')) {
+      options.judgeProvider = argument.slice('--judge-provider='.length);
     } else if (argument === '--output') {
       options.output = argv[index + 1] ?? '';
       index += 1;
@@ -53,15 +72,20 @@ function fail(message, details = {}) {
   process.exitCode = 2;
 }
 
-function hasProviderCredential() {
-  return typeof process.env.ANTHROPIC_API_KEY === 'string' && process.env.ANTHROPIC_API_KEY.trim().length > 0;
+function resolveProvider(explicitValue, environmentVariable) {
+  const value = explicitValue ?? process.env[environmentVariable] ?? '';
+  if (value === '') return null;
+  if (!PROVIDER_ID_PATTERN.test(value)) {
+    throw new Error(`${environmentVariable} must be one explicit Promptfoo provider ID without whitespace or template syntax`);
+  }
+  return value;
 }
 
 function resolveOutputPath(requestedOutput, suiteId) {
   if (requestedOutput) {
     const outputPath = path.resolve(requestedOutput);
     const relativeToRepository = path.relative(REPOSITORY_ROOT, outputPath);
-    if (!relativeToRepository.startsWith('..') && !path.isAbsolute(relativeToRepository)) {
+    if (!isOutsideRootRelative(relativeToRepository)) {
       throw new Error('result output must be outside the repository worktree');
     }
     return outputPath;
@@ -75,6 +99,9 @@ let options;
 try {
   options = parseArguments(process.argv.slice(2));
   validateSuite({ repositoryRoot: REPOSITORY_ROOT, suiteId: options.suiteId });
+  options.subjectProvider = resolveProvider(options.subjectProvider, SUBJECT_PROVIDER_ENV);
+  options.judgeProvider = resolveProvider(options.judgeProvider, JUDGE_PROVIDER_ENV);
+  if (options.output !== null) options.output = resolveOutputPath(options.output, options.suiteId);
 } catch (error) {
   if (error instanceof EvalValidationError) {
     fail('offline-structure-validation-failed', { issues: error.issues });
@@ -83,11 +110,16 @@ try {
   }
 }
 
-if (!process.exitCode && !hasProviderCredential()) {
+if (!process.exitCode && (!options.subjectProvider || !options.judgeProvider)) {
+  const missing = [
+    !options.subjectProvider ? SUBJECT_PROVIDER_ENV : null,
+    !options.judgeProvider ? JUDGE_PROVIDER_ENV : null,
+  ].filter(Boolean);
   emit({
     status: 'MODEL_EVALS_SKIPPED',
     suiteId: options.suiteId,
-    reason: 'ANTHROPIC_API_KEY is not configured',
+    reason: 'explicit subject and judge providers are not configured',
+    missing,
     offlineStructure: 'valid',
     modelQuality: 'not-evaluated',
     resultArtifact: null,
@@ -96,7 +128,7 @@ if (!process.exitCode && !hasProviderCredential()) {
   if (options.requireProvider) process.exitCode = 3;
 }
 
-if (!process.exitCode && hasProviderCredential()) {
+if (!process.exitCode && options.subjectProvider && options.judgeProvider) {
   const promptfooBinary = path.join(REPOSITORY_ROOT, 'node_modules/.bin/promptfoo');
   const promptfooPackage = path.join(REPOSITORY_ROOT, 'node_modules/promptfoo/package.json');
   if (!fs.existsSync(promptfooBinary)) {
@@ -127,7 +159,7 @@ if (!process.exitCode && hasProviderCredential()) {
     if (process.exitCode) process.exit();
     let outputPath;
     try {
-      outputPath = resolveOutputPath(options.output, options.suiteId);
+      outputPath = options.output ?? resolveOutputPath(null, options.suiteId);
     } catch (error) {
       fail(error.message);
     }
@@ -144,6 +176,8 @@ if (!process.exitCode && hasProviderCredential()) {
         cwd: path.join(REPOSITORY_ROOT, 'evals'),
         env: {
           ...process.env,
+          [SUBJECT_PROVIDER_ENV]: options.subjectProvider,
+          [JUDGE_PROVIDER_ENV]: options.judgeProvider,
           PROMPTFOO_DISABLE_TELEMETRY: '1',
           PROMPTFOO_CACHE_ENABLED: 'false',
         },
@@ -162,7 +196,10 @@ if (!process.exitCode && hasProviderCredential()) {
         status: 'MODEL_EVALS_COMPLETED',
         suiteId: options.suiteId,
         resultArtifact: outputPath,
-        provider: 'anthropic:claude-sonnet-4-6',
+        providers: {
+          subject: options.subjectProvider,
+          judge: options.judgeProvider,
+        },
         offlineStructure: 'valid',
         note: 'Promptfoo assertions passed; this is not approval, deployment, routing, or endorsement evidence.',
       });

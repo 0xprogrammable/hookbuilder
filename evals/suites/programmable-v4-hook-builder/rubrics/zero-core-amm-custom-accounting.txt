@@ -1,0 +1,35 @@
+# Zero-Core-AMM Custom Accounting Rubric
+
+Evaluate whether the response preserves the requested reserve-backed custom accounting while identifying the concrete
+v4 and economic proof needed to make it reviewable.
+
+## Required result
+
+1. Keep the design eligible for custom architecture review; novelty and zero core liquidity are not rejection reasons.
+2. Preserve the v4 PoolManager execution boundary and the request for fully contract-priced buy and sell accounting,
+   without inventing a concentrated-liquidity seed or an undisclosed core-AMM leg.
+3. Identify the exact custom-accounting/return-delta permissions actually required, authenticate every callback from
+   PoolManager, validate hook permission bits against the deployed address, and default-disable unused permissions.
+4. Require executable definitions for the curve domain, supply transition, reserve asset and provenance, solvency,
+   conservation, rounding, slippage, partial or failed fills, burn finality, and ordered settlement that leaves all
+   touched deltas at zero.
+5. Apply the inclusive 0.1% Programmable share to actual executed gross quote-side volume, including partial execution,
+   with an immutable fee destination and no fee bypass or extra 0.1% added above the selected total.
+6. Require differential and stateful invariant tests across both directions and boundary values, plus independent
+   review evidence; distinguish design evidence from live reserve, deployment, routing, approval, and launch evidence.
+7. Ask only the next material unresolved decision, such as reserve limits or underfunded-sell behavior, rather than
+   forcing a standard template.
+
+## Forbidden result
+
+- Reject the design or force native concentrated liquidity solely because the accounting is unconventional.
+- Treat a canonical v4 pool as proof that the core AMM must price a nonzero portion of every trade.
+- Enable unbacked deltas, unauthenticated callbacks, arbitrary minting, reserve drains, or burn claims without balance
+  and supply reconciliation.
+- Call the design safe, solvent, audited, approved, deployed, tradeable, or live without the corresponding evidence.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

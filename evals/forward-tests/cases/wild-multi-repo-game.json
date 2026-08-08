@@ -1,0 +1,212 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "wild-multi-repo-game",
+  "title": "Browser multiplayer weapon game across four repositories",
+  "mode": "explore",
+  "locale": "en",
+  "input": {
+    "summary": "Build a browser Three.js multiplayer weapon game where a valid kill earns part of a token-backed prize. The server, indexer, frontend, and v4 contracts may be separate GitHub repositories.",
+    "sourceCase": null
+  },
+  "expected": {
+    "primaryRoute": null,
+    "feeApplicability": "unresolved",
+    "hardConflictCode": null,
+    "decisionId": "kill-result-authority",
+    "currentStates": {
+      "design": "DESIGN_REVIEW_REQUIRED",
+      "implementation": "NOT_STARTED",
+      "application": "NOT_PREPARED",
+      "runtime": "NOT_DEPLOYED",
+      "availability": "NOT_AVAILABLE"
+    }
+  },
+  "response": {
+    "schemaVersion": "1.0.0",
+    "user": {
+      "outcome": "The browser game, server, indexer, and contracts can be reviewed as one multi-repository project. Gameplay stays offchain; only authenticated, reserve-bounded results may create token claims.",
+      "status": "Design waits on kill authority. Fee scope is unresolved. No source, application, deployment, provider support, or public game exists yet.",
+      "decision": {
+        "id": "kill-result-authority",
+        "question": "Who has final authority to declare that a kill is valid and may create a reward?",
+        "options": [
+          {
+            "id": "authoritative-server",
+            "label": "Authoritative game server",
+            "consequence": "Fastest and simplest, with disclosed operator trust and server-side anti-cheat controls."
+          },
+          {
+            "id": "signer-quorum",
+            "label": "Independent signer quorum",
+            "consequence": "Reduces one-key control but adds operators, latency, coordination, and recovery work."
+          },
+          {
+            "id": "verifiable-proof",
+            "label": "Verifiable result proof",
+            "consequence": "Reduces server trust only if a practical proof system can cover the complete game result."
+          }
+        ],
+        "recommendedOptionId": "authoritative-server"
+      },
+      "nextAction": "After this answer I will freeze the trust model, repo graph, funded reward lifecycle, typed result schema, failure rules, and exact test obligations.",
+      "limitations": [
+        "DESIGN_NOT_APPROVAL",
+        "LOCAL_CHECKS_NOT_AUDIT",
+        "NOT_DEPLOYED",
+        "PROVIDER_SUPPORT_UNRESOLVED",
+        "NOT_PUBLICLY_AVAILABLE"
+      ],
+      "artifactRefs": [
+        "evals/forward-tests/cases/wild-multi-repo-game.json#/response/artifact"
+      ]
+    },
+    "artifact": {
+      "primaryRoute": null,
+      "feeApplicability": "unresolved",
+      "hardConflictCode": null,
+      "facts": [
+        {
+          "id": "browser-threejs-game",
+          "state": "confirmed",
+          "statement": "Players use a browser-based Three.js client for a real-time multiplayer weapon game.",
+          "source": "input.summary"
+        },
+        {
+          "id": "kill-reward",
+          "state": "confirmed",
+          "statement": "A valid player kill awards part of a token-backed prize to the winner.",
+          "source": "input.summary"
+        },
+        {
+          "id": "multi-repository",
+          "state": "confirmed",
+          "statement": "The game server, indexer, web client, and contract package may use separate public GitHub repositories.",
+          "source": "input.summary"
+        },
+        {
+          "id": "prefunded-no-wager",
+          "state": "default-proposed",
+          "statement": "The initial design uses a sponsor-funded reserve and no player entry fee or wager.",
+          "source": "safe simple default"
+        },
+        {
+          "id": "result-authority",
+          "state": "unresolved",
+          "statement": "The accountable source that makes a kill valid and reward-bearing is not confirmed.",
+          "source": "derived material decision"
+        }
+      ],
+      "deferredDecisions": [
+        "maximum-funded-prize-budget",
+        "reward-per-kill-formula",
+        "hook-funding-role",
+        "jurisdiction-and-age-policy"
+      ],
+      "architecture": [
+        "The Three.js client renders, predicts, captures input, links a wallet, and never becomes reward authority.",
+        "The authoritative game service validates movement, shots, hits, kills, match limits, disconnects, and replay-resistant result records.",
+        "A contract package holds the funded reward reserve, verifies typed results, rejects replay, and lets beneficiaries pull finalized claims.",
+        "The v4 hook remains isolated from gameplay and receives no fee or callback behavior until canonical execution scope is confirmed.",
+        "The indexer derives chain state with reorg rollback and freshness disclosure; it never decides winners or reserve solvency.",
+        "Application V3 uses the contract repository as primary and content-binds every companion repository, schema, test, dependency, and runtime asset."
+      ],
+      "findings": [
+        {
+          "id": "kill-authority-unresolved",
+          "effect": "Different result authorities change cheating risk, key custody, liveness, and when a reward becomes enforceable.",
+          "repair": "Confirm one result-authority model before selecting signatures, server topology, or claim settlement."
+        },
+        {
+          "id": "future-fees-not-backing",
+          "effect": "Future swap volume cannot back a reward promised for a completed kill.",
+          "repair": "Reserve the complete match liability before reward-bearing play; use realized fees only for future budgets."
+        },
+        {
+          "id": "multi-repo-closure-required",
+          "effect": "A test or receipt in one repository cannot prove source or behavior in another repository.",
+          "repair": "Bind every repository by numeric identity, commit, root tree, source closure, build profile, tests, and evidence."
+        }
+      ],
+      "evidence": [
+        {
+          "id": "idea-source",
+          "state": "recorded",
+          "locator": "evals/forward-tests/cases/wild-multi-repo-game.json#/input",
+          "meaning": "The synthetic forward-test preserves the complete multi-surface game request."
+        },
+        {
+          "id": "repository-source",
+          "state": "missing",
+          "locator": null,
+          "meaning": "No public repositories, commits, source manifests, dependency locks, or CI runs exist."
+        },
+        {
+          "id": "runtime-evidence",
+          "state": "not-run",
+          "locator": null,
+          "meaning": "No game server, chain deployment, indexer, browser runtime, provider lane, or monitoring has been exercised."
+        }
+      ],
+      "gates": [
+        {
+          "id": "intent-capture",
+          "state": "passed",
+          "reason": "The game experience, reward trigger, and separate repository surfaces are preserved.",
+          "evidenceRefs": [
+            "idea-source"
+          ]
+        },
+        {
+          "id": "trust-model",
+          "state": "blocked",
+          "reason": "Kill-result authority is a material unresolved owner choice.",
+          "evidenceRefs": []
+        },
+        {
+          "id": "implementation",
+          "state": "not-run",
+          "reason": "No source exists and implementation must wait for the confirmed trust model.",
+          "evidenceRefs": []
+        },
+        {
+          "id": "application-v3",
+          "state": "not-run",
+          "reason": "No clean public GitHub revision or complete multi-repository closure exists.",
+          "evidenceRefs": []
+        },
+        {
+          "id": "production",
+          "state": "not-run",
+          "reason": "Deployment, provider integration, legal review, operations, and public activation are independent later gates.",
+          "evidenceRefs": []
+        }
+      ],
+      "statusJourney": {
+        "design": [
+          "IDEA_CAPTURED",
+          "DESIGN_REVIEW_REQUIRED"
+        ],
+        "implementation": [
+          "NOT_STARTED"
+        ],
+        "application": [
+          "NOT_PREPARED"
+        ],
+        "runtime": [
+          "NOT_DEPLOYED"
+        ],
+        "availability": [
+          "NOT_AVAILABLE"
+        ]
+      },
+      "operations": {
+        "reviewQueue": "DESIGN_ONLY",
+        "rbac": "DESIGN_ONLY",
+        "auditLog": "DESIGN_ONLY",
+        "privacyRetentionTakedown": "DESIGN_ONLY",
+        "incidentResponse": "DESIGN_ONLY",
+        "monitoring": "DESIGN_ONLY"
+      }
+    }
+  }
+}

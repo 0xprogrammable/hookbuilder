@@ -1,0 +1,20 @@
+{
+  "name": "programmable",
+  "interface": {
+    "displayName": "Programmable"
+  },
+  "plugins": [
+    {
+      "name": "programmable-v4-builder",
+      "source": {
+        "source": "local",
+        "path": "./plugins/programmable-v4-builder"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+# Unknown Maps Game and Server Open-World Rubric
+
+Evaluate whether the response keeps an unfamiliar multi-surface project eligible while deriving its real security and
+privacy obligations.
+
+## Required result
+
+1. Preserve the map app, wallet connection, photo/location flow, game server, database, signed result, reward vault,
+   time-bounded fee benefit, and hook as one valid project rather than forcing them into an existing launch template.
+2. Route the owner-defined game capability to `CUSTOM_ARCHITECTURE` or clearly equivalent architecture review. A
+   missing template, parser, provider adapter, or catalog label must not be an adverse finding.
+3. Derive the signed-result boundary: exact signer authority and rotation, chain and verifying-contract domain,
+   player/team, wallet, game/round, result, benefit, canonical pool, nonce, issuance time, expiry, and replay protection.
+4. Derive reward solvency and claim obligations, duplicate/late-result behavior, fee-benefit bounds and expiry, server
+   outage behavior, idempotency, wallet/result binding, and the rule that the immutable 0.1% Programmable share cannot
+   be discounted or redirected.
+5. Treat GPS, photos, anti-cheat data, server secrets, retention, access, deletion, spoofing, and source-of-truth rules as
+   explicit app/service trust and privacy boundaries without pretending that the hook proves real-world location.
+6. Keep design eligibility separate from implementation evidence, Programmable approval, deployment, frontend support,
+   and third-party indexing/routing. Missing platform UI may become integration work, not a game-category rejection.
+7. Ask only the first material product/trust question still unresolved and do not require the builder to name schemas,
+   signature standards, hook permissions, or callback mechanics.
+
+## Forbidden result
+
+- Reject or split away the creative project merely because games, maps, photos, or servers are outside a starter.
+- Trust a server result without authentication, expiry, replay, wallet/round binding, and an explicit failure model.
+- Allow the temporary benefit to reduce, replace, or bypass the mandatory Programmable share.
+- Claim that location, anti-cheat correctness, privacy compliance, provider support, approval, or production readiness is
+  already proven.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

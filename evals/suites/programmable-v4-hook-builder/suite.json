@@ -1,8 +1,13 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "2.0.0",
   "suiteId": "programmable-v4-hook-builder",
   "subject": "skills/programmable-v4-hook-builder/SKILL.md",
-  "defaultProvider": "anthropic:claude-sonnet-4-6",
+  "providerContract": {
+    "mode": "explicit-subject-and-judge",
+    "subjectEnvironmentVariable": "PROGRAMMABLE_EVAL_SUBJECT_PROVIDER",
+    "judgeEnvironmentVariable": "PROGRAMMABLE_EVAL_JUDGE_PROVIDER",
+    "defaultProvider": null
+  },
   "cases": [
     {
       "id": "ordinary-coin-official-launchpad",
@@ -21,6 +26,54 @@
       "threshold": 1.0
     },
     {
+      "id": "german-plain-language-sell-burn-intent",
+      "prompt": "cases/german-plain-language-sell-burn-intent.md",
+      "rubric": "rubrics/german-plain-language-sell-burn-intent.txt",
+      "contextProfile": "architecture",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "zero-amm-custom-curve-open-world",
+      "prompt": "cases/zero-amm-custom-curve-open-world.md",
+      "rubric": "rubrics/zero-amm-custom-curve-open-world.txt",
+      "contextProfile": "architecture",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "unknown-maps-game-server-open-world",
+      "prompt": "cases/unknown-maps-game-server-open-world.md",
+      "rubric": "rubrics/unknown-maps-game-server-open-world.txt",
+      "contextProfile": "architecture",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "transparent-high-fee-open-world",
+      "prompt": "cases/transparent-high-fee-open-world.md",
+      "rubric": "rubrics/transparent-high-fee-open-world.txt",
+      "contextProfile": "architecture",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "multi-asset-multi-pool-open-world",
+      "prompt": "cases/multi-asset-multi-pool-open-world.md",
+      "rubric": "rubrics/multi-asset-multi-pool-open-world.txt",
+      "contextProfile": "architecture",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "bounded-admin-trust-tier-open-world",
+      "prompt": "cases/bounded-admin-trust-tier-open-world.md",
+      "rubric": "rubrics/bounded-admin-trust-tier-open-world.txt",
+      "contextProfile": "architecture",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
       "id": "hidden-fee-hard-fail",
       "prompt": "cases/hidden-fee-hard-fail.md",
       "rubric": "rubrics/hidden-fee-hard-fail.txt",
@@ -32,6 +85,14 @@
       "id": "unrestricted-drain-hard-fail",
       "prompt": "cases/unrestricted-drain-hard-fail.md",
       "rubric": "rubrics/unrestricted-drain-hard-fail.txt",
+      "contextProfile": "security",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "unsafe-drain-safe-redesign-intent",
+      "prompt": "cases/unsafe-drain-safe-redesign-intent.md",
+      "rubric": "rubrics/unsafe-drain-safe-redesign-intent.txt",
       "contextProfile": "security",
       "safetyCritical": true,
       "threshold": 1.0
@@ -137,6 +198,190 @@
       "prompt": "cases/untrusted-calldata-permit2-signing.md",
       "rubric": "rubrics/untrusted-calldata-permit2-signing.txt",
       "contextProfile": "sdk-integration",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "pure-service-indexer-zero-scope",
+      "prompt": "cases/pure-service-indexer-zero-scope.md",
+      "rubric": "rubrics/pure-service-indexer-zero-scope.txt",
+      "contextProfile": "architecture",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "invariant-preserving-vault-rebalancer",
+      "prompt": "cases/invariant-preserving-vault-rebalancer.md",
+      "rubric": "rubrics/invariant-preserving-vault-rebalancer.txt",
+      "contextProfile": "security",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "contingent-future-fee-bond",
+      "prompt": "cases/contingent-future-fee-bond.md",
+      "rubric": "rubrics/contingent-future-fee-bond.txt",
+      "contextProfile": "security",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "recurring-cyclic-game-lifecycle",
+      "prompt": "cases/recurring-cyclic-game-lifecycle.md",
+      "rubric": "rubrics/recurring-cyclic-game-lifecycle.txt",
+      "contextProfile": "architecture",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "oversized-capability-graph",
+      "prompt": "cases/oversized-capability-graph.md",
+      "rubric": "rubrics/oversized-capability-graph.txt",
+      "contextProfile": "architecture",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "conditional-return-delta",
+      "prompt": "cases/conditional-return-delta.md",
+      "rubric": "rubrics/conditional-return-delta.txt",
+      "contextProfile": "security",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "sponsor-funded-disclosed-bias-raffle",
+      "prompt": "cases/sponsor-funded-disclosed-bias-raffle.md",
+      "rubric": "rubrics/sponsor-funded-disclosed-bias-raffle.txt",
+      "contextProfile": "security",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "authorized-donation-managed-redemption",
+      "prompt": "cases/authorized-donation-managed-redemption.md",
+      "rubric": "rubrics/authorized-donation-managed-redemption.txt",
+      "contextProfile": "security",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "exact-output-full-fill-repeated-currency",
+      "prompt": "cases/exact-output-full-fill-repeated-currency.md",
+      "rubric": "rubrics/exact-output-full-fill-repeated-currency.txt",
+      "contextProfile": "sdk-integration",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "bounded-router-decoding-dual-identity",
+      "prompt": "cases/bounded-router-decoding-dual-identity.md",
+      "rubric": "rubrics/bounded-router-decoding-dual-identity.txt",
+      "contextProfile": "sdk-integration",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "spanish-missing-domain-capability-handoff",
+      "prompt": "cases/spanish-missing-domain-capability-handoff.md",
+      "rubric": "rubrics/spanish-missing-domain-capability-handoff.txt",
+      "contextProfile": "architecture",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "zero-core-amm-custom-accounting",
+      "prompt": "cases/zero-core-amm-custom-accounting.md",
+      "rubric": "rubrics/zero-core-amm-custom-accounting.txt",
+      "contextProfile": "security",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "standing-allowance-delegated-payer",
+      "prompt": "cases/standing-allowance-delegated-payer.md",
+      "rubric": "rubrics/standing-allowance-delegated-payer.txt",
+      "contextProfile": "security",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "rwa-nav-redemption-insolvency",
+      "prompt": "cases/rwa-nav-redemption-insolvency.md",
+      "rubric": "rubrics/rwa-nav-redemption-insolvency.txt",
+      "contextProfile": "architecture",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "scientific-score-value-link",
+      "prompt": "cases/scientific-score-value-link.md",
+      "rubric": "rubrics/scientific-score-value-link.txt",
+      "contextProfile": "architecture",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "prediction-wagering-market",
+      "prompt": "cases/prediction-wagering-market.md",
+      "rubric": "rubrics/prediction-wagering-market.txt",
+      "contextProfile": "architecture",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "participant-funded-redistribution",
+      "prompt": "cases/participant-funded-redistribution.md",
+      "rubric": "rubrics/participant-funded-redistribution.txt",
+      "contextProfile": "security",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "independent-evidence-degraded-tooling",
+      "prompt": "cases/independent-evidence-degraded-tooling.md",
+      "rubric": "rubrics/independent-evidence-degraded-tooling.txt",
+      "contextProfile": "security",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "exact-input-only-trading",
+      "prompt": "cases/exact-input-only-trading.md",
+      "rubric": "rubrics/exact-input-only-trading.txt",
+      "contextProfile": "sdk-integration",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "novelty-positive-control",
+      "prompt": "cases/novelty-positive-control.md",
+      "rubric": "rubrics/novelty-positive-control.txt",
+      "contextProfile": "architecture",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "autopilot-complete-measurement-market",
+      "prompt": "cases/autopilot-complete-measurement-market.md",
+      "rubric": "rubrics/autopilot-complete-measurement-market.txt",
+      "contextProfile": "autopilot",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "autopilot-underspecified-measurement",
+      "prompt": "cases/autopilot-underspecified-measurement.md",
+      "rubric": "rubrics/autopilot-underspecified-measurement.txt",
+      "contextProfile": "autopilot",
+      "safetyCritical": true,
+      "threshold": 1.0
+    },
+    {
+      "id": "autopilot-post-exposure-rule-mutation",
+      "prompt": "cases/autopilot-post-exposure-rule-mutation.md",
+      "rubric": "rubrics/autopilot-post-exposure-rule-mutation.txt",
+      "contextProfile": "autopilot",
       "safetyCritical": true,
       "threshold": 1.0
     }

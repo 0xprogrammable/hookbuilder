@@ -1,0 +1,30 @@
+# Conditional Return Delta Rubric
+
+Evaluate whether the response applies the no-op hard predicate only when a path falsely claims custom accounting.
+
+## Required result
+
+1. Keep the conditional design eligible for review: an ordinary path may return the exact no-op sentinel when it does
+   not claim or perform custom accounting.
+2. Require the matched path to bind permissions to the hook address, return the declared selector, back every non-zero
+   delta with real inventory movement, and reconcile exact PoolManager/account deltas.
+3. Require path-sensitive tests for both branches, boundary amounts, sign/order conventions, nested callbacks,
+   reentrancy, partial fills, insufficient inventory, and invariant conservation.
+4. Treat a no-op return on a path claiming custom accounting, an unbacked delta, or a selector/permission mismatch as
+   the concrete hard conflict.
+5. Preserve Programmable fee accounting independently on every applicable economic path and prove no return delta can
+   hide, offset, or redirect it.
+6. Keep review, audit, deployment, and launch authorization as separate gates.
+
+## Forbidden result
+
+- Reject all exact no-op return deltas or force non-zero deltas on an ordinary path.
+- Accept a no-op on a path that claims custom accounting, or accept unbacked/incorrectly signed deltas.
+- Call the hook safe, audited, approved, live, or launch-ready from design alone.
+- Ignore permission/address-bit, selector, callback authentication, or exact reconciliation requirements.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

@@ -1,0 +1,38 @@
+# RWA NAV, Reserve, Redemption and Insolvency Rubric
+
+Evaluate whether the response treats the RWA lifecycle as a reviewable controlled system without confusing code,
+custody, valuation, legal rights, or liquidity.
+
+## Required result
+
+1. Keep the project eligible for custom architecture review while identifying RWA custody, oracle, legal and
+   operational dependencies as explicit trust and integration boundaries rather than a token-category ban.
+2. Separate onchain supply and ownership from beneficial rights, warehouse inventory, cash, insurance receivables,
+   liabilities and NAV; require independently reconcilable reserve and liability evidence with timestamps and
+   provenance.
+3. Define NAV source quorum, signing domain, update cadence, staleness/fallback behavior, correction and dispute flow,
+   unit/decimal conventions, manipulation bounds, and trading behavior during stale or contested valuation.
+4. Model cash and in-kind redemption as state machines with authorization, queue priority, receipts, deadlines,
+   partial fulfillment, fees, cancellation, key loss, sanctions/transfer restrictions, and no false instant or
+   guaranteed-redemption claim.
+5. Model every stated corporate action and the insolvency waterfall with snapshots, effective times, conservation,
+   idempotency, replay protection, claim priority, emergency authority, disclosures, and adversarial lifecycle tests.
+6. Keep any Programmable market fee exact and isolated from issuer/custodian/redemption authority; distinguish market
+   tradeability from reserve sufficiency and redemption availability.
+7. Require specialist legal/regulatory, custody, accounting, oracle and security evidence while separating design
+   eligibility from audit, registry acceptance, deployment, public availability and solvency guarantees.
+
+## Forbidden result
+
+- Treat an onchain token balance, issuer attestation, NAV signature, insurance policy, or pool liquidity alone as proof
+  of ownership rights, full backing, redeemability, legal enforceability, or solvency.
+- Silently omit liabilities, corporate actions, freezes, defaults, disputed NAV, partial redemption, or insolvency.
+- Call the product permissionless, trustless, risk-free, audited, approved, fully backed, or guaranteed without exact
+  current evidence and bounded meaning.
+- Reject RWA projects solely because they depend on offchain custody or controlled redemption.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

@@ -1,11 +1,11 @@
 {
   "schemaVersion": "1.0.0",
   "name": "programmable-v4-builder",
-  "version": "0.4.0",
+  "version": "0.5.1",
   "displayName": "Programmable v4 Builder",
-  "description": "Build open-ended Uniswap v4 projects and prepare evidence-bound Programmable applications.",
-  "shortDescription": "Build Uniswap v4 projects with Programmable",
-  "longDescription": "Loads one portable skill for designing, building, checking and applying with open-ended Uniswap v4 projects.",
+  "description": "Design, build, review, or track Programmable hooks, tokens, apps, games, services, and standalone settlement projects.",
+  "shortDescription": "Build a reviewable Programmable project from one prompt",
+  "longDescription": "Loads one portable skill that compiles a plain-language idea into the smallest complete Programmable system, then designs, builds, checks, reviews, and prepares its exact GitHub application without limiting unfamiliar products to known templates.",
   "developerName": "Programmable",
   "category": "Developer Tools",
   "capabilities": [
@@ -14,15 +14,18 @@
     "Write",
     "Templates",
     "Validation",
-    "GitHub"
+    "Discovery",
+    "GitHub workflow"
   ],
   "defaultPrompt": [
-    "Use $programmable-v4-hook-builder to turn my idea into a complete checked project and prepare its GitHub application."
+    "Use $programmable-v4-hook-builder to infer the mode and build my idea end to end; ask only for one material owner choice."
   ],
+  "mcpServers": "./.mcp.json",
   "license": "MIT",
   "keywords": [
     "agent-skills",
     "github",
+    "project-registry",
     "programmable",
     "templates",
     "uniswap-v4",

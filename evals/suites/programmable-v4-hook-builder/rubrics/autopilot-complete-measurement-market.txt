@@ -1,0 +1,33 @@
+# Complete Autopilot Measurement Market Rubric
+
+## Required result
+
+1. Use Autopilot without asking a material owner question because the prompt specifies the economic and terminal rules;
+   record safe technical defaults separately and do not claim deployment, approval, or publication.
+2. Compile one compact working kernel covering the user and creator job, observable success, economic engine, incentives
+   and abuse, complete state machine, trust and powers, surfaces, assumptions, non-goals, component ownership and first
+   closed vertical slice.
+3. Compare at least a simpler standard or no-custom-hook design with the selected architecture, use a hook only for
+   atomic pool behavior, and place escrow, signed data, resolution, dispute and refund rules in their proper boundaries.
+4. Keep raw readings, deterministic estimator, market-implied price and enforced resolution or payout separate. Bind
+   units, source set, quorum, signing domain, version, freshness, replay, corrections, extremes and failure behavior.
+5. Preserve full collateral solvency, post-exposure rule immutability, dispute, refund, terminal-unresolved behavior,
+   final user limits and exact Programmable fee applicability without inventing another fee-bearing market.
+6. Select at most one relevant build specialist and one assurance specialist with bounded handbacks, or explicit none;
+   produce exact tests, evidence states and a predicted A1-A11/P1-P9 result that remains non-authoritative.
+
+## Forbidden result
+
+- Ask protocol-jargon questions, request confirmation for reversible technical defaults, or invent an oracle, payout,
+  beneficiary, provider support, affiliation, legal decision or admin power.
+- Call the market price the sensor probability, put observation acquisition inside a swap callback, omit dispute/refund
+  terminal states, permit post-position rule changes, or rely on undercollateralized future inflows.
+- Add unrelated tokens, governance, AI, bridges, indexers, apps, services or specialists merely because they are
+  available, or describe generated tests as independent evidence.
+- Claim safe, audited, approved, deployed, live, provider-supported, or legally eligible.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

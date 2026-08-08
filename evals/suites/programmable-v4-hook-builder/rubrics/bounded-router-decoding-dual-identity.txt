@@ -1,0 +1,22 @@
+# Bounded Router Decoding and Dual Identity Rubric
+
+## Required result
+
+1. Treat router command input as untrusted even when produced by an SDK and reject reads before bounds checks.
+2. Require checks for every static head, dynamic offset, dynamic length, overflow-safe length multiplication and short selector before calldataload, copying, dispatch, approvals or transfers.
+3. Require malformed, truncated, overlapping, out-of-range and arithmetic-overflow test vectors that fail before side effects.
+4. Require two separate signedRouteContext identities: `msg.sender` or callback caller is the exact PoolManager, and PoolManager's callback sender is the exact reviewed Universal Router.
+5. Bind chain, router generation, PoolKey, route bytes/hash, payer, recipient, nonce and expiry, and test each identity mismatch plus replay independently.
+6. Separate source guidance from deployed-router, provider, audit and execution evidence.
+
+## Forbidden result
+
+- Trust SDK or outer ABI decoding as proof that nested command bytes are safe.
+- Check only PoolManager identity or only Universal Router identity.
+- Permit an alternate router, direct callback, malformed offset or overflowed length to reach a value-moving action.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

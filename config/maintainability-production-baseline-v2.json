@@ -1,0 +1,656 @@
+{
+  "$schema": "urn:programmable:maintainability-production-baseline:2.0.0",
+  "schemaVersion": "2.0.0",
+  "kind": "programmable-maintainability-production-baseline",
+  "sourceCommit": "e8f1344fecbec32a7ca2030520005fcd5b344df0",
+  "observation": {
+    "recordedAt": "2026-08-07T08:58:18Z",
+    "profile": "exact-git-source-bytes-and-lexical-complexity-v1"
+  },
+  "modules": [
+    {
+      "path": "scripts/quality/coverage-baseline.mjs",
+      "observedLines": 277,
+      "observedBytes": 11395,
+      "observedComplexityScore": 83,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "scripts/quality/dependency-advisory-core.mjs",
+      "observedLines": 96,
+      "observedBytes": 4497,
+      "observedComplexityScore": 38,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "scripts/quality/dependency-advisory.mjs",
+      "observedLines": 199,
+      "observedBytes": 7936,
+      "observedComplexityScore": 42,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "scripts/quality/mutation-gate.mjs",
+      "observedLines": 199,
+      "observedBytes": 8021,
+      "observedComplexityScore": 20,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "scripts/quality/size-budget.mjs",
+      "observedLines": 132,
+      "observedBytes": 5506,
+      "observedComplexityScore": 44,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/application-dependency-core.mjs",
+      "observedLines": 221,
+      "observedBytes": 9348,
+      "observedComplexityScore": 65,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/application-recheck.mjs",
+      "observedLines": 113,
+      "observedBytes": 4280,
+      "observedComplexityScore": 20,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/application-v3-prepare-revision-core.mjs",
+      "observedLines": 549,
+      "observedBytes": 19732,
+      "observedComplexityScore": 138,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/bounded-child-process-core.mjs",
+      "observedLines": 208,
+      "observedBytes": 7299,
+      "observedComplexityScore": 50,
+      "observedMaxBlockDepth": 6
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/build-info-core.mjs",
+      "observedLines": 986,
+      "observedBytes": 31784,
+      "observedComplexityScore": 243,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/build-profile-core.mjs",
+      "observedLines": 1068,
+      "observedBytes": 42223,
+      "observedComplexityScore": 340,
+      "observedMaxBlockDepth": 6
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/build-profile.mjs",
+      "observedLines": 60,
+      "observedBytes": 2369,
+      "observedComplexityScore": 18,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/build-review-target.mjs",
+      "observedLines": 69,
+      "observedBytes": 2624,
+      "observedComplexityScore": 10,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/builder-lifecycle-core.mjs",
+      "observedLines": 1283,
+      "observedBytes": 67554,
+      "observedComplexityScore": 351,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/builder-lifecycle.mjs",
+      "observedLines": 371,
+      "observedBytes": 15051,
+      "observedComplexityScore": 71,
+      "observedMaxBlockDepth": 6
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/builder-template-contract.mjs",
+      "observedLines": 558,
+      "observedBytes": 24398,
+      "observedComplexityScore": 97,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/canonical-json-core.mjs",
+      "observedLines": 165,
+      "observedBytes": 6347,
+      "observedComplexityScore": 40,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/canonical-json-legacy-adapters.mjs",
+      "observedLines": 49,
+      "observedBytes": 1891,
+      "observedComplexityScore": 6,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/check-upstream-drift.mjs",
+      "observedLines": 784,
+      "observedBytes": 32242,
+      "observedComplexityScore": 224,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/cli-args.mjs",
+      "observedLines": 118,
+      "observedBytes": 4027,
+      "observedComplexityScore": 42,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/cli-central-base.mjs",
+      "observedLines": 696,
+      "observedBytes": 28160,
+      "observedComplexityScore": 187,
+      "observedMaxBlockDepth": 7
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/cli-central-package.mjs",
+      "observedLines": 693,
+      "observedBytes": 27995,
+      "observedComplexityScore": 153,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/cli-github-source.mjs",
+      "observedLines": 813,
+      "observedBytes": 31236,
+      "observedComplexityScore": 194,
+      "observedMaxBlockDepth": 5
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/cli-local-draft.mjs",
+      "observedLines": 662,
+      "observedBytes": 25859,
+      "observedComplexityScore": 208,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/cli-output-dir.mjs",
+      "observedLines": 632,
+      "observedBytes": 23455,
+      "observedComplexityScore": 154,
+      "observedMaxBlockDepth": 6
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/cli-prepare-pr.mjs",
+      "observedLines": 1699,
+      "observedBytes": 61741,
+      "observedComplexityScore": 301,
+      "observedMaxBlockDepth": 6
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/cli-review-target.mjs",
+      "observedLines": 49,
+      "observedBytes": 2054,
+      "observedComplexityScore": 11,
+      "observedMaxBlockDepth": 2
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/cli-runtime.mjs",
+      "observedLines": 149,
+      "observedBytes": 4814,
+      "observedComplexityScore": 25,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/cli.mjs",
+      "observedLines": 570,
+      "observedBytes": 25726,
+      "observedComplexityScore": 100,
+      "observedMaxBlockDepth": 5
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/closure-report-core.mjs",
+      "observedLines": 194,
+      "observedBytes": 9127,
+      "observedComplexityScore": 37,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/companion-manifest-contract.mjs",
+      "observedLines": 998,
+      "observedBytes": 42741,
+      "observedComplexityScore": 136,
+      "observedMaxBlockDepth": 6
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/contract-registry-core.mjs",
+      "observedLines": 303,
+      "observedBytes": 12797,
+      "observedComplexityScore": 64,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/dependency-pointer-core.mjs",
+      "observedLines": 570,
+      "observedBytes": 22365,
+      "observedComplexityScore": 187,
+      "observedMaxBlockDepth": 5
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/deployment-core.mjs",
+      "observedLines": 296,
+      "observedBytes": 13954,
+      "observedComplexityScore": 75,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/doctor.mjs",
+      "observedLines": 209,
+      "observedBytes": 9606,
+      "observedComplexityScore": 52,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/evm-encoding-core.mjs",
+      "observedLines": 336,
+      "observedBytes": 16196,
+      "observedComplexityScore": 61,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/example-materializer-core.mjs",
+      "observedLines": 493,
+      "observedBytes": 21755,
+      "observedComplexityScore": 38,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/fee-conformance-core.mjs",
+      "observedLines": 922,
+      "observedBytes": 38071,
+      "observedComplexityScore": 220,
+      "observedMaxBlockDepth": 9
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/fee-conformance-receipt-v1-core.mjs",
+      "observedLines": 618,
+      "observedBytes": 27989,
+      "observedComplexityScore": 174,
+      "observedMaxBlockDepth": 5
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/fee-conformance-v1-constants.mjs",
+      "observedLines": 73,
+      "observedBytes": 2930,
+      "observedComplexityScore": 1,
+      "observedMaxBlockDepth": 1
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/fee-conformance-vector-set-v1-core.mjs",
+      "observedLines": 631,
+      "observedBytes": 29995,
+      "observedComplexityScore": 203,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/fee-conformance.mjs",
+      "observedLines": 155,
+      "observedBytes": 5876,
+      "observedComplexityScore": 37,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/fee-policy-v2-core.mjs",
+      "observedLines": 822,
+      "observedBytes": 32000,
+      "observedComplexityScore": 154,
+      "observedMaxBlockDepth": 5
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/generate-contract-registry.mjs",
+      "observedLines": 66,
+      "observedBytes": 2511,
+      "observedComplexityScore": 14,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/generate-public-pr-application-schema.mjs",
+      "observedLines": 141,
+      "observedBytes": 5915,
+      "observedComplexityScore": 36,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/github-application-core.mjs",
+      "observedLines": 2909,
+      "observedBytes": 123652,
+      "observedComplexityScore": 739,
+      "observedMaxBlockDepth": 8
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/github-application.mjs",
+      "observedLines": 174,
+      "observedBytes": 6548,
+      "observedComplexityScore": 32,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/github-exact-object-resolver.mjs",
+      "observedLines": 1087,
+      "observedBytes": 40118,
+      "observedComplexityScore": 242,
+      "observedMaxBlockDepth": 6
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/github-public-source-core.mjs",
+      "observedLines": 1660,
+      "observedBytes": 64082,
+      "observedComplexityScore": 392,
+      "observedMaxBlockDepth": 6
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/knowledge-router-core.mjs",
+      "observedLines": 948,
+      "observedBytes": 40981,
+      "observedComplexityScore": 213,
+      "observedMaxBlockDepth": 5
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/knowledge-router.mjs",
+      "observedLines": 231,
+      "observedBytes": 10294,
+      "observedComplexityScore": 48,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/launch-bundle-core.mjs",
+      "observedLines": 855,
+      "observedBytes": 49315,
+      "observedComplexityScore": 215,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/launch-bundle-v2-core.mjs",
+      "observedLines": 3857,
+      "observedBytes": 197758,
+      "observedComplexityScore": 1075,
+      "observedMaxBlockDepth": 7
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/launch-bundle-v2.mjs",
+      "observedLines": 696,
+      "observedBytes": 27454,
+      "observedComplexityScore": 173,
+      "observedMaxBlockDepth": 5
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/launch-bundle.mjs",
+      "observedLines": 214,
+      "observedBytes": 8806,
+      "observedComplexityScore": 40,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/launch-plan-graph-core.mjs",
+      "observedLines": 653,
+      "observedBytes": 30207,
+      "observedComplexityScore": 192,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/launch-plan-graph.mjs",
+      "observedLines": 91,
+      "observedBytes": 3432,
+      "observedComplexityScore": 19,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/materialize-example.mjs",
+      "observedLines": 101,
+      "observedBytes": 2890,
+      "observedComplexityScore": 21,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/metadata-core.mjs",
+      "observedLines": 80,
+      "observedBytes": 3928,
+      "observedComplexityScore": 14,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/official-launchpad-core.mjs",
+      "observedLines": 479,
+      "observedBytes": 21044,
+      "observedComplexityScore": 144,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/open-world-migration-core.mjs",
+      "observedLines": 1257,
+      "observedBytes": 47583,
+      "observedComplexityScore": 171,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/open-world-security-core.mjs",
+      "observedLines": 2527,
+      "observedBytes": 128485,
+      "observedComplexityScore": 492,
+      "observedMaxBlockDepth": 5
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/open-world-source-signals-core.mjs",
+      "observedLines": 852,
+      "observedBytes": 38339,
+      "observedComplexityScore": 286,
+      "observedMaxBlockDepth": 9
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/open-world-v2-core.mjs",
+      "observedLines": 2578,
+      "observedBytes": 164207,
+      "observedComplexityScore": 1089,
+      "observedMaxBlockDepth": 7
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/open-world.mjs",
+      "observedLines": 9879,
+      "observedBytes": 427062,
+      "observedComplexityScore": 2126,
+      "observedMaxBlockDepth": 7
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/package-dependency-contract.mjs",
+      "observedLines": 134,
+      "observedBytes": 5747,
+      "observedComplexityScore": 63,
+      "observedMaxBlockDepth": 2
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/project-surfaces-core.mjs",
+      "observedLines": 423,
+      "observedBytes": 28647,
+      "observedComplexityScore": 149,
+      "observedMaxBlockDepth": 5
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/public-claims-core.mjs",
+      "observedLines": 879,
+      "observedBytes": 41827,
+      "observedComplexityScore": 138,
+      "observedMaxBlockDepth": 2
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/public-pr-application-v3-core.mjs",
+      "observedLines": 3140,
+      "observedBytes": 171317,
+      "observedComplexityScore": 888,
+      "observedMaxBlockDepth": 8
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/raw-git-integrity-core.mjs",
+      "observedLines": 332,
+      "observedBytes": 12932,
+      "observedComplexityScore": 91,
+      "observedMaxBlockDepth": 6
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/registry-acceptance-v3-github-core.mjs",
+      "observedLines": 1259,
+      "observedBytes": 54468,
+      "observedComplexityScore": 346,
+      "observedMaxBlockDepth": 5
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/registry-discovery-core.mjs",
+      "observedLines": 1026,
+      "observedBytes": 50703,
+      "observedComplexityScore": 343,
+      "observedMaxBlockDepth": 5
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/registry-discovery.mjs",
+      "observedLines": 110,
+      "observedBytes": 5419,
+      "observedComplexityScore": 38,
+      "observedMaxBlockDepth": 5
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/repository-root.mjs",
+      "observedLines": 368,
+      "observedBytes": 14374,
+      "observedComplexityScore": 120,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/resolve-contract-core.mjs",
+      "observedLines": 1064,
+      "observedBytes": 40616,
+      "observedComplexityScore": 241,
+      "observedMaxBlockDepth": 7
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/resolve-contract.mjs",
+      "observedLines": 98,
+      "observedBytes": 3438,
+      "observedComplexityScore": 15,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/resolve-deployment.mjs",
+      "observedLines": 42,
+      "observedBytes": 1785,
+      "observedComplexityScore": 13,
+      "observedMaxBlockDepth": 2
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/review-target-contract.mjs",
+      "observedLines": 195,
+      "observedBytes": 7795,
+      "observedComplexityScore": 82,
+      "observedMaxBlockDepth": 2
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/review-target-core.mjs",
+      "observedLines": 1682,
+      "observedBytes": 73910,
+      "observedComplexityScore": 594,
+      "observedMaxBlockDepth": 7
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/reviewed-drift-receipt-core.mjs",
+      "observedLines": 202,
+      "observedBytes": 10572,
+      "observedComplexityScore": 4,
+      "observedMaxBlockDepth": 2
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/runtime-assets-core.mjs",
+      "observedLines": 807,
+      "observedBytes": 33055,
+      "observedComplexityScore": 284,
+      "observedMaxBlockDepth": 5
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/scaffold-submission.mjs",
+      "observedLines": 493,
+      "observedBytes": 22222,
+      "observedComplexityScore": 92,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/source-manifest.mjs",
+      "observedLines": 1532,
+      "observedBytes": 61581,
+      "observedComplexityScore": 288,
+      "observedMaxBlockDepth": 7
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/strict-json-core.mjs",
+      "observedLines": 226,
+      "observedBytes": 7646,
+      "observedComplexityScore": 55,
+      "observedMaxBlockDepth": 6
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/submission-core.mjs",
+      "observedLines": 4556,
+      "observedBytes": 374496,
+      "observedComplexityScore": 1812,
+      "observedMaxBlockDepth": 6
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/template-catalog-core.mjs",
+      "observedLines": 2019,
+      "observedBytes": 83571,
+      "observedComplexityScore": 229,
+      "observedMaxBlockDepth": 5
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/template-catalog.mjs",
+      "observedLines": 265,
+      "observedBytes": 8905,
+      "observedComplexityScore": 45,
+      "observedMaxBlockDepth": 4
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/typed-launch-contracts-v1-core.mjs",
+      "observedLines": 672,
+      "observedBytes": 47241,
+      "observedComplexityScore": 269,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/update-registry-snapshot.mjs",
+      "observedLines": 51,
+      "observedBytes": 1958,
+      "observedComplexityScore": 7,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/validate-submission.mjs",
+      "observedLines": 119,
+      "observedBytes": 4976,
+      "observedComplexityScore": 24,
+      "observedMaxBlockDepth": 3
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/verify-package.mjs",
+      "observedLines": 1242,
+      "observedBytes": 52895,
+      "observedComplexityScore": 411,
+      "observedMaxBlockDepth": 5
+    },
+    {
+      "path": "skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
+      "observedLines": 1310,
+      "observedBytes": 58909,
+      "observedComplexityScore": 323,
+      "observedMaxBlockDepth": 5
+    }
+  ]
+}

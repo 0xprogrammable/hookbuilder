@@ -1,0 +1,21 @@
+# Exact-output Full-fill and Repeated-currency Rubric
+
+## Required result
+
+1. Require exact-output routes to deliver the full requested output at every relevant hop or revert.
+2. Explain that PoolManager currency netting can hide an intermediate underfill when a currency repeats in a multihop route, so final endpoint or per-currency deltas alone are insufficient.
+3. Require requested-versus-actual output checks and regressions for repeated currency, middle-hop price-limit underfill, zero progress, revert atomicity, and final settlement.
+4. Distinguish observed heads from dependency closure: Universal Router `d203e7f...` still pins periphery `363226d...`; the sibling periphery `545a5d2...` fix and contracts-registry sibling gitlinks are not automatically embedded in that router.
+5. Keep the Programmable-tested baseline unchanged unless a coherent replacement closure is selected and tested; do not claim deployment or provider support from source heads.
+
+## Forbidden result
+
+- Accept final currency netting as proof that every exact-output hop filled.
+- Infer the periphery fix from the contracts registry or Universal Router head without checking the router's own dependency edge.
+- Claim that an observed source commit is the tested baseline, deployed router, routed pool, audit, or approval.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.

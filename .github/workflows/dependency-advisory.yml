@@ -1,0 +1,45 @@
+name: Dependency advisory report
+
+on:
+  schedule:
+    - cron: "17 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-advisory-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  report:
+    name: Read-only npm advisory report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact revision without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Use Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Scan and write the run summary
+        run: >-
+          node scripts/quality/dependency-advisory.mjs
+          --output "$RUNNER_TEMP/programmable-dependency-advisory.json"
+          --github-summary "$GITHUB_STEP_SUMMARY"
+      - name: Report exact locked package deprecations
+        if: ${{ always() }}
+        run: >-
+          node scripts/quality/package-deprecation.mjs
+          --github-summary "$GITHUB_STEP_SUMMARY"
+      - name: Fail on unreviewed upstream source drift
+        if: ${{ always() }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >-
+          node skills/programmable-v4-hook-builder/scripts/check-upstream-drift.mjs
+          --json

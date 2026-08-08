@@ -1,0 +1,164 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "zero-scope-service",
+  "title": "Read-only service and indexer with zero canonical execution scope",
+  "mode": "preflight",
+  "locale": "en",
+  "input": {
+    "summary": "A Python indexer, Go alert worker, and TypeScript dashboard read public chain events and never create a token, pool, hook, swap, custody path, signature, or transaction.",
+    "sourceCase": "evals/suites/programmable-v4-hook-builder/cases/pure-service-indexer-zero-scope.md"
+  },
+  "expected": {
+    "primaryRoute": "DIRECT_BUILD",
+    "feeApplicability": "not-applicable",
+    "hardConflictCode": null,
+    "decisionId": null,
+    "currentStates": {
+      "design": "DESIGN_READY",
+      "implementation": "NOT_STARTED",
+      "application": "NOT_PREPARED",
+      "runtime": "NOT_DEPLOYED",
+      "availability": "NOT_AVAILABLE"
+    }
+  },
+  "response": {
+    "schemaVersion": "1.0.0",
+    "user": {
+      "outcome": "This remains a zero-scope read-only service. It needs no token, pool, hook, fake market, fee instance, wallet signing, or transaction path.",
+      "status": "The design can proceed directly. Implementation, Application V3, deployment, provider listing, monitoring, and public availability have not started.",
+      "decision": null,
+      "nextAction": "I will define event sources, reorg recovery, freshness, alert authentication, storage, failure behavior, build profiles, tests, and the three-repository evidence closure.",
+      "limitations": [
+        "DESIGN_NOT_APPROVAL",
+        "LOCAL_CHECKS_NOT_AUDIT",
+        "NOT_DEPLOYED",
+        "PROVIDER_SUPPORT_UNRESOLVED",
+        "NOT_PUBLICLY_AVAILABLE"
+      ],
+      "artifactRefs": [
+        "evals/forward-tests/cases/zero-scope-service.json#/response/artifact"
+      ]
+    },
+    "artifact": {
+      "primaryRoute": "DIRECT_BUILD",
+      "feeApplicability": "not-applicable",
+      "hardConflictCode": null,
+      "facts": [
+        {
+          "id": "read-only-chain-data",
+          "state": "confirmed",
+          "statement": "Every component reads public chain events and produces derived notifications or displays only.",
+          "source": "input.summary"
+        },
+        {
+          "id": "zero-execution-scope",
+          "state": "confirmed",
+          "statement": "The complete graph contains no token, pool, hook, swap, pricing, custody, signing, or transaction surface.",
+          "source": "input.summary"
+        },
+        {
+          "id": "three-language-service",
+          "state": "confirmed",
+          "statement": "The intended components use Python, Go, and TypeScript with language-specific reproducible build profiles.",
+          "source": "input.summary"
+        }
+      ],
+      "deferredDecisions": [],
+      "architecture": [
+        "The Python indexer reconstructs declared events, stores cursors, rolls back reorgs, and performs deterministic resync.",
+        "The Go worker consumes authenticated indexer output, deduplicates alerts, retries bounded failures, and never signs a chain transaction.",
+        "The TypeScript dashboard labels freshness, source block, confirmation policy, dependency failure, and derived rather than authoritative data.",
+        "Each repository binds its own source, lockfiles, tests, schemas, dependency closure, CI evidence, and operational assumptions."
+      ],
+      "findings": [
+        {
+          "id": "fee-zero-scope",
+          "effect": "Inventing a pool or fee instance would add economics and trust that the builder explicitly excluded.",
+          "repair": "Bind zero canonical execution scopes and keep fee instance and receipt fields null at prototype stage."
+        },
+        {
+          "id": "service-evidence-needed",
+          "effect": "Read-only behavior does not remove authentication, data-integrity, reorg, retry, dependency, or recovery obligations.",
+          "repair": "Prove those service-specific controls instead of applying irrelevant Solidity or hook gates."
+        }
+      ],
+      "evidence": [
+        {
+          "id": "idea-source",
+          "state": "recorded",
+          "locator": "evals/suites/programmable-v4-hook-builder/cases/pure-service-indexer-zero-scope.md",
+          "meaning": "The source explicitly excludes every canonical execution and value-moving surface."
+        },
+        {
+          "id": "scope-graph",
+          "state": "recorded",
+          "locator": "evals/forward-tests/cases/zero-scope-service.json#/response/artifact/facts",
+          "meaning": "The deterministic fixture records the complete zero-scope surface claim for contract validation."
+        },
+        {
+          "id": "implementation-evidence",
+          "state": "not-run",
+          "locator": null,
+          "meaning": "No source, build, unit, integration, reorg, retry, or end-to-end evidence exists."
+        }
+      ],
+      "gates": [
+        {
+          "id": "intent-fidelity",
+          "state": "passed",
+          "reason": "The service remains read-only and no launch component has been invented.",
+          "evidenceRefs": [
+            "idea-source"
+          ]
+        },
+        {
+          "id": "fee-applicability",
+          "state": "passed",
+          "reason": "The complete declared graph has zero programmable-canonical execution scopes.",
+          "evidenceRefs": [
+            "idea-source",
+            "scope-graph"
+          ]
+        },
+        {
+          "id": "implementation",
+          "state": "not-run",
+          "reason": "Source and service-specific executable evidence have not been produced.",
+          "evidenceRefs": []
+        },
+        {
+          "id": "application-v3",
+          "state": "not-run",
+          "reason": "No exact public GitHub source revisions have been bound into an application package.",
+          "evidenceRefs": []
+        }
+      ],
+      "statusJourney": {
+        "design": [
+          "IDEA_CAPTURED",
+          "DESIGN_READY"
+        ],
+        "implementation": [
+          "NOT_STARTED"
+        ],
+        "application": [
+          "NOT_PREPARED"
+        ],
+        "runtime": [
+          "NOT_DEPLOYED"
+        ],
+        "availability": [
+          "NOT_AVAILABLE"
+        ]
+      },
+      "operations": {
+        "reviewQueue": "DESIGN_ONLY",
+        "rbac": "DESIGN_ONLY",
+        "auditLog": "DESIGN_ONLY",
+        "privacyRetentionTakedown": "DESIGN_ONLY",
+        "incidentResponse": "DESIGN_ONLY",
+        "monitoring": "DESIGN_ONLY"
+      }
+    }
+  }
+}

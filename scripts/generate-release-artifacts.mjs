@@ -1,42 +1,89 @@
 #!/usr/bin/env node
 
 import childProcess from "node:child_process";
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
+import { verifyExternalEvidenceBundle } from "./evals/e2e-external-evidence-core.mjs";
+import {
+  buildReleaseSpdx,
+  MAX_RELEASE_EVIDENCE_BYTES,
+  RELEASE_KERNELS,
+  sha256,
+  validateReleaseKernelEvidence
+} from "./release-evidence-core.mjs";
+import { parseBoundedStrictJsonBytes } from "../skills/programmable-v4-hook-builder/scripts/strict-json-core.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
-const packageDocument = readJson(path.join(repositoryRoot, "package.json"));
-const expectedTag = `v${packageDocument.version}`;
 const options = parseArgs(process.argv.slice(2));
 
-if (options.tag !== expectedTag) fail(`expected --tag ${expectedTag}`);
-if (!path.isAbsolute(options.outputDirectory)) fail("--output-dir must be an absolute path outside the repository");
-const relativeOutput = path.relative(repositoryRoot, options.outputDirectory);
-if (!relativeOutput.startsWith("..") && !path.isAbsolute(relativeOutput)) {
-  fail("--output-dir must be outside the repository");
-}
+assertSafeOutputDirectory(options.outputDirectory);
+assertSafeEvidenceFile(options.kernelEvidencePath);
 if (git(["status", "--porcelain=v1", "--untracked-files=all"]).trim() !== "") {
   fail("release artifacts require a clean Git worktree");
 }
 
 const commit = git(["rev-parse", "HEAD"]).trim();
-const tree = git(["rev-parse", "HEAD^{tree}"]).trim();
-const created = new Date(git(["show", "-s", "--format=%cI", "HEAD"]).trim()).toISOString();
+const tree = git(["rev-parse", `${commit}^{tree}`]).trim();
+const created = new Date(git(["show", "-s", "--format=%cI", commit]).trim()).toISOString();
+const commitEpoch = git(["show", "-s", "--format=%ct", commit]).trim();
+const packageDocument = readCommitJson(commit, "package.json");
+const expectedTag = `v${packageDocument.version}`;
+if (options.tag !== expectedTag) fail(`expected --tag ${expectedTag}`);
 const skillRoot = "skills/programmable-v4-hook-builder";
-const trackedFiles = git(["ls-files", "-s", "-z", `${skillRoot}/`], { encoding: null })
+const skillTree = git(["rev-parse", `${commit}:${skillRoot}`]).trim();
+let externalEvidenceVerification;
+try {
+  externalEvidenceVerification = verifyExternalEvidenceBundle({
+    evidencePath: options.externalEvidencePath ?? null,
+    operatorSelectedPolicySha256: options.externalEvidenceOperatorPolicySha256 ?? null,
+    repositoryRoot,
+    sourceBinding: { commit, tree, skillTree }
+  });
+} catch (error) {
+  const code = typeof error?.code === "string" ? ` (${error.code})` : "";
+  fail(`--external-evidence rejected${code}: ${error instanceof Error ? error.message : String(error)}`);
+}
+const kernelLocks = RELEASE_KERNELS.map((specification) => {
+  const repositoryPath = `${specification.sourcePath}/package-lock.json`;
+  const bytes = git(["show", `${commit}:${repositoryPath}`], { encoding: null });
+  return {
+    id: specification.id,
+    path: repositoryPath,
+    bytes,
+    lock: parseStrictJson(bytes, `committed ${repositoryPath}`, 8 * 1024 * 1024)
+  };
+});
+const kernelEvidenceBytes = readBoundedEvidence(options.kernelEvidencePath);
+const kernelEvidence = parseStrictJson(
+  kernelEvidenceBytes,
+  "--kernel-evidence",
+  MAX_RELEASE_EVIDENCE_BYTES
+);
+let validatedKernelEvidence;
+try {
+  validatedKernelEvidence = validateReleaseKernelEvidence(kernelEvidence, {
+    commit,
+    tree,
+    skillTree,
+    createdFromCommitTime: created,
+    lockfiles: Object.fromEntries(kernelLocks.map(({ id, path: lockPath, bytes }) => [id, { path: lockPath, bytes }]))
+  });
+} catch (error) {
+  fail(`--kernel-evidence rejected: ${error instanceof Error ? error.message : String(error)}`);
+}
+const trackedFiles = git(["ls-tree", "-r", "-z", "--full-tree", commit, "--", `${skillRoot}/`], { encoding: null })
   .toString("utf8")
   .split("\0")
   .filter(Boolean)
   .map((entry) => {
-    const match = entry.match(/^(\d+) [0-9a-f]{40} \d+\t(.+)$/u);
+    const match = entry.match(/^(\d+) blob ([0-9a-f]{40})\t(.+)$/u);
     if (!match) fail(`cannot parse tracked file record: ${entry}`);
-    const repositoryPath = match[2];
-    const contents = fs.readFileSync(path.join(repositoryRoot, repositoryPath));
+    const repositoryPath = match[3];
+    const contents = git(["cat-file", "blob", match[2]], { encoding: null });
     return {
       path: repositoryPath.slice(`${skillRoot}/`.length),
       mode: match[1],
@@ -44,7 +91,7 @@ const trackedFiles = git(["ls-files", "-s", "-z", `${skillRoot}/`], { encoding: 
       sha256: sha256(contents)
     };
   })
-  .sort((left, right) => left.path.localeCompare(right.path));
+  .sort((left, right) => compareCodeUnits(left.path, right.path));
 
 if (trackedFiles.length === 0) fail("portable skill contains no tracked files");
 
@@ -52,60 +99,104 @@ fs.mkdirSync(options.outputDirectory, { recursive: true });
 if (fs.readdirSync(options.outputDirectory).length !== 0) fail("--output-dir must be empty");
 
 const baseName = `programmable-v4-hook-builder-${expectedTag}`;
+const archiveRoot = "programmable-v4-hook-builder";
 const archiveName = `${baseName}.tar.gz`;
 const manifestName = `${baseName}.manifest.json`;
 const sbomName = `${baseName}.spdx.json`;
 const receiptName = `${baseName}.release.json`;
+const kernelEvidenceName = `${baseName}.kernel-evidence.json`;
 
 const tar = git([
+  "-c",
+  "tar.umask=0022",
   "archive",
   "--format=tar",
-  `--prefix=${baseName}/`,
-  `HEAD:${skillRoot}`
+  `--mtime=@${commitEpoch}`,
+  `--prefix=${archiveRoot}/`,
+  `${commit}:${skillRoot}`
 ], { encoding: null });
 const archive = zlib.gzipSync(tar, { level: 9, mtime: 0 });
 writeBinary(archiveName, archive);
 
 const manifest = {
-  schemaVersion: "1.0.0",
+  schemaVersion: "2.0.0",
   product: "Programmable v4 Builder",
   skill: "programmable-v4-hook-builder",
   version: packageDocument.version,
   tag: expectedTag,
   commit,
   tree,
+  skillTree,
+  archiveRoot,
   createdFromCommitTime: created,
   fileCount: trackedFiles.length,
   files: trackedFiles
 };
 writeJson(manifestName, manifest);
 
-const kernelLockPath = path.join(
-  repositoryRoot,
-  skillRoot,
-  "assets/reference-kernels/programmable-volume-fee-v1/package-lock.json"
-);
-const sbom = buildSpdx(readJson(kernelLockPath), { commit, created, version: packageDocument.version });
+const sbom = buildReleaseSpdx(kernelLocks, { commit, created, version: packageDocument.version });
 writeJson(sbomName, sbom);
+writeBinary(kernelEvidenceName, kernelEvidenceBytes);
 
 const receipt = {
-  schemaVersion: "1.0.0",
+  schemaVersion: "2.0.0",
+  releaseCandidate: false,
   product: "Programmable v4 Builder",
   version: packageDocument.version,
   tag: expectedTag,
   commit,
   tree,
+  skillTree,
   createdFromCommitTime: created,
   sourcePath: skillRoot,
+  archiveRoot,
   archive: archiveName,
   manifest: manifestName,
   sbom: sbomName,
-  modelEvalState: "not-run-provider-credential-and-cost-required",
-  securityState: "reference-kernel-locally-tested-and-static-analyzed-not-independently-audited-or-deployed"
+  kernelEvidence: {
+    artifact: kernelEvidenceName,
+    sha256: sha256(kernelEvidenceBytes),
+    status: validatedKernelEvidence.status,
+    verifiedAt: validatedKernelEvidence.verifiedAt,
+    tools: validatedKernelEvidence.tools,
+    kernels: validatedKernelEvidence.kernels
+  },
+  publicationEvidence: {
+    candidate: {
+      state: "LOCAL_ARTIFACTS_GENERATED_NOT_A_RELEASE_CANDIDATE",
+      commit,
+      tree,
+      skillTree,
+      releaseCandidate: false
+    },
+    stable: {
+      state: "NOT_PUBLISHED",
+      tagEvidence: null,
+      releaseEvidence: null,
+      registryEvidence: null
+    }
+  },
+  externalEvidenceVerification,
+  releaseCandidateBlockers: {
+    externalEvidenceGateIds: externalEvidenceVerification.remainingBlockedGateIds,
+    authorityAndPublication: [
+      "owner release authorization",
+      "protected public push and tag",
+      "public CI",
+      "public-tag installation canaries",
+      "Registry intake activation",
+      "platform integration and deployment",
+      "independent security review"
+    ]
+  },
+  modelEvalState: externalEvidenceVerification.verifiedGateIds.includes("REAL_MODEL_TIERS_AND_INDEPENDENT_JUDGE")
+    ? "externally-verified"
+    : "external-blocked",
+  securityEvidenceBoundary: "recorded-kernel-checks-passed-independent-audit-deployment-and-live-operation-not-evidenced"
 };
 writeJson(receiptName, receipt);
 
-const checksummedNames = [archiveName, manifestName, sbomName, receiptName];
+const checksummedNames = [archiveName, manifestName, sbomName, kernelEvidenceName, receiptName];
 const checksumLines = checksummedNames
   .map((name) => `${sha256(fs.readFileSync(path.join(options.outputDirectory, name)))}  ${name}`)
   .join("\n");
@@ -121,87 +212,87 @@ process.stdout.write(`${JSON.stringify({
   artifacts: [...checksummedNames, "SHA256SUMS"]
 }, null, 2)}\n`);
 
-function buildSpdx(lock, release) {
-  const dependencyPackages = Object.entries(lock.packages)
-    .filter(([packagePath]) => packagePath.startsWith("node_modules/"))
-    .map(([packagePath, metadata], index) => {
-      const name = packagePath.slice("node_modules/".length);
-      const checksum = integrityChecksum(metadata.integrity);
-      return {
-        SPDXID: `SPDXRef-Dependency-${index + 1}`,
-        name,
-        versionInfo: metadata.version,
-        downloadLocation: metadata.resolved ?? "NOASSERTION",
-        filesAnalyzed: false,
-        licenseConcluded: "NOASSERTION",
-        licenseDeclared: metadata.license ?? "NOASSERTION",
-        copyrightText: "NOASSERTION",
-        checksums: checksum ? [checksum] : [],
-        externalRefs: [{
-          referenceCategory: "PACKAGE-MANAGER",
-          referenceType: "purl",
-          referenceLocator: `pkg:npm/${encodePurlName(name)}@${metadata.version}`
-        }]
-      };
-    });
-  const skillPackage = {
-    SPDXID: "SPDXRef-Package-Builder",
-    name: "programmable-v4-hook-builder",
-    versionInfo: release.version,
-    downloadLocation: `https://github.com/0xprogrammable/programmable-v4-builder/tree/${release.commit}/skills/programmable-v4-hook-builder`,
-    filesAnalyzed: false,
-    licenseConcluded: "MIT",
-    licenseDeclared: "MIT",
-    copyrightText: "Copyright (c) 2026 Programmable",
-    externalRefs: [{
-      referenceCategory: "PACKAGE-MANAGER",
-      referenceType: "purl",
-      referenceLocator: `pkg:github/0xprogrammable/programmable-v4-builder@${release.commit}`
-    }]
-  };
-  return {
-    spdxVersion: "SPDX-2.3",
-    dataLicense: "CC0-1.0",
-    SPDXID: "SPDXRef-DOCUMENT",
-    name: `programmable-v4-hook-builder-${release.version}`,
-    documentNamespace: `https://github.com/0xprogrammable/programmable-v4-builder/releases/download/v${release.version}/spdx-${release.commit}`,
-    creationInfo: {
-      created: release.created,
-      creators: ["Organization: Programmable", "Tool: programmable-v4-builder-release-artifacts-1.0.0"]
-    },
-    packages: [skillPackage, ...dependencyPackages],
-    relationships: [
-      { spdxElementId: "SPDXRef-DOCUMENT", relationshipType: "DESCRIBES", relatedSpdxElement: skillPackage.SPDXID },
-      ...dependencyPackages.map((dependency) => ({
-        spdxElementId: skillPackage.SPDXID,
-        relationshipType: "DEPENDS_ON",
-        relatedSpdxElement: dependency.SPDXID
-      }))
-    ]
-  };
-}
-
-function integrityChecksum(integrity) {
-  if (typeof integrity !== "string") return null;
-  const match = integrity.match(/^sha512-(.+)$/u);
-  if (!match) return null;
-  return { algorithm: "SHA512", checksumValue: Buffer.from(match[1], "base64").toString("hex").toUpperCase() };
-}
-
-function encodePurlName(name) {
-  return name.startsWith("@") ? name.replace("/", "%2F") : name;
-}
-
 function parseArgs(args) {
   const values = {};
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
-    if (argument === "--tag") values.tag = args[++index];
-    else if (argument === "--output-dir") values.outputDirectory = path.resolve(args[++index] ?? "");
+    if (argument === "--tag") {
+      if (values.tag !== undefined) fail("--tag cannot be repeated");
+      values.tag = args[++index];
+    }
+    else if (argument === "--output-dir") {
+      if (values.outputDirectory !== undefined) fail("--output-dir cannot be repeated");
+      const value = args[++index];
+      if (!value) fail("--output-dir requires a value");
+      values.outputDirectory = path.resolve(value);
+    } else if (argument === "--kernel-evidence") {
+      if (values.kernelEvidencePath !== undefined) fail("--kernel-evidence cannot be repeated");
+      const value = args[++index];
+      if (!value || !path.isAbsolute(value)) fail("--kernel-evidence must be an absolute file path");
+      values.kernelEvidencePath = path.normalize(value);
+    } else if (argument === "--external-evidence") {
+      if (values.externalEvidencePath !== undefined) fail("--external-evidence cannot be repeated");
+      const value = args[++index];
+      if (!value || !path.isAbsolute(value)) fail("--external-evidence must be an absolute file path");
+      values.externalEvidencePath = path.normalize(value);
+    } else if (argument === "--external-evidence-operator-policy-sha256") {
+      if (values.externalEvidenceOperatorPolicySha256 !== undefined) fail("--external-evidence-operator-policy-sha256 cannot be repeated");
+      const value = args[++index];
+      if (!/^sha256:[0-9a-f]{64}$/u.test(value ?? "")) fail("--external-evidence-operator-policy-sha256 must be sha256:<64 lowercase hex>");
+      values.externalEvidenceOperatorPolicySha256 = value;
+    }
     else fail(`unknown argument: ${argument}`);
   }
-  if (!values.tag || !values.outputDirectory) fail("usage: generate-release-artifacts.mjs --tag <tag> --output-dir <absolute-empty-directory>");
+  if (!values.tag || !values.outputDirectory || !values.kernelEvidencePath) {
+    fail("usage: generate-release-artifacts.mjs --tag <tag> --output-dir <absolute-empty-directory> --kernel-evidence <absolute-verified-evidence-file> [--external-evidence <absolute-bundle.json> --external-evidence-operator-policy-sha256 <sha256:...>]");
+  }
+  if ((values.externalEvidencePath === undefined) !== (values.externalEvidenceOperatorPolicySha256 === undefined)) {
+    fail("--external-evidence and --external-evidence-operator-policy-sha256 must be provided together");
+  }
   return values;
+}
+
+function assertSafeEvidenceFile(file) {
+  if (!path.isAbsolute(file) || !fs.existsSync(file)) fail("--kernel-evidence must name an existing absolute file");
+  const stat = fs.lstatSync(file);
+  if (!stat.isFile() || stat.isSymbolicLink()) fail("--kernel-evidence must be a regular file, not a symlink");
+  const relative = path.relative(fs.realpathSync(repositoryRoot), fs.realpathSync(file));
+  if (!(relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative))) {
+    fail("--kernel-evidence must resolve outside the repository");
+  }
+}
+
+function assertSafeOutputDirectory(outputDirectory) {
+  if (!path.isAbsolute(outputDirectory)) fail("--output-dir must be an absolute path outside the repository");
+  const parent = path.dirname(outputDirectory);
+  if (!fs.existsSync(parent)) fail("--output-dir parent must already exist");
+  const parentStat = fs.lstatSync(parent);
+  if (!parentStat.isDirectory() || parentStat.isSymbolicLink()) {
+    fail("--output-dir parent must be a real directory, not a symlink");
+  }
+  const resolvedRepository = fs.realpathSync(repositoryRoot);
+  const resolvedOutput = path.join(fs.realpathSync(parent), path.basename(outputDirectory));
+  const relative = path.relative(resolvedRepository, resolvedOutput);
+  const outside = relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative);
+  if (!outside) fail("--output-dir must be outside the repository");
+  if (fs.existsSync(outputDirectory)) {
+    const outputStat = fs.lstatSync(outputDirectory);
+    if (!outputStat.isDirectory() || outputStat.isSymbolicLink()) {
+      fail("--output-dir must be a real directory, not a symlink");
+    }
+  }
+}
+
+function readBoundedEvidence(file) {
+  const stat = fs.statSync(file);
+  if (stat.size <= 0 || stat.size > MAX_RELEASE_EVIDENCE_BYTES) {
+    fail(`--kernel-evidence must be between 1 and ${MAX_RELEASE_EVIDENCE_BYTES} bytes`);
+  }
+  const bytes = fs.readFileSync(file);
+  if (bytes.length !== stat.size || bytes.length > MAX_RELEASE_EVIDENCE_BYTES) {
+    fail("--kernel-evidence changed while it was being read");
+  }
+  return bytes;
 }
 
 function git(args, options = {}) {
@@ -217,8 +308,30 @@ function git(args, options = {}) {
   return result.stdout;
 }
 
-function readJson(filePath) {
-  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+function readCommitJson(commit, repositoryPath) {
+  return parseStrictJson(
+    git(["show", `${commit}:${repositoryPath}`], { encoding: null }),
+    `committed ${repositoryPath}`,
+    1024 * 1024
+  );
+}
+
+function parseStrictJson(bytes, label, maxSourceBytes) {
+  try {
+    return parseBoundedStrictJsonBytes(bytes, {
+      maxSourceBytes,
+      maxNodes: 250_000,
+      maxDepth: 128,
+      maxNumberCharacters: 128
+    });
+  } catch (error) {
+    const code = typeof error?.code === "string" ? ` (${error.code})` : "";
+    fail(`${label} is not strict bounded JSON${code}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+function compareCodeUnits(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function writeJson(name, value) {
@@ -227,10 +340,6 @@ function writeJson(name, value) {
 
 function writeBinary(name, value) {
   fs.writeFileSync(path.join(options.outputDirectory, name), value, { mode: 0o644 });
-}
-
-function sha256(contents) {
-  return crypto.createHash("sha256").update(contents).digest("hex");
 }
 
 function fail(message) {

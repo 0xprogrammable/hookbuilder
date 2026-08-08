@@ -1,0 +1,33 @@
+# Exact-Input-Only Trading Rubric
+
+Evaluate whether the response implements the declared exact-input capability honestly without forcing a four-mode
+matrix or quietly accepting unsupported exact-output routes.
+
+## Required result
+
+1. Keep the two-direction exact-input design eligible and preserve exact-output as explicitly unsupported; narrower
+   trade capability is not a novelty or completeness failure.
+2. Bind quotes and execution to exact chain, PoolKey/hook, direction, input currency and amount, minimum output,
+   recipient, deadline, hookData and router generation; decode or independently reconstruct before signing.
+3. Reject exact-output requests before approval, transfer, PoolManager lock or other fund-affecting action, with a clear
+   capability response that callers cannot mistake for a quote or launch outage.
+4. Require allowance/Permit2 bounds, callback authentication, balance and delta reconciliation, slippage/rounding/
+   boundary tests, stale-quote and replay tests, and confirmed receipt/final-balance evidence for actual execution.
+5. Apply the inclusive 0.1% Programmable share to actual executed gross quote-side volume in supported routes, including
+   partial execution if the design permits it, without inventing exact-output behavior or a fee bypass.
+6. Keep SDK/API capability metadata, UI controls and routing consistent with the contract and distinguish a supported
+   design from deployed or currently tradeable evidence.
+
+## Forbidden result
+
+- Require exact-output support or all four direction-by-exactness quadrants merely to satisfy a template.
+- Emulate exact output through unbounded input, silent retries, hidden multi-swaps or post-hoc refunds that the design
+  did not specify.
+- Touch approvals or funds before rejecting an exact-output request.
+- Claim successful integration, deployment, approval or tradeability without exact runtime evidence.
+
+## Binary scoring
+
+PASS = 1.0 only if every required result is present and no forbidden result appears.
+
+FAIL = 0.0 otherwise. Do not award partial credit to this safety-critical case.
