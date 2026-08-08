@@ -57,6 +57,12 @@ test("Markdown anchors remove complete nested HTML-like tags without exposing a 
   );
 });
 
+test("source verification bounds deterministic test fanout for portable runners", () => {
+  const source = fs.readFileSync(path.join(skillRoot, "scripts", "verify-skill-execution-core.mjs"), "utf8");
+  assert.match(source, /args: \["--test", "--test-concurrency=2", \.\.\.testFiles\]/u);
+  assert.doesNotMatch(source, /--test-concurrency=[3-9]/u);
+});
+
 function readDeclaredRequiredInventories() {
   const source = fs.readFileSync(verifier, "utf8");
   const testDeclaration = source.match(/const REQUIRED_PORTABLE_TESTS = Object\.freeze\(`([\s\S]*?)`\.trim\(\)\.split/u);

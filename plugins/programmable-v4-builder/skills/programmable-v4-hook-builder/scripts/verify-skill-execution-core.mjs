@@ -25,7 +25,7 @@ export async function validateScriptsAndTests({
       .map((name) => path.join(testDirectory, name));
     const tests = await runBoundedChildProcess({
       command: process.execPath,
-      args: ["--test", "--test-concurrency=4", ...testFiles],
+      args: ["--test", "--test-concurrency=2", ...testFiles],
       cwd: skillRoot,
       env: process.env,
       // The open-world GitHub transport fixtures intentionally replay complete
