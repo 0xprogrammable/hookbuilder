@@ -353,7 +353,7 @@ test("stdio server terminates boundedly when a peer stops reading outbound respo
   }));
 });
 
-test("bounded MCP execution terminates and reaps a descendant process before rejecting", async (context) => {
+test("bounded MCP execution terminates its process group and descendants disappear boundedly after rejection", async (context) => {
   if (process.platform === "win32") {
     context.skip("process-group termination is currently claimed only on macOS/Linux");
     return;
@@ -379,11 +379,34 @@ test("bounded MCP execution terminates and reaps a descendant process before rej
     (error) => error?.code === "COMMAND_TIMEOUT"
   );
   const descendantPid = Number(fs.readFileSync(pidPath, "utf8"));
-  assert.throws(() => process.kill(descendantPid, 0), /ESRCH/u);
+  context.after(() => {
+    try {
+      process.kill(descendantPid, "SIGKILL");
+    } catch (error) {
+      if (error?.code !== "ESRCH") throw error;
+    }
+  });
+  await assertProcessGoneWithin(descendantPid, 2_000);
 });
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function assertProcessGoneWithin(pid, timeoutMs) {
+  const deadline = performance.now() + timeoutMs;
+  while (true) {
+    try {
+      process.kill(pid, 0);
+    } catch (error) {
+      if (error?.code === "ESRCH") return;
+      throw error;
+    }
+    if (performance.now() >= deadline) {
+      assert.fail(`descendant process ${pid} remained observable after ${timeoutMs} ms`);
+    }
+    await delay(10);
+  }
 }
 
 function residentSetKiB(pid) {
