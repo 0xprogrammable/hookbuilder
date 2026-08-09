@@ -35,6 +35,33 @@ const schema = loadApplicantSubmissionSchema(repositoryRoot);
 const exampleBytes = fs.readFileSync(examplePath);
 const example = parseApplicantSubmission(exampleBytes);
 
+function createApplicantCliFixture(t) {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-applicant-cli-"));
+  t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
+  fs.cpSync(path.join(repositoryRoot, "scripts"), path.join(fixtureRoot, "scripts"), { recursive: true });
+  fs.cpSync(
+    path.join(repositoryRoot, "skills", "programmable-v4-hook-builder", "scripts"),
+    path.join(fixtureRoot, "skills", "programmable-v4-hook-builder", "scripts"),
+    { recursive: true }
+  );
+  fs.mkdirSync(path.join(fixtureRoot, "submissions", "schema"), { recursive: true });
+  fs.copyFileSync(
+    path.join(repositoryRoot, "submissions", "schema", "applicant-submission-v1.schema.json"),
+    path.join(fixtureRoot, "submissions", "schema", "applicant-submission-v1.schema.json")
+  );
+  fs.mkdirSync(path.join(fixtureRoot, "submissions", "requests"), { recursive: true });
+  fs.writeFileSync(path.join(fixtureRoot, "submissions", "requests", "README.md"), "# Requests\n");
+  return fixtureRoot;
+}
+
+function runApplicantCli(fixtureRoot, input) {
+  return childProcess.spawnSync(
+    process.execPath,
+    [path.join(fixtureRoot, "scripts", "validate-applicant-submission.mjs"), input],
+    { cwd: fixtureRoot, encoding: "utf8", shell: false }
+  );
+}
+
 test("example binds the singleton hookbuilder intake and passes schema plus semantic validation", () => {
   assert.equal(example.schemaVersion, APPLICANT_SUBMISSION_SCHEMA_VERSION);
   assert.equal(example.intake.repository, APPLICANT_INTAKE_REPOSITORY);
@@ -221,6 +248,18 @@ test("request filename binds source repository ID and hook ID", () => {
   assert.ok(validateApplicantSubmission(example, schema, {
     relativePath: "submissions/requests/wrong.json"
   }).some(({ code }) => code === "APPLICANT_REQUEST_PATH_MISMATCH"));
+  for (const relativePath of [
+    "submissions/examples/applicant-submission-v1.example.json",
+    "arbitrary.json",
+    "submissions/requests/999-example-fee-hook.json",
+    "submissions/requests/123456789-wrong-hook.json",
+    "submissions/requests/../requests/123456789-example-fee-hook.json",
+    "/submissions/requests/123456789-example-fee-hook.json"
+  ]) {
+    assert.ok(validateApplicantSubmission(example, schema, { relativePath }).some(({ code }) => (
+      code === "APPLICANT_REQUEST_PATH_MISMATCH"
+    )), relativePath);
+  }
 });
 
 test("applicationManifest binds deterministic canonical JSON v2 bytes independently of file formatting", () => {
@@ -253,8 +292,17 @@ test("applicationManifest binds deterministic canonical JSON v2 bytes independen
     sha256: `sha256:${crypto.createHash("sha256").update(canonicalBytes).digest("hex")}`
   });
   assert.equal(evidence.launchWallet, example.applicant.launchWallet);
+  assert.equal(evidence.path, evidence.applicationManifest.path);
   assert.notEqual(evidence.sha256, evidence.applicationManifest.sha256.slice("sha256:".length));
   assert.equal(Object.isFrozen(evidence.applicationManifest), true);
+  assert.throws(
+    () => applicantSubmissionEvidence(
+      example,
+      exampleBytes,
+      "submissions/examples/applicant-submission-v1.example.json"
+    ),
+    /applicant evidence path must be submissions\/requests\/123456789-example-fee-hook\.json/u
+  );
 
   const differentWallet = structuredClone(example);
   differentWallet.applicant.launchWallet = "0x8617E340B3D01FA5F11F306F4090FD50E238070D";
@@ -278,20 +326,52 @@ test("CLI all-mode is offline and accepts an empty request directory", () => {
   assert.deepEqual(report.files, []);
 });
 
-test("CLI emits the canonical applicationManifest binding for one readable request", () => {
-  const result = childProcess.spawnSync(
-    process.execPath,
-    [path.join(repositoryRoot, "scripts", "validate-applicant-submission.mjs"), examplePath],
-    { cwd: repositoryRoot, encoding: "utf8", shell: false }
-  );
-  assert.equal(result.status, 0, result.stderr);
-  const report = JSON.parse(result.stdout);
-  assert.equal(report.files.length, 1);
-  assert.deepEqual(report.files[0].applicationManifest, applicantSubmissionEvidence(
+test("CLI accepts only the exact canonical request path without path substitution", (t) => {
+  const fixtureRoot = createApplicantCliFixture(t);
+  const canonicalPath = "submissions/requests/123456789-example-fee-hook.json";
+  fs.writeFileSync(path.join(fixtureRoot, canonicalPath), exampleBytes);
+
+  const accepted = runApplicantCli(fixtureRoot, canonicalPath);
+  assert.equal(accepted.status, 0, accepted.stderr);
+  const acceptedReport = JSON.parse(accepted.stdout);
+  assert.equal(acceptedReport.status, "APPLICANT_SUBMISSIONS_VALID");
+  assert.equal(acceptedReport.files.length, 1);
+  assert.equal(acceptedReport.files[0].path, canonicalPath);
+  assert.equal(acceptedReport.files[0].applicationManifest.path, canonicalPath);
+  assert.deepEqual(acceptedReport.files[0].applicationManifest, applicantSubmissionEvidence(
     example,
     exampleBytes,
-    path.relative(repositoryRoot, examplePath).split(path.sep).join("/")
+    canonicalPath
   ).applicationManifest);
+
+  for (const invalidPath of [
+    "submissions/examples/applicant-submission-v1.example.json",
+    "arbitrary.json",
+    "submissions/requests/999-example-fee-hook.json",
+    "submissions/requests/123456789-wrong-hook.json"
+  ]) {
+    fs.mkdirSync(path.dirname(path.join(fixtureRoot, invalidPath)), { recursive: true });
+    fs.writeFileSync(path.join(fixtureRoot, invalidPath), exampleBytes);
+    const rejected = runApplicantCli(fixtureRoot, invalidPath);
+    assert.equal(rejected.status, 1, `${invalidPath}: ${rejected.stderr}`);
+    const rejectedReport = JSON.parse(rejected.stdout);
+    assert.equal(rejectedReport.status, "APPLICANT_SUBMISSIONS_INVALID");
+    assert.equal(rejectedReport.files[0].path, invalidPath);
+    assert.equal("applicationManifest" in rejectedReport.files[0], false);
+    assert.ok(rejectedReport.files[0].findings.some(({ code }) => (
+      code === "APPLICANT_REQUEST_PATH_MISMATCH"
+    )), invalidPath);
+  }
+
+  for (const aliasedPath of [
+    "submissions/requests/../requests/123456789-example-fee-hook.json",
+    path.join(fixtureRoot, canonicalPath)
+  ]) {
+    const rejected = runApplicantCli(fixtureRoot, aliasedPath);
+    assert.equal(rejected.status, 2, aliasedPath);
+    assert.match(rejected.stderr, /normalized repository-relative path/u);
+    assert.equal(rejected.stdout, "");
+  }
 });
 
 test("lossless parser rejects duplicate decoded keys", () => {

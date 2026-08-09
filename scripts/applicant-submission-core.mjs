@@ -189,13 +189,18 @@ export function validateApplicantSubmission(value, schema, { relativePath = null
 }
 
 export function applicantSubmissionEvidence(value, bytes, relativePath) {
+  const normalizedPath = normalizeRepositoryRelativePath(relativePath);
+  const expectedPath = canonicalApplicantRequestPath(value);
+  if (normalizedPath !== expectedPath) {
+    throw new Error(`applicant evidence path must be ${expectedPath}`);
+  }
   const canonicalBytes = canonicalApplicantSubmissionBytes(value);
   return Object.freeze({
-    path: relativePath,
+    path: normalizedPath,
     bytes: bytes.length,
     sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
     applicationManifest: Object.freeze({
-      path: canonicalApplicantRequestPath(value),
+      path: normalizedPath,
       canonicalization: APPLICANT_MANIFEST_CANONICALIZATION,
       bytes: canonicalBytes.length,
       sha256: `sha256:${crypto.createHash("sha256").update(canonicalBytes).digest("hex")}`
@@ -218,8 +223,7 @@ export function canonicalApplicantRequestPath(value) {
 }
 
 function validateRequestPath(value, relativePath, add) {
-  const normalized = relativePath.split(path.sep).join("/");
-  if (!normalized.startsWith("submissions/requests/")) return;
+  const normalized = normalizeRepositoryRelativePath(relativePath);
   const expectedPath = canonicalApplicantRequestPath(value);
   if (normalized !== expectedPath) {
     add(
@@ -229,4 +233,18 @@ function validateRequestPath(value, relativePath, add) {
       "Rename the request to bind the source repository ID and hook ID in its path."
     );
   }
+}
+
+function normalizeRepositoryRelativePath(relativePath) {
+  if (typeof relativePath !== "string" || relativePath.length === 0) return null;
+  const slashPath = relativePath.split(path.sep).join("/");
+  if (slashPath.includes("\\") || path.posix.isAbsolute(slashPath)) return null;
+  const normalized = path.posix.normalize(slashPath);
+  if (
+    normalized !== slashPath
+    || normalized === "."
+    || normalized === ".."
+    || normalized.startsWith("../")
+  ) return null;
+  return normalized;
 }
