@@ -110,6 +110,17 @@ node skills/programmable-v4-hook-builder/scripts/cli.mjs context --mode explore
 
 ## Submit a hook for review
 
+To use the Applicant 1.1 beta through the Skill, install the exact public beta commit. This commit pin is not a stable
+release; `v0.4.0` remains the latest published release:
+
+```bash
+gh skill install 0xprogrammable/hookbuilder \
+  skills/programmable-v4-hook-builder \
+  --agent codex \
+  --scope user \
+  --pin 2112f31b1ecdab87fdcdc78197ecf3c04b5fb140
+```
+
 Hookbuilder is the canonical Applicant repository (`0xprogrammable/hookbuilder`, repository ID `1320085947`). Copy the
 example, replace every placeholder with the exact source-bound values, and validate it locally:
 
