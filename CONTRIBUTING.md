@@ -31,7 +31,7 @@ clearly subordinate.
 3. Include tests that fail before the repair and pass after it.
 4. State every check run and every check not run.
 5. Call out schema, migration, compatibility, security, token-budget and public-copy effects.
-6. Do not include credentials, wallet material, generated model results or unrelated formatting.
+6. Do not include credentials, wallet secrets, generated model results or unrelated formatting.
 
 Run:
 

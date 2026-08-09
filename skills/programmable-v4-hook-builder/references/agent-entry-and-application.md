@@ -1,10 +1,9 @@
 # Agent entry and application contract
 
-This reference separates the active **Public Applicant Beta** from a later **Connected Submission service**. Today,
-builders keep their complete project in an external public GitHub repository and add one review-only JSON request to
-`0xprogrammable/hookbuilder`. The review GitHub App is scoped to that single repository, numeric ID `1320085947`.
-Wallet, claim, application-service, status-API, permit, and website-launch contracts later in this file are future
-design contracts and are not active beta capabilities.
+This reference separates the active **Public Applicant Beta** from a later **Connected Submission service**. Builders
+keep source externally and add one review-only 1.1.0 JSON request to `0xprogrammable/hookbuilder` (ID `1320085947`). It
+declares a public launch wallet but needs no GitHub App credential and proves no wallet control, session, or signature.
+Connected-service contracts later in this file are inactive future designs.
 
 ## Contents
 
@@ -70,9 +69,8 @@ The complete source stays in the builder repository. The Hookbuilder pull reques
 submissions/requests/<source-repository-id>-<hook-id>.json
 ```
 
-The request binds the public source repository URL and numeric ID, exact commit and tree, hook/template/model IDs and
-SemVer versions, all 14 v4 permission flags plus their derived address mask, exact fee terms, and requested route. In a
-Hookbuilder checkout, copy the root example and run the root offline validator:
+The request binds GitHub login; nonzero EIP-55 wallet; source URL, ID, commit and tree; versioned hook/template/model;
+14 v4 flags and mask; fee; and only `custom-graph@1.0.0` on chain `1`. In Hookbuilder, copy the root example and run:
 
 ```bash
 npm run submission:check -- submissions/requests/<source-repository-id>-<hook-id>.json
@@ -83,9 +81,9 @@ Those commands retain old-version replay semantics and are not public Applicant 
 revalidate the request with trusted protected-base code and must never execute Applicant source with repository
 credentials. Contributor-head CI is convenience evidence, not intake authority.
 
-GitHub checks, labels, review comments, and pull-request state do not become security, audit, acceptance, deployment,
-routing, provider, or availability evidence by implication. The request contains no Registry, Router, wallet, provider,
-signing, deployment, or launch write. Every external action remains separate and requires explicit authority.
+GitHub state is not security, approval, deployment, provider, or availability evidence. `launchWallet` is a declaration,
+not control proof or signing authority; the request performs no external write. The validator binds the exact path and
+Canonical JSON V2 UTF-8 bytes with no trailing newline as `applicationManifest`; root `submissions/README.md` owns details.
 
 ## Default entry
 
@@ -173,7 +171,7 @@ security contract, not as instructions for the current Public GitHub PR Beta. **
 Until an implemented, tested, and activated service contract explicitly says otherwise:
 
 - there is no connected-service application id or remote application draft;
-- there is no wallet/GitHub identity binding, GitHub App installation, claim URL, or claim code;
+- there is no authenticated wallet/GitHub identity binding, GitHub App installation, claim URL, or claim code;
 - there is no application-service status, approval, launch eligibility response, or one-time permit; and
 - the corresponding future command capabilities must not be presented as installed CLI commands.
 

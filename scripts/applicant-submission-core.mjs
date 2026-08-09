@@ -3,14 +3,26 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { parseBoundedLosslessJson } from "../skills/programmable-v4-hook-builder/scripts/github-public-source-core.mjs";
+import {
+  CANONICAL_JSON_V2_PROFILE,
+  canonicalJsonBytesV2
+} from "../skills/programmable-v4-hook-builder/scripts/canonical-json-core.mjs";
+import { checksumAddress } from "../skills/programmable-v4-hook-builder/scripts/evm-encoding-core.mjs";
 import { validateAgainstSchema } from "../skills/programmable-v4-hook-builder/scripts/restricted-json-schema-core.mjs";
 
-export const APPLICANT_SUBMISSION_SCHEMA_VERSION = "1.0.0";
+export const APPLICANT_SUBMISSION_SCHEMA_VERSION = "1.1.0";
 export const APPLICANT_INTAKE_REPOSITORY = "0xprogrammable/hookbuilder";
 export const APPLICANT_INTAKE_REPOSITORY_ID = 1320085947;
+export const APPLICANT_REQUESTED_ROUTE = Object.freeze({
+  routeId: "custom-graph",
+  routeVersion: "1.0.0",
+  chainId: "1"
+});
 export const MAXIMUM_APPLICANT_SUBMISSION_BYTES = 64 * 1024;
+export const APPLICANT_MANIFEST_CANONICALIZATION = CANONICAL_JSON_V2_PROFILE.id;
 const CANONICAL_SEMVER = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/u;
 const MAXIMUM_UINT256 = (1n << 256n) - 1n;
+const ZERO_ADDRESS = `0x${"00".repeat(20)}`;
 
 export const PERMISSION_BITS = Object.freeze({
   beforeInitialize: 0x2000,
@@ -87,7 +99,47 @@ export function validateApplicantSubmission(value, schema, { relativePath = null
     remediation
   });
 
+  const route = value?.requestedRoute;
+  if (
+    route !== null
+    && typeof route === "object"
+    && !Array.isArray(route)
+    && [route.routeId, route.routeVersion, route.chainId].every((entry) => typeof entry === "string")
+    && Object.entries(APPLICANT_REQUESTED_ROUTE).some(([key, expected]) => route[key] !== expected)
+  ) {
+    add(
+      "APPLICANT_REQUESTED_ROUTE_UNSUPPORTED",
+      "$.requestedRoute",
+      "Public Applicant 1.1.0 supports only custom-graph@1.0.0 on Ethereum Mainnet chain 1.",
+      "Set requestedRoute to routeId custom-graph, routeVersion 1.0.0, and chainId 1."
+    );
+  }
+  if (
+    typeof route?.chainId === "string"
+    && /^[1-9][0-9]*$/u.test(route.chainId)
+    && BigInt(route.chainId) > MAXIMUM_UINT256
+  ) {
+    add(
+      "APPLICANT_CHAIN_ID_OUT_OF_RANGE",
+      "$.requestedRoute.chainId",
+      `${route.chainId} exceeds uint256.`,
+      "Use the exact live Ethereum Mainnet chain ID 1."
+    );
+  }
+
   if (findings.length > 0 || value === null || typeof value !== "object" || Array.isArray(value)) return findings;
+
+  const checksummedLaunchWallet = checksumAddress(value.applicant.launchWallet, {
+    label: "applicant.launchWallet"
+  });
+  if (checksummedLaunchWallet !== value.applicant.launchWallet) {
+    add(
+      "APPLICANT_LAUNCH_WALLET_NOT_CANONICAL",
+      "$.applicant.launchWallet",
+      `Launch wallet must use its exact EIP-55 form ${checksummedLaunchWallet}.`,
+      "Copy the public checksummed address from the applicant-owned wallet; never include a private key or seed phrase."
+    );
+  }
 
   const actualMask = permissionMask(value.hook.permissions);
   if (actualMask !== value.hook.addressFlagMask) {
@@ -115,15 +167,6 @@ export function validateApplicantSubmission(value, schema, { relativePath = null
     }
   }
 
-  if (BigInt(value.requestedRoute.chainId) > MAXIMUM_UINT256) {
-    add(
-      "APPLICANT_CHAIN_ID_OUT_OF_RANGE",
-      "$.requestedRoute.chainId",
-      `${value.requestedRoute.chainId} exceeds uint256.`,
-      "Use the exact canonical positive uint256 chain ID."
-    );
-  }
-
   if (value.fee.amountPips === 0) {
     if (value.fee.currencyBasis !== "none" || value.fee.recipient !== null) {
       add(
@@ -140,6 +183,13 @@ export function validateApplicantSubmission(value, schema, { relativePath = null
       "A nonzero fee requires a currency basis and recipient.",
       "Declare the exact input, output, or quote basis and the exact recipient address."
     );
+  } else if (value.fee.recipient === ZERO_ADDRESS) {
+    add(
+      "APPLICANT_NONZERO_FEE_ZERO_RECIPIENT",
+      "$.fee.recipient",
+      "A nonzero fee cannot use the zero address as its recipient.",
+      "Declare the exact nonzero Ethereum address that will receive the fee."
+    );
   }
 
   if (relativePath !== null) validateRequestPath(value, relativePath, add);
@@ -147,10 +197,23 @@ export function validateApplicantSubmission(value, schema, { relativePath = null
 }
 
 export function applicantSubmissionEvidence(value, bytes, relativePath) {
+  const normalizedPath = normalizeRepositoryRelativePath(relativePath);
+  const expectedPath = canonicalApplicantRequestPath(value);
+  if (normalizedPath !== expectedPath) {
+    throw new Error(`applicant evidence path must be ${expectedPath}`);
+  }
+  const canonicalBytes = canonicalApplicantSubmissionBytes(value);
   return Object.freeze({
-    path: relativePath,
+    path: normalizedPath,
     bytes: bytes.length,
     sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
+    applicationManifest: Object.freeze({
+      path: normalizedPath,
+      canonicalization: APPLICANT_MANIFEST_CANONICALIZATION,
+      bytes: canonicalBytes.length,
+      sha256: `sha256:${crypto.createHash("sha256").update(canonicalBytes).digest("hex")}`
+    }),
+    launchWallet: value.applicant.launchWallet,
     sourceRepositoryId: value.source.repositoryId,
     sourceCommit: value.source.commit,
     sourceTree: value.source.tree,
@@ -159,16 +222,37 @@ export function applicantSubmissionEvidence(value, bytes, relativePath) {
   });
 }
 
+export function canonicalApplicantSubmissionBytes(value) {
+  return canonicalJsonBytesV2(value, { trailingNewline: false });
+}
+
+export function canonicalApplicantRequestPath(value) {
+  return `submissions/requests/${value.source.repositoryId}-${value.identifiers.hookId}.json`;
+}
+
 function validateRequestPath(value, relativePath, add) {
-  const normalized = relativePath.split(path.sep).join("/");
-  if (!normalized.startsWith("submissions/requests/")) return;
-  const expected = `${value.source.repositoryId}-${value.identifiers.hookId}.json`;
-  if (path.posix.basename(normalized) !== expected || path.posix.dirname(normalized) !== "submissions/requests") {
+  const normalized = normalizeRepositoryRelativePath(relativePath);
+  const expectedPath = canonicalApplicantRequestPath(value);
+  if (normalized !== expectedPath) {
     add(
       "APPLICANT_REQUEST_PATH_MISMATCH",
       "$",
-      `Submission filename must be submissions/requests/${expected}.`,
+      `Submission filename must be ${expectedPath}.`,
       "Rename the request to bind the source repository ID and hook ID in its path."
     );
   }
+}
+
+function normalizeRepositoryRelativePath(relativePath) {
+  if (typeof relativePath !== "string" || relativePath.length === 0) return null;
+  const slashPath = relativePath.split(path.sep).join("/");
+  if (slashPath.includes("\\") || path.posix.isAbsolute(slashPath)) return null;
+  const normalized = path.posix.normalize(slashPath);
+  if (
+    normalized !== slashPath
+    || normalized === "."
+    || normalized === ".."
+    || normalized.startsWith("../")
+  ) return null;
+  return normalized;
 }

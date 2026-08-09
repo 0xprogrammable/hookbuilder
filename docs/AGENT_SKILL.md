@@ -287,8 +287,9 @@ Applicant through historical `prepare-pr` or the candidate `open-world submit` p
 ### 6. Submit, review and repair
 
 For the public beta, copy the root example to
-`submissions/requests/<source-repository-id>-<hook-id>.json`, bind the exact source commit and tree plus the versioned
-hook, template, model, permissions, fee and requested route, then run:
+`submissions/requests/<source-repository-id>-<hook-id>.json`, bind the applicant's GitHub login and nonzero checksummed
+launch-wallet address, exact source commit and tree, versioned hook, template, model, permissions and fee, and the only
+live beta route `custom-graph@1.0.0` on Ethereum Mainnet chain `1`, then run:
 
 ```bash
 npm run submission:check -- submissions/requests/<source-repository-id>-<hook-id>.json
@@ -296,8 +297,9 @@ npm run submission:check -- submissions/requests/<source-repository-id>-<hook-id
 
 After local validation, an authorized owner may open one pull request to
 [`0xprogrammable/hookbuilder:main`](https://github.com/0xprogrammable/hookbuilder) with the Applicant template. The
-request stays review-only. It does not approve, register, deploy, sign, route, or launch. A changed source commit or tree
-is a new review target; any later authority or runtime claim needs separate evidence.
+request stays review-only. The public launch-wallet declaration neither proves control nor authorizes a signature or
+transaction. It does not approve, register, deploy, sign, route, or launch. A changed source commit, tree, or canonical
+Applicant manifest is a new review target; any later authority or runtime claim needs separate evidence.
 
 ## Fee V2 invariant
 

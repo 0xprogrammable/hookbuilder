@@ -5,7 +5,7 @@
   "displayName": "Programmable v4 Builder",
   "description": "Design, build, review, or track Programmable hooks, tokens, apps, games, services, and standalone settlement projects.",
   "shortDescription": "Build a reviewable Programmable project from one prompt",
-  "longDescription": "Loads one portable skill that compiles a plain-language idea into the smallest complete Programmable system, then designs, builds, checks, reviews, and prepares its exact GitHub application without limiting unfamiliar products to known templates.",
+  "longDescription": "Loads one portable skill that compiles a plain-language idea into the smallest complete Programmable system, then designs, builds, checks, reviews, and prepares its exact source- and launch-wallet-bound GitHub application without limiting unfamiliar products to known templates.",
   "developerName": "Programmable",
   "category": "Developer Tools",
   "capabilities": [

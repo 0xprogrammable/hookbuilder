@@ -203,6 +203,40 @@ test("ambient tmp inventory is bounded and transcript inspection records out-of-
   assert.deepEqual(compareAmbientTmpInventories(before, after), { added: [], removed: [] });
 });
 
+test("ambient tmp inventory skips only entries removed between readdir and lstat", (t) => {
+  const ambientRoot = fs.realpathSync(fs.existsSync("/tmp") ? "/tmp" : "/private/tmp");
+  const transientRoot = fs.realpathSync(fs.mkdtempSync(path.join(ambientRoot, "programmable-ambient-race-test-")));
+  t.after(() => fs.rmSync(transientRoot, { recursive: true, force: true }));
+
+  let vanished = false;
+  const inventory = inventoryAmbientTmpRoots({
+    lstatEntry: (entryPath) => {
+      if (entryPath === transientRoot) {
+        vanished = true;
+        const error = new Error("entry disappeared after readdir");
+        error.code = "ENOENT";
+        throw error;
+      }
+      return fs.lstatSync(entryPath);
+    },
+  });
+  assert.equal(vanished, true);
+  assert.equal(inventory.entries.some(({ path: entryPath }) => entryPath === transientRoot), false);
+
+  const deniedRoot = fs.realpathSync(fs.mkdtempSync(path.join(ambientRoot, "programmable-ambient-denied-test-")));
+  t.after(() => fs.rmSync(deniedRoot, { recursive: true, force: true }));
+  const denied = Object.assign(new Error("permission denied"), { code: "EACCES" });
+  assert.throws(
+    () => inventoryAmbientTmpRoots({
+      lstatEntry: (entryPath) => {
+        if (entryPath === deniedRoot) throw denied;
+        return fs.lstatSync(entryPath);
+      },
+    }),
+    (error) => error === denied,
+  );
+});
+
 test("real Codex workspace-write subject permits only the workspace and explicit lane tmp roots", { skip: process.env.CODEX_CONTAINMENT_E2E !== "1", timeout: 10 * 60 * 1000 }, (t) => {
   const laneRoot = fs.realpathSync(temporaryRoot(t));
   const workspace = path.join(laneRoot, "workspace");

@@ -1,13 +1,13 @@
 {
-  "$schema": "urn:programmable:applicant-submission:1.0.0",
-  "schemaVersion": "1.0.0",
+  "$schema": "urn:programmable:applicant-submission:1.1.0",
+  "schemaVersion": "1.1.0",
   "intake": {
     "repository": "0xprogrammable/hookbuilder",
-    "repositoryId": 1320085947,
-    "githubAppInstallationScope": "single-repository"
+    "repositoryId": 1320085947
   },
   "applicant": {
-    "githubLogin": "example-builder"
+    "githubLogin": "example-builder",
+    "launchWallet": "0x52908400098527886E0F7030069857D2E4169EE7"
   },
   "source": {
     "repository": "https://github.com/example-builder/example-fee-hook",
@@ -55,5 +55,5 @@
     "chainId": "1"
   },
   "requestedActions": ["review"],
-  "notes": "Example values only. Replace every source and model binding before opening a pull request."
+  "notes": "Example values only. Replace every applicant, source, and model binding before opening a pull request."
 }

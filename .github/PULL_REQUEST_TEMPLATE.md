@@ -23,7 +23,7 @@ from a tested compatibility upgrade.
 - [ ] `npm test`
 - [ ] `gh skill publish --dry-run`
 - [ ] Changed-language and model-specific checks
-- [ ] No generated model result, secret, wallet material or unrelated change
+- [ ] No generated model result, secret, wallet credential or unrelated change
 
 Paste exact commands and concise results. Name every relevant check not run and why.
 

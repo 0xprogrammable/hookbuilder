@@ -195,7 +195,8 @@ export function buildCodexArguments({ workspace, finalOutput, model, shellEnviro
   ]);
 }
 
-export function inventoryAmbientTmpRoots({ excludedRoots = [] } = {}) {
+export function inventoryAmbientTmpRoots({ excludedRoots = [], lstatEntry = fs.lstatSync } = {}) {
+  if (typeof lstatEntry !== "function") throw new TypeError("lstatEntry must be a function");
   const roots = [...new Set(["/tmp", "/private/tmp"].filter((root) => fs.existsSync(root)).map((root) => fs.realpathSync(root)))].sort();
   const excluded = excludedRoots.map((root) => fs.realpathSync(root));
   const entries = [];
@@ -205,7 +206,15 @@ export function inventoryAmbientTmpRoots({ excludedRoots = [] } = {}) {
     for (const name of names) {
       const absolute = path.join(root, name);
       if (excluded.some((candidate) => isInside(absolute, candidate))) continue;
-      const stat = fs.lstatSync(absolute);
+      let stat;
+      try {
+        stat = lstatEntry(absolute);
+      } catch (error) {
+        // Ambient entries are owned by unrelated processes and may disappear
+        // between readdir and lstat. A vanished entry is absent from this snapshot.
+        if (error?.code === "ENOENT") continue;
+        throw error;
+      }
       entries.push({ path: absolute, kind: stat.isDirectory() ? "directory" : stat.isFile() ? "file" : stat.isSymbolicLink() ? "symlink" : "other", device: stat.dev, inode: stat.ino });
     }
   }

@@ -35,8 +35,8 @@ try {
 
 function resolveFiles(args) {
   if (args.length === 1 && args[0] === "--all") {
-    const requestsRoot = resolveInsideRepository(path.join(repositoryRoot, "submissions", "requests"));
-    return listApplicantRequestFiles(requestsRoot).map(resolveInsideRepository);
+    const requestsRoot = resolveInsideRepository("submissions/requests");
+    return listApplicantRequestFiles(requestsRoot);
   }
   if (args.length === 0 || args.some((argument) => argument.startsWith("--"))) {
     throw new Error("usage: validate-applicant-submission.mjs --all | <submission.json> [...]");
@@ -45,7 +45,19 @@ function resolveFiles(args) {
 }
 
 function resolveInsideRepository(input) {
-  const resolved = path.resolve(repositoryRoot, input);
+  if (typeof input !== "string" || input.length === 0 || path.isAbsolute(input) || input.includes("\\")) {
+    throw new Error("submission path must be a normalized repository-relative path");
+  }
+  const normalizedInput = path.posix.normalize(input);
+  if (
+    normalizedInput !== input
+    || normalizedInput === "."
+    || normalizedInput === ".."
+    || normalizedInput.startsWith("../")
+  ) {
+    throw new Error("submission path must be a normalized repository-relative path");
+  }
+  const resolved = path.resolve(repositoryRoot, normalizedInput);
   const relative = path.relative(repositoryRoot, resolved);
   if (relative === "" || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new Error("submission path must resolve to a file inside this repository");
@@ -54,6 +66,9 @@ function resolveInsideRepository(input) {
   const realRelative = path.relative(fs.realpathSync(repositoryRoot), real);
   if (realRelative.startsWith(`..${path.sep}`) || path.isAbsolute(realRelative)) {
     throw new Error("submission path escapes this repository");
+  }
+  if (realRelative.split(path.sep).join("/") !== normalizedInput) {
+    throw new Error("submission path must identify the exact repository-relative file without aliases");
   }
   return real;
 }

@@ -4,7 +4,7 @@
   "owner": {
     "name": "Programmable"
   },
-  "description": "Loads one portable skill that compiles a plain-language idea into the smallest complete Programmable system, then designs, builds, checks, reviews, and prepares its exact GitHub application without limiting unfamiliar products to known templates.",
+  "description": "Loads one portable skill that compiles a plain-language idea into the smallest complete Programmable system, then designs, builds, checks, reviews, and prepares its exact source- and launch-wallet-bound GitHub application without limiting unfamiliar products to known templates.",
   "plugins": [
     {
       "name": "programmable-v4-builder",
