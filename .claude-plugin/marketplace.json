@@ -15,7 +15,7 @@
       "author": {
         "name": "Programmable"
       },
-      "repository": "https://github.com/0xprogrammable/programmable-v4-builder",
+      "repository": "https://github.com/0xprogrammable/hookbuilder",
       "license": "MIT",
       "keywords": [
         "agent-skills",

@@ -134,7 +134,7 @@
           "required": ["builderNumericRepositoryId", "builderRepository", "reportVersion"],
           "properties": {
             "builderNumericRepositoryId": { "const": "1320085947" },
-            "builderRepository": { "const": "0xprogrammable/programmable-v4-builder" },
+            "builderRepository": { "const": "0xprogrammable/hookbuilder" },
             "reportVersion": { "const": "1.0.0" }
           }
         }

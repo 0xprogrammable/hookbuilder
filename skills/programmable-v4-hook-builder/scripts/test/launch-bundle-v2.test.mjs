@@ -158,8 +158,8 @@ test("Registry acceptance v3 is the exact bounded Registry candidate contract", 
   const schemaBytes = fs.readFileSync(registryAcceptanceV3SchemaPath);
   const schema = JSON.parse(schemaBytes.toString("utf8"));
   assert.equal(schema.$id, REGISTRY_ACCEPTANCE_V3_SCHEMA_ID);
-  assert.equal(schemaBytes.length, 14_129);
-  assert.equal(sha256Literal(schemaBytes.toString("utf8")), "sha256:630aa0de9c3f728624d3ebe862e18cb605bcf8d350fa266585db8628dacfd9a5");
+  assert.equal(schemaBytes.length, 14_117);
+  assert.equal(sha256Literal(schemaBytes.toString("utf8")), "sha256:d1917d6b4240e02b2a4cb2e5f9d7b79bb91996d2e884641c8404a610e94fe9cd");
   assert.equal(schema.additionalProperties, false);
   assert.deepEqual(
     Object.keys(schema.properties).sort(),
@@ -2314,7 +2314,7 @@ function registryAcceptanceV3Fixture({
     schemaVersion: "1.0.0",
     verifier: {
       builderNumericRepositoryId: "1320085947",
-      builderRepository: "0xprogrammable/programmable-v4-builder",
+      builderRepository: "0xprogrammable/hookbuilder",
       reportVersion: "1.0.0"
     }
   };

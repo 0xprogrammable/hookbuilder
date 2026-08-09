@@ -1,6 +1,12 @@
-# GitHub application journey
+# Historical GitHub Application V1 journey
 
-This reference defines the safe client-side transport for the **Public GitHub PR Builder Beta**. It consumes the
+> Archived replay contract. This is not the current Public Applicant Beta and must never route a new Applicant.
+> Current requests go exclusively to `0xprogrammable/hookbuilder:main` as one
+> `submissions/requests/<source-repository-id>-<hook-id>.json` file; follow
+> [agent-entry-and-application.md](agent-entry-and-application.md). Do not run this chapter's `prepare-pr` or
+> `github-application.mjs` write path for a current Applicant.
+
+This reference defines the historical client-side transport for the former **Public GitHub PR Builder Beta**. It consumes the
 already verified six-file output of `prepare-pr`, plans a public GitHub draft pull request, updates that same draft,
 and reads GitHub review state. It does not create a Connected Submission/W2 application and it never approves,
 merges, deploys, launches, lists, or marks a project ready for review.

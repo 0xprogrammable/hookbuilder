@@ -81,7 +81,7 @@ export function registryTrustedSourceVerificationProjection(source) {
     schemaVersion: "1.0.0",
     verifier: {
       builderNumericRepositoryId: "1320085947",
-      builderRepository: "0xprogrammable/programmable-v4-builder",
+      builderRepository: "0xprogrammable/hookbuilder",
       reportVersion: "1.0.0"
     }
   };

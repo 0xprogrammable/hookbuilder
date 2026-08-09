@@ -1,4 +1,8 @@
-# Output specification
+# Historical V1 output specification
+
+> Archived replay contract. Its `prepare-pr` output and `0xprogrammable/programmable-registry` target are not current
+> Applicant instructions. New public review requests go only to `0xprogrammable/hookbuilder:main` through the root
+> `submissions/` contract documented in [agent-entry-and-application.md](agent-entry-and-application.md).
 
 Produce only the artifacts required at the current stage. Use explicit unknowns instead of placeholder claims.
 

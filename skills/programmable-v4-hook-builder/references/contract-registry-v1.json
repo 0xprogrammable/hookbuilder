@@ -157,7 +157,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 14033,
         "moduleSha256": "sha256:b9bf11e1247a579a7b59b8ca7181e5632e9133359ef908419c93131a51ced9f6",
-        "closureSha256": "sha256:221a0e6f07361736dda33d7b07846a4280c3a544ebbf9250a8a2dc334390c4d5"
+        "closureSha256": "sha256:d72819ea360ee5626547f929d791b7a66af88b5519ce464baa9a151bf0f51d88"
       }
     },
     {
@@ -347,7 +347,7 @@
         "mode": "direct",
         "moduleByteLength": 14033,
         "moduleSha256": "sha256:b9bf11e1247a579a7b59b8ca7181e5632e9133359ef908419c93131a51ced9f6",
-        "closureSha256": "sha256:221a0e6f07361736dda33d7b07846a4280c3a544ebbf9250a8a2dc334390c4d5"
+        "closureSha256": "sha256:d72819ea360ee5626547f929d791b7a66af88b5519ce464baa9a151bf0f51d88"
       }
     },
     {
@@ -385,7 +385,7 @@
         "mode": "direct",
         "moduleByteLength": 14033,
         "moduleSha256": "sha256:b9bf11e1247a579a7b59b8ca7181e5632e9133359ef908419c93131a51ced9f6",
-        "closureSha256": "sha256:221a0e6f07361736dda33d7b07846a4280c3a544ebbf9250a8a2dc334390c4d5"
+        "closureSha256": "sha256:d72819ea360ee5626547f929d791b7a66af88b5519ce464baa9a151bf0f51d88"
       }
     },
     {
@@ -642,8 +642,8 @@
       "schema": {
         "id": "urn:programmable:registry-acceptance-v3:3.0.0",
         "path": "references/registry-acceptance-v3.schema.json",
-        "byteLength": 14129,
-        "sha256": "sha256:630aa0de9c3f728624d3ebe862e18cb605bcf8d350fa266585db8628dacfd9a5"
+        "byteLength": 14117,
+        "sha256": "sha256:d1917d6b4240e02b2a4cb2e5f9d7b79bb91996d2e884641c8404a610e94fe9cd"
       },
       "validator": {
         "modulePath": "scripts/launch-bundle-v2-core.mjs",
@@ -651,7 +651,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 14033,
         "moduleSha256": "sha256:b9bf11e1247a579a7b59b8ca7181e5632e9133359ef908419c93131a51ced9f6",
-        "closureSha256": "sha256:221a0e6f07361736dda33d7b07846a4280c3a544ebbf9250a8a2dc334390c4d5"
+        "closureSha256": "sha256:d72819ea360ee5626547f929d791b7a66af88b5519ce464baa9a151bf0f51d88"
       }
     },
     {
@@ -3145,7 +3145,7 @@
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/launch-bundle-v2-core.mjs",
       "moduleCount": 125,
-      "totalByteLength": 1843265,
+      "totalByteLength": 1843253,
       "modules": [
         {
           "path": "scripts/application-dependency-core.mjs",
@@ -3329,8 +3329,8 @@
         },
         {
           "path": "scripts/launch-bundle-v2-registry-projections.mjs",
-          "byteLength": 4657,
-          "sha256": "sha256:c6b818aa4658a59891013a8cadff7caaf7185908f6584fcf83b30ffd1a7cedc1",
+          "byteLength": 4645,
+          "sha256": "sha256:2dbccc5c3255698c88808a181f766126d2183d1dd0b8f40c6506f068d804c7a4",
           "localImports": [
             "scripts/launch-bundle-v2-shared.mjs",
             "scripts/submission-core.mjs"
@@ -4374,7 +4374,7 @@
           ]
         }
       ],
-      "closureSha256": "sha256:221a0e6f07361736dda33d7b07846a4280c3a544ebbf9250a8a2dc334390c4d5"
+      "closureSha256": "sha256:d72819ea360ee5626547f929d791b7a66af88b5519ce464baa9a151bf0f51d88"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -10587,8 +10587,8 @@
     "validatorClosureModuleBindingCount": 1009,
     "validatorClosureDistinctModuleCount": 171,
     "schemaPathsSha256": "sha256:610762ddd56550d2852596417842b753d32d5ed509433439435fd492aa3110ab",
-    "validatorBindingsSha256": "sha256:c49cffdedfbbf1ca0089248f9d6762f7a2078dd7b3219472a5995c772e816605",
-    "validatorClosuresSha256": "sha256:c190c684b511df210a0161ebcdc1dcd6916c0e79b9a737ccd0bd05bde8b3c244"
+    "validatorBindingsSha256": "sha256:5834c296311da0eabed0318693c29055c396404f22ec51e171081ed0c0171436",
+    "validatorClosuresSha256": "sha256:c1e2f1a45f64679404a3744d2a26d18399297d72944b7cbd29eea3903f74ef16"
   },
-  "registrySha256": "sha256:eb7299193cb9d033a973e0f96ad4bf6734b8782e91ec00d9524d3fc8d9014640"
+  "registrySha256": "sha256:bf82c0ce1fa102c8900edde2d42275b4fa9a2b8330b05fe8a4419f8351b08903"
 }

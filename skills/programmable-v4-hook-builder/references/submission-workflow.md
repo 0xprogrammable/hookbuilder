@@ -2,14 +2,16 @@
 
 > Archived contract: use this chapter only to reproduce, recheck, or explicitly migrate an identified V1 application.
 > Its one-token fields, fee assumptions, file limits, six-file package, `prepare-pr` command and unnamespaced GitHub
-> client are not the creation or application contract for new Open-World V2/Application V3 projects. Start new work from
-> [open-world-v2-workflow.md](open-world-v2-workflow.md) and
-> [github-application-v3.md](github-application-v3.md).
+> client are not the current public Applicant contract. New public review requests go exclusively to
+> `0xprogrammable/hookbuilder:main` through the root `submissions/` contract; follow
+> [agent-entry-and-application.md](agent-entry-and-application.md). Use
+> [open-world-v2-workflow.md](open-world-v2-workflow.md) only to build and verify the project before that handoff.
 
-For current projects, the GitHub sequence is namespaced and separate:
+For exact candidate Application V3 replay, the GitHub sequence is namespaced and separate:
 `open-world prepare-revision` derives revision/lineage through GET-only discovery, `open-world application` builds the
-complete zero-network package, and `open-world submit|update|status` handles the review thread. Do not use this chapter's
-`prepare-pr`, top-level `submit`, top-level `update`, or top-level `status` for Submission V2/Application V3.
+complete zero-network package, and `open-world submit|update|status` models the old review thread. Those candidate
+commands are not public Applicant transport. Do not use this chapter's `prepare-pr`, top-level `submit`, top-level
+`update`, or top-level `status` for a new Applicant.
 
 The historical **Public GitHub PR Builder Beta** kept the complete project in the builder's own public GitHub
 repository. A draft pull request carried one bounded six-file application record pointing to the exact public source

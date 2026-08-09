@@ -34,6 +34,62 @@ test("example binds the singleton hookbuilder intake and passes schema plus sema
   assert.deepEqual(validateApplicantSubmission(example, schema), []);
 });
 
+test("every active Applicant surface routes exclusively to Hookbuilder", () => {
+  const targetSurfaces = [
+    "README.md",
+    "docs/AGENT_SKILL.md",
+    "docs/PUBLIC_GITHUB_PR_BETA.md",
+    "submissions/README.md",
+    "skills/programmable-v4-hook-builder/SKILL.md",
+    "skills/programmable-v4-hook-builder/references/agent-entry-and-application.md"
+  ];
+  for (const relativePath of targetSurfaces) {
+    const contents = fs.readFileSync(path.join(repositoryRoot, relativePath), "utf8");
+    assert.match(contents, /0xprogrammable\/hookbuilder/u, relativePath);
+    assert.doesNotMatch(contents, /0xprogrammable\/programmable-registry/u, relativePath);
+  }
+});
+
+test("current install and Builder identity surfaces use the canonical Hookbuilder repository", () => {
+  for (const relativePath of [
+    "docs/AGENT_SKILL.md",
+    "docs/PORTABILITY_AND_LIFECYCLE.md",
+    "docs/releases/v0.5.0-public-post.md",
+    "skills/programmable-v4-hook-builder/references/registry-acceptance-v3.schema.json",
+    "skills/programmable-v4-hook-builder/scripts/launch-bundle-v2-registry-projections.mjs"
+  ]) {
+    const contents = fs.readFileSync(path.join(repositoryRoot, relativePath), "utf8");
+    assert.match(contents, /0xprogrammable\/hookbuilder/u, relativePath);
+    assert.doesNotMatch(contents, /0xprogrammable\/programmable-v4-builder/u, relativePath);
+  }
+});
+
+test("legacy and candidate transports cannot masquerade as current Applicant instructions", () => {
+  const archivalSurfaces = [
+    "github-application-journey.md",
+    "github-application-v3.md",
+    "output-contract.md",
+    "submission-workflow.md",
+    "workflow.md"
+  ];
+  for (const filename of archivalSurfaces) {
+    const relativePath = path.join("skills", "programmable-v4-hook-builder", "references", filename);
+    const contents = fs.readFileSync(path.join(repositoryRoot, relativePath), "utf8");
+    assert.match(contents.slice(0, 1_200), /0xprogrammable\/hookbuilder:main/u, relativePath);
+    assert.match(contents.slice(0, 1_200), /(?:Archived|Candidate|archived|candidate)/u, relativePath);
+  }
+
+  const cli = fs.readFileSync(path.join(
+    repositoryRoot,
+    "skills",
+    "programmable-v4-hook-builder",
+    "scripts",
+    "cli.mjs"
+  ), "utf8");
+  assert.match(cli, /Historical V1: 0xprogrammable\/programmable-registry:main; not Applicant\./u);
+  assert.match(cli, /historical V1 target is 0xprogrammable\/programmable-registry:main; use the Applicant validator/u);
+});
+
 test("schema rejects intake drift, mutable source refs, missing versions, and direct-write requests", () => {
   for (const mutate of [
     (value) => { value.intake.repositoryId += 1; },
