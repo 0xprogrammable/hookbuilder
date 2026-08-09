@@ -36,7 +36,7 @@ evidence and authority.
 | Repair | Root cause, smallest compatible repair, rerun evidence |
 | Review | Pinned findings; no edits unless requested |
 | Submit | `0xprogrammable/hookbuilder`; no GitHub write |
-| Handoff | Unchanged accepted revision to authorized next owner |
+| Handoff | Accepted 1.1.0 source, launchWallet and route to authorized owner |
 
 Never skip semantic preflight. Continue Autopilot until a material owner decision, conflict or unproved prerequisite stops it. `DESIGN_READY` permits implementation only.
 

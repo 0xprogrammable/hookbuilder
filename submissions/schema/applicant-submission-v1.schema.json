@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:programmable:applicant-submission:1.0.0",
+  "$id": "urn:programmable:applicant-submission:1.1.0",
   "title": "Programmable applicant submission",
-  "description": "Review-only submission envelope for one exact public GitHub source revision.",
+  "description": "Review-only submission envelope for one exact public GitHub source revision and declared launch wallet.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -20,35 +20,36 @@
   ],
   "properties": {
     "$schema": {
-      "const": "urn:programmable:applicant-submission:1.0.0"
+      "const": "urn:programmable:applicant-submission:1.1.0"
     },
     "schemaVersion": {
-      "const": "1.0.0"
+      "const": "1.1.0"
     },
     "intake": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["repository", "repositoryId", "githubAppInstallationScope"],
+      "required": ["repository", "repositoryId"],
       "properties": {
         "repository": {
           "const": "0xprogrammable/hookbuilder"
         },
         "repositoryId": {
           "const": 1320085947
-        },
-        "githubAppInstallationScope": {
-          "const": "single-repository"
         }
       }
     },
     "applicant": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["githubLogin"],
+      "required": ["githubLogin", "launchWallet"],
       "properties": {
         "githubLogin": {
           "type": "string",
           "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$"
+        },
+        "launchWallet": {
+          "description": "Nonzero EIP-55 address of the applicant-owned wallet authorized for any later launch.",
+          "$ref": "#/$defs/nonzeroEthereumAddress"
         }
       }
     },
@@ -152,15 +153,13 @@
       "required": ["routeId", "routeVersion", "chainId"],
       "properties": {
         "routeId": {
-          "$ref": "#/$defs/id"
+          "const": "custom-graph"
         },
         "routeVersion": {
-          "$ref": "#/$defs/semver"
+          "const": "1.0.0"
         },
         "chainId": {
-          "type": "string",
-          "pattern": "^[1-9][0-9]*$",
-          "maxLength": 78
+          "const": "1"
         }
       }
     },
@@ -181,6 +180,13 @@
       "type": "string",
       "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
       "maxLength": 80
+    },
+    "nonzeroEthereumAddress": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{40}$",
+      "not": {
+        "const": "0x0000000000000000000000000000000000000000"
+      }
     },
     "semver": {
       "type": "string",

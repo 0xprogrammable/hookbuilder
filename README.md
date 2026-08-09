@@ -126,9 +126,10 @@ Then open a pull request with the Applicant template selected in the compare URL
 https://github.com/0xprogrammable/hookbuilder/compare/main...<github-login>:<branch>?expand=1&template=applicant-submission.md
 ```
 
-The request binds the exact source commit and tree, hook, template and model IDs with SemVer versions, all v4
-permissions, fee terms, and requested route. It requests review
-only; it contains no Registry, Router, wallet, provider, signing, deployment, or launch write. See the
+The request binds the exact source commit and tree, applicant GitHub login, nonzero checksummed launch-wallet address,
+hook, template and model IDs with SemVer versions, all v4 permissions, fee terms, and the exact live beta route
+`custom-graph@1.0.0` on Ethereum Mainnet chain `1`. It requests review only; the public address is a declaration, not
+wallet access, ownership proof, a signature, or a Registry, Router, provider, deployment, or launch write. See the
 [Applicant beta guide](docs/PUBLIC_GITHUB_PR_BETA.md).
 
 ## Build it with us
