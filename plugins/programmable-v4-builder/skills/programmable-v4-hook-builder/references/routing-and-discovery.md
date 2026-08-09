@@ -1,5 +1,9 @@
 # Routing and discovery
 
+Registry repositories and snapshots in this chapter are read-only discovery inputs, never Applicant pull-request
+targets. Current public Applicant requests go only to `0xprogrammable/hookbuilder:main` through the root
+`submissions/` contract.
+
 Use this reference when a submission claims that a pool can be found, quoted, routed, displayed, or traded through an
 external Uniswap surface. The source snapshot is dated 2026-07-31.
 

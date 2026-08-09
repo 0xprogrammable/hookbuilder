@@ -69,23 +69,23 @@ entry file is incomplete.
 For an interactive installation from this repository:
 
 ```bash
-gh skill install 0xprogrammable/programmable-v4-builder
+gh skill install 0xprogrammable/hookbuilder
 ```
 
 To preselect the skill while keeping setup interactive:
 
 ```bash
-gh skill install 0xprogrammable/programmable-v4-builder programmable-v4-hook-builder
+gh skill install 0xprogrammable/hookbuilder programmable-v4-hook-builder
 ```
 
 For reproducible public work, preview and pin an immutable published tag. `v0.4.0` is the current public release and is
 the historical V1 workflow; it is not proof that the local V2 candidate has shipped:
 
 ```bash
-gh skill preview 0xprogrammable/programmable-v4-builder \
+gh skill preview 0xprogrammable/hookbuilder \
   programmable-v4-hook-builder@v0.4.0
 
-gh skill install 0xprogrammable/programmable-v4-builder \
+gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \

@@ -57,14 +57,14 @@ candidate commit. Windows has neither a configured CI job nor a host receipt; do
 Preview the immutable public release before installation:
 
 ```bash
-gh skill preview 0xprogrammable/programmable-v4-builder \
+gh skill preview 0xprogrammable/hookbuilder \
   programmable-v4-hook-builder@v0.4.0
 ```
 
 Install it for one host and scope:
 
 ```bash
-gh skill install 0xprogrammable/programmable-v4-builder \
+gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
@@ -132,7 +132,7 @@ Codex marketplace and payload.
 ```bash
 codex plugin remove programmable-v4-builder@programmable
 codex plugin marketplace remove programmable
-codex plugin marketplace add 0xprogrammable/programmable-v4-builder --ref PREVIOUS_REVIEWED_PLUGIN_TAG
+codex plugin marketplace add 0xprogrammable/hookbuilder --ref PREVIOUS_REVIEWED_PLUGIN_TAG
 codex plugin add programmable-v4-builder@programmable
 ```
 

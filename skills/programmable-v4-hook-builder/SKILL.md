@@ -35,7 +35,7 @@ evidence and authority.
 | Prototype | Complete isolated repository and local evidence |
 | Repair | Root cause, smallest compatible repair, rerun evidence |
 | Review | Pinned findings; no edits unless requested |
-| Submit | Hookbuilder Applicant handoff; no GitHub write |
+| Submit | `0xprogrammable/hookbuilder`; no GitHub write |
 | Handoff | Unchanged accepted revision to authorized next owner |
 
 Never skip semantic preflight. Continue Autopilot until a material owner decision, conflict or unproved prerequisite stops it. `DESIGN_READY` permits implementation only.

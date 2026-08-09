@@ -1,5 +1,9 @@
 # GitHub application v3
 
+> Candidate replay contract, not current intake. The only current public Applicant target is
+> `0xprogrammable/hookbuilder:main`, using the root `submissions/` schema, example, validator, and Applicant template.
+> Never use this chapter's `0xprogrammable/programmable-registry` transport for a new Applicant.
+
 Use this reference only for `submission.v2.json` and `public-pr-application-v3`. Do not route a v2 project through the
 historical v1 `prepare-pr` contract, six-file `application.json` package or maximum-eight-companion path.
 

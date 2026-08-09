@@ -1,5 +1,10 @@
 # Builder workflow
 
+> Archived workflow context. For a current public Applicant, build and verify the exact public source, then follow
+> [agent-entry-and-application.md](agent-entry-and-application.md) and submit one request only to
+> `0xprogrammable/hookbuilder:main`. Historical Registry/Application transports in this chapter are not Applicant
+> targets.
+
 This workflow moves one open-ended v4 launch project from private exploration to a local review package and then a
 bounded public GitHub application. After maintainers accept an exact prototype, it can also produce a scoped
 platform-integration handoff. It does not accept, deploy, publish, list, or activate the project.
