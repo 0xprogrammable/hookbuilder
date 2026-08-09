@@ -211,6 +211,14 @@ test("semantic validation rejects permission-mask and fee contradictions", () =>
     code === "APPLICANT_NONZERO_FEE_INCOMPLETE"
   )));
 
+  const zeroRecipientFee = structuredClone(example);
+  zeroRecipientFee.fee.recipient = "0x0000000000000000000000000000000000000000";
+  const zeroRecipientFinding = validateApplicantSubmission(zeroRecipientFee, schema).find(({ code }) => (
+    code === "APPLICANT_NONZERO_FEE_ZERO_RECIPIENT"
+  ));
+  assert.equal(zeroRecipientFinding.path, "$.fee.recipient");
+  assert.match(zeroRecipientFinding.remediation, /exact nonzero Ethereum address/u);
+
   const inconsistentZeroFee = structuredClone(example);
   inconsistentZeroFee.fee.amountPips = 0;
   assert.ok(validateApplicantSubmission(inconsistentZeroFee, schema).some(({ code }) => (

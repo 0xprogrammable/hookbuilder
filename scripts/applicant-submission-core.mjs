@@ -22,6 +22,7 @@ export const MAXIMUM_APPLICANT_SUBMISSION_BYTES = 64 * 1024;
 export const APPLICANT_MANIFEST_CANONICALIZATION = CANONICAL_JSON_V2_PROFILE.id;
 const CANONICAL_SEMVER = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/u;
 const MAXIMUM_UINT256 = (1n << 256n) - 1n;
+const ZERO_ADDRESS = `0x${"00".repeat(20)}`;
 
 export const PERMISSION_BITS = Object.freeze({
   beforeInitialize: 0x2000,
@@ -181,6 +182,13 @@ export function validateApplicantSubmission(value, schema, { relativePath = null
       "$.fee",
       "A nonzero fee requires a currency basis and recipient.",
       "Declare the exact input, output, or quote basis and the exact recipient address."
+    );
+  } else if (value.fee.recipient === ZERO_ADDRESS) {
+    add(
+      "APPLICANT_NONZERO_FEE_ZERO_RECIPIENT",
+      "$.fee.recipient",
+      "A nonzero fee cannot use the zero address as its recipient.",
+      "Declare the exact nonzero Ethereum address that will receive the fee."
     );
   }
 
