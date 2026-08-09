@@ -19,7 +19,7 @@ const expectedTopLevel = [
   ".agents", ".claude-plugin", ".codex-plugin", ".editorconfig", ".gitattributes", ".github", ".gitignore", ".mcp.json",
   "AGENTS.md", "CHANGELOG.md", "CODE_OF_CONDUCT.md", "CONTRIBUTING.md", "GOVERNANCE.md", "LICENSE",
   "NOTICE.md", "README.md", "SECURITY.md", "SUPPORT.md", "assets", "config", "docs", "evals",
-  "mcp", "package-lock.json", "package.json", "plugins", "scripts", "skills", "test"
+  "mcp", "package-lock.json", "package.json", "plugins", "scripts", "skills", "submissions", "test"
 ];
 const forbiddenTransientDirectories = new Set(["node_modules", "coverage", "broadcast", "cache", "out"]);
 
@@ -125,6 +125,9 @@ test("version and plugin identities agree across canonical and generated package
   assert.equal(packageDocument.license, "MIT");
   assert.equal(packageDocument.engines.node, ">=20");
   assert.equal(packageDocument.packageManager, "npm@11.16.0");
+  assert.equal(packageDocument.repository.url, "git+https://github.com/0xprogrammable/hookbuilder.git");
+  assert.equal(packageDocument.bugs.url, "https://github.com/0xprogrammable/hookbuilder/issues");
+  assert.equal(packageDocument.homepage, "https://github.com/0xprogrammable/hookbuilder#readme");
   assert.equal(Object.hasOwn(packageDocument, "dependencies"), false);
   assert.equal(Object.hasOwn(packageDocument, "devDependencies"), false);
   assert.equal(packageDocument.version, "0.5.1");

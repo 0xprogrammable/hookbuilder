@@ -1,14 +1,15 @@
 # Agent entry and application contract
 
-This reference separates the active **Public GitHub PR Builder Beta** from a later **Connected Submission service**.
-Today, builders keep their complete project in an external public GitHub repository and submit a bounded six-file
-application record through a draft pull request. The wallet, GitHub App, claim, application-service, status-API, permit,
-and website-launch contracts later in this file are future design contracts and are not active beta capabilities.
+This reference separates the active **Public Applicant Beta** from a later **Connected Submission service**. Today,
+builders keep their complete project in an external public GitHub repository and add one review-only JSON request to
+`0xprogrammable/hookbuilder`. The review GitHub App is scoped to that single repository, numeric ID `1320085947`.
+Wallet, claim, application-service, status-API, permit, and website-launch contracts later in this file are future
+design contracts and are not active beta capabilities.
 
 ## Contents
 
 - [Product boundary](#product-boundary)
-- [Current Public GitHub PR Beta](#current-public-github-pr-beta)
+- [Current Public Applicant Beta](#current-public-applicant-beta)
 - [Default entry](#default-entry)
 - [First agent behavior](#first-agent-behavior)
 - [Knowledge ownership](#knowledge-ownership)
@@ -46,7 +47,7 @@ The skill must make the declared project reviewable, whether it uses a launch-re
 or additional app, game, service, keeper, or indexer surfaces. It must never promise that generated code is perfect,
 safe, audited, accepted, deployed, or available.
 
-## Current Public GitHub PR Beta
+## Current Public Applicant Beta
 
 The current application boundary is deliberately small:
 
@@ -57,55 +58,34 @@ idea or existing project
   -> proposal or capability-driven prototype in the builder repository
   -> local package gate
   -> clean, pushed, anonymously reachable public GitHub revision
-  -> deterministic six-file central application package
-  -> draft pull request to 0xprogrammable/programmable-registry
+  -> exact public source repository ID, commit, and root tree
+  -> schema-valid Applicant request
+  -> pull request to 0xprogrammable/hookbuilder
   -> GitHub-native review
 ```
 
-The complete source stays in the builder repository. The central pull request contains exactly:
+The complete source stays in the builder repository. The Hookbuilder pull request adds or updates exactly one file:
 
 ```text
-submissions/<application-id>/
-├── application.json
-├── PROPOSAL.md
-├── TEST_PLAN.md
-├── THREAT_MODEL.md
-├── compatibility-report.json
-└── evidence-index.json
+submissions/requests/<source-repository-id>-<hook-id>.json
 ```
 
-`applicationId` is the stable lowercase project slug and central directory name. The source identity is the canonical
-public GitHub repository URI, numeric repository id, exact commit, root tree, declared paths, and evidence bound inside
-`application.json`. The pull-request number identifies the public review thread. Neither identifier is a remote draft,
-wallet-owned application, claim secret, approval, or launch authorization.
+The request binds the public source repository URL and numeric ID, exact commit and tree, hook/template/model IDs and
+SemVer versions, all 14 v4 permission flags plus their derived address mask, exact fee terms, and requested route. In a
+Hookbuilder checkout, copy the root example and run the root offline validator:
 
-The public record separately binds the builder. `prepare-pr` resolves the declared GitHub login through the anonymous
-public `/users/<login>` endpoint and records the exact decimal GitHub user id. The trusted intake workflow compares that
-id and the current display login with the pull-request author event. Preserve the numeric id across revisions while
-allowing the login and contact to follow a GitHub rename. This proves the central PR author identity only, not ownership
-of the linked source repository.
+```bash
+npm run submission:check -- submissions/requests/<source-repository-id>-<hook-id>.json
+```
 
-A project may bind zero to eight additional public companion repositories through canonical manifests committed in the
-primary HEAD. Each companion is independently pinned to its numeric repository id, full commit, root tree, and declared
-paths. This supports split contract, app, game, service, keeper, oracle, indexer, or other reviewable architectures
-without pretending they are one repository.
+The beta does not use the historical `prepare-pr` command or candidate Application V3 `open-world submit` transport.
+Those commands retain old-version replay semantics and are not public Applicant targets. Maintainer automation must
+revalidate the request with trusted protected-base code and must never execute Applicant source with repository
+credentials. Contributor-head CI is convenience evidence, not intake authority.
 
-The implemented beta commands are `doctor`, `scaffold`, `check`, `package`, and `prepare-pr` through
-`scripts/cli.mjs`. `prepare-pr` resolves the pushed public revision and prepares the six files plus draft PR metadata. An
-explicit `--output-dir` may materialize those six files locally, but the command does not push, open a pull request,
-connect an account, sign, deploy, or launch. Opening the draft pull request remains a separate external action requiring
-explicit authority.
-
-The output distinguishes the builder `sourceHead` from the exact central pull-request target. A new open application
-stays at revision 1; an open update stays at the single prior-main revision plus one. `--replace-existing` creates the
-first update draft only from an exact local copy of immutable main. Every later iteration of that same open pull request
-uses `--replace-draft`, which preserves the pending revision and lineage. Both modes require an output directory outside
-the builder repository and never change GitHub by themselves.
-
-GitHub checks, labels, review comments, and pull-request state are the current workflow projections. They do not become
-security, audit, acceptance, deployment, routing, provider, or availability evidence by implication. Do not ask the
-builder to connect a wallet, install a GitHub App, claim a draft, query an application-status endpoint, or prepare a
-launch permit for this beta.
+GitHub checks, labels, review comments, and pull-request state do not become security, audit, acceptance, deployment,
+routing, provider, or availability evidence by implication. The request contains no Registry, Router, wallet, provider,
+signing, deployment, or launch write. Every external action remains separate and requires explicit authority.
 
 ## Default entry
 

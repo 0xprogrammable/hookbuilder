@@ -67,7 +67,7 @@ const commandSpecs = new Map([
   }],
   ["package", {
     usage: "cli.mjs package <submission-directory> [--require-intake-ready | --require-ready] [--repository-root <path>]",
-    summary: "Run the canonical public intake package gate without executing project code.",
+    summary: "Historical V1 package gate; never execute project code.",
     options: [
       repositoryOption(),
       { name: "--require-intake-ready", key: "requireIntakeReady", type: "boolean", description: "Fail unless static package intake is READY." },
@@ -86,10 +86,10 @@ const commandSpecs = new Map([
   }],
   ["prepare-pr", {
     usage: "cli.mjs prepare-pr <submission-directory> [--base main] [--companion-manifest <path>]... [--output-dir <path>] [--replace-existing | --replace-draft] [--repository-root <path>]",
-    summary: "Prepare deterministic PR metadata for one clean, pushed, public GitHub revision without opening it.",
+    summary: "Historical V1 PR metadata only; no PR write.",
     options: [
       repositoryOption(),
-      { name: "--base", key: "baseBranch", type: "value", valueName: "main", description: "Optionally state the fixed public target explicitly. Only 0xprogrammable/programmable-registry:main is supported." },
+      { name: "--base", key: "baseBranch", type: "value", valueName: "main", description: "Historical V1: 0xprogrammable/programmable-registry:main; not Applicant." },
       {
         name: "--companion-manifest",
         key: "companionManifests",
@@ -140,7 +140,7 @@ async function execute(command, options, positionals) {
   if (command === "prepare-pr" && options.baseBranch !== null && options.baseBranch !== "main") {
     throw new CliFailure(
       "USAGE_ERROR",
-      "prepare-pr supports only 0xprogrammable/programmable-registry:main; omit --base or pass --base main"
+      "historical V1 target is 0xprogrammable/programmable-registry:main; use the Applicant validator"
     );
   }
   if (command === "prepare-pr" && options.replaceExisting && options.replaceDraft) {
@@ -436,7 +436,7 @@ function globalHelp() {
     "Programmable v4 Builder JSON entry point.",
     "",
     "Commands:",
-    "  open-world    Prepare open-world v2/Application V3 locally.",
+    "  open-world    Prepare open-world v2/Application V3 locally (candidate).",
     "  application-recheck  Recheck immutable application evidence.",
     "  context       Select the smallest local knowledge profile for this task.",
     "  templates     List, inspect or materialize open starter packs.",
@@ -450,12 +450,12 @@ function globalHelp() {
     "  fee           Create or check structural fee-conformance evidence.",
     "  launch-bundle Build an unsigned DeploymentSpec candidate from exact local bytes.",
     "  launch-bundle-v2  Check exact multi-repository V2 bytes read-only; never authorize.",
-    "  package       Validate a complete public intake package.",
+    "  package       Validate a historical V1 package.",
     "  companion     Validate or canonicalize one companion manifest.",
-    "  prepare-pr    Generate PR metadata without pushing or opening a PR.",
-    "  submit        Plan or exactly confirm a GitHub application.",
-    "  status        Read the GitHub application status.",
-    "  update        Plan or exactly confirm an application update.",
+    "  prepare-pr    Historical V1 PR metadata.",
+    "  submit        Historical V1 GitHub transport.",
+    "  status        Historical V1 GitHub status.",
+    "  update        Historical V1 GitHub update.",
     "  version       Report bundled versions or an explicit installed-state override.",
     "  update-check  Verify a supplied signed and pinned update.",
     "  migrate       Produce a migration dry-run; never write it.",

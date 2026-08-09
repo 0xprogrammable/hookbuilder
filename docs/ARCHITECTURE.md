@@ -27,6 +27,7 @@ In the table below, unprefixed `references/`, `scripts/`, `assets/`, `evals/` an
 | Trade capability | `references/trade-capability-manifest-v1.schema.json`, `programmable-trade-execution-v1.schema.json` and `scripts/trade-capability-manifest-core.mjs` | Per-market PoolKey, router/quoter/Permit2, hook data, direction, slippage, deadline, fee and test contracts; standard Uniswap v4 or canonical adapter, always `NOT_APPROVED` |
 | Historical application | `references/public-pr-application.schema.json` | Frozen pre-V3 application compatibility and immutable history |
 | Candidate application | `references/public-pr-application-v3.schema.json` and `scripts/public-pr-application-v3-core.mjs` | GitHub-only Application V3 intent, review, source and policy closure; not publicly active until the release gates pass |
+| Public Applicant intake | Root `submissions/` schema, example and validator | Review-only pull requests to Hookbuilder that bind one exact public source revision; no Registry, Router or launch write |
 | Large source closure | `references/source-closure-manifest-v1.schema.json` | Ordered, content-addressed manifest and fragment contract for large primary or companion repositories |
 | Registry acceptance | `references/registry-acceptance-v3.schema.json` and `scripts/registry-acceptance-v3-github-core.mjs` | Fresh-review-gated maintainer decision plus bounded central-PR/raw-Git preflight for one exact Application V3 package, the exact acceptance blob, and the current canonical index/project records that still select it as launch-eligible with applicable Fee V2 on stable central main; mocked transport is inspection-only and the platform re-verifies independently |
 | Launch preparation | `references/launch-bundle-input-v2.schema.json`, `launch-bundle-output-v2.schema.json` and `scripts/launch-bundle-v2*.mjs` | Exact multi-repository preparation report that always remains unsigned and `NOT_AUTHORIZED` |
@@ -36,7 +37,7 @@ In the table below, unprefixed `references/`, `scripts/`, `assets/`, `evals/` an
 | External E2E evidence intake | `scripts/evals/e2e-external-evidence-core.mjs` | Signature and source-binding verification without treating a caller-selected policy as an independent trust root |
 | Host distribution | `config/plugin.json` | Neutral metadata rendered into supported host manifests |
 | Repository release | Root docs, CI and release process | Public source, provenance, immutable versions, receipts and installation canaries |
-| Public project Registry | `0xprogrammable/programmable-registry` | Applications, maintainer decisions, canonical project records, discovery and immutable history |
+| Candidate Registry integration | Versioned Application V3 contracts | Historical and unreleased acceptance/discovery architecture; not the public Applicant pull-request target |
 
 ## Version map
 

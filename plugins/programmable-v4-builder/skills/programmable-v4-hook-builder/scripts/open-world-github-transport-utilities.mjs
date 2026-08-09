@@ -597,7 +597,7 @@ export function installOpenWorldGitHubTransportUtilities(runtime) {
     const isUpdate = command === "update";
     return {
       usage: `open-world.mjs ${command} <application-v3-package> ${isUpdate ? "--pull-request <number> " : ""}[--source-root <repository-ref=git-root>...] [--mutation-receipt <absolute-json>] [--resume] [--dry-run | --confirm-external-write <sha256:...>]`,
-      summary: `${isUpdate ? "Update" : "Submit"} one immutable Application V3 revision through GitHub only. The default is an authenticated read-only plan; external writes require the exact current confirmation digest.`,
+      summary: `Candidate Application V3 ${isUpdate ? "update" : "submission"} transport only; not the public Applicant path. The default is an authenticated read-only plan; external writes require the exact current confirmation digest.`,
       options: [
         ...(isUpdate ? [{ name: "--pull-request", key: "pullRequest", type: "value", valueName: "number", description: "Select the exact existing draft Application V3 review thread." }] : []),
         { name: "--source-root", key: "sourceRoots", type: "value", repeatable: true, valueName: "repository-ref=git-root", description: "Replay every manifest source closure from exact local Git roots before planning or writing; inline transport may remain remote-only." },

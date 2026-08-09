@@ -6,6 +6,8 @@ All notable Builder changes are recorded here. Historical releases remain immuta
 
 ### Added
 
+- A public Applicant beta in the canonical `0xprogrammable/hookbuilder` repository, with a strict review-only JSON
+  schema, example, offline validator, request path, and pull-request template.
 - A schema-bound open-world project compiler for verbatim intent, complete product graphs, three comparable architecture
   roles, repository plans, and resumable phase state.
 - Closed capability contracts and an executable composition checker for permission, namespace, delta, fee, authority,
@@ -20,6 +22,9 @@ All notable Builder changes are recorded here. Historical releases remain immuta
 
 ### Changed
 
+- New public Applicant requests target Hookbuilder repository ID `1320085947` and bind one exact source commit and
+  tree, versioned hook/template/model identities, permissions, fee terms, and requested route. They never request a
+  Registry or Router write.
 - Source-assessed prototypes without source-derived semantic coverage now require independent review instead of passing
   through an empty declared profile set.
 - The free custom/no-pool starter no longer fabricates a Programmable canonical fee scope; fee applicability follows

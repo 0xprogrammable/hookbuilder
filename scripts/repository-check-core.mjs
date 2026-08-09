@@ -34,6 +34,12 @@ export function createRepositoryCheckPlan({
       timeoutMs: 120_000
     },
     {
+      id: "applicant-submissions",
+      command: nodeExecutable,
+      args: ["scripts/validate-applicant-submission.mjs", "--all"],
+      timeoutMs: 120_000
+    },
+    {
       id: "mcp-server",
       command: nodeExecutable,
       args: ["--test", ...mcpTests],

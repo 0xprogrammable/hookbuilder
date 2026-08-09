@@ -138,11 +138,11 @@ public-safe idea
   -> open project graph
   -> source, tests and evidence
   -> deterministic local validation
-  -> exact GitHub application v3 package
-  -> pull request to 0xprogrammable/programmable-registry:main
-  -> independent exact-revision decision and GitHub status
-  -> Website Custom Launcher for the same unchanged approved SHA
-  -> separate wallet, finality and availability gates
+  -> exact source commit and root tree
+  -> review-only Applicant request
+  -> pull request to 0xprogrammable/hookbuilder:main
+  -> independent exact-revision review
+  -> separate launch-authority, wallet, finality and availability gates
 ```
 
 Registry discovery happens only after intent capture. A similar project can supply reusable code or context; similarity
@@ -280,47 +280,24 @@ Git objects from the exact pinned commit without following symlinks, running can
 loading filters or using the network. Resource limits can request a content-addressed split review; they cannot label
 the product unsafe.
 
-Application v3 is not public merely because its schema validates locally. Inspect
-`cli.mjs open-world prepare-revision --help` and `cli.mjs open-world application --help`; use only those exact released
-interfaces. Keep revision and lineage absent from the first draft. `prepare-revision` derives them with GET-only GitHub
-discovery and exact current-source replay; `application` then builds the complete package with no network. Every source,
-closure, evidence or recheck change repeats both steps. Use an explicit predecessor root only for a selected removed or
-replaced historical repository whose exact objects are otherwise unavailable. Until the release gates say the GitHub
-path is active, do not hand-create `application.v3.json`, route a v2 project through historical v1 `prepare-pr`, submit
-it, or claim that the Registry accepted it.
+Application v3 remains unreleased candidate architecture and is not the public Applicant transport. Do not route a new
+Applicant through historical `prepare-pr` or the candidate `open-world submit` path. The public beta uses the root
+[`submissions/`](../submissions/README.md) contract and offline validator.
 
 ### 6. Submit, review and repair
 
-When the V3 GitHub path is activated, use only the namespaced `cli.mjs open-world submit`, `update`, and `status`
-interfaces; the top-level commands remain historical V1. Preparation remains local and read-only. Submission or update
-first produces a read-only plan; creating a fork, advancing a branch or opening/updating a pull request requires explicit
-authorization of the exact current confirmation digest. Status remains read-only.
+For the public beta, copy the root example to
+`submissions/requests/<source-repository-id>-<hook-id>.json`, bind the exact source commit and tree plus the versioned
+hook, template, model, permissions, fee and requested route, then run:
 
-The client targets
-[`0xprogrammable/programmable-registry:main`](https://github.com/0xprogrammable/programmable-registry). GitHub is the
-canonical public application, repair, and exact-revision status surface. It is not the wallet launcher.
+```bash
+npm run submission:check -- submissions/requests/<source-repository-id>-<hook-id>.json
+```
 
-The application stays `unreviewed` and cannot include an acceptance binding. GitHub is the public transport and review
-thread. An objective finding names the exact revision, rule, location, evidence, impact and repair path. For every
-project change, push a new commit, rebuild the package, regenerate the application and update the same review thread.
-A conclusion or false-positive disposition applies only to the exact revision it binds and never carries into a new
-commit.
-
-Merging an application review thread is not canonical acceptance, deployment, or launch authorization. Acceptance needs
-a Registry-controlled record for the exact application, source, submission, fee, security, verification reports, and
-maintainer decision. Before that record exists, the launch input keeps its acceptance binding null and the result stays
-`UNRESOLVED` and `NOT_AUTHORIZED`. The accepted record omits its own containing commit/tree; the outer launch input binds
-its exact Registry blob. The later launch bundle is unsigned, keeps the fee recipient separate from the admin authorizer,
-and performs no transaction or signature.
-
-Registry Acceptance V3 may record an exact `not-applicable` zero-scope decision. That does not create a canonical
-execution scope: Launch V2 must return `NOT_AUTHORIZED` for it even if a caller supplies an unrelated Fee V2 artifact.
-
-After production activation, an authenticated exact-revision approval may be converted server-side into Website launch
-eligibility. The same GitHub subject signs in; the service revalidates the approved application revision and source SHA
-plus current rights, policy, compiler, launch specification, release, chain, and incident state. A changed commit is a
-new review target and cannot inherit approval. A PR label, comment, review, merge, local bundle, or browser claim cannot
-grant launch permission.
+After local validation, an authorized owner may open one pull request to
+[`0xprogrammable/hookbuilder:main`](https://github.com/0xprogrammable/hookbuilder) with the Applicant template. The
+request stays review-only. It does not approve, register, deploy, sign, route, or launch. A changed source commit or tree
+is a new review target; any later authority or runtime claim needs separate evidence.
 
 ## Fee V2 invariant
 

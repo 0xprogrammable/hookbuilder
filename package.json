@@ -16,6 +16,8 @@
     "evals:e2e:validate": "node scripts/evals/run-e2e-evals.mjs --validate-only",
     "test:repository": "node --test test/repository-contract.test.mjs test/release-evidence.test.mjs",
     "test:skill": "node skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
+    "submission:check": "node scripts/validate-applicant-submission.mjs",
+    "submission:check:all": "node scripts/validate-applicant-submission.mjs --all",
     "plugin:check": "node scripts/generate-plugin-manifests.mjs --check",
     "plugin:write": "node scripts/generate-plugin-manifests.mjs --write",
     "release:candidate": "node scripts/prepare-release-candidate.mjs",
@@ -33,10 +35,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/0xprogrammable/programmable-v4-builder.git"
+    "url": "git+https://github.com/0xprogrammable/hookbuilder.git"
   },
   "bugs": {
-    "url": "https://github.com/0xprogrammable/programmable-v4-builder/issues"
+    "url": "https://github.com/0xprogrammable/hookbuilder/issues"
   },
-  "homepage": "https://github.com/0xprogrammable/programmable-v4-builder#readme"
+  "homepage": "https://github.com/0xprogrammable/hookbuilder#readme"
 }

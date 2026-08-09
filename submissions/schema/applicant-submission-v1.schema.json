@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:programmable:applicant-submission:1.0.0",
+  "title": "Programmable applicant submission",
+  "description": "Review-only submission envelope for one exact public GitHub source revision.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "intake",
+    "applicant",
+    "source",
+    "identifiers",
+    "hook",
+    "fee",
+    "requestedRoute",
+    "requestedActions",
+    "notes"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "urn:programmable:applicant-submission:1.0.0"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "intake": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "repositoryId", "githubAppInstallationScope"],
+      "properties": {
+        "repository": {
+          "const": "0xprogrammable/hookbuilder"
+        },
+        "repositoryId": {
+          "const": 1320085947
+        },
+        "githubAppInstallationScope": {
+          "const": "single-repository"
+        }
+      }
+    },
+    "applicant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["githubLogin"],
+      "properties": {
+        "githubLogin": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "repositoryId", "commit", "tree"],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "pattern": "^https://github\\.com/(?![^/]*--)[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?/(?!\\.{1,2}$)(?!.*\\.git$)(?=[A-Za-z0-9._-]*[A-Za-z0-9])[A-Za-z0-9._-]{1,100}$",
+          "maxLength": 200
+        },
+        "repositoryId": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "commit": {
+          "$ref": "#/$defs/gitObjectId"
+        },
+        "tree": {
+          "$ref": "#/$defs/gitObjectId"
+        }
+      }
+    },
+    "identifiers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hookId",
+        "hookVersion",
+        "templateId",
+        "templateVersion",
+        "modelId",
+        "modelVersion"
+      ],
+      "properties": {
+        "hookId": {
+          "$ref": "#/$defs/id"
+        },
+        "hookVersion": {
+          "$ref": "#/$defs/semver"
+        },
+        "templateId": {
+          "$ref": "#/$defs/id"
+        },
+        "templateVersion": {
+          "$ref": "#/$defs/semver"
+        },
+        "modelId": {
+          "$ref": "#/$defs/id"
+        },
+        "modelVersion": {
+          "$ref": "#/$defs/semver"
+        }
+      }
+    },
+    "hook": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["addressFlagMask", "permissions"],
+      "properties": {
+        "addressFlagMask": {
+          "type": "string",
+          "pattern": "^0x[0-3][0-9a-fA-F]{3}$"
+        },
+        "permissions": {
+          "$ref": "#/$defs/permissions"
+        }
+      }
+    },
+    "fee": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["amountPips", "denominator", "currencyBasis", "recipient", "mutable"],
+      "properties": {
+        "amountPips": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "denominator": {
+          "const": 1000000
+        },
+        "currencyBasis": {
+          "enum": ["input", "output", "quote", "none"]
+        },
+        "recipient": {
+          "type": ["string", "null"],
+          "pattern": "^0x[0-9a-fA-F]{40}$"
+        },
+        "mutable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "requestedRoute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["routeId", "routeVersion", "chainId"],
+      "properties": {
+        "routeId": {
+          "$ref": "#/$defs/id"
+        },
+        "routeVersion": {
+          "$ref": "#/$defs/semver"
+        },
+        "chainId": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$",
+          "maxLength": 78
+        }
+      }
+    },
+    "requestedActions": {
+      "const": ["review"]
+    },
+    "notes": {
+      "type": ["string", "null"],
+      "maxLength": 1000
+    }
+  },
+  "$defs": {
+    "gitObjectId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 80
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "maxLength": 100
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "beforeInitialize",
+        "afterInitialize",
+        "beforeAddLiquidity",
+        "afterAddLiquidity",
+        "beforeRemoveLiquidity",
+        "afterRemoveLiquidity",
+        "beforeSwap",
+        "afterSwap",
+        "beforeDonate",
+        "afterDonate",
+        "beforeSwapReturnDelta",
+        "afterSwapReturnDelta",
+        "afterAddLiquidityReturnDelta",
+        "afterRemoveLiquidityReturnDelta"
+      ],
+      "properties": {
+        "beforeInitialize": { "type": "boolean" },
+        "afterInitialize": { "type": "boolean" },
+        "beforeAddLiquidity": { "type": "boolean" },
+        "afterAddLiquidity": { "type": "boolean" },
+        "beforeRemoveLiquidity": { "type": "boolean" },
+        "afterRemoveLiquidity": { "type": "boolean" },
+        "beforeSwap": { "type": "boolean" },
+        "afterSwap": { "type": "boolean" },
+        "beforeDonate": { "type": "boolean" },
+        "afterDonate": { "type": "boolean" },
+        "beforeSwapReturnDelta": { "type": "boolean" },
+        "afterSwapReturnDelta": { "type": "boolean" },
+        "afterAddLiquidityReturnDelta": { "type": "boolean" },
+        "afterRemoveLiquidityReturnDelta": { "type": "boolean" }
+      }
+    }
+  }
+}

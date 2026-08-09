@@ -14,7 +14,6 @@
       "id": "legacy-v1-reproduction",
       "reason": "Load only to reproduce, recheck, or migrate an explicitly identified historical V1 application; these references must never route into a new open-world V2 project.",
       "references": [
-        "agent-entry-and-application.md",
         "compatibility-standard.md",
         "github-application-journey.md",
         "output-contract.md",
@@ -22,6 +21,13 @@
         "standard-fee-kernel.md",
         "submission-workflow.md",
         "workflow.md"
+      ]
+    },
+    {
+      "id": "candidate-application-v3-transport",
+      "reason": "Retained only for exact candidate Application V3 replay; it must never route a public Applicant away from Hookbuilder.",
+      "references": [
+        "github-application-v3.md"
       ]
     }
   ],
@@ -320,8 +326,8 @@
       ],
       "later": [
         {
-          "reference": "github-application-v3.md",
-          "trigger": "Load only after the local package validates and exact public source is frozen for GitHub transport or status work."
+          "reference": "agent-entry-and-application.md",
+          "trigger": "Load only after local checks pass and exact public source is frozen for the Hookbuilder Applicant handoff."
         },
         {
           "reference": "open-world-v2-output-contract.md",
@@ -369,8 +375,8 @@
           "trigger": "Load after the exact accepted revision and next-owner boundary are known and the final handoff ledger must be rendered."
         },
         {
-          "reference": "github-application-v3.md",
-          "trigger": "Load when emitting or diagnosing the exact GitHub application and review handoff."
+          "reference": "agent-entry-and-application.md",
+          "trigger": "Load when emitting or diagnosing the exact Hookbuilder Applicant review handoff."
         },
         {
           "reference": "launch-bundle-input-v2.schema.json",
