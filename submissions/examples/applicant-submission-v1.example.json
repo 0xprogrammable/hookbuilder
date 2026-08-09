@@ -1,0 +1,59 @@
+{
+  "$schema": "urn:programmable:applicant-submission:1.0.0",
+  "schemaVersion": "1.0.0",
+  "intake": {
+    "repository": "0xprogrammable/hookbuilder",
+    "repositoryId": 1320085947,
+    "githubAppInstallationScope": "single-repository"
+  },
+  "applicant": {
+    "githubLogin": "example-builder"
+  },
+  "source": {
+    "repository": "https://github.com/example-builder/example-fee-hook",
+    "repositoryId": 123456789,
+    "commit": "1111111111111111111111111111111111111111",
+    "tree": "2222222222222222222222222222222222222222"
+  },
+  "identifiers": {
+    "hookId": "example-fee-hook",
+    "hookVersion": "1.0.0",
+    "templateId": "blank-custom",
+    "templateVersion": "1.0.0",
+    "modelId": "example-fee-model",
+    "modelVersion": "1.0.0"
+  },
+  "hook": {
+    "addressFlagMask": "0x2044",
+    "permissions": {
+      "beforeInitialize": true,
+      "afterInitialize": false,
+      "beforeAddLiquidity": false,
+      "afterAddLiquidity": false,
+      "beforeRemoveLiquidity": false,
+      "afterRemoveLiquidity": false,
+      "beforeSwap": false,
+      "afterSwap": true,
+      "beforeDonate": false,
+      "afterDonate": false,
+      "beforeSwapReturnDelta": false,
+      "afterSwapReturnDelta": true,
+      "afterAddLiquidityReturnDelta": false,
+      "afterRemoveLiquidityReturnDelta": false
+    }
+  },
+  "fee": {
+    "amountPips": 1000,
+    "denominator": 1000000,
+    "currencyBasis": "output",
+    "recipient": "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c",
+    "mutable": false
+  },
+  "requestedRoute": {
+    "routeId": "custom-graph",
+    "routeVersion": "1.0.0",
+    "chainId": "1"
+  },
+  "requestedActions": ["review"],
+  "notes": "Example values only. Replace every source and model binding before opening a pull request."
+}

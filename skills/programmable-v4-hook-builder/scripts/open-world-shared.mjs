@@ -146,6 +146,7 @@ export const STRICT_JSON_RESOURCE_CODES = new Set([
   "STRICT_JSON_NODE_LIMIT",
   "STRICT_JSON_SOURCE_LIMIT"
 ]);
+// Frozen candidate Application V3 transport identity; public Applicants use the root submissions/ contract.
 export const CENTRAL_GITHUB_REPOSITORY = "0xprogrammable/programmable-registry";
 export const CENTRAL_GITHUB_NUMERIC_REPOSITORY_ID = "1320171831";
 export const CENTRAL_GITHUB_REPOSITORY_NAME = "programmable-registry";

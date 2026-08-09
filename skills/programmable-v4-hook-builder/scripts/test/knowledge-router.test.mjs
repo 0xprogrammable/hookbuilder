@@ -160,9 +160,9 @@ test("every installed Markdown reference is routed, linked, or explicitly archiv
   ]);
   const archival = new Set(routing.archivalReferences.flatMap(({ references }) => references));
   assert.deepEqual([...archival].sort(), [
-    "agent-entry-and-application.md",
     "compatibility-standard.md",
     "github-application-journey.md",
+    "github-application-v3.md",
     "output-contract.md",
     "programmable-fee-policy.md",
     "standard-fee-kernel.md",
@@ -247,7 +247,6 @@ test("fee pack without an explicit indexer does not load companion manifests", (
 
 test("open-world v2 modes never route through the historical six-file transport", () => {
   const historical = new Set([
-    "references/agent-entry-and-application.md",
     "references/github-application-journey.md",
     "references/output-contract.md",
     "references/submission-workflow.md",
@@ -264,6 +263,9 @@ test("open-world v2 modes never route through the historical six-file transport"
   assert.deepEqual(paths(planKnowledge({ mode: "handoff", skillRoot })), [
     "references/open-world-v2-workflow.md"
   ]);
+  for (const mode of ["submit", "handoff"]) {
+    assert.ok(deferred(planKnowledge({ mode, skillRoot }), "references/agent-entry-and-application.md"), mode);
+  }
 });
 
 test("swap and liquidity clients receive exact SDK, state, and periphery safety context", () => {

@@ -30,16 +30,16 @@
 > **Release status**
 >
 > `v0.4.0` is the latest published release. `main` contains the public `v0.5.1` development source. Its
-> integration on `main`, package version, or green CI does not make it a stable release. It does not activate
-> Application V3 intake, Registry acceptance, deployment, or launch.
+> integration on `main`, package version, or green CI does not make it a stable release. The Applicant beta on
+> `main` can prepare a review request; it does not approve, deploy, route, register, or launch a project.
 
 Programmable v4 Builder is an evidence-first [Agent Skill](https://agentskills.io/specification). It accepts a plain
 idea or an existing public repository. Hooks, tokens, apps, games, services, standalone settlement systems, and mixed
 projects can all be modeled.
 
 The Builder does not limit unfamiliar work to a fixed catalog. Starters and capability packs speed up repeated work;
-unknown ideas remain eligible for architecture review. Local checks stay separate from maintainer review, Registry
-acceptance, launch authority, deployment, provider support, and public availability.
+unknown ideas remain eligible for architecture review. Local checks stay separate from maintainer review, launch
+authority, deployment, provider support, and public availability.
 
 ## Install the published release
 
@@ -73,7 +73,7 @@ node scripts/verify-skill.mjs --installed
 Then give your agent one clear request:
 
 ```text
-Use the Programmable v4 Builder skill. Start from this idea or repository: <idea or public GitHub URL>. Preserve the intended product, choose the smallest complete architecture, run the available checks, and prepare one exact GitHub application. Ask before any external write.
+Use the Programmable v4 Builder skill. Start from this idea or repository: <idea or public GitHub URL>. Preserve the intended product, choose the smallest complete architecture, run the available checks, and freeze the exact public source revision and evidence needed for review. Ask before any external write.
 ```
 
 ## What the Builder does
@@ -85,7 +85,7 @@ Use the Programmable v4 Builder skill. Start from this idea or repository: <idea
 | Build | Uses composable starters and capability packs without treating them as an allowlist. |
 | Check | Runs deterministic validation, intent-fidelity checks, security boundaries, and executable evidence where available. |
 | Bind | Closes over the exact public source repositories, commits, trees, files, and required evidence. |
-| Prepare | Builds a local, source-bound application package and a read-only GitHub plan before any authorized write. |
+| Prepare | Freezes the exact source revision and evidence needed by a separate Applicant review request. |
 
 The Builder loads only the protocol, runtime, liquidity, service, and security material relevant to the confirmed
 project.
@@ -95,9 +95,10 @@ flowchart TD
   A["Idea or public repository"] --> B["Intent and material owner choices"]
   B --> C["Architecture and repository plan"]
   C --> D["Implementation and local checks"]
-  D --> E["Exact source-bound application"]
-  E --> F["Programmable maintainer review"]
-  F -. "separate authority and evidence" .-> G["Registry acceptance"]
+  D --> E["Exact source revision and evidence"]
+  E --> R["Hookbuilder Applicant request"]
+  R --> F["Programmable maintainer review"]
+  F -. "separate authority and evidence" .-> G["Launch authorization"]
   G -. "separate authority and evidence" .-> H["Deployment and public availability"]
 ```
 
@@ -106,6 +107,29 @@ Inspect the local router on the development source:
 ```bash
 node skills/programmable-v4-hook-builder/scripts/cli.mjs context --mode explore
 ```
+
+## Submit a hook for review
+
+Hookbuilder is the canonical Applicant repository (`0xprogrammable/hookbuilder`, repository ID `1320085947`). Copy the
+example, replace every placeholder with the exact source-bound values, and validate it locally:
+
+```bash
+cp submissions/examples/applicant-submission-v1.example.json \
+  submissions/requests/<source-repository-id>-<hook-id>.json
+npm run submission:check -- \
+  submissions/requests/<source-repository-id>-<hook-id>.json
+```
+
+Then open a pull request with the Applicant template selected in the compare URL:
+
+```text
+https://github.com/0xprogrammable/hookbuilder/compare/main...<github-login>:<branch>?expand=1&template=applicant-submission.md
+```
+
+The request binds the exact source commit and tree, hook, template and model IDs with SemVer versions, all v4
+permissions, fee terms, and requested route. It requests review
+only; it contains no Registry, Router, wallet, provider, signing, deployment, or launch write. See the
+[Applicant beta guide](docs/PUBLIC_GITHUB_PR_BETA.md).
 
 ## Build it with us
 
@@ -128,9 +152,9 @@ files. Pull requests should name the problem, owning layer, checks run, and rema
 | --- | --- |
 | A specific local check passed for exact bytes | An independent audit or a guarantee that code is safe |
 | A package was placed and verified for one host directory | That the host selected or executed the Skill correctly |
-| An exact GitHub application package was prepared | Maintainer acceptance, Registry activation, or launch authority |
+| An exact Applicant review request was prepared | Maintainer acceptance, launch authorization, or deployment |
 | Deployment or source/runtime evidence exists | Provider indexing, quoting, simulation, execution, or public availability |
-| A project resembles an existing Registry entry | Duplication, ineligibility, or unsafe behavior |
+| A project resembles an existing template or model | Duplication, ineligibility, or unsafe behavior |
 
 The Builder builds and checks. It does not approve routes, execute trades, audit, deploy, list, endorse, or launch.
 Every external write, signature, deployment, publication, credentialed provider action, and material cost requires
@@ -145,10 +169,10 @@ separate authority.
   or fill volume exactly once. Claim authority and platform administration remain separate roles.
 - Fee V2 names four settlement profiles. The bundled Solidity kernel evidences only `standard-amm`; every other profile
   needs its own implementation, custody proof, tests, and review.
-- Application V3 requires exact public GitHub source. Local, private, ZIP-packaged, pasted, or non-GitHub source can
-  support exploration but remains `INTEGRATION_PENDING`.
-- Local Launch Bundles remain unsigned and `NOT_AUTHORIZED`. The Registry Acceptance bridge is a bounded preflight,
-  never Registry or production authority.
+- Public Applicant review requires exact public GitHub source. Local, private, ZIP-packaged, pasted, or non-GitHub
+  source can support exploration but cannot enter the public review path.
+- Applicant requests and local Launch Bundles remain review-only and `NOT_AUTHORIZED`; neither grants production or
+  launch authority.
 
 Read the canonical details in [Open-World V2 architecture](docs/OPEN_WORLD_V2_ARCHITECTURE.md),
 [Security and review](docs/SECURITY_AND_REVIEW.md), and
@@ -165,6 +189,7 @@ skills/programmable-v4-hook-builder/   canonical portable Skill
   scripts/                            deterministic tools and package tests
 evals/                                adversarial agent evaluations
 docs/                                 usage, architecture, security, release records
+submissions/                          public Applicant schema, example, and review requests
 config/plugin.json                    canonical host metadata
 plugins/programmable-v4-builder/      generated, byte-verified Codex payload
 mcp/ and .mcp.json                    canonical Codex-only MCP companion
@@ -198,14 +223,13 @@ validates their structure; an unavailable model result or provider receipt is ne
 
 | Goal | Documents |
 | --- | --- |
-| Use the Builder | [Agent Skill guide](docs/AGENT_SKILL.md) · [GitHub application journey](docs/PUBLIC_GITHUB_PR_BETA.md) |
+| Use the Builder | [Agent Skill guide](docs/AGENT_SKILL.md) · [Applicant submission beta](docs/PUBLIC_GITHUB_PR_BETA.md) |
 | Understand the system | [Architecture](docs/ARCHITECTURE.md) · [Open-World V2](docs/OPEN_WORLD_V2_ARCHITECTURE.md) · [Knowledge routing](docs/KNOWLEDGE_SYSTEM.md) |
 | Extend it safely | [Templates and extensions](docs/TEMPLATES_AND_EXTENSIONS.md) · [Security and review](docs/SECURITY_AND_REVIEW.md) · [Contribution guide](CONTRIBUTING.md) |
 | Inspect portability and releases | [Portability and lifecycle](docs/PORTABILITY_AND_LIFECYCLE.md) · [Release gates](docs/OPEN_WORLD_V2_RELEASE_GATES.md) · [Release process](docs/RELEASING.md) |
 
-[`programmable-registry`](https://github.com/0xprogrammable/programmable-registry) is the separate public application
-ledger and project archive. The Builder reads it; each project stays in its builder's own public GitHub repositories,
-and the platform repository remains responsible for contracts and the Explorer.
+Hookbuilder is the canonical public Applicant pull-request surface. Project source stays in the Applicant's own public
+GitHub repository; review remains separate from platform contracts, routing, deployment, and the Explorer.
 
 ## License and independence
 

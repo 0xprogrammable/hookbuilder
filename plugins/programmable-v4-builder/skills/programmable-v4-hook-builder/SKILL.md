@@ -35,7 +35,7 @@ evidence and authority.
 | Prototype | Complete isolated repository and local evidence |
 | Repair | Root cause, smallest compatible repair, rerun evidence |
 | Review | Pinned findings; no edits unless requested |
-| Submit | Local application plan; no unconfirmed GitHub write |
+| Submit | Hookbuilder Applicant handoff; no GitHub write |
 | Handoff | Unchanged accepted revision to authorized next owner |
 
 Never skip semantic preflight. Continue Autopilot until a material owner decision, conflict or unproved prerequisite stops it. `DESIGN_READY` permits implementation only.
@@ -57,7 +57,7 @@ outside context. Budgets: cold Explore 4,000 tokens; pre-code architecture 8,000
 - [upstream-sources.md](references/upstream-sources.md) before dependency, toolchain or deploy-preimage decisions;
 - [programmable-fee-policy-v2.md](references/programmable-fee-policy-v2.md) only for confirmed fee scope;
 - [approval-criteria.md](references/approval-criteria.md) and [builder-reviewer-alignment.md](references/builder-reviewer-alignment.md) only for admission;
-  [github-application-v3.md](references/github-application-v3.md) only for transport.
+  [agent-entry-and-application.md](references/agent-entry-and-application.md) for public Applicant handoff.
 
 Schemas and validators outrank prose. Use historical V1 only for identified reproduction/migration.
 
@@ -99,7 +99,7 @@ node "$SKILL_ROOT/scripts/cli.mjs" project require-output --repository-root "$NE
    Emit no route for `no-market`. Local evidence proves no approval, reachability, deployment, discovery or live state.
 8. Escalate novel, value-bearing or ambiguous slices. Mark unavailable provider gates `EXTERNAL_BLOCKED`.
 9. Report only gate-bound identity, intent, architecture, source, checkpoint, evidence, blockers and next owner.
-   Without exact public GitHub identity report the prepared transport as `NOT_SUBMITTED`, never as Application V3.
+   Without exact public GitHub identity report `NOT_SUBMITTED`, never reviewed.
 
 ## Runtime
 

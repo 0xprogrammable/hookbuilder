@@ -154,7 +154,7 @@ export function installOpenWorldReportingUtilities(runtime) {
     return [
       "Usage: open-world.mjs <command> [options]",
       "",
-      "Host-neutral open-world v2 and Application V3 tooling.",
+      "Host-neutral open-world v2 and candidate Application V3 tooling; not the public Applicant transport.",
       "Local preparation commands do not use the network. prepare-revision uses GET-only GitHub requests; status uses read-only GitHub requests; submit/update write only after exact digest confirmation.",
       "No command approves, merges, marks ready, deploys, signs, launches, changes accounts, or moves funds.",
       "",
@@ -166,9 +166,9 @@ export function installOpenWorldReportingUtilities(runtime) {
       "  source-manifest  Preview or atomically write manifest-mode source-closure metadata from raw Git objects.",
       "  application  Verify and freeze one source-assessed prototype as a local public Application V3 package.",
       "  prepare-revision  Derive one exact next Application V3 revision with GET-only GitHub and local snapshot replay.",
-      "  submit    Plan an exact Application V3 GitHub submission; external writes require digest confirmation.",
-      "  update    Plan an exact Application V3 GitHub update; external writes require digest confirmation.",
-      "  status    Read exact Application V3 GitHub transport and review status without writing.",
+      "  submit    Candidate Application V3 transport only; not the public Applicant path.",
+      "  update    Candidate Application V3 transport only; not the public Applicant path.",
+      "  status    Read candidate Application V3 transport and review status without writing.",
       "",
       "Run 'open-world.mjs <command> --help' for command options."
     ].join("\n");
