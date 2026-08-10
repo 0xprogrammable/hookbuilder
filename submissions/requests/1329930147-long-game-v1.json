@@ -1,0 +1,59 @@
+{
+  "$schema": "urn:programmable:applicant-submission:1.1.0",
+  "schemaVersion": "1.1.0",
+  "intake": {
+    "repository": "0xprogrammable/hookbuilder",
+    "repositoryId": 1320085947
+  },
+  "applicant": {
+    "githubLogin": "voladelta",
+    "launchWallet": "0x20c9d5674f3b31d23acF76Ceca8C8691E8e08408"
+  },
+  "source": {
+    "repository": "https://github.com/voladelta/long-game-hook",
+    "repositoryId": 1329930147,
+    "commit": "b4264e28bde5e5f3797924745c7a3167b87d3ac7",
+    "tree": "12a05253ae6ca23a68ae768a04670481a70c3d1e"
+  },
+  "identifiers": {
+    "hookId": "long-game-v1",
+    "hookVersion": "1.0.0",
+    "templateId": "blank-custom",
+    "templateVersion": "1.0.0",
+    "modelId": "long-game-v1",
+    "modelVersion": "1.0.0"
+  },
+  "hook": {
+    "addressFlagMask": "0x20cc",
+    "permissions": {
+      "beforeInitialize": true,
+      "afterInitialize": false,
+      "beforeAddLiquidity": false,
+      "afterAddLiquidity": false,
+      "beforeRemoveLiquidity": false,
+      "afterRemoveLiquidity": false,
+      "beforeSwap": true,
+      "afterSwap": true,
+      "beforeDonate": false,
+      "afterDonate": false,
+      "beforeSwapReturnDelta": true,
+      "afterSwapReturnDelta": true,
+      "afterAddLiquidityReturnDelta": false,
+      "afterRemoveLiquidityReturnDelta": false
+    }
+  },
+  "fee": {
+    "amountPips": 1000,
+    "denominator": 1000000,
+    "currencyBasis": "quote",
+    "recipient": "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c",
+    "mutable": false
+  },
+  "requestedRoute": {
+    "routeId": "custom-graph",
+    "routeVersion": "1.0.0",
+    "chainId": "1"
+  },
+  "requestedActions": ["review"],
+  "notes": "Long Game is forked from speedruntradev/long-game-hook and submitted with permission from speedruntradev; NOTICE.md in the pinned source revision credits the upstream project. This review request covers an unaudited prototype only."
+}
