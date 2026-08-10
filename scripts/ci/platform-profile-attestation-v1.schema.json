@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:programmable:platform-profile-release-attestation:1.0.0",
+  "title": "Programmable immutable platform and route-profile release attestation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "payload",
+    "payloadSha256",
+    "signature"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "kind": {
+      "const": "programmable-platform-profile-release-attestation"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "release",
+        "issuedAt",
+        "expiresAt",
+        "profiles",
+        "gates"
+      ],
+      "properties": {
+        "release": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "repository",
+            "commit",
+            "tree",
+            "manifestSha256"
+          ],
+          "properties": {
+            "repository": {
+              "const": "0xprogrammable/programmable"
+            },
+            "commit": {
+              "$ref": "#/$defs/gitObjectId"
+            },
+            "tree": {
+              "$ref": "#/$defs/gitObjectId"
+            },
+            "manifestSha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          }
+        },
+        "issuedAt": {
+          "$ref": "#/$defs/instant"
+        },
+        "expiresAt": {
+          "$ref": "#/$defs/instant"
+        },
+        "profiles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "capability",
+              "routeId",
+              "routeVersion",
+              "chainId",
+              "bindingSha256",
+              "revenuePolicyHash",
+              "revenuePolicySemantics"
+            ],
+            "properties": {
+              "capability": {
+                "enum": [
+                  "direct-graph",
+                  "exact-shards-nested-factory"
+                ]
+              },
+              "routeId": {
+                "$ref": "#/$defs/id"
+              },
+              "routeVersion": {
+                "$ref": "#/$defs/semver"
+              },
+              "chainId": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]*$"
+              },
+              "bindingSha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "revenuePolicyHash": {
+                "oneOf": [
+                  { "$ref": "#/$defs/bytes32" },
+                  { "type": "null" }
+                ]
+              },
+              "revenuePolicySemantics": {
+                "enum": [
+                  "exact-profile-typed-v1",
+                  "artifact-required/profile-specific"
+                ]
+              }
+            }
+          }
+        },
+        "gates": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "releaseManifestSha256",
+              "receiptSha256",
+              "completedAt"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/id"
+              },
+              "releaseManifestSha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "receiptSha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "completedAt": {
+                "$ref": "#/$defs/instant"
+              }
+            }
+          }
+        }
+      }
+    },
+    "payloadSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "keyId",
+        "value"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "ed25519"
+        },
+        "keyId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "value": {
+          "type": "string",
+          "minLength": 80,
+          "maxLength": 128
+        }
+      }
+    }
+  },
+  "$defs": {
+    "gitObjectId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "bytes32": {
+      "type": "string",
+      "pattern": "^0x[0-9a-f]{64}$"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "instant": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}
