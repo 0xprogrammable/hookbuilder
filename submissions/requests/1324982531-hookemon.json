@@ -1,0 +1,59 @@
+{
+  "$schema": "urn:programmable:applicant-submission:1.1.0",
+  "schemaVersion": "1.1.0",
+  "intake": {
+    "repository": "0xprogrammable/hookbuilder",
+    "repositoryId": 1320085947
+  },
+  "applicant": {
+    "githubLogin": "hookemonv4",
+    "launchWallet": "0x5E9a7A24DCCC81cddd10b8a555300E227533c89f"
+  },
+  "source": {
+    "repository": "https://github.com/hookemonv4/hookemon",
+    "repositoryId": 1324982531,
+    "commit": "f1fcd84fe521c5e36de6346414010860d25e8a48",
+    "tree": "5ee5e0d5664a558d927f1706bdbff93a84a8f4b8"
+  },
+  "identifiers": {
+    "hookId": "hookemon",
+    "hookVersion": "1.0.0",
+    "templateId": "custom-hook",
+    "templateVersion": "1.0.0",
+    "modelId": "hookemon",
+    "modelVersion": "1.0.0"
+  },
+  "hook": {
+    "addressFlagMask": "0x20cc",
+    "permissions": {
+      "beforeInitialize": true,
+      "afterInitialize": false,
+      "beforeAddLiquidity": false,
+      "afterAddLiquidity": false,
+      "beforeRemoveLiquidity": false,
+      "afterRemoveLiquidity": false,
+      "beforeSwap": true,
+      "afterSwap": true,
+      "beforeDonate": false,
+      "afterDonate": false,
+      "beforeSwapReturnDelta": true,
+      "afterSwapReturnDelta": true,
+      "afterAddLiquidityReturnDelta": false,
+      "afterRemoveLiquidityReturnDelta": false
+    }
+  },
+  "fee": {
+    "amountPips": 1000,
+    "denominator": 1000000,
+    "currencyBasis": "quote",
+    "recipient": "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c",
+    "mutable": false
+  },
+  "requestedRoute": {
+    "routeId": "custom-graph",
+    "routeVersion": "1.0.0",
+    "chainId": "1"
+  },
+  "requestedActions": ["review"],
+  "notes": "Requests review of the exact Hookemon prototype revision merged through source PR #24. The fee record declares Programmable's immutable 0.1% share of Hookemon's inclusive 3% canonical-pool quote-side hook charge; the remaining 2.9% is the separately accounted project share."
+}
