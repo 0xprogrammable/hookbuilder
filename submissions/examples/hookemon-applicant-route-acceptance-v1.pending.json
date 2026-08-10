@@ -1,0 +1,260 @@
+{
+  "$schema": "urn:programmable:hookemon-platform-capability-overlay:1.0.0",
+  "schemaVersion": "1.0.0",
+  "capability": {
+    "id": "exact-hookemon-completed-graph-adoption",
+    "version": "1.0.0",
+    "acceptedRoute": {
+      "routeId": "completed-graph-adoption",
+      "routeVersion": null,
+      "chainId": "1"
+    },
+    "profile": {
+      "profileId": null,
+      "profileVersion": null,
+      "profileKey": null
+    },
+    "currentnessRequired": true,
+    "activationState": "disabled-pending-final-hashes",
+    "catalogIntegrated": false
+  },
+  "reviewedRequest": {
+    "path": "submissions/requests/1324982531-hookemon.json",
+    "pullRequestNumber": 10,
+    "authorGithubUserId": 312745360,
+    "finalHeadCommit": null,
+    "applicationManifestSha256": null
+  },
+  "applicant": {
+    "githubLogin": "hookemonv4",
+    "githubUserId": 312745360,
+    "launchWallet": "0x5E9a7A24DCCC81cddd10b8a555300E227533c89f"
+  },
+  "source": {
+    "repository": "https://github.com/hookemonv4/hookemon",
+    "repositoryId": 1324982531,
+    "commit": null,
+    "tree": null
+  },
+  "originalRoute": {
+    "routeId": "custom-graph",
+    "routeVersion": "1.0.0",
+    "chainId": "1"
+  },
+  "hook": {
+    "hookId": "hookemon",
+    "hookVersion": "1.0.0",
+    "addressFlagMask": "0x20cc",
+    "beforeSwapReturnDelta": true,
+    "afterSwapReturnDelta": true
+  },
+  "economics": {
+    "currencyBasis": "quote",
+    "accounting": "inclusive-hook-charge",
+    "totalFeeBps": 300,
+    "programmableFeeBps": 10,
+    "hookemonFeeBps": 290
+  },
+  "applicantActions": [
+    {
+      "ordinal": 1,
+      "kind": "ERC20_APPROVAL",
+      "chainId": "1",
+      "to": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "selector": "0x095ea7b3",
+      "spender": null,
+      "amountBaseUnits": null,
+      "nonce": null,
+      "gasLimit": null,
+      "calldataSha256": null,
+      "finalityBlocks": null
+    },
+    {
+      "ordinal": 2,
+      "kind": "EOA_CREATE",
+      "chainId": "1",
+      "to": null,
+      "selector": null,
+      "valueWei": "0",
+      "nonce": null,
+      "gasLimit": null,
+      "initCodeSha256": null,
+      "initCodeKeccak256": null,
+      "expectedContractAddress": null,
+      "expectedRuntimeCodeHash": null,
+      "finalityBlocks": null
+    },
+    {
+      "ordinal": 3,
+      "kind": "COMPLETED_GRAPH_ADOPTION",
+      "chainId": "1",
+      "to": null,
+      "selector": null,
+      "valueWei": "0",
+      "nonce": null,
+      "gasLimit": null,
+      "calldataSha256": null,
+      "permitDigest": null,
+      "currentnessHash": null,
+      "expectedStampHash": null,
+      "finalityBlocks": null
+    }
+  ],
+  "immutableBindings": {
+    "intake": {
+      "repository": "0xprogrammable/hookbuilder",
+      "repositoryId": 1320085947,
+      "mergeCommit": null,
+      "mergeTree": null,
+      "requestBlobSha256": null
+    },
+    "sourceEvidence": {
+      "reviewEvidenceSha256": null,
+      "artifactCodeLedgerSha256": null,
+      "codeHashesSha256": null,
+      "returnDeltaDispositionSha256": null,
+      "inlineAssemblyDispositionSha256": null,
+      "mainnetForkReceiptSha256": null,
+      "gasReceiptSha256": null,
+      "independentReviewSha256": null
+    },
+    "reviewedPlan": {
+      "planSchemaId": null,
+      "reviewedPlanSha256": null,
+      "profileManifestSha256": null,
+      "profileSchemaSha256": null,
+      "architecturePolicyHash": null,
+      "revenuePolicyHash": null
+    },
+    "platformContracts": {
+      "sourceRepository": "https://github.com/0xprogrammable/programmable",
+      "sourceRepositoryId": 1314365508,
+      "sourceCommit": null,
+      "sourceTree": null,
+      "kernelContractPath": null,
+      "kernelAbiSha256": null,
+      "kernelCreationCodeHash": null,
+      "kernelRuntimeCodeHash": null,
+      "kernelAddress": null,
+      "kernelDeploymentReceiptSha256": null,
+      "routerContractPath": null,
+      "routerAbiSha256": null,
+      "routerCreationCodeHash": null,
+      "routerRuntimeCodeHash": null,
+      "routerAddress": null,
+      "routerDeploymentReceiptSha256": null,
+      "profileContractPath": null,
+      "profileAbiSha256": null,
+      "profileCreationCodeHash": null,
+      "profileRuntimeCodeHash": null,
+      "profileAddress": null,
+      "profileDeploymentReceiptSha256": null,
+      "registryContractPath": null,
+      "registryAbiSha256": null,
+      "registryCreationCodeHash": null,
+      "registryAddress": null,
+      "registryRuntimeCodeHash": null,
+      "registryDeploymentReceiptSha256": null
+    },
+    "architecture": {
+      "exclusiveNftAddress": null,
+      "position": {
+        "manager": null,
+        "tokenId": null,
+        "owner": null,
+        "positionTimelock": null,
+        "poolKeyHash": null,
+        "tickLower": null,
+        "tickUpper": null,
+        "liquidity": null,
+        "dustHash": null,
+        "evidenceSha256": null
+      },
+      "supportGraph": {
+        "mode": "mixed-create-create2-shared-support-ledger",
+        "nodeCount": null,
+        "exclusiveComponentCount": null,
+        "sharedSupportNodeCount": null,
+        "factoryCount": null,
+        "codeChunkCount": null,
+        "topologyLedgerSha256": null,
+        "orderedFactoryChunkVectorSha256": null
+      },
+      "architectureResultHash": null,
+      "currentArchitectureStateHash": null,
+      "currentnessHash": null
+    },
+    "route": {
+      "routePayloadHash": null,
+      "expectedResultHash": null,
+      "launchId": null,
+      "stampRequestHash": null,
+      "actionPlanSha256": null
+    },
+    "authorityFacade": {
+      "sourceRepository": null,
+      "sourceRepositoryId": null,
+      "sourceCommit": null,
+      "sourceTree": null,
+      "manifestSha256": null,
+      "authorityContractPath": null,
+      "authorityAbiSha256": null,
+      "authorityCreationCodeHash": null,
+      "authorityRuntimeCodeHash": null,
+      "authorityAddress": null,
+      "authorityDeploymentReceiptSha256": null,
+      "facadeContractPath": null,
+      "facadeAbiSha256": null,
+      "facadeCreationCodeHash": null,
+      "facadeRuntimeCodeHash": null,
+      "facadeAddress": null,
+      "facadeDeploymentReceiptSha256": null,
+      "adoptionSelector": null,
+      "policyHash": null,
+      "currentnessHash": null
+    },
+    "publicAcceptance": {
+      "claimType": "urn:programmable:hookemon-applicant-route-acceptance:1.0.0",
+      "canonicalEncoding": "canonical-json-v2-utf8-no-trailing-newline",
+      "schemaSha256": null,
+      "claimUrl": null,
+      "claimSha256": null,
+      "recordUrl": null,
+      "recordSha256": null,
+      "transitionHash": null
+    },
+    "platformAttestation": {
+      "canonicalEncoding": "canonical-json-v2-utf8-no-trailing-newline",
+      "algorithm": "Ed25519",
+      "url": null,
+      "sha256": null,
+      "keyId": null,
+      "publicKeyPemSha256": null,
+      "payloadSha256": null,
+      "signatureSha256": null,
+      "releaseRepository": "0xprogrammable/programmable",
+      "releaseRepositoryId": 1314365508,
+      "releaseCommit": null,
+      "releaseTree": null,
+      "releaseManifestSha256": null,
+      "profileBindingSha256": null,
+      "requiredGates": [
+        "authority-compiler",
+        "mainnet-currentness",
+        "profile-security",
+        "router-contract",
+        "stage",
+        "website-build"
+      ],
+      "gateReceiptsSha256": null,
+      "issuedAt": null,
+      "expiresAt": null
+    }
+  },
+  "acceptanceScope": "route-binding-review-only",
+  "reviewedRequestedActions": ["review"],
+  "authorizationGranted": false,
+  "privateKeyRequested": false,
+  "broadcastAuthorized": false,
+  "requestedActions": ["route-binding-review"]
+}

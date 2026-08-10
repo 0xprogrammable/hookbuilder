@@ -1,0 +1,698 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:programmable:hookemon-platform-capability-overlay:1.0.0",
+  "title": "Programmable Hookemon platform capability overlay",
+  "description": "Fail-closed review-only Hookemon platform overlay. It binds a separate public Website acceptance claim and cannot activate a route until every immutable binding and the separately reviewed frozen overlay are published.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "capability",
+    "reviewedRequest",
+    "applicant",
+    "source",
+    "originalRoute",
+    "hook",
+    "economics",
+    "applicantActions",
+    "immutableBindings",
+    "acceptanceScope",
+    "reviewedRequestedActions",
+    "authorizationGranted",
+    "privateKeyRequested",
+    "broadcastAuthorized",
+    "requestedActions"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "urn:programmable:hookemon-platform-capability-overlay:1.0.0"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "acceptedRoute",
+        "profile",
+        "currentnessRequired",
+        "activationState",
+        "catalogIntegrated"
+      ],
+      "properties": {
+        "id": {
+          "const": "exact-hookemon-completed-graph-adoption"
+        },
+        "version": {
+          "const": "1.0.0"
+        },
+        "acceptedRoute": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["routeId", "routeVersion", "chainId"],
+          "properties": {
+            "routeId": { "const": "completed-graph-adoption" },
+            "routeVersion": { "$ref": "#/$defs/nullableSemver" },
+            "chainId": { "const": "1" }
+          }
+        },
+        "profile": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["profileId", "profileVersion", "profileKey"],
+          "properties": {
+            "profileId": { "$ref": "#/$defs/nullableIdentifier" },
+            "profileVersion": { "$ref": "#/$defs/nullableSemver" },
+            "profileKey": { "$ref": "#/$defs/nullableBytes32" }
+          }
+        },
+        "currentnessRequired": { "const": true },
+        "activationState": { "const": "disabled-pending-final-hashes" },
+        "catalogIntegrated": { "const": false }
+      }
+    },
+    "reviewedRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "pullRequestNumber",
+        "authorGithubUserId",
+        "finalHeadCommit",
+        "applicationManifestSha256"
+      ],
+      "properties": {
+        "path": { "const": "submissions/requests/1324982531-hookemon.json" },
+        "pullRequestNumber": { "const": 10 },
+        "authorGithubUserId": { "const": 312745360 },
+        "finalHeadCommit": { "$ref": "#/$defs/nullableGitObjectId" },
+        "applicationManifestSha256": { "$ref": "#/$defs/nullableSha256" }
+      }
+    },
+    "applicant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["githubLogin", "githubUserId", "launchWallet"],
+      "properties": {
+        "githubLogin": { "const": "hookemonv4" },
+        "githubUserId": { "const": 312745360 },
+        "launchWallet": { "const": "0x5E9a7A24DCCC81cddd10b8a555300E227533c89f" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "repositoryId", "commit", "tree"],
+      "properties": {
+        "repository": { "const": "https://github.com/hookemonv4/hookemon" },
+        "repositoryId": { "const": 1324982531 },
+        "commit": { "$ref": "#/$defs/nullableGitObjectId" },
+        "tree": { "$ref": "#/$defs/nullableGitObjectId" }
+      }
+    },
+    "originalRoute": {
+      "const": {
+        "routeId": "custom-graph",
+        "routeVersion": "1.0.0",
+        "chainId": "1"
+      }
+    },
+    "hook": {
+      "const": {
+        "hookId": "hookemon",
+        "hookVersion": "1.0.0",
+        "addressFlagMask": "0x20cc",
+        "beforeSwapReturnDelta": true,
+        "afterSwapReturnDelta": true
+      }
+    },
+    "economics": {
+      "const": {
+        "currencyBasis": "quote",
+        "accounting": "inclusive-hook-charge",
+        "totalFeeBps": 300,
+        "programmableFeeBps": 10,
+        "hookemonFeeBps": 290
+      }
+    },
+    "applicantActions": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ordinal",
+            "kind",
+            "chainId",
+            "to",
+            "selector",
+            "spender",
+            "amountBaseUnits",
+            "nonce",
+            "gasLimit",
+            "calldataSha256",
+            "finalityBlocks"
+          ],
+          "properties": {
+            "ordinal": { "const": 1 },
+            "kind": { "const": "ERC20_APPROVAL" },
+            "chainId": { "const": "1" },
+            "to": { "const": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" },
+            "selector": { "const": "0x095ea7b3" },
+            "spender": { "$ref": "#/$defs/nullableAddress" },
+            "amountBaseUnits": { "$ref": "#/$defs/nullablePositiveUintString" },
+            "nonce": { "$ref": "#/$defs/nullableUint" },
+            "gasLimit": { "$ref": "#/$defs/nullablePositiveUint" },
+            "calldataSha256": { "$ref": "#/$defs/nullableSha256" },
+            "finalityBlocks": { "$ref": "#/$defs/nullablePositiveUint" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ordinal",
+            "kind",
+            "chainId",
+            "to",
+            "selector",
+            "valueWei",
+            "nonce",
+            "gasLimit",
+            "initCodeSha256",
+            "initCodeKeccak256",
+            "expectedContractAddress",
+            "expectedRuntimeCodeHash",
+            "finalityBlocks"
+          ],
+          "properties": {
+            "ordinal": { "const": 2 },
+            "kind": { "const": "EOA_CREATE" },
+            "chainId": { "const": "1" },
+            "to": { "const": null },
+            "selector": { "const": null },
+            "valueWei": { "const": "0" },
+            "nonce": { "$ref": "#/$defs/nullableUint" },
+            "gasLimit": { "$ref": "#/$defs/nullablePositiveUint" },
+            "initCodeSha256": { "$ref": "#/$defs/nullableSha256" },
+            "initCodeKeccak256": { "$ref": "#/$defs/nullableBytes32" },
+            "expectedContractAddress": { "$ref": "#/$defs/nullableAddress" },
+            "expectedRuntimeCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+            "finalityBlocks": { "$ref": "#/$defs/nullablePositiveUint" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ordinal",
+            "kind",
+            "chainId",
+            "to",
+            "selector",
+            "valueWei",
+            "nonce",
+            "gasLimit",
+            "calldataSha256",
+            "permitDigest",
+            "currentnessHash",
+            "expectedStampHash",
+            "finalityBlocks"
+          ],
+          "properties": {
+            "ordinal": { "const": 3 },
+            "kind": { "const": "COMPLETED_GRAPH_ADOPTION" },
+            "chainId": { "const": "1" },
+            "to": { "$ref": "#/$defs/nullableAddress" },
+            "selector": { "$ref": "#/$defs/nullableSelector" },
+            "valueWei": { "const": "0" },
+            "nonce": { "$ref": "#/$defs/nullableUint" },
+            "gasLimit": { "$ref": "#/$defs/nullablePositiveUint" },
+            "calldataSha256": { "$ref": "#/$defs/nullableSha256" },
+            "permitDigest": { "$ref": "#/$defs/nullableBytes32" },
+            "currentnessHash": { "$ref": "#/$defs/nullableBytes32" },
+            "expectedStampHash": { "$ref": "#/$defs/nullableBytes32" },
+            "finalityBlocks": { "$ref": "#/$defs/nullablePositiveUint" }
+          }
+        }
+      ],
+      "items": false
+    },
+    "immutableBindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "intake",
+        "sourceEvidence",
+        "reviewedPlan",
+        "platformContracts",
+        "architecture",
+        "route",
+        "authorityFacade",
+        "publicAcceptance",
+        "platformAttestation"
+      ],
+      "properties": {
+        "intake": { "$ref": "#/$defs/intakeBinding" },
+        "sourceEvidence": { "$ref": "#/$defs/sourceEvidenceBinding" },
+        "reviewedPlan": { "$ref": "#/$defs/reviewedPlanBinding" },
+        "platformContracts": { "$ref": "#/$defs/platformContractsBinding" },
+        "architecture": { "$ref": "#/$defs/architectureBinding" },
+        "route": { "$ref": "#/$defs/routeBinding" },
+        "authorityFacade": { "$ref": "#/$defs/authorityFacadeBinding" },
+        "publicAcceptance": { "$ref": "#/$defs/publicAcceptanceBinding" },
+        "platformAttestation": { "$ref": "#/$defs/platformAttestationBinding" }
+      }
+    },
+    "acceptanceScope": { "const": "route-binding-review-only" },
+    "reviewedRequestedActions": { "const": ["review"] },
+    "authorizationGranted": { "const": false },
+    "privateKeyRequested": { "const": false },
+    "broadcastAuthorized": { "const": false },
+    "requestedActions": { "const": ["route-binding-review"] }
+  },
+  "$defs": {
+    "intakeBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "repositoryId",
+        "mergeCommit",
+        "mergeTree",
+        "requestBlobSha256"
+      ],
+      "properties": {
+        "repository": { "const": "0xprogrammable/hookbuilder" },
+        "repositoryId": { "const": 1320085947 },
+        "mergeCommit": { "$ref": "#/$defs/nullableGitObjectId" },
+        "mergeTree": { "$ref": "#/$defs/nullableGitObjectId" },
+        "requestBlobSha256": { "$ref": "#/$defs/nullableSha256" }
+      }
+    },
+    "sourceEvidenceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reviewEvidenceSha256",
+        "artifactCodeLedgerSha256",
+        "codeHashesSha256",
+        "returnDeltaDispositionSha256",
+        "inlineAssemblyDispositionSha256",
+        "mainnetForkReceiptSha256",
+        "gasReceiptSha256",
+        "independentReviewSha256"
+      ],
+      "properties": {
+        "reviewEvidenceSha256": { "$ref": "#/$defs/nullableSha256" },
+        "artifactCodeLedgerSha256": { "$ref": "#/$defs/nullableSha256" },
+        "codeHashesSha256": { "$ref": "#/$defs/nullableSha256" },
+        "returnDeltaDispositionSha256": { "$ref": "#/$defs/nullableSha256" },
+        "inlineAssemblyDispositionSha256": { "$ref": "#/$defs/nullableSha256" },
+        "mainnetForkReceiptSha256": { "$ref": "#/$defs/nullableSha256" },
+        "gasReceiptSha256": { "$ref": "#/$defs/nullableSha256" },
+        "independentReviewSha256": { "$ref": "#/$defs/nullableSha256" }
+      }
+    },
+    "reviewedPlanBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planSchemaId",
+        "reviewedPlanSha256",
+        "profileManifestSha256",
+        "profileSchemaSha256",
+        "architecturePolicyHash",
+        "revenuePolicyHash"
+      ],
+      "properties": {
+        "planSchemaId": { "$ref": "#/$defs/nullableUri" },
+        "reviewedPlanSha256": { "$ref": "#/$defs/nullableSha256" },
+        "profileManifestSha256": { "$ref": "#/$defs/nullableSha256" },
+        "profileSchemaSha256": { "$ref": "#/$defs/nullableSha256" },
+        "architecturePolicyHash": { "$ref": "#/$defs/nullableBytes32" },
+        "revenuePolicyHash": { "$ref": "#/$defs/nullableBytes32" }
+      }
+    },
+    "platformContractsBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceRepository",
+        "sourceRepositoryId",
+        "sourceCommit",
+        "sourceTree",
+        "kernelContractPath",
+        "kernelAbiSha256",
+        "kernelCreationCodeHash",
+        "kernelRuntimeCodeHash",
+        "kernelAddress",
+        "kernelDeploymentReceiptSha256",
+        "routerContractPath",
+        "routerAbiSha256",
+        "routerCreationCodeHash",
+        "routerRuntimeCodeHash",
+        "routerAddress",
+        "routerDeploymentReceiptSha256",
+        "profileContractPath",
+        "profileAbiSha256",
+        "profileCreationCodeHash",
+        "profileRuntimeCodeHash",
+        "profileAddress",
+        "profileDeploymentReceiptSha256",
+        "registryContractPath",
+        "registryAbiSha256",
+        "registryCreationCodeHash",
+        "registryAddress",
+        "registryRuntimeCodeHash",
+        "registryDeploymentReceiptSha256"
+      ],
+      "properties": {
+        "sourceRepository": { "const": "https://github.com/0xprogrammable/programmable" },
+        "sourceRepositoryId": { "const": 1314365508 },
+        "sourceCommit": { "$ref": "#/$defs/nullableGitObjectId" },
+        "sourceTree": { "$ref": "#/$defs/nullableGitObjectId" },
+        "kernelContractPath": { "$ref": "#/$defs/nullableRepositoryPath" },
+        "kernelAbiSha256": { "$ref": "#/$defs/nullableSha256" },
+        "kernelCreationCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+        "kernelRuntimeCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+        "kernelAddress": { "$ref": "#/$defs/nullableAddress" },
+        "kernelDeploymentReceiptSha256": { "$ref": "#/$defs/nullableSha256" },
+        "routerContractPath": { "$ref": "#/$defs/nullableRepositoryPath" },
+        "routerAbiSha256": { "$ref": "#/$defs/nullableSha256" },
+        "routerCreationCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+        "routerRuntimeCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+        "routerAddress": { "$ref": "#/$defs/nullableAddress" },
+        "routerDeploymentReceiptSha256": { "$ref": "#/$defs/nullableSha256" },
+        "profileContractPath": { "$ref": "#/$defs/nullableRepositoryPath" },
+        "profileAbiSha256": { "$ref": "#/$defs/nullableSha256" },
+        "profileCreationCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+        "profileRuntimeCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+        "profileAddress": { "$ref": "#/$defs/nullableAddress" },
+        "profileDeploymentReceiptSha256": { "$ref": "#/$defs/nullableSha256" },
+        "registryContractPath": { "$ref": "#/$defs/nullableRepositoryPath" },
+        "registryAbiSha256": { "$ref": "#/$defs/nullableSha256" },
+        "registryCreationCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+        "registryAddress": { "$ref": "#/$defs/nullableAddress" },
+        "registryRuntimeCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+        "registryDeploymentReceiptSha256": { "$ref": "#/$defs/nullableSha256" }
+      }
+    },
+    "architectureBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exclusiveNftAddress",
+        "position",
+        "supportGraph",
+        "architectureResultHash",
+        "currentArchitectureStateHash",
+        "currentnessHash"
+      ],
+      "properties": {
+        "exclusiveNftAddress": { "const": null },
+        "position": { "$ref": "#/$defs/positionBinding" },
+        "supportGraph": { "$ref": "#/$defs/supportGraphBinding" },
+        "architectureResultHash": { "$ref": "#/$defs/nullableBytes32" },
+        "currentArchitectureStateHash": { "$ref": "#/$defs/nullableBytes32" },
+        "currentnessHash": { "$ref": "#/$defs/nullableBytes32" }
+      }
+    },
+    "positionBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manager",
+        "tokenId",
+        "owner",
+        "positionTimelock",
+        "poolKeyHash",
+        "tickLower",
+        "tickUpper",
+        "liquidity",
+        "dustHash",
+        "evidenceSha256"
+      ],
+      "properties": {
+        "manager": { "$ref": "#/$defs/nullableAddress" },
+        "tokenId": { "$ref": "#/$defs/nullableUintString" },
+        "owner": { "$ref": "#/$defs/nullableAddress" },
+        "positionTimelock": { "$ref": "#/$defs/nullableAddress" },
+        "poolKeyHash": { "$ref": "#/$defs/nullableBytes32" },
+        "tickLower": { "$ref": "#/$defs/nullableSignedInt" },
+        "tickUpper": { "$ref": "#/$defs/nullableSignedInt" },
+        "liquidity": { "$ref": "#/$defs/nullablePositiveUintString" },
+        "dustHash": { "$ref": "#/$defs/nullableBytes32" },
+        "evidenceSha256": { "$ref": "#/$defs/nullableSha256" }
+      }
+    },
+    "supportGraphBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "nodeCount",
+        "exclusiveComponentCount",
+        "sharedSupportNodeCount",
+        "factoryCount",
+        "codeChunkCount",
+        "topologyLedgerSha256",
+        "orderedFactoryChunkVectorSha256"
+      ],
+      "properties": {
+        "mode": { "const": "mixed-create-create2-shared-support-ledger" },
+        "nodeCount": { "$ref": "#/$defs/nullableGraphCount" },
+        "exclusiveComponentCount": { "$ref": "#/$defs/nullableGraphCount" },
+        "sharedSupportNodeCount": { "$ref": "#/$defs/nullableGraphCount" },
+        "factoryCount": { "$ref": "#/$defs/nullableGraphCount" },
+        "codeChunkCount": { "$ref": "#/$defs/nullableGraphCount" },
+        "topologyLedgerSha256": { "$ref": "#/$defs/nullableSha256" },
+        "orderedFactoryChunkVectorSha256": { "$ref": "#/$defs/nullableSha256" }
+      }
+    },
+    "routeBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "routePayloadHash",
+        "expectedResultHash",
+        "launchId",
+        "stampRequestHash",
+        "actionPlanSha256"
+      ],
+      "properties": {
+        "routePayloadHash": { "$ref": "#/$defs/nullableBytes32" },
+        "expectedResultHash": { "$ref": "#/$defs/nullableBytes32" },
+        "launchId": { "$ref": "#/$defs/nullableBytes32" },
+        "stampRequestHash": { "$ref": "#/$defs/nullableBytes32" },
+        "actionPlanSha256": { "$ref": "#/$defs/nullableSha256" }
+      }
+    },
+    "authorityFacadeBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceRepository",
+        "sourceRepositoryId",
+        "sourceCommit",
+        "sourceTree",
+        "manifestSha256",
+        "authorityContractPath",
+        "authorityAbiSha256",
+        "authorityCreationCodeHash",
+        "authorityRuntimeCodeHash",
+        "authorityAddress",
+        "authorityDeploymentReceiptSha256",
+        "facadeContractPath",
+        "facadeAbiSha256",
+        "facadeCreationCodeHash",
+        "facadeRuntimeCodeHash",
+        "facadeAddress",
+        "facadeDeploymentReceiptSha256",
+        "adoptionSelector",
+        "policyHash",
+        "currentnessHash"
+      ],
+      "properties": {
+        "sourceRepository": { "$ref": "#/$defs/nullableUri" },
+        "sourceRepositoryId": { "$ref": "#/$defs/nullablePositiveUint" },
+        "sourceCommit": { "$ref": "#/$defs/nullableGitObjectId" },
+        "sourceTree": { "$ref": "#/$defs/nullableGitObjectId" },
+        "manifestSha256": { "$ref": "#/$defs/nullableSha256" },
+        "authorityContractPath": { "$ref": "#/$defs/nullableRepositoryPath" },
+        "authorityAbiSha256": { "$ref": "#/$defs/nullableSha256" },
+        "authorityCreationCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+        "authorityRuntimeCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+        "authorityAddress": { "$ref": "#/$defs/nullableAddress" },
+        "authorityDeploymentReceiptSha256": { "$ref": "#/$defs/nullableSha256" },
+        "facadeContractPath": { "$ref": "#/$defs/nullableRepositoryPath" },
+        "facadeAbiSha256": { "$ref": "#/$defs/nullableSha256" },
+        "facadeCreationCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+        "facadeRuntimeCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+        "facadeAddress": { "$ref": "#/$defs/nullableAddress" },
+        "facadeDeploymentReceiptSha256": { "$ref": "#/$defs/nullableSha256" },
+        "adoptionSelector": { "$ref": "#/$defs/nullableSelector" },
+        "policyHash": { "$ref": "#/$defs/nullableBytes32" },
+        "currentnessHash": { "$ref": "#/$defs/nullableBytes32" }
+      }
+    },
+    "publicAcceptanceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claimType",
+        "canonicalEncoding",
+        "schemaSha256",
+        "claimUrl",
+        "claimSha256",
+        "recordUrl",
+        "recordSha256",
+        "transitionHash"
+      ],
+      "properties": {
+        "claimType": {
+          "const": "urn:programmable:hookemon-applicant-route-acceptance:1.0.0"
+        },
+        "canonicalEncoding": { "const": "canonical-json-v2-utf8-no-trailing-newline" },
+        "schemaSha256": { "$ref": "#/$defs/nullableSha256" },
+        "claimUrl": { "$ref": "#/$defs/nullableUri" },
+        "claimSha256": { "$ref": "#/$defs/nullableSha256" },
+        "recordUrl": { "$ref": "#/$defs/nullableUri" },
+        "recordSha256": { "$ref": "#/$defs/nullableSha256" },
+        "transitionHash": { "$ref": "#/$defs/nullableBytes32" }
+      }
+    },
+    "platformAttestationBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonicalEncoding",
+        "algorithm",
+        "url",
+        "sha256",
+        "keyId",
+        "publicKeyPemSha256",
+        "payloadSha256",
+        "signatureSha256",
+        "releaseRepository",
+        "releaseRepositoryId",
+        "releaseCommit",
+        "releaseTree",
+        "releaseManifestSha256",
+        "profileBindingSha256",
+        "requiredGates",
+        "gateReceiptsSha256",
+        "issuedAt",
+        "expiresAt"
+      ],
+      "properties": {
+        "canonicalEncoding": { "const": "canonical-json-v2-utf8-no-trailing-newline" },
+        "algorithm": { "const": "Ed25519" },
+        "url": { "$ref": "#/$defs/nullableUri" },
+        "sha256": { "$ref": "#/$defs/nullableSha256" },
+        "keyId": { "$ref": "#/$defs/nullableIdentifier" },
+        "publicKeyPemSha256": { "$ref": "#/$defs/nullableSha256" },
+        "payloadSha256": { "$ref": "#/$defs/nullableSha256" },
+        "signatureSha256": { "$ref": "#/$defs/nullableSha256" },
+        "releaseRepository": { "const": "0xprogrammable/programmable" },
+        "releaseRepositoryId": { "const": 1314365508 },
+        "releaseCommit": { "$ref": "#/$defs/nullableGitObjectId" },
+        "releaseTree": { "$ref": "#/$defs/nullableGitObjectId" },
+        "releaseManifestSha256": { "$ref": "#/$defs/nullableSha256" },
+        "profileBindingSha256": { "$ref": "#/$defs/nullableSha256" },
+        "requiredGates": {
+          "const": [
+            "authority-compiler",
+            "mainnet-currentness",
+            "profile-security",
+            "router-contract",
+            "stage",
+            "website-build"
+          ]
+        },
+        "gateReceiptsSha256": { "$ref": "#/$defs/nullableSha256" },
+        "issuedAt": { "$ref": "#/$defs/nullableDateTime" },
+        "expiresAt": { "$ref": "#/$defs/nullableDateTime" }
+      }
+    },
+    "nullableSha256": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "nullableBytes32": {
+      "type": ["string", "null"],
+      "pattern": "^0x[0-9a-f]{64}$"
+    },
+    "nullableSelector": {
+      "type": ["string", "null"],
+      "pattern": "^0x(?:[0-9a-f]{2})+$"
+    },
+    "nullableGitObjectId": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "nullableAddress": {
+      "type": ["string", "null"],
+      "pattern": "^0x[0-9a-fA-F]{40}$"
+    },
+    "nullableSemver": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "nullableIdentifier": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._-]{0,63}$"
+    },
+    "nullableRepositoryPath": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*\\\\)[^\\u0000-\\u001f\\u007f-\\u009f]+$"
+    },
+    "nullableUri": {
+      "type": ["string", "null"],
+      "format": "uri"
+    },
+    "nullableDateTime": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "nullableUintString": {
+      "type": ["string", "null"],
+      "pattern": "^(?:0|[1-9][0-9]*)$"
+    },
+    "nullablePositiveUintString": {
+      "type": ["string", "null"],
+      "pattern": "^[1-9][0-9]*$"
+    },
+    "nullableUint": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "nullablePositiveUint": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "nullableSignedInt": {
+      "type": ["integer", "null"],
+      "minimum": -887272,
+      "maximum": 887272
+    },
+    "nullableGraphCount": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "maximum": 24
+    }
+  }
+}
