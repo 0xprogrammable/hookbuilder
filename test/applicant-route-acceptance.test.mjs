@@ -136,6 +136,9 @@ test("capability catalog publishes only direct graph and the exact Shards nested
     SUPPORTED_ROUTE_BINDINGS[1].factoryRuntimeCodeHash,
     "0x134a9e5674f22e62e939c2238693077b8027c553bb26d6a4e9e3d8554e5f85b5"
   );
+  assert.equal(SUPPORTED_ROUTE_BINDINGS[1].factoryInitialStateRequirement, "exact-predeployed-pair");
+  assert.equal(SUPPORTED_ROUTE_BINDINGS[1].predeploymentEvidenceSha256, null);
+  assert.equal(SUPPORTED_ROUTE_BINDINGS[1].gasCapReceiptSha256, null);
   assert.equal(
     SUPPORTED_ROUTE_BINDINGS[1].revenuePolicyHash,
     "0xaa78b0bf63fca83fa9b969fbb6b2bb1ecabcbe49908a48f92403e8e51e4adab2"
@@ -193,7 +196,7 @@ test("exact Shards decoded 100/10/10/80 economics reproduce the typed revenue Go
   );
 });
 
-test("exact Shards profile binds one Router transaction across two fail-closed factory states", () => {
+test("exact Shards profile requires predeployment and binds one applicant launch-and-stamp transaction", () => {
   assert.equal(EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.transactionCount, 1);
   assert.equal(
     EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.transactionSender,
@@ -201,12 +204,6 @@ test("exact Shards profile binds one Router transaction across two fail-closed f
   );
   assert.equal(EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.executionEntry, "acceptance-bound-router");
   assert.deepEqual(EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryInitialStatePolicyV1.allowedStates, [
-    {
-      id: "vacant-pair",
-      factoryCode: "empty",
-      rendererCode: "empty",
-      action: "deploy-via-pinned-create2-proxy-then-launch-and-stamp"
-    },
     {
       id: "exact-predeployed-pair",
       factoryRuntimeCodeHash:
@@ -221,27 +218,53 @@ test("exact Shards profile binds one Router transaction across two fail-closed f
     { tokenCode: "empty", hookCode: "empty", nftCode: "empty", poolSlot0: "zero" }
   );
   assert.equal(
-    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryDeploymentExecution
+    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.priorReleaseFactoryPredeployment
       .reviewedManifestExpectedTransactionSender,
     "0x2Bb333d48DFAF1596D9036671d2E43168994249E"
   );
   assert.equal(
-    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryDeploymentExecution.productionExecutionCaller,
-    "router-owned-exact-shards-profile-module"
+    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.priorReleaseFactoryPredeployment.applicantAction,
+    false
+  );
+  assert.equal(
+    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.priorReleaseFactoryPredeployment.productionExecutionPhase,
+    "platform-release-before-applicant-acceptance"
   );
   assert.equal(
     EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryLaunchExecution.productionExecutionCaller,
     "programmable-launch-stamp-router-v2"
   );
-  assert.equal(EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryInitCodeBytes, 37942);
   assert.equal(
-    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryInitCodeHash,
+    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryLaunchExecution.applicantAction,
+    "launch-and-stamp"
+  );
+  assert.equal(
+    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.priorReleaseFactoryPredeployment.factoryInitCodeBytes,
+    37942
+  );
+  assert.equal(
+    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.priorReleaseFactoryPredeployment.factoryInitCodeHash,
     "0x7d05592489495559b1288f8ad342239b3fb95a6aa005b5b0b1551c9523401585"
   );
-  assert.equal(EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryDeploymentCalldataBytes, 37974);
   assert.equal(
-    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryDeploymentCalldataHash,
+    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.priorReleaseFactoryPredeployment
+      .factoryDeploymentCalldataBytes,
+    37974
+  );
+  assert.equal(
+    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.priorReleaseFactoryPredeployment
+      .factoryDeploymentCalldataHash,
     "0xf37ce9748abe4d5243cbd26f48c6ea5789ab1ebe8e19ea96d2198693e957c4ec"
+  );
+  assert.equal(
+    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryInitialStatePolicyV1.vacantAtomicRoute.status,
+    "unsupported"
+  );
+  assert.ok(
+    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryInitialStatePolicyV1.vacantAtomicRoute
+      .candidateGas
+      > EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryInitialStatePolicyV1.vacantAtomicRoute
+        .mainnetTransactionGasCap
   );
   assert.equal(
     EXACT_SHARDS_REVIEWED_PLAN_V1.components.find(({ kind }) => kind === "renderer").address,
@@ -336,14 +359,16 @@ test("all non-published nested factory variants fail closed", () => {
     (value) => { value.revenuePolicy.totalFeeBps = 10; },
     (value) => { value.revenuePolicy.legs[1].feeBps = 1; },
     (value) => { value.revenuePolicy.revenuePolicyHash = `0x${"1".repeat(64)}`; },
-    (value) => { value.launchPlan.factoryInitCodeHash = `0x${"1".repeat(64)}`; },
-    (value) => { value.launchPlan.factoryDeploymentCalldataBytes += 1; },
+    (value) => { value.launchPlan.priorReleaseFactoryPredeployment.factoryInitCodeHash = `0x${"1".repeat(64)}`; },
+    (value) => { value.launchPlan.priorReleaseFactoryPredeployment.factoryDeploymentCalldataBytes += 1; },
+    (value) => { value.launchPlan.priorReleaseFactoryPredeployment.status = "completed"; },
     (value) => { value.launchPlan.transactionCount = 2; },
     (value) => { value.launchPlan.transactionSender = value.launchPlan.launcherFeeRecipient; },
     (value) => { value.launchPlan.executionEntry = "factory"; },
-    (value) => { value.launchPlan.factoryInitialStatePolicyV1.allowedStates.reverse(); },
+    (value) => { value.launchPlan.factoryInitialStatePolicyV1.allowedStates.push({ id: "vacant-pair" }); },
     (value) => { value.launchPlan.factoryInitialStatePolicyV1.commonPreconditions.poolSlot0 = "any"; },
-    (value) => { value.launchPlan.factoryDeploymentExecution.productionExecutionCaller = "applicant"; },
+    (value) => { value.launchPlan.factoryInitialStatePolicyV1.vacantAtomicRoute.candidateGas = 1; },
+    (value) => { value.launchPlan.factoryLaunchExecution.applicantAction = "deploy-and-launch"; },
     (value) => { value.launchPlan.tickUpper += 1; },
     (value) => { value.pool.poolId = `0x${"1".repeat(64)}`; },
     (value) => { value.components.shift(); },
@@ -369,11 +394,12 @@ test("acceptance example is schema-shaped but blocked until every production pla
   const findings = validateApplicantRouteAcceptance(acceptanceExample, acceptanceSchema);
   assert.ok(findings.some(({ code }) => code === "ROUTE_ACCEPTANCE_EXAMPLE_PLACEHOLDER"));
   assert.ok(findings.some(({ code }) => code === "ROUTE_ACCEPTANCE_CAPABILITY_DISABLED"));
+  assert.ok(findings.some(({ code }) => code === "ROUTE_ACCEPTANCE_PREDEPLOYMENT_EVIDENCE_PENDING"));
 
   const value = productionShapedAcceptance();
   assert.deepEqual(
     validateApplicantRouteAcceptance(value, acceptanceSchema).map(({ code }) => code),
-    ["ROUTE_ACCEPTANCE_CAPABILITY_DISABLED"]
+    ["ROUTE_ACCEPTANCE_CAPABILITY_DISABLED", "ROUTE_ACCEPTANCE_PREDEPLOYMENT_EVIDENCE_PENDING"]
   );
   const canonicalBytes = canonicalApplicantRouteAcceptanceBytes(value);
   assert.equal(canonicalBytes.at(-1), "}".charCodeAt(0));
@@ -424,7 +450,7 @@ test("acceptance validator freezes applicant, request, route, capability and exa
   newPayload.routeBinding.routePayloadHash = `0x${"8".repeat(64)}`;
   assert.deepEqual(
     validateApplicantRouteAcceptance(newPayload, acceptanceSchema).map(({ code }) => code),
-    ["ROUTE_ACCEPTANCE_CAPABILITY_DISABLED"]
+    ["ROUTE_ACCEPTANCE_CAPABILITY_DISABLED", "ROUTE_ACCEPTANCE_PREDEPLOYMENT_EVIDENCE_PENDING"]
   );
   assert.notEqual(applicantRouteAcceptanceClaimHash(newPayload), applicantRouteAcceptanceClaimHash(original));
 });

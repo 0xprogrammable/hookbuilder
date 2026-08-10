@@ -131,6 +131,9 @@
         "routeTargetRuntimeCodeHash",
         "factoryAddress",
         "factoryRuntimeCodeHash",
+        "factoryInitialStateRequirement",
+        "predeploymentEvidenceSha256",
+        "gasCapReceiptSha256",
         "currentnessAttestationRequired",
         "activationState",
         "platformAttestation"
@@ -141,7 +144,7 @@
         "profileVersion": { "const": "1.0.0" },
         "planSchemaId": { "const": "urn:programmable:reviewed-route-plan:1.0.0" },
         "profileSha256": {
-          "const": "sha256:a1a8d40600c3d19fe629ec5be440974186d2e628c2350681ea66efa0403c1e45"
+          "const": "sha256:ff152774734024130c575552555fad8f23c08c543e20ba0a396007db70888c6c"
         },
         "profileKeyDomain": {
           "const": "ProgrammableNestedFactoryProfileV1(bytes32 profileIdHash,bytes32 profileVersionHash)"
@@ -175,6 +178,15 @@
         },
         "factoryRuntimeCodeHash": {
           "const": "0x134a9e5674f22e62e939c2238693077b8027c553bb26d6a4e9e3d8554e5f85b5"
+        },
+        "factoryInitialStateRequirement": {
+          "const": "exact-predeployed-pair"
+        },
+        "predeploymentEvidenceSha256": {
+          "const": null
+        },
+        "gasCapReceiptSha256": {
+          "const": null
         },
         "currentnessAttestationRequired": {
           "const": true
@@ -506,13 +518,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "create2Proxy",
-        "create2ProxyRuntimeCodeHash",
-        "factorySalt",
-        "factoryInitCodeBytes",
-        "factoryInitCodeHash",
-        "factoryDeploymentCalldataBytes",
-        "factoryDeploymentCalldataHash",
+        "priorReleaseFactoryPredeployment",
         "hookCreationCodeHash",
         "tokenInitCodeBytes",
         "tokenInitCodeHash",
@@ -525,7 +531,6 @@
         "transactionCount",
         "transactionSender",
         "executionEntry",
-        "factoryDeploymentExecution",
         "factoryLaunchExecution",
         "factoryInitialStatePolicyV1",
         "rawTokenSalt",
@@ -544,13 +549,50 @@
         "builderFeeRecipient"
       ],
       "properties": {
-        "create2Proxy": { "$ref": "#/$defs/nonzeroEthereumAddress" },
-        "create2ProxyRuntimeCodeHash": { "$ref": "#/$defs/bytes32" },
-        "factorySalt": { "$ref": "#/$defs/bytes32" },
-        "factoryInitCodeBytes": { "type": "integer", "minimum": 1, "maximum": 49152 },
-        "factoryInitCodeHash": { "$ref": "#/$defs/bytes32" },
-        "factoryDeploymentCalldataBytes": { "type": "integer", "minimum": 33, "maximum": 16777216 },
-        "factoryDeploymentCalldataHash": { "$ref": "#/$defs/bytes32" },
+        "priorReleaseFactoryPredeployment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "applicantAction",
+            "method",
+            "reviewedManifestExpectedTransactionSender",
+            "productionExecutionPhase",
+            "create2Proxy",
+            "create2ProxyRuntimeCodeHash",
+            "factorySalt",
+            "factoryInitCodeBytes",
+            "factoryInitCodeHash",
+            "factoryDeploymentCalldataBytes",
+            "factoryDeploymentCalldataHash",
+            "expectedFactory",
+            "expectedFactoryRuntimeCodeHash",
+            "expectedRenderer",
+            "expectedRendererRuntimeCodeHash",
+            "predeploymentEvidenceSha256",
+            "gasCapReceiptSha256"
+          ],
+          "properties": {
+            "status": { "const": "pending-production-release-evidence" },
+            "applicantAction": { "const": false },
+            "method": { "const": "pinned-create2-proxy" },
+            "reviewedManifestExpectedTransactionSender": { "const": "0x2Bb333d48DFAF1596D9036671d2E43168994249E" },
+            "productionExecutionPhase": { "const": "platform-release-before-applicant-acceptance" },
+            "create2Proxy": { "const": "0x4e59b44847b379578588920cA78FbF26c0B4956C" },
+            "create2ProxyRuntimeCodeHash": { "const": "0x2fa86add0aed31f33a762c9d88e807c475bd51d0f52bd0955754b2608f7e4989" },
+            "factorySalt": { "const": "0x655a4b5a2b704bef84b4ff94adde0a7ac40ad0366c82ddca5290180fe4c3986d" },
+            "factoryInitCodeBytes": { "const": 37942 },
+            "factoryInitCodeHash": { "const": "0x7d05592489495559b1288f8ad342239b3fb95a6aa005b5b0b1551c9523401585" },
+            "factoryDeploymentCalldataBytes": { "const": 37974 },
+            "factoryDeploymentCalldataHash": { "const": "0xf37ce9748abe4d5243cbd26f48c6ea5789ab1ebe8e19ea96d2198693e957c4ec" },
+            "expectedFactory": { "const": "0x9442a520e7b31D10177C75A363355C2C29141ac5" },
+            "expectedFactoryRuntimeCodeHash": { "const": "0x134a9e5674f22e62e939c2238693077b8027c553bb26d6a4e9e3d8554e5f85b5" },
+            "expectedRenderer": { "const": "0x090DBD2FaB1a467f90ed82a443eFa9AAb658DE14" },
+            "expectedRendererRuntimeCodeHash": { "const": "0x9b54a61918b2ddf9b7daf41d9bf2d705cbef3a0fd618275762b99e19c53459bf" },
+            "predeploymentEvidenceSha256": { "const": null },
+            "gasCapReceiptSha256": { "const": null }
+          }
+        },
         "hookCreationCodeHash": { "$ref": "#/$defs/bytes32" },
         "tokenInitCodeBytes": { "type": "integer", "minimum": 1, "maximum": 49152 },
         "tokenInitCodeHash": { "$ref": "#/$defs/bytes32" },
@@ -563,33 +605,19 @@
         "transactionCount": { "const": 1 },
         "transactionSender": { "$ref": "#/$defs/nonzeroEthereumAddress" },
         "executionEntry": { "const": "acceptance-bound-router" },
-        "factoryDeploymentExecution": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["reviewedManifestExpectedTransactionSender", "productionExecutionCaller"],
-          "properties": {
-            "reviewedManifestExpectedTransactionSender": { "const": "0x2Bb333d48DFAF1596D9036671d2E43168994249E" },
-            "productionExecutionCaller": { "const": "router-owned-exact-shards-profile-module" }
-          }
-        },
         "factoryLaunchExecution": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["productionExecutionCaller"],
+          "required": ["productionExecutionCaller", "applicantAction"],
           "properties": {
-            "productionExecutionCaller": { "const": "programmable-launch-stamp-router-v2" }
+            "productionExecutionCaller": { "const": "programmable-launch-stamp-router-v2" },
+            "applicantAction": { "const": "launch-and-stamp" }
           }
         },
         "factoryInitialStatePolicyV1": {
           "const": {
-            "mode": "vacant-or-exact-predeployed",
+            "mode": "exact-predeployed-only",
             "allowedStates": [
-              {
-                "id": "vacant-pair",
-                "factoryCode": "empty",
-                "rendererCode": "empty",
-                "action": "deploy-via-pinned-create2-proxy-then-launch-and-stamp"
-              },
               {
                 "id": "exact-predeployed-pair",
                 "factoryRuntimeCodeHash": "0x134a9e5674f22e62e939c2238693077b8027c553bb26d6a4e9e3d8554e5f85b5",
@@ -597,11 +625,6 @@
                 "action": "launch-and-stamp"
               }
             ],
-            "exactFactoryInitcode": {
-              "requirement": "mandatory-in-both-allowed-states",
-              "byteLength": 37942,
-              "keccak256": "0x7d05592489495559b1288f8ad342239b3fb95a6aa005b5b0b1551c9523401585"
-            },
             "commonPreconditions": {
               "tokenCode": "empty",
               "hookCode": "empty",
@@ -609,12 +632,19 @@
               "poolSlot0": "zero"
             },
             "rejectedStates": [
+              "vacant-factory-renderer-pair",
               "partial-factory-renderer-pair",
               "wrong-factory-runtime",
               "wrong-renderer-runtime",
               "occupied-child",
               "initialized-pool"
-            ]
+            ],
+            "vacantAtomicRoute": {
+              "status": "unsupported",
+              "reason": "exceeds-mainnet-eip-7825-transaction-gas-cap",
+              "candidateGas": 18159332,
+              "mainnetTransactionGasCap": 16777216
+            }
           }
         },
         "rawTokenSalt": { "$ref": "#/$defs/bytes32" },

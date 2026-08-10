@@ -228,6 +228,21 @@ export function validateApplicantRouteAcceptance(value, schema) {
       "Use both independently derived hashes from the final frozen Router V2 compiler artifact."
     );
   }
+  const predeployment = value.reviewedPlan.launchPlan.priorReleaseFactoryPredeployment;
+  if (
+    predeployment.status !== "completed-and-verified"
+    || !isSha256(predeployment.predeploymentEvidenceSha256)
+    || !isSha256(predeployment.gasCapReceiptSha256)
+    || value.routeCapability.predeploymentEvidenceSha256 !== predeployment.predeploymentEvidenceSha256
+    || value.routeCapability.gasCapReceiptSha256 !== predeployment.gasCapReceiptSha256
+  ) {
+    add(
+      "ROUTE_ACCEPTANCE_PREDEPLOYMENT_EVIDENCE_PENDING",
+      "$.reviewedPlan.launchPlan.priorReleaseFactoryPredeployment",
+      "Applicant acceptance is unavailable until the platform has predeployed and verified the exact factory and renderer and published the gas-cap receipt.",
+      "Rebind the frozen claim only after exact proxy, salt, initcode, factory and renderer evidence is complete; the applicant transaction remains launch-and-stamp only."
+    );
+  }
   if (containsExamplePlaceholder(value)) {
     add(
       "ROUTE_ACCEPTANCE_EXAMPLE_PLACEHOLDER",
@@ -237,6 +252,10 @@ export function validateApplicantRouteAcceptance(value, schema) {
     );
   }
   return findings;
+}
+
+function isSha256(value) {
+  return typeof value === "string" && /^sha256:[0-9a-f]{64}$/u.test(value);
 }
 
 export function canonicalApplicantRouteAcceptanceBytes(value) {

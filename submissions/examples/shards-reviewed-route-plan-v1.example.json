@@ -139,13 +139,26 @@
     "tickSpacing": 60
   },
   "launchPlan": {
-    "create2Proxy": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
-    "create2ProxyRuntimeCodeHash": "0x2fa86add0aed31f33a762c9d88e807c475bd51d0f52bd0955754b2608f7e4989",
-    "factorySalt": "0x655a4b5a2b704bef84b4ff94adde0a7ac40ad0366c82ddca5290180fe4c3986d",
-    "factoryInitCodeBytes": 37942,
-    "factoryInitCodeHash": "0x7d05592489495559b1288f8ad342239b3fb95a6aa005b5b0b1551c9523401585",
-    "factoryDeploymentCalldataBytes": 37974,
-    "factoryDeploymentCalldataHash": "0xf37ce9748abe4d5243cbd26f48c6ea5789ab1ebe8e19ea96d2198693e957c4ec",
+    "priorReleaseFactoryPredeployment": {
+      "status": "pending-production-release-evidence",
+      "applicantAction": false,
+      "method": "pinned-create2-proxy",
+      "reviewedManifestExpectedTransactionSender": "0x2Bb333d48DFAF1596D9036671d2E43168994249E",
+      "productionExecutionPhase": "platform-release-before-applicant-acceptance",
+      "create2Proxy": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
+      "create2ProxyRuntimeCodeHash": "0x2fa86add0aed31f33a762c9d88e807c475bd51d0f52bd0955754b2608f7e4989",
+      "factorySalt": "0x655a4b5a2b704bef84b4ff94adde0a7ac40ad0366c82ddca5290180fe4c3986d",
+      "factoryInitCodeBytes": 37942,
+      "factoryInitCodeHash": "0x7d05592489495559b1288f8ad342239b3fb95a6aa005b5b0b1551c9523401585",
+      "factoryDeploymentCalldataBytes": 37974,
+      "factoryDeploymentCalldataHash": "0xf37ce9748abe4d5243cbd26f48c6ea5789ab1ebe8e19ea96d2198693e957c4ec",
+      "expectedFactory": "0x9442a520e7b31D10177C75A363355C2C29141ac5",
+      "expectedFactoryRuntimeCodeHash": "0x134a9e5674f22e62e939c2238693077b8027c553bb26d6a4e9e3d8554e5f85b5",
+      "expectedRenderer": "0x090DBD2FaB1a467f90ed82a443eFa9AAb658DE14",
+      "expectedRendererRuntimeCodeHash": "0x9b54a61918b2ddf9b7daf41d9bf2d705cbef3a0fd618275762b99e19c53459bf",
+      "predeploymentEvidenceSha256": null,
+      "gasCapReceiptSha256": null
+    },
     "hookCreationCodeHash": "0x3fbdbc069ee5bfcb1ded77a8d4e550f1bb0692a488b6eb5d23dac090fbca0716",
     "tokenInitCodeBytes": 3193,
     "tokenInitCodeHash": "0x6e68433c748d6bac0a119815b0447aaa016c5fec1334cc9a412e76aa8149a358",
@@ -158,22 +171,13 @@
     "transactionCount": 1,
     "transactionSender": "0xceeBB3A6543CeBEB2ED66963897A0abEA52A50cC",
     "executionEntry": "acceptance-bound-router",
-    "factoryDeploymentExecution": {
-      "reviewedManifestExpectedTransactionSender": "0x2Bb333d48DFAF1596D9036671d2E43168994249E",
-      "productionExecutionCaller": "router-owned-exact-shards-profile-module"
-    },
     "factoryLaunchExecution": {
-      "productionExecutionCaller": "programmable-launch-stamp-router-v2"
+      "productionExecutionCaller": "programmable-launch-stamp-router-v2",
+      "applicantAction": "launch-and-stamp"
     },
     "factoryInitialStatePolicyV1": {
-      "mode": "vacant-or-exact-predeployed",
+      "mode": "exact-predeployed-only",
       "allowedStates": [
-        {
-          "id": "vacant-pair",
-          "factoryCode": "empty",
-          "rendererCode": "empty",
-          "action": "deploy-via-pinned-create2-proxy-then-launch-and-stamp"
-        },
         {
           "id": "exact-predeployed-pair",
           "factoryRuntimeCodeHash": "0x134a9e5674f22e62e939c2238693077b8027c553bb26d6a4e9e3d8554e5f85b5",
@@ -181,11 +185,6 @@
           "action": "launch-and-stamp"
         }
       ],
-      "exactFactoryInitcode": {
-        "requirement": "mandatory-in-both-allowed-states",
-        "byteLength": 37942,
-        "keccak256": "0x7d05592489495559b1288f8ad342239b3fb95a6aa005b5b0b1551c9523401585"
-      },
       "commonPreconditions": {
         "tokenCode": "empty",
         "hookCode": "empty",
@@ -193,12 +192,19 @@
         "poolSlot0": "zero"
       },
       "rejectedStates": [
+        "vacant-factory-renderer-pair",
         "partial-factory-renderer-pair",
         "wrong-factory-runtime",
         "wrong-renderer-runtime",
         "occupied-child",
         "initialized-pool"
-      ]
+      ],
+      "vacantAtomicRoute": {
+        "status": "unsupported",
+        "reason": "exceeds-mainnet-eip-7825-transaction-gas-cap",
+        "candidateGas": 18159332,
+        "mainnetTransactionGasCap": 16777216
+      }
     },
     "rawTokenSalt": "0xca9944c923e24ba5cb3188a29b18c3305158e686e39473e91bbe31fc019816ab",
     "effectiveTokenSalt": "0x2fb771368a131f3ebf686980b44c57230bf257f4b82e95a10ef46d9b2bd7db37",

@@ -4,10 +4,11 @@
   "claimSchema": "urn:programmable:applicant-route-acceptance:1.0.0",
   "canonicalization": "urn:programmable:canonical-json:2.0.0",
   "canonicalClaimEncoding": "canonical-json-v2-utf8-no-trailing-newline",
-  "canonicalByteLength": 14115,
-  "claimSha256": "sha256:017b43d20536061fdb11e4cc01fdb38323b98c2b2e49710e119450542bd12912",
+  "canonicalByteLength": 14660,
+  "claimSha256": "sha256:1bd15db09da53b391136a898e62eb04f8b7560c20d475c24ed54a5734bb3fc44",
   "expectedValidationBlockers": [
     "ROUTE_ACCEPTANCE_CAPABILITY_DISABLED",
+    "ROUTE_ACCEPTANCE_PREDEPLOYMENT_EVIDENCE_PENDING",
     "ROUTE_ACCEPTANCE_EXAMPLE_PLACEHOLDER"
   ],
   "authorizationGranted": false

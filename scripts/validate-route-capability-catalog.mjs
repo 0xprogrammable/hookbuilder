@@ -107,6 +107,35 @@ try {
     "artifact-required/profile-specific",
     "direct graph revenue policy semantics drifted"
   );
+  requireEqual(
+    reviewedPlan.launchPlan.factoryInitialStatePolicyV1.mode,
+    "exact-predeployed-only",
+    "Shards factory initial-state policy drifted"
+  );
+  requireEqual(
+    reviewedPlan.launchPlan.factoryInitialStatePolicyV1.allowedStates.length,
+    1,
+    "Shards must expose exactly one allowed factory initial state"
+  );
+  requireEqual(
+    reviewedPlan.launchPlan.factoryInitialStatePolicyV1.allowedStates[0].id,
+    "exact-predeployed-pair",
+    "Shards allowed factory initial state drifted"
+  );
+  requireEqual(
+    reviewedPlan.launchPlan.priorReleaseFactoryPredeployment.applicantAction,
+    false,
+    "factory predeployment became an applicant action"
+  );
+  requireEqual(
+    reviewedPlan.launchPlan.factoryInitialStatePolicyV1.vacantAtomicRoute.status,
+    "unsupported",
+    "vacant atomic Shards route became admissible"
+  );
+  if (
+    reviewedPlan.launchPlan.factoryInitialStatePolicyV1.vacantAtomicRoute.candidateGas
+    <= reviewedPlan.launchPlan.factoryInitialStatePolicyV1.vacantAtomicRoute.mainnetTransactionGasCap
+  ) throw new Error("vacant atomic Shards gas proof no longer exceeds the Mainnet transaction cap");
 
   const originalAssessment = assessRouteCompatibility(request.requestedRoute, reviewedPlan);
   requireEqual(
@@ -133,6 +162,21 @@ try {
     originalAssessment.capability.factoryRuntimeCodeHash,
     "0x134a9e5674f22e62e939c2238693077b8027c553bb26d6a4e9e3d8554e5f85b5",
     "exact Shards factory runtime drifted"
+  );
+  requireEqual(
+    originalAssessment.capability.factoryInitialStateRequirement,
+    "exact-predeployed-pair",
+    "exact Shards factory initial-state capability drifted"
+  );
+  requireEqual(
+    originalAssessment.capability.predeploymentEvidenceSha256,
+    null,
+    "disabled Shards capability cannot claim missing predeployment evidence"
+  );
+  requireEqual(
+    originalAssessment.capability.gasCapReceiptSha256,
+    null,
+    "disabled Shards capability cannot claim missing gas-cap evidence"
   );
   requireEqual(originalAssessment.acceptanceRequired, true, "Shards route change must require acceptance after activation");
   requireEqual(
