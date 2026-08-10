@@ -1,0 +1,61 @@
+{
+  "$schema": "urn:programmable:applicant-submission:1.1.0",
+  "schemaVersion": "1.1.0",
+  "intake": {
+    "repository": "0xprogrammable/hookbuilder",
+    "repositoryId": 1320085947
+  },
+  "applicant": {
+    "githubLogin": "voladelta",
+    "launchWallet": "0xA0B5Bb39878507E06bCA49956294aE7c907d4e61"
+  },
+  "source": {
+    "repository": "https://github.com/voladelta/overtime-hook",
+    "repositoryId": 1326198143,
+    "commit": "a33ce9459856c860fd20f844f7f8d6e42472889c",
+    "tree": "55e31360786bbbf1f61f2bc7fd7fcab6a5ee05a8"
+  },
+  "identifiers": {
+    "hookId": "overtime-v1",
+    "hookVersion": "1.0.0",
+    "templateId": "custom-hook",
+    "templateVersion": "1.0.0",
+    "modelId": "overtime-v1",
+    "modelVersion": "1.0.0"
+  },
+  "hook": {
+    "addressFlagMask": "0x20cc",
+    "permissions": {
+      "beforeInitialize": true,
+      "afterInitialize": false,
+      "beforeAddLiquidity": false,
+      "afterAddLiquidity": false,
+      "beforeRemoveLiquidity": false,
+      "afterRemoveLiquidity": false,
+      "beforeSwap": true,
+      "afterSwap": true,
+      "beforeDonate": false,
+      "afterDonate": false,
+      "beforeSwapReturnDelta": true,
+      "afterSwapReturnDelta": true,
+      "afterAddLiquidityReturnDelta": false,
+      "afterRemoveLiquidityReturnDelta": false
+    }
+  },
+  "fee": {
+    "amountPips": 11000,
+    "denominator": 1000000,
+    "currencyBasis": "quote",
+    "recipient": "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c",
+    "mutable": false
+  },
+  "requestedRoute": {
+    "routeId": "custom-graph",
+    "routeVersion": "1.0.0",
+    "chainId": "1"
+  },
+  "requestedActions": [
+    "review"
+  ],
+  "notes": "Overtime is a recurring crown-time game on one canonical WETH/token pool. Every accepted swap quadrant pays an immutable inclusive 1.10% (11000 pips) on actual gross WETH quote volume: 1000 pips is the Programmable liability to the declared recipient and 10000 pips funds pull-based game liabilities. Challenge mode is authenticated to the immutable router and supports only exact-input WETH buys; ordinary swaps support all four direction/exactness quadrants. Specified-WETH and challenge partial fills revert atomically. Initial liquidity is permanently locked. The hook has no owner sweep, rescue, pause, upgrade, post-deployment mint, parameter setter, or payout redirect. Both return-delta permissions perform real accounting. This request seeks review only and claims no audit, approval, deployment, routing support, or availability."
+}
