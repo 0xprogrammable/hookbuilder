@@ -12,12 +12,12 @@
   "source": {
     "repository": "https://github.com/jesse-stahl/shards-v1",
     "repositoryId": 1329073878,
-    "commit": "b78c549b54dc9ee0ada8326fa461bcfe2d1bf9fa",
-    "tree": "d53ad05e771e5f0b46a7b4b21d1c75f0dc5bf5c3"
+    "commit": "5a3d5bc2292e676f4ded23180b7951c894a707b3",
+    "tree": "794ae8bbb824d715a4ed775cf062510226351ce9"
   },
   "identifiers": {
     "hookId": "shards-v1",
-    "hookVersion": "1.0.0",
+    "hookVersion": "1.1.0",
     "templateId": "custom-hook",
     "templateVersion": "1.0.0",
     "modelId": "shards",
@@ -57,5 +57,5 @@
   "requestedActions": [
     "review"
   ],
-  "notes": "Inclusive 1.00% (10000 pips) on the native-ETH quote leg, never additive. 1000 pips is the Programmable liability to the declared recipient, a compile-time constant no launch or builder can redirect. The 9000-pip project share is 8000 pips to NFT holders via an internal per-piece accumulator with a holder-called claim path, and 1000 pips to the builder at 0xceeBB3A6543CeBEB2ED66963897A0abEA52A50cC. mutable is true only because that builder destination is rotatable by the current builder; the rate and the Programmable destination are immutable. A 10000-piece on-chain generative ERC-721 market-made against two permanently locked single-sided positions in native ETH; collection profile is sync-custom-zero-amm, not standard-amm. Both return-delta branches perform real accounting. Sizes are tight: ShardHookV1 runtime is 24358 bytes."
+  "notes": "Inclusive 1.00% (10000 pips) on the native-ETH quote leg, never additive. 1000 pips is the Programmable liability to the declared recipient, a compile-time constant no launch or builder can redirect. The 9000-pip project share is 8000 pips to NFT holders via an internal per-piece accumulator with a holder-called claim path, and 1000 pips to the builder at 0xceeBB3A6543CeBEB2ED66963897A0abEA52A50cC. mutable is true only because that builder destination is rotatable by the current builder; the rate and the Programmable destination are immutable. A 10000-piece on-chain generative ERC-721 market-made against two permanently locked single-sided positions in native ETH; collection profile is sync-custom-zero-amm. Both return-delta branches perform real accounting. hookVersion 1.1.0 carries the release-integrity corrections: released fee remainders are now carried rather than dropped, and the artifact tables are regenerated and locked by a drift regression."
 }
