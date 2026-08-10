@@ -1,9 +1,9 @@
 {
-  "$schema": "urn:programmable:hookemon-platform-capability-overlay:1.0.0",
-  "schemaVersion": "1.0.0",
+  "$schema": "urn:programmable:hookemon-platform-capability-overlay:1.1.0",
+  "schemaVersion": "1.1.0",
   "capability": {
     "id": "exact-hookemon-completed-graph-adoption",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "acceptedRoute": {
       "routeId": "completed-graph-adoption",
       "routeVersion": null,
@@ -15,7 +15,8 @@
       "profileKey": null
     },
     "currentnessRequired": true,
-    "activationState": "disabled-pending-final-hashes",
+    "activationState": "PENDING_FINAL_PRELAUNCH_BINDINGS",
+    "completionState": "PENDING_GRAPH_EXECUTION",
     "catalogIntegrated": false
   },
   "reviewedRequest": {
@@ -191,6 +192,54 @@
       "stampRequestHash": null,
       "actionPlanSha256": null
     },
+    "prelaunchGrant": {
+      "approvalScopeHash": null,
+      "launchConfigTemplateHash": null,
+      "graphTemplateHash": null,
+      "securityReleaseHash": null,
+      "profileIdentityHash": null,
+      "kernelIdentityHash": null,
+      "registryIdentityHash": null,
+      "authorityIdentityHash": null,
+      "permitAuthorityKeyEpoch": null,
+      "receiptAuthorityKeyEpoch": null
+    },
+    "postLaunchRuntimeResult": {
+      "receiptSchema": null,
+      "receiptSchemaSha256": null,
+      "receiptVerifierContractPath": null,
+      "receiptVerifierAbiSha256": null,
+      "receiptVerifierRuntimeCodeHash": null,
+      "receiptVerifierAddress": null,
+      "receiptAuthorizerBindingSha256": null,
+      "positionResultDomain": "HookemonPostLaunchResult:v1",
+      "positionTokenIdPath": "$.position.tokenId",
+      "requiredAtAdoption": true,
+      "requiredBeforeState": "GRAPH_EXECUTED_AND_STAMPED",
+      "kernelEnforced": true,
+      "profileEnforced": true,
+      "registryStampEnforced": true,
+      "oneWinnerEnforced": true,
+      "revocationEnforced": true,
+      "requiredRuntimeFields": [
+        "positionTokenId",
+        "launcherRuntimeCodeHash",
+        "architectureResultHash",
+        "currentArchitectureStateHash",
+        "expectedResultHash",
+        "stampRequestHash",
+        "stampHash",
+        "adoptionTransactionHash",
+        "adoptionNonce",
+        "adoptionGasLimit",
+        "adoptionCalldataSha256",
+        "permitDigest",
+        "currentnessHash",
+        "finalityEvidenceHash",
+        "recordUrl",
+        "recordSha256"
+      ]
+    },
     "authorityFacade": {
       "sourceRepository": null,
       "sourceRepositoryId": null,
@@ -214,7 +263,7 @@
       "currentnessHash": null
     },
     "publicAcceptance": {
-      "claimType": "urn:programmable:hookemon-applicant-route-acceptance:1.0.0",
+      "claimType": "urn:programmable:hookemon-applicant-route-acceptance:1.1.0",
       "canonicalEncoding": "canonical-json-v2-utf8-no-trailing-newline",
       "schemaSha256": null,
       "claimUrl": null,

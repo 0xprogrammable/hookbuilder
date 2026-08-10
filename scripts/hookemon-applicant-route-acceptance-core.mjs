@@ -14,24 +14,27 @@ import {
 } from "../skills/programmable-v4-hook-builder/scripts/evm-encoding-core.mjs";
 import { validateAgainstSchema } from "../skills/programmable-v4-hook-builder/scripts/restricted-json-schema-core.mjs";
 
-export const HOOKEMON_ROUTE_ACCEPTANCE_SCHEMA_VERSION = "1.0.0";
+export const HOOKEMON_ROUTE_ACCEPTANCE_SCHEMA_VERSION = "1.1.0";
 export const HOOKEMON_PLATFORM_CAPABILITY_OVERLAY_TYPE =
-  "urn:programmable:hookemon-platform-capability-overlay:1.0.0";
+  "urn:programmable:hookemon-platform-capability-overlay:1.1.0";
 export const HOOKEMON_ROUTE_ACCEPTANCE_CLAIM_TYPE =
-  "urn:programmable:hookemon-applicant-route-acceptance:1.0.0";
+  "urn:programmable:hookemon-applicant-route-acceptance:1.1.0";
 export const HOOKEMON_APPLICATION_ACCEPTANCE_SUBJECT_TYPE =
   "programmable.hookemon-application-acceptance-subject.v1";
 export const HOOKEMON_ROUTE_ACCEPTANCE_TRANSITION_TYPE =
   "programmable.hookemon-route-acceptance-transition.v1";
 export const HOOKEMON_PLATFORM_CAPABILITY_ID =
   "exact-hookemon-completed-graph-adoption";
-export const HOOKEMON_PLATFORM_CAPABILITY_VERSION = "1.0.0";
+export const HOOKEMON_PLATFORM_CAPABILITY_VERSION = "1.1.0";
 export const HOOKEMON_ROUTE_ACCEPTANCE_CANONICALIZATION = CANONICAL_JSON_V2_PROFILE.id;
 export const HOOKEMON_ROUTE_ACCEPTANCE_PENDING_STATE =
-  "disabled-pending-final-hashes";
+  "PENDING_FINAL_PRELAUNCH_BINDINGS";
+export const HOOKEMON_APPROVED_LAUNCH_ANYTIME_STATE = "APPROVED_LAUNCH_ANYTIME";
+export const HOOKEMON_GRAPH_EXECUTED_AND_STAMPED_STATE = "GRAPH_EXECUTED_AND_STAMPED";
+export const HOOKEMON_POST_LAUNCH_RESULT_DOMAIN = "HookemonPostLaunchResult:v1";
 export const MAXIMUM_HOOKEMON_ROUTE_ACCEPTANCE_BYTES = 64 * 1024;
 export const HOOKEMON_PENDING_ACCEPTANCE_FIXTURE_SHA256 =
-  "sha256:25e5a71c8e09b31f2f4f5eb7bdbbafac1efc1f2a89042b058bacfec9844d1aed";
+  "sha256:7d05de8597d5f04984ec55d3bf4ee479f3b323bfc6b2b221952d6ab28a4fef5f";
 
 // Activation deliberately requires a later reviewed change that replaces both
 // sentinels with one immutable public claim. A populated candidate cannot make
@@ -198,6 +201,109 @@ export const HOOKEMON_FINAL_BINDING_PATHS = Object.freeze([
   "$.immutableBindings.platformAttestation.expiresAt"
 ]);
 
+// A durable prelaunch grant is deliberately small. It binds only the source,
+// immutable policy/template identities, platform verifier identities and key
+// epochs. It never contains a wallet transaction, execution plan/schedule,
+// currentness observation or completed graph result.
+const HOOKEMON_STATIC_FINAL_BINDING_PATHS = Object.freeze([
+  "$.capability.acceptedRoute.routeVersion",
+  "$.capability.profile.profileId",
+  "$.capability.profile.profileVersion",
+  "$.capability.profile.profileKey",
+  "$.reviewedRequest.finalHeadCommit",
+  "$.reviewedRequest.applicationManifestSha256",
+  "$.source.commit",
+  "$.source.tree",
+  "$.immutableBindings.intake.mergeCommit",
+  "$.immutableBindings.intake.mergeTree",
+  "$.immutableBindings.intake.requestBlobSha256",
+  "$.immutableBindings.sourceEvidence.reviewEvidenceSha256",
+  "$.immutableBindings.sourceEvidence.artifactCodeLedgerSha256",
+  "$.immutableBindings.sourceEvidence.codeHashesSha256",
+  "$.immutableBindings.sourceEvidence.returnDeltaDispositionSha256",
+  "$.immutableBindings.sourceEvidence.inlineAssemblyDispositionSha256",
+  "$.immutableBindings.sourceEvidence.mainnetForkReceiptSha256",
+  "$.immutableBindings.sourceEvidence.gasReceiptSha256",
+  "$.immutableBindings.sourceEvidence.independentReviewSha256",
+  "$.immutableBindings.reviewedPlan.planSchemaId",
+  "$.immutableBindings.reviewedPlan.profileManifestSha256",
+  "$.immutableBindings.reviewedPlan.profileSchemaSha256",
+  "$.immutableBindings.reviewedPlan.architecturePolicyHash",
+  "$.immutableBindings.reviewedPlan.revenuePolicyHash",
+  "$.immutableBindings.platformContracts.sourceCommit",
+  "$.immutableBindings.platformContracts.sourceTree",
+  "$.immutableBindings.platformContracts.kernelContractPath",
+  "$.immutableBindings.platformContracts.kernelAbiSha256",
+  "$.immutableBindings.platformContracts.kernelCreationCodeHash",
+  "$.immutableBindings.platformContracts.kernelRuntimeCodeHash",
+  "$.immutableBindings.platformContracts.kernelAddress",
+  "$.immutableBindings.platformContracts.kernelDeploymentReceiptSha256",
+  "$.immutableBindings.platformContracts.profileContractPath",
+  "$.immutableBindings.platformContracts.profileAbiSha256",
+  "$.immutableBindings.platformContracts.profileCreationCodeHash",
+  "$.immutableBindings.platformContracts.profileRuntimeCodeHash",
+  "$.immutableBindings.platformContracts.profileAddress",
+  "$.immutableBindings.platformContracts.profileDeploymentReceiptSha256",
+  "$.immutableBindings.platformContracts.registryContractPath",
+  "$.immutableBindings.platformContracts.registryAbiSha256",
+  "$.immutableBindings.platformContracts.registryCreationCodeHash",
+  "$.immutableBindings.platformContracts.registryRuntimeCodeHash",
+  "$.immutableBindings.platformContracts.registryAddress",
+  "$.immutableBindings.platformContracts.registryDeploymentReceiptSha256",
+  "$.immutableBindings.authorityFacade.sourceCommit",
+  "$.immutableBindings.authorityFacade.sourceTree",
+  "$.immutableBindings.authorityFacade.sourceRepository",
+  "$.immutableBindings.authorityFacade.sourceRepositoryId",
+  "$.immutableBindings.authorityFacade.manifestSha256",
+  "$.immutableBindings.authorityFacade.authorityContractPath",
+  "$.immutableBindings.authorityFacade.authorityAbiSha256",
+  "$.immutableBindings.authorityFacade.authorityCreationCodeHash",
+  "$.immutableBindings.authorityFacade.authorityRuntimeCodeHash",
+  "$.immutableBindings.authorityFacade.authorityAddress",
+  "$.immutableBindings.authorityFacade.authorityDeploymentReceiptSha256",
+  "$.immutableBindings.authorityFacade.facadeContractPath",
+  "$.immutableBindings.authorityFacade.facadeAbiSha256",
+  "$.immutableBindings.authorityFacade.facadeCreationCodeHash",
+  "$.immutableBindings.authorityFacade.facadeRuntimeCodeHash",
+  "$.immutableBindings.authorityFacade.facadeAddress",
+  "$.immutableBindings.authorityFacade.facadeDeploymentReceiptSha256",
+  "$.immutableBindings.authorityFacade.adoptionSelector",
+  "$.immutableBindings.authorityFacade.policyHash",
+  "$.immutableBindings.publicAcceptance.schemaSha256",
+  "$.immutableBindings.publicAcceptance.claimUrl",
+  "$.immutableBindings.publicAcceptance.claimSha256",
+  "$.immutableBindings.publicAcceptance.transitionHash"
+]);
+
+// Every final binding outside the fixed prelaunch set belongs to the runtime
+// result/receipt. A static grant rejects populated values in this set.
+export const HOOKEMON_POST_LAUNCH_RUNTIME_BINDING_PATHS = Object.freeze(
+  HOOKEMON_FINAL_BINDING_PATHS.filter(
+    (field) => !HOOKEMON_STATIC_FINAL_BINDING_PATHS.includes(field)
+  )
+);
+
+export const HOOKEMON_PRELAUNCH_BINDING_PATHS = Object.freeze([
+  ...HOOKEMON_STATIC_FINAL_BINDING_PATHS,
+  "$.immutableBindings.prelaunchGrant.approvalScopeHash",
+  "$.immutableBindings.prelaunchGrant.launchConfigTemplateHash",
+  "$.immutableBindings.prelaunchGrant.graphTemplateHash",
+  "$.immutableBindings.prelaunchGrant.securityReleaseHash",
+  "$.immutableBindings.prelaunchGrant.profileIdentityHash",
+  "$.immutableBindings.prelaunchGrant.kernelIdentityHash",
+  "$.immutableBindings.prelaunchGrant.registryIdentityHash",
+  "$.immutableBindings.prelaunchGrant.authorityIdentityHash",
+  "$.immutableBindings.prelaunchGrant.permitAuthorityKeyEpoch",
+  "$.immutableBindings.prelaunchGrant.receiptAuthorityKeyEpoch",
+  "$.immutableBindings.postLaunchRuntimeResult.receiptSchema",
+  "$.immutableBindings.postLaunchRuntimeResult.receiptSchemaSha256",
+  "$.immutableBindings.postLaunchRuntimeResult.receiptVerifierContractPath",
+  "$.immutableBindings.postLaunchRuntimeResult.receiptVerifierAbiSha256",
+  "$.immutableBindings.postLaunchRuntimeResult.receiptVerifierRuntimeCodeHash",
+  "$.immutableBindings.postLaunchRuntimeResult.receiptVerifierAddress",
+  "$.immutableBindings.postLaunchRuntimeResult.receiptAuthorizerBindingSha256"
+]);
+
 export function loadHookemonRouteAcceptanceSchema(repositoryRoot) {
   return JSON.parse(fs.readFileSync(
     path.join(
@@ -238,6 +344,20 @@ export function validateHookemonRouteAcceptance(value, schema, { now = null } = 
     remediation
   });
   if (findings.length > 0 || !isObject(value)) return findings;
+
+  if (
+    (value.capability.activationState === HOOKEMON_ROUTE_ACCEPTANCE_PENDING_STATE
+      && value.capability.catalogIntegrated !== false)
+    || (value.capability.activationState === HOOKEMON_APPROVED_LAUNCH_ANYTIME_STATE
+      && value.capability.catalogIntegrated !== true)
+  ) {
+    add(
+      "HOOKEMON_PRELAUNCH_GRANT_CATALOG_STATE_MISMATCH",
+      "$.capability",
+      "A pending Hookemon grant cannot enter the catalog, and an APPROVED_LAUNCH_ANYTIME grant must enter it.",
+      "Keep catalogIntegrated false while pending and true only for the frozen approved prelaunch grant."
+    );
+  }
 
   if (FORBIDDEN_PROFILE_IDS.has(value.capability.profile.profileId)) {
     add(
@@ -393,6 +513,14 @@ export function validateHookemonRouteAcceptance(value, schema, { now = null } = 
   }
 
   const position = value.immutableBindings.architecture.position;
+  if (position.tokenId !== null) {
+    add(
+      "HOOKEMON_PRELAUNCH_POSITION_TOKEN_ID_FORBIDDEN",
+      "$.immutableBindings.architecture.position.tokenId",
+      "The shared PositionManager token id is an execution-time result and cannot be pre-bound in the capability claim.",
+      "Keep tokenId null here; require HookemonPostLaunchResult:v1 $.position.tokenId during typed adoption."
+    );
+  }
   if (value.immutableBindings.architecture.exclusiveNftAddress !== null) {
     add(
       "HOOKEMON_EXCLUSIVE_NFT_FORBIDDEN",
@@ -412,6 +540,18 @@ export function validateHookemonRouteAcceptance(value, schema, { now = null } = 
       "The reviewed position owner must be the exact PositionTimelock.",
       "Recompute ownerOf(tokenId) and bind the matching timelock address."
     );
+  }
+
+  for (const field of HOOKEMON_POST_LAUNCH_RUNTIME_BINDING_PATHS) {
+    if (field === "$.immutableBindings.architecture.position.tokenId") continue;
+    if (getPath(value, field) !== null) {
+      add(
+        "HOOKEMON_POST_LAUNCH_VALUE_IN_PRELAUNCH_GRANT",
+        field,
+        "This value is only knowable after the normal CREATE and cannot be substituted into a durable prelaunch grant.",
+        "Keep it null in the prelaunch claim and require it in the typed finality-bound adoption receipt."
+      );
+    }
   }
   if (
     position.tickLower !== null
@@ -554,7 +694,7 @@ export function validateHookemonRouteAcceptance(value, schema, { now = null } = 
     }
   }
 
-  for (const field of HOOKEMON_FINAL_BINDING_PATHS) {
+  for (const field of HOOKEMON_PRELAUNCH_BINDING_PATHS) {
     const candidate = getPath(value, field);
     if (
       candidate === `sha256:${"0".repeat(64)}`
@@ -572,6 +712,14 @@ export function validateHookemonRouteAcceptance(value, schema, { now = null } = 
   }
 
   const publicAcceptance = value.immutableBindings.publicAcceptance;
+  if (publicAcceptance.recordUrl !== null || publicAcceptance.recordSha256 !== null) {
+    add(
+      "HOOKEMON_POST_LAUNCH_RECORD_IN_PRELAUNCH_GRANT",
+      "$.immutableBindings.publicAcceptance",
+      "A prelaunch grant cannot claim a completed graph or publish a post-adoption record.",
+      "Keep recordUrl and recordSha256 null until the finality-bound GRAPH_EXECUTED_AND_STAMPED receipt exists."
+    );
+  }
   if (publicAcceptance.claimSha256 !== null) {
     const projectedClaimSha256 = hookemonPublicRouteAcceptanceClaimHash(value);
     if (publicAcceptance.claimSha256 !== projectedClaimSha256) {
@@ -599,7 +747,13 @@ export function validateHookemonRouteAcceptance(value, schema, { now = null } = 
 }
 
 export function pendingHookemonFinalBindingPaths(value) {
+  // An active prelaunch grant deliberately leaves the post-launch subset
+  // pending. Only the separately typed adoption receipt may satisfy it.
   return HOOKEMON_FINAL_BINDING_PATHS.filter((field) => getPath(value, field) === null);
+}
+
+export function pendingHookemonPrelaunchBindingPaths(value) {
+  return HOOKEMON_PRELAUNCH_BINDING_PATHS.filter((field) => getPath(value, field) === null);
 }
 
 export function assessHookemonRouteAcceptance(value, schema, { now = new Date() } = {}) {
@@ -608,20 +762,31 @@ export function assessHookemonRouteAcceptance(value, schema, { now = new Date() 
     return deepFreeze({
       status: "HOOKEMON_CAPABILITY_INVALID",
       activationAllowed: false,
+      launchCompleted: false,
+      grantState: null,
+      completionState: null,
       claimSha256: null,
+      pendingPrelaunchBindingPaths: [],
       pendingFinalBindingPaths: [],
+      requiredPostLaunchRuntimeBindingPaths: [],
       findings
     });
   }
 
   const claimSha256 = hookemonRouteAcceptanceClaimHash(value);
+  const pendingPrelaunchBindingPaths = pendingHookemonPrelaunchBindingPaths(value);
   const pendingFinalBindingPaths = pendingHookemonFinalBindingPaths(value);
-  if (pendingFinalBindingPaths.length > 0) {
+  if (pendingPrelaunchBindingPaths.length > 0) {
     return deepFreeze({
-      status: "HOOKEMON_CAPABILITY_PENDING_FINAL_HASHES",
+      status: "HOOKEMON_CAPABILITY_PENDING_FINAL_PRELAUNCH_BINDINGS",
       activationAllowed: false,
+      launchCompleted: false,
+      grantState: value.capability.activationState,
+      completionState: value.capability.completionState,
       claimSha256,
+      pendingPrelaunchBindingPaths,
       pendingFinalBindingPaths,
+      requiredPostLaunchRuntimeBindingPaths: HOOKEMON_POST_LAUNCH_RUNTIME_BINDING_PATHS,
       findings: []
     });
   }
@@ -634,8 +799,13 @@ export function assessHookemonRouteAcceptance(value, schema, { now = new Date() 
     return deepFreeze({
       status: "HOOKEMON_CAPABILITY_PENDING_FROZEN_CLAIM",
       activationAllowed: false,
+      launchCompleted: false,
+      grantState: value.capability.activationState,
+      completionState: value.capability.completionState,
       claimSha256,
-      pendingFinalBindingPaths: [],
+      pendingPrelaunchBindingPaths: [],
+      pendingFinalBindingPaths,
+      requiredPostLaunchRuntimeBindingPaths: HOOKEMON_POST_LAUNCH_RUNTIME_BINDING_PATHS,
       findings: []
     });
   }
@@ -643,16 +813,26 @@ export function assessHookemonRouteAcceptance(value, schema, { now = new Date() 
     return deepFreeze({
       status: "HOOKEMON_CAPABILITY_FROZEN_CLAIM_MISMATCH",
       activationAllowed: false,
+      launchCompleted: false,
+      grantState: value.capability.activationState,
+      completionState: value.capability.completionState,
       claimSha256,
-      pendingFinalBindingPaths: [],
+      pendingPrelaunchBindingPaths: [],
+      pendingFinalBindingPaths,
+      requiredPostLaunchRuntimeBindingPaths: HOOKEMON_POST_LAUNCH_RUNTIME_BINDING_PATHS,
       findings: []
     });
   }
   return deepFreeze({
-    status: "HOOKEMON_CAPABILITY_ACTIVE",
+    status: "HOOKEMON_CAPABILITY_APPROVED_LAUNCH_ANYTIME",
     activationAllowed: true,
+    launchCompleted: false,
+    grantState: value.capability.activationState,
+    completionState: value.capability.completionState,
     claimSha256,
-    pendingFinalBindingPaths: [],
+    pendingPrelaunchBindingPaths: [],
+    pendingFinalBindingPaths,
+    requiredPostLaunchRuntimeBindingPaths: HOOKEMON_POST_LAUNCH_RUNTIME_BINDING_PATHS,
     findings: []
   });
 }
@@ -754,7 +934,8 @@ function addressPaths(value) {
     "$.immutableBindings.architecture.position.owner",
     "$.immutableBindings.architecture.position.positionTimelock",
     "$.immutableBindings.authorityFacade.authorityAddress",
-    "$.immutableBindings.authorityFacade.facadeAddress"
+    "$.immutableBindings.authorityFacade.facadeAddress",
+    "$.immutableBindings.postLaunchRuntimeResult.receiptVerifierAddress"
   ].filter((field) => getPath(value, field) !== undefined);
 }
 

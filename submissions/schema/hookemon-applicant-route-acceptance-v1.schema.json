@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:programmable:hookemon-platform-capability-overlay:1.0.0",
+  "$id": "urn:programmable:hookemon-platform-capability-overlay:1.1.0",
   "title": "Programmable Hookemon platform capability overlay",
-  "description": "Fail-closed review-only Hookemon platform overlay. It binds a separate public Website acceptance claim and cannot activate a route until every immutable binding and the separately reviewed frozen overlay are published.",
+  "description": "Fail-closed Hookemon-only two-state capability overlay. A frozen prelaunch grant may approve an exact normal-CREATE plan, but GRAPH_EXECUTED_AND_STAMPED is possible only through a separately typed finality-bound adoption receipt.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -26,10 +26,10 @@
   ],
   "properties": {
     "$schema": {
-      "const": "urn:programmable:hookemon-platform-capability-overlay:1.0.0"
+      "const": "urn:programmable:hookemon-platform-capability-overlay:1.1.0"
     },
     "schemaVersion": {
-      "const": "1.0.0"
+      "const": "1.1.0"
     },
     "capability": {
       "type": "object",
@@ -41,6 +41,7 @@
         "profile",
         "currentnessRequired",
         "activationState",
+        "completionState",
         "catalogIntegrated"
       ],
       "properties": {
@@ -48,7 +49,7 @@
           "const": "exact-hookemon-completed-graph-adoption"
         },
         "version": {
-          "const": "1.0.0"
+          "const": "1.1.0"
         },
         "acceptedRoute": {
           "type": "object",
@@ -71,8 +72,14 @@
           }
         },
         "currentnessRequired": { "const": true },
-        "activationState": { "const": "disabled-pending-final-hashes" },
-        "catalogIntegrated": { "const": false }
+        "activationState": {
+          "enum": [
+            "PENDING_FINAL_PRELAUNCH_BINDINGS",
+            "APPROVED_LAUNCH_ANYTIME"
+          ]
+        },
+        "completionState": { "const": "PENDING_GRAPH_EXECUTION" },
+        "catalogIntegrated": { "type": "boolean" }
       }
     },
     "reviewedRequest": {
@@ -255,6 +262,8 @@
         "platformContracts",
         "architecture",
         "route",
+        "prelaunchGrant",
+        "postLaunchRuntimeResult",
         "authorityFacade",
         "publicAcceptance",
         "platformAttestation"
@@ -266,6 +275,8 @@
         "platformContracts": { "$ref": "#/$defs/platformContractsBinding" },
         "architecture": { "$ref": "#/$defs/architectureBinding" },
         "route": { "$ref": "#/$defs/routeBinding" },
+        "prelaunchGrant": { "$ref": "#/$defs/prelaunchGrantBinding" },
+        "postLaunchRuntimeResult": { "$ref": "#/$defs/postLaunchRuntimeResultPolicy" },
         "authorityFacade": { "$ref": "#/$defs/authorityFacadeBinding" },
         "publicAcceptance": { "$ref": "#/$defs/publicAcceptanceBinding" },
         "platformAttestation": { "$ref": "#/$defs/platformAttestationBinding" }
@@ -453,6 +464,95 @@
         "evidenceSha256": { "$ref": "#/$defs/nullableSha256" }
       }
     },
+    "prelaunchGrantBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approvalScopeHash",
+        "launchConfigTemplateHash",
+        "graphTemplateHash",
+        "securityReleaseHash",
+        "profileIdentityHash",
+        "kernelIdentityHash",
+        "registryIdentityHash",
+        "authorityIdentityHash",
+        "permitAuthorityKeyEpoch",
+        "receiptAuthorityKeyEpoch"
+      ],
+      "properties": {
+        "approvalScopeHash": { "$ref": "#/$defs/nullableBytes32" },
+        "launchConfigTemplateHash": { "$ref": "#/$defs/nullableBytes32" },
+        "graphTemplateHash": { "$ref": "#/$defs/nullableBytes32" },
+        "securityReleaseHash": { "$ref": "#/$defs/nullableSha256" },
+        "profileIdentityHash": { "$ref": "#/$defs/nullableSha256" },
+        "kernelIdentityHash": { "$ref": "#/$defs/nullableSha256" },
+        "registryIdentityHash": { "$ref": "#/$defs/nullableSha256" },
+        "authorityIdentityHash": { "$ref": "#/$defs/nullableSha256" },
+        "permitAuthorityKeyEpoch": { "$ref": "#/$defs/nullablePositiveUintString" },
+        "receiptAuthorityKeyEpoch": { "$ref": "#/$defs/nullablePositiveUintString" }
+      }
+    },
+    "postLaunchRuntimeResultPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "receiptSchema",
+        "receiptSchemaSha256",
+        "receiptVerifierContractPath",
+        "receiptVerifierAbiSha256",
+        "receiptVerifierRuntimeCodeHash",
+        "receiptVerifierAddress",
+        "receiptAuthorizerBindingSha256",
+        "positionResultDomain",
+        "positionTokenIdPath",
+        "requiredAtAdoption",
+        "requiredBeforeState",
+        "kernelEnforced",
+        "profileEnforced",
+        "registryStampEnforced",
+        "oneWinnerEnforced",
+        "revocationEnforced",
+        "requiredRuntimeFields"
+      ],
+      "properties": {
+        "receiptSchema": { "$ref": "#/$defs/nullableIdentifier" },
+        "receiptSchemaSha256": { "$ref": "#/$defs/nullableSha256" },
+        "receiptVerifierContractPath": { "$ref": "#/$defs/nullableRepositoryPath" },
+        "receiptVerifierAbiSha256": { "$ref": "#/$defs/nullableSha256" },
+        "receiptVerifierRuntimeCodeHash": { "$ref": "#/$defs/nullableBytes32" },
+        "receiptVerifierAddress": { "$ref": "#/$defs/nullableAddress" },
+        "receiptAuthorizerBindingSha256": { "$ref": "#/$defs/nullableSha256" },
+        "positionResultDomain": { "const": "HookemonPostLaunchResult:v1" },
+        "positionTokenIdPath": { "const": "$.position.tokenId" },
+        "requiredAtAdoption": { "const": true },
+        "requiredBeforeState": { "const": "GRAPH_EXECUTED_AND_STAMPED" },
+        "kernelEnforced": { "const": true },
+        "profileEnforced": { "const": true },
+        "registryStampEnforced": { "const": true },
+        "oneWinnerEnforced": { "const": true },
+        "revocationEnforced": { "const": true },
+        "requiredRuntimeFields": {
+          "const": [
+            "positionTokenId",
+            "launcherRuntimeCodeHash",
+            "architectureResultHash",
+            "currentArchitectureStateHash",
+            "expectedResultHash",
+            "stampRequestHash",
+            "stampHash",
+            "adoptionTransactionHash",
+            "adoptionNonce",
+            "adoptionGasLimit",
+            "adoptionCalldataSha256",
+            "permitDigest",
+            "currentnessHash",
+            "finalityEvidenceHash",
+            "recordUrl",
+            "recordSha256"
+          ]
+        }
+      }
+    },
     "supportGraphBinding": {
       "type": "object",
       "additionalProperties": false,
@@ -558,7 +658,7 @@
       ],
       "properties": {
         "claimType": {
-          "const": "urn:programmable:hookemon-applicant-route-acceptance:1.0.0"
+          "const": "urn:programmable:hookemon-applicant-route-acceptance:1.1.0"
         },
         "canonicalEncoding": { "const": "canonical-json-v2-utf8-no-trailing-newline" },
         "schemaSha256": { "$ref": "#/$defs/nullableSha256" },
