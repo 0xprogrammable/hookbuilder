@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "programmable.applicant-route-acceptance-golden.v1",
+  "claimPath": "submissions/examples/applicant-route-acceptance-v1.example.json",
+  "claimSchema": "urn:programmable:applicant-route-acceptance:1.0.0",
+  "canonicalization": "urn:programmable:canonical-json:2.0.0",
+  "canonicalClaimEncoding": "canonical-json-v2-utf8-no-trailing-newline",
+  "canonicalByteLength": 22202,
+  "claimSha256": "sha256:02e0fba56c294bcef1d6d40dace601b96cf647f60f1b24fc16e1303f19b1aa39",
+  "reviewedPlanSupersessionSha256": "sha256:925a7675a61761e0148d40acb6f18ecad6bacccb3dc9809aae40abc021e26ef5",
+  "routerArtifactBindingSha256": "sha256:f93920386d226d26dcf55105fcfcc2400bcb3b211974daa3e09cd12082bb6b53",
+  "allowedExecutionModes": [
+    "EXACT_FACTORY_LAUNCH_EXECUTED",
+    "EXACT_EXISTING_LAUNCH_ADOPTED"
+  ],
+  "adoptionDisclosure": {
+    "attests": "The Router validates and stamps the exact reviewed Shards launch identity.",
+    "doesNotAttest": [
+      "The launch wallet called the Shards factory.",
+      "The market remained pristine or untraded."
+    ]
+  },
+  "factoryDeploymentSenderPolicy": {
+    "plannedDeploymentSender": "0x2Bb333d48DFAF1596D9036671d2E43168994249E",
+    "acceptedObservedDeploymentSender": "any-eoa",
+    "acceptedObservedDeploymentSenderCondition": "exact-canonical-create2-proxy-salt-initcode-calldata-factory-renderer-only"
+  },
+  "applicationAcceptanceSubjectV1": {
+    "schemaVersion": "programmable.application-acceptance-subject.v1",
+    "applicantGithubUserId": 155705664,
+    "reviewedRequest": {
+      "path": "submissions/requests/1329073878-shards-v1.json",
+      "applicationManifestSha256": "sha256:e069926d380e56bee001dd7cfeda591db56164b1acf7478b478dd62a6e119ec2"
+    }
+  },
+  "canonicalSubjectByteLength": 278,
+  "acceptanceSubjectHash": "sha256:948a920b86aa915bc2dfcdcf56b271f41a2843fc1360b734e9221c0533d960b8",
+  "expectedValidationBlockers": [
+    "ROUTE_ACCEPTANCE_CAPABILITY_DISABLED",
+    "ROUTE_ACCEPTANCE_PREDEPLOYMENT_EVIDENCE_PENDING",
+    "ROUTE_ACCEPTANCE_EXAMPLE_PLACEHOLDER"
+  ],
+  "authorizationGranted": false
+}

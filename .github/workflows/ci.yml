@@ -10,12 +10,293 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  plan:
+    name: Internal / changed-input plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      mode: ${{ steps.plan.outputs.mode }}
+      reason: ${{ steps.plan.outputs.reason }}
+      request_paths: ${{ steps.plan.outputs.request_paths }}
+      change_plan_sha256: ${{ steps.plan.outputs.change_plan_sha256 }}
+      head_sha: ${{ steps.plan.outputs.head_sha }}
+      trusted_revision: ${{ steps.trusted.outputs.trusted_revision }}
+      capability_status: ${{ steps.capability.outputs.capability_status }}
+    steps:
+      - name: Checkout exact revision and its comparison history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact revision
+        env:
+          EXPECTED_REVISION: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_REVISION"
+      - name: Materialize trusted control plane from the protected base
+        id: trusted
+        env:
+          TRUSTED_REVISION: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
+        run: |
+          TRUSTED_ROOT="$RUNNER_TEMP/trusted-ci"
+          git worktree add --detach "$TRUSTED_ROOT" "$TRUSTED_REVISION"
+          test "$(git -C "$TRUSTED_ROOT" rev-parse HEAD)" = "$TRUSTED_REVISION"
+          echo "trusted_root=$TRUSTED_ROOT" >> "$GITHUB_OUTPUT"
+          echo "trusted_revision=$TRUSTED_REVISION" >> "$GITHUB_OUTPUT"
+      - name: Use pinned Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Classify changed immutable inputs once
+        id: plan
+        run: >-
+          node "$RUNNER_TEMP/trusted-ci/scripts/ci/plan-applicant-fast-lane.mjs"
+          --event "${{ github.event_name }}"
+          --base "${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'push' && github.event.before || github.sha }}"
+          --head "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+          --output "$RUNNER_TEMP/applicant-fast-lane-plan.json"
+          --github-output "$GITHUB_OUTPUT"
+      - name: Check route compatibility before expensive work
+        id: capability
+        if: ${{ steps.plan.outputs.mode == 'applicant' || steps.plan.outputs.mode == 'mixed' }}
+        run: |
+          mkdir -p -- "$RUNNER_TEMP/route-capability"
+          node "$RUNNER_TEMP/trusted-ci/scripts/ci/check-applicant-route-capability.mjs" \
+            --requests-json '${{ steps.plan.outputs.request_paths }}' \
+            --candidate-root "$GITHUB_WORKSPACE" \
+            --output "$RUNNER_TEMP/route-capability/report.json"
+          echo "capability_status=$(node -e 'const fs=require("fs"); process.stdout.write(JSON.parse(fs.readFileSync(process.argv[1], "utf8")).status)' "$RUNNER_TEMP/route-capability/report.json")" >> "$GITHUB_OUTPUT"
+      - name: Preserve the exact capability result for internal shards
+        if: ${{ (steps.plan.outputs.mode == 'applicant' || steps.plan.outputs.mode == 'mixed') && always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: route-capability-${{ steps.plan.outputs.head_sha }}
+          path: ${{ runner.temp }}/route-capability/report.json
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  applicant-acceptance:
+    name: Internal / Website route acceptance
+    needs: plan
+    if: ${{ (needs.plan.outputs.mode == 'applicant' || needs.plan.outputs.mode == 'mixed') && needs.plan.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout protected control plane
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.trusted_revision }}
+          persist-credentials: false
+      - name: Verify protected control-plane revision
+        env:
+          EXPECTED_REVISION: ${{ needs.plan.outputs.trusted_revision }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_REVISION"
+      - name: Use pinned Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Download exact compatibility result
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: route-capability-${{ needs.plan.outputs.head_sha }}
+          path: ${{ runner.temp }}/route-capability
+      - name: Require Website acceptance for every route binding change
+        env:
+          WEBSITE_ACCEPTANCE_CLAIM_URL: ${{ vars.WEBSITE_APPLICANT_ROUTE_ACCEPTANCE_CLAIM_URL }}
+          WEBSITE_ACCEPTANCE_CLAIM_SHA256: ${{ vars.WEBSITE_APPLICANT_ROUTE_ACCEPTANCE_CLAIM_SHA256 }}
+          WEBSITE_ACCEPTANCE_RECORD_URL: ${{ vars.WEBSITE_APPLICANT_ROUTE_ACCEPTANCE_RECORD_URL }}
+          WEBSITE_ACCEPTANCE_RECORD_SHA256: ${{ vars.WEBSITE_APPLICANT_ROUTE_ACCEPTANCE_RECORD_SHA256 }}
+        run: |
+          mkdir -p -- "$RUNNER_TEMP/website-route-acceptance"
+          STATUS="$(node -e 'const fs=require("fs"); process.stdout.write(JSON.parse(fs.readFileSync(process.argv[1], "utf8")).status)' "$RUNNER_TEMP/route-capability/report.json")"
+          if test "$STATUS" = ROUTE_ACCEPTANCE_REQUIRED; then
+            test -n "$WEBSITE_ACCEPTANCE_CLAIM_URL"
+            test -n "$WEBSITE_ACCEPTANCE_CLAIM_SHA256"
+            test -n "$WEBSITE_ACCEPTANCE_RECORD_URL"
+            test -n "$WEBSITE_ACCEPTANCE_RECORD_SHA256"
+            node scripts/ci/fetch-exact-artifact.mjs --url "$WEBSITE_ACCEPTANCE_CLAIM_URL" --sha256 "$WEBSITE_ACCEPTANCE_CLAIM_SHA256" --output "$RUNNER_TEMP/website-route-acceptance/claim.json" --attempts 3 --maximum-bytes 131072
+            node scripts/ci/fetch-exact-artifact.mjs --url "$WEBSITE_ACCEPTANCE_RECORD_URL" --sha256 "$WEBSITE_ACCEPTANCE_RECORD_SHA256" --output "$RUNNER_TEMP/website-route-acceptance/record.json" --attempts 3 --maximum-bytes 131072
+            CLAIM_ARGS=(--claim "$RUNNER_TEMP/website-route-acceptance/claim.json" --record "$RUNNER_TEMP/website-route-acceptance/record.json")
+          else
+            CLAIM_ARGS=()
+          fi
+          node scripts/ci/assert-applicant-route-acceptance.mjs \
+            --route-report "$RUNNER_TEMP/route-capability/report.json" \
+            "${CLAIM_ARGS[@]}" \
+            --output "$RUNNER_TEMP/website-route-acceptance/receipt.json" \
+            --accepted-route-report "$RUNNER_TEMP/website-route-acceptance/accepted-route-report.json"
+      - name: Preserve Website acceptance receipt
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: website-route-acceptance-${{ needs.plan.outputs.head_sha }}
+          path: ${{ runner.temp }}/website-route-acceptance
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  applicant-mutable:
+    name: Internal / applicant changed inputs / ${{ matrix.shard }}
+    needs: [plan, applicant-acceptance]
+    if: ${{ (needs.plan.outputs.mode == 'applicant' || needs.plan.outputs.mode == 'mixed') && needs.applicant-acceptance.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        shard:
+          - intake
+          - source-currentness
+          - reproducibility
+          - security
+    steps:
+      - name: Checkout candidate data revision without executing its control plane
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact revision
+        env:
+          EXPECTED_REVISION: ${{ needs.plan.outputs.head_sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_REVISION"
+      - name: Use pinned Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Materialize protected control plane
+        env:
+          TRUSTED_REVISION: ${{ needs.plan.outputs.trusted_revision }}
+        run: |
+          TRUSTED_ROOT="$RUNNER_TEMP/trusted-ci"
+          git worktree add --detach "$TRUSTED_ROOT" "$TRUSTED_REVISION"
+          test "$(git -C "$TRUSTED_ROOT" rev-parse HEAD)" = "$TRUSTED_REVISION"
+      - name: Download the acceptance-bound capability result
+        if: ${{ matrix.shard == 'reproducibility' || matrix.shard == 'security' }}
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: website-route-acceptance-${{ needs.plan.outputs.head_sha }}
+          path: ${{ runner.temp }}/website-route-acceptance
+      - name: Validate intake and schema inputs
+        if: ${{ matrix.shard == 'intake' }}
+        run: >-
+          node "$RUNNER_TEMP/trusted-ci/scripts/ci/run-applicant-intake.mjs"
+          --requests-json '${{ needs.plan.outputs.request_paths }}'
+          --candidate-root "$GITHUB_WORKSPACE"
+          --output "$RUNNER_TEMP/applicant-intake-receipt.json"
+      - name: Verify exact public source commit and tree with bounded retry
+        if: ${{ matrix.shard == 'source-currentness' }}
+        run: >-
+          node "$RUNNER_TEMP/trusted-ci/scripts/ci/verify-applicant-sources.mjs"
+          --requests-json '${{ needs.plan.outputs.request_paths }}'
+          --candidate-root "$GITHUB_WORKSPACE"
+          --output "$RUNNER_TEMP/applicant-source-receipt.json"
+      - name: Verify exact source manifest reproducibility inputs
+        if: ${{ matrix.shard == 'reproducibility' }}
+        run: >-
+          node "$RUNNER_TEMP/trusted-ci/scripts/ci/verify-applicant-revision-inputs.mjs"
+          --check reproducibility
+          --requests-json '${{ needs.plan.outputs.request_paths }}'
+          --candidate-root "$GITHUB_WORKSPACE"
+          --route-report "$RUNNER_TEMP/website-route-acceptance/accepted-route-report.json"
+          --output "$RUNNER_TEMP/applicant-reproducibility-receipt.json"
+      - name: Verify exact profile security bindings
+        if: ${{ matrix.shard == 'security' }}
+        run: >-
+          node "$RUNNER_TEMP/trusted-ci/scripts/ci/verify-applicant-revision-inputs.mjs"
+          --check security
+          --requests-json '${{ needs.plan.outputs.request_paths }}'
+          --candidate-root "$GITHUB_WORKSPACE"
+          --route-report "$RUNNER_TEMP/website-route-acceptance/accepted-route-report.json"
+          --output "$RUNNER_TEMP/applicant-security-receipt.json"
+
+  platform-attestation:
+    name: Internal / platform profile attestation
+    needs: [plan, applicant-acceptance]
+    if: ${{ (needs.plan.outputs.mode == 'applicant' || needs.plan.outputs.mode == 'mixed') && needs.applicant-acceptance.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout protected control plane
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.trusted_revision }}
+          persist-credentials: false
+      - name: Verify protected control-plane revision
+        env:
+          EXPECTED_REVISION: ${{ needs.plan.outputs.trusted_revision }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_REVISION"
+      - name: Use pinned Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Download acceptance-bound route compatibility result
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: website-route-acceptance-${{ needs.plan.outputs.head_sha }}
+          path: ${{ runner.temp }}/website-route-acceptance
+      - name: Require the pinned Ed25519 platform profile attestation
+        env:
+          ATTESTATION_URL: ${{ vars.APPLICANT_PLATFORM_ATTESTATION_URL }}
+          ATTESTATION_SHA256: ${{ vars.APPLICANT_PLATFORM_ATTESTATION_SHA256 }}
+          APPLICANT_PLATFORM_ATTESTATION_KEY_ID: ${{ vars.APPLICANT_PLATFORM_ATTESTATION_KEY_ID }}
+          APPLICANT_PLATFORM_ATTESTATION_PUBLIC_KEY_PEM_BASE64: ${{ vars.APPLICANT_PLATFORM_ATTESTATION_PUBLIC_KEY_PEM_BASE64 }}
+          APPLICANT_PLATFORM_ATTESTATION_SHA256: ${{ vars.APPLICANT_PLATFORM_ATTESTATION_SHA256 }}
+        run: |
+          test -n "$ATTESTATION_URL"
+          test -n "$ATTESTATION_SHA256"
+          test -n "$APPLICANT_PLATFORM_ATTESTATION_KEY_ID"
+          test -n "$APPLICANT_PLATFORM_ATTESTATION_PUBLIC_KEY_PEM_BASE64"
+          mkdir -p -- "$RUNNER_TEMP/platform-profile-attestation"
+          node scripts/ci/fetch-exact-artifact.mjs \
+            --url "$ATTESTATION_URL" \
+            --sha256 "$ATTESTATION_SHA256" \
+            --output "$RUNNER_TEMP/platform-profile-attestation/attestation.json" \
+            --attempts 3 \
+            --maximum-bytes 262144
+          node scripts/ci/verify-platform-profile-attestation.mjs \
+            --attestation "$RUNNER_TEMP/platform-profile-attestation/attestation.json" \
+            --route-report "$RUNNER_TEMP/website-route-acceptance/accepted-route-report.json" \
+            --output "$RUNNER_TEMP/platform-profile-attestation/receipt.json"
+
+  applicant-gate:
+    name: Applicant gate
+    needs: [plan, applicant-acceptance, applicant-mutable]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout protected gate logic
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.trusted_revision }}
+          persist-credentials: false
+      - name: Verify protected gate revision
+        env:
+          EXPECTED_REVISION: ${{ needs.plan.outputs.trusted_revision }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_REVISION"
+      - name: Use pinned Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Aggregate applicant-only work behind one stable context
+        run: >-
+          node scripts/ci/assert-fast-lane-gate.mjs
+          --gate applicant
+          --mode "${{ needs.plan.outputs.mode }}"
+          --plan "${{ needs.plan.result }}"
+          --acceptance "${{ needs.applicant-acceptance.result }}"
+          --mutable "${{ needs.applicant-mutable.result }}"
+
   repository:
-    name: Repository and skill / Node ${{ matrix.node }}
+    name: Internal / repository and skill / Node ${{ matrix.node }}
+    needs: plan
+    if: ${{ needs.plan.outputs.mode == 'platform' || needs.plan.outputs.mode == 'mixed' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -54,7 +335,9 @@ jobs:
         run: gh skill publish --dry-run
 
   reference-kernel:
-    name: Reference fee kernel / ${{ matrix.kernel }}
+    name: Internal / reference fee kernel / ${{ matrix.kernel }}
+    needs: plan
+    if: ${{ needs.plan.outputs.mode == 'platform' || needs.plan.outputs.mode == 'mixed' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -123,9 +406,9 @@ jobs:
         run: slither . --exclude-dependencies --filter-paths 'node_modules|test'
 
   reference-kernel-required:
-    name: Reference fee kernel
-    needs: reference-kernel
-    if: ${{ always() }}
+    name: Internal / reference fee kernel aggregate
+    needs: [plan, reference-kernel]
+    if: ${{ always() && (needs.plan.outputs.mode == 'platform' || needs.plan.outputs.mode == 'mixed') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -135,7 +418,9 @@ jobs:
         run: test "$MATRIX_RESULT" = success
 
   codeql:
-    name: CodeQL
+    name: Internal / CodeQL
+    needs: plan
+    if: ${{ needs.plan.outputs.mode == 'platform' || needs.plan.outputs.mode == 'mixed' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -157,3 +442,34 @@ jobs:
           languages: javascript-typescript
       - name: Analyze
         uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
+
+  platform-profile-gate:
+    name: Platform/profile gate
+    needs: [plan, repository, reference-kernel-required, codeql, platform-attestation]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout protected gate logic
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.trusted_revision }}
+          persist-credentials: false
+      - name: Verify protected gate revision
+        env:
+          EXPECTED_REVISION: ${{ needs.plan.outputs.trusted_revision }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_REVISION"
+      - name: Use pinned Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Aggregate immutable platform/profile work behind one stable context
+        run: >-
+          node scripts/ci/assert-fast-lane-gate.mjs
+          --gate platform
+          --mode "${{ needs.plan.outputs.mode }}"
+          --plan "${{ needs.plan.result }}"
+          --attestation "${{ needs.platform-attestation.result }}"
+          --repository "${{ needs.repository.result }}"
+          --reference-kernel "${{ needs.reference-kernel-required.result }}"
+          --codeql "${{ needs.codeql.result }}"

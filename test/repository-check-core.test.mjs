@@ -29,6 +29,7 @@ test("repository check plan runs maintainability once and bounds every child sui
   assert.deepEqual(plan.map(({ id }) => id), [
     "plugin-manifests",
     "applicant-submissions",
+    "route-capabilities",
     "mcp-server",
     "portable-skill",
     "eval-structure",

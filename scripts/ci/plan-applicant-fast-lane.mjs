@@ -1,0 +1,116 @@
+#!/usr/bin/env node
+
+import childProcess from "node:child_process";
+import fs from "node:fs";
+import process from "node:process";
+
+import {
+  ApplicantFastLaneError,
+  classifyChangedPaths
+} from "./applicant-fast-lane-core.mjs";
+
+const GIT_OBJECT_ID = /^[0-9a-f]{40}$/u;
+const ZERO_COMMIT = "0".repeat(40);
+
+try {
+  const options = parseArgs(process.argv.slice(2));
+  const entries = options.event === "pull_request" || (options.event === "push" && options.base !== ZERO_COMMIT)
+    ? readChangedPaths(options.base, options.head)
+    : [{ status: "M", path: ".github/workflows/ci.yml" }];
+  const plan = {
+    ...classifyChangedPaths(entries),
+    event: options.event,
+    base: options.base,
+    head: options.head
+  };
+  if (options.output !== null) writeNewJson(options.output, plan);
+  if (options.githubOutput !== null) {
+    fs.appendFileSync(options.githubOutput, [
+      `mode=${plan.mode}`,
+      `reason=${plan.reason}`,
+      `request_paths=${JSON.stringify(plan.requestPaths)}`,
+      `change_plan_sha256=${plan.changePlanSha256}`,
+      `head_sha=${plan.head}`
+    ].join("\n") + "\n");
+  }
+  process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
+} catch (error) {
+  const code = error instanceof ApplicantFastLaneError ? error.code : "FAST_LANE_PLAN_FAILED";
+  process.stderr.write(`plan-applicant-fast-lane: ${code}: ${error.message}\n`);
+  process.exitCode = 1;
+}
+
+function parseArgs(args) {
+  const values = { event: null, base: null, head: null, output: null, githubOutput: null };
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (argument === "--event") values.event = take(args, ++index, argument);
+    else if (argument === "--base") values.base = take(args, ++index, argument);
+    else if (argument === "--head") values.head = take(args, ++index, argument);
+    else if (argument === "--output") values.output = take(args, ++index, argument);
+    else if (argument === "--github-output") values.githubOutput = take(args, ++index, argument);
+    else throw new Error(`unknown argument: ${argument}`);
+  }
+  if (!new Set(["pull_request", "push", "workflow_dispatch"]).has(values.event)) {
+    throw new Error("--event must be pull_request, push, or workflow_dispatch");
+  }
+  if (!GIT_OBJECT_ID.test(values.head ?? "")) throw new Error("--head must be an exact lowercase commit");
+  if ((values.event === "pull_request" || values.event === "push") && !GIT_OBJECT_ID.test(values.base ?? "")) {
+    throw new Error("--base must be an exact lowercase commit for pull requests and pushes");
+  }
+  if (values.base === null) values.base = values.head;
+  return values;
+}
+
+function readChangedPaths(base, head) {
+  assertCommit(base);
+  assertCommit(head);
+  const mergeBase = resolveMergeBase(base, head);
+  const result = childProcess.spawnSync(
+    "git",
+    ["diff", "--name-status", "-z", "--no-renames", mergeBase, head, "--"],
+    { encoding: null, shell: false, stdio: ["ignore", "pipe", "pipe"] }
+  );
+  if (result.status !== 0) {
+    throw new Error(`git diff failed: ${String(result.stderr).trim()}`);
+  }
+  const fields = result.stdout.toString("utf8").split("\0");
+  if (fields.at(-1) === "") fields.pop();
+  if (fields.length % 2 !== 0) throw new Error("git diff returned malformed name-status output");
+  const entries = [];
+  for (let index = 0; index < fields.length; index += 2) {
+    entries.push({ status: fields[index], path: fields[index + 1] });
+  }
+  return entries;
+}
+
+function resolveMergeBase(base, head) {
+  const result = childProcess.spawnSync("git", ["merge-base", base, head], {
+    encoding: "utf8",
+    shell: false,
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+  const mergeBase = result.status === 0 ? result.stdout.trim() : "";
+  if (!GIT_OBJECT_ID.test(mergeBase)) throw new Error(`git merge-base failed: ${String(result.stderr).trim()}`);
+  return mergeBase;
+}
+
+function assertCommit(revision) {
+  const result = childProcess.spawnSync("git", ["cat-file", "-e", `${revision}^{commit}`], {
+    encoding: "utf8",
+    shell: false,
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+  if (result.status !== 0) throw new Error(`git commit is unavailable: ${revision}`);
+}
+
+function take(args, index, flag) {
+  const value = args[index];
+  if (!value || value.startsWith("--")) throw new Error(`${flag} needs a value`);
+  return value;
+}
+
+function writeNewJson(output, value) {
+  if (fs.existsSync(output)) throw new Error("--output must identify a new file");
+  fs.writeFileSync(output, `${JSON.stringify(value, null, 2)}\n`, { flag: "wx" });
+}

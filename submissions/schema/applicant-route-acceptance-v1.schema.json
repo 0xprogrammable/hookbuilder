@@ -1,0 +1,899 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:programmable:applicant-route-acceptance:1.0.0",
+  "title": "Programmable applicant route acceptance",
+  "description": "Portable review-only claim payload for one durable Website/Authority acceptance of an immutable production route binding.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "intake",
+    "reviewedRequest",
+    "applicant",
+    "source",
+    "originalRoute",
+    "acceptedRoute",
+    "routeCapability",
+    "reviewedPlanSupersession",
+    "routerArtifactBinding",
+    "router",
+    "routeBinding",
+    "reviewedPlan",
+    "acceptanceScope",
+    "reviewedRequestedActions",
+    "authorizationGranted",
+    "requestedActions"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "urn:programmable:applicant-route-acceptance:1.0.0"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "intake": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "repositoryId"],
+      "properties": {
+        "repository": {
+          "const": "0xprogrammable/hookbuilder"
+        },
+        "repositoryId": {
+          "const": 1320085947
+        }
+      }
+    },
+    "reviewedRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "applicationManifestSha256", "pullRequest"],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "applicationManifestSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "pullRequest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["number", "headCommit", "authorGithubUserId"],
+          "properties": {
+            "number": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+            "headCommit": { "$ref": "#/$defs/gitObjectId" },
+            "authorGithubUserId": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
+          }
+        }
+      }
+    },
+    "applicant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["githubLogin", "githubUserId", "launchWallet"],
+      "properties": {
+        "githubLogin": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$"
+        },
+        "githubUserId": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "launchWallet": {
+          "$ref": "#/$defs/nonzeroEthereumAddress"
+        }
+      }
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "originalRoute": {
+      "const": {
+        "routeId": "custom-graph",
+        "routeVersion": "1.0.0",
+        "chainId": "1"
+      }
+    },
+    "acceptedRoute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["routeId", "routeVersion", "chainId"],
+      "properties": {
+        "routeId": {
+          "const": "nested-factory"
+        },
+        "routeVersion": {
+          "const": "1.0.0"
+        },
+        "chainId": {
+          "const": "1"
+        }
+      }
+    },
+    "routeCapability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "catalogVersion",
+        "profileId",
+        "profileVersion",
+        "planSchemaId",
+        "profileSha256",
+        "reviewedPlanSupersessionSha256",
+        "profileKeyDomain",
+        "profileKeyTypehash",
+        "profileIdHash",
+        "profileVersionHash",
+        "profileKey",
+        "revenuePolicyHash",
+        "revenuePolicySemantics",
+        "routeTargetAddress",
+        "routeTargetRuntimeCodeHash",
+        "factoryAddress",
+        "factoryRuntimeCodeHash",
+        "factoryInitialStateRequirement",
+        "predeploymentEvidenceSha256",
+        "gasCapReceiptSha256",
+        "currentnessAttestationRequired",
+        "activationState",
+        "platformAttestation"
+      ],
+      "properties": {
+        "catalogVersion": { "const": "1.0.0" },
+        "profileId": { "const": "exact-shards-nested-factory" },
+        "profileVersion": { "const": "1.0.0" },
+        "planSchemaId": { "const": "urn:programmable:reviewed-route-plan:1.0.0" },
+        "profileSha256": {
+          "const": "sha256:cfe926c42918ce1ca23efe8fa7352c2b6ed7090002f62a0d6d64481883205591"
+        },
+        "reviewedPlanSupersessionSha256": {
+          "const": "sha256:925a7675a61761e0148d40acb6f18ecad6bacccb3dc9809aae40abc021e26ef5"
+        },
+        "profileKeyDomain": {
+          "const": "ProgrammableNestedFactoryProfileV1(bytes32 profileIdHash,bytes32 profileVersionHash)"
+        },
+        "profileKeyTypehash": {
+          "const": "0xd31d9770f502a83c5557bddbcc0249b7a2ff20d8378b2c2d68e90fd5514d2a51"
+        },
+        "profileIdHash": {
+          "const": "0x80bf21eb2466daeb15cfbbc66749f03be10a9f84aa4060c8ce97146a93b8d33d"
+        },
+        "profileVersionHash": {
+          "const": "0x06c015bd22b4c69690933c1058878ebdfef31f9aaae40bbe86d8a09fe1b2972c"
+        },
+        "profileKey": {
+          "const": "0xb90e215e0e29c0dacf021e5e778847af4100433ee7d22014b73f8ca4add09d0c"
+        },
+        "revenuePolicyHash": {
+          "const": "0xaa78b0bf63fca83fa9b969fbb6b2bb1ecabcbe49908a48f92403e8e51e4adab2"
+        },
+        "revenuePolicySemantics": {
+          "const": "exact-profile-typed-v1"
+        },
+        "routeTargetAddress": {
+          "const": null
+        },
+        "routeTargetRuntimeCodeHash": {
+          "const": null
+        },
+        "factoryAddress": {
+          "const": "0x9442a520e7b31D10177C75A363355C2C29141ac5"
+        },
+        "factoryRuntimeCodeHash": {
+          "const": "0x134a9e5674f22e62e939c2238693077b8027c553bb26d6a4e9e3d8554e5f85b5"
+        },
+        "factoryInitialStateRequirement": {
+          "const": "exact-predeployed-pair"
+        },
+        "predeploymentEvidenceSha256": {
+          "const": null
+        },
+        "gasCapReceiptSha256": {
+          "const": null
+        },
+        "currentnessAttestationRequired": {
+          "const": true
+        },
+        "activationState": {
+          "const": "disabled-pending-production-release-attestation"
+        },
+        "platformAttestation": {
+          "const": null
+        }
+      }
+    },
+    "reviewedPlanSupersession": {
+      "$ref": "#/$defs/reviewedPlanSupersession"
+    },
+    "routerArtifactBinding": {
+      "$ref": "#/$defs/routerArtifactBinding"
+    },
+    "router": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "deploymentKind", "source", "contractPath", "runtimeCodeHash"],
+      "properties": {
+        "address": {
+          "$ref": "#/$defs/nonzeroEthereumAddress"
+        },
+        "deploymentKind": {
+          "const": "immutable"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "contractPath": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "runtimeCodeHash": {
+          "$ref": "#/$defs/bytes32"
+        }
+      }
+    },
+    "routeBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["routePayloadHash", "expectedResultHash", "launchId", "stampRequestHash"],
+      "properties": {
+        "routePayloadHash": { "$ref": "#/$defs/bytes32" },
+        "expectedResultHash": { "$ref": "#/$defs/bytes32" },
+        "launchId": { "$ref": "#/$defs/bytes32" },
+        "stampRequestHash": { "$ref": "#/$defs/bytes32" }
+      }
+    },
+    "reviewedPlan": {
+      "$ref": "#/$defs/reviewedPlan"
+    },
+    "acceptanceScope": {
+      "const": "route-binding-review-only"
+    },
+    "reviewedRequestedActions": {
+      "const": ["review"]
+    },
+    "authorizationGranted": {
+      "const": false
+    },
+    "requestedActions": {
+      "const": ["route-binding-review"]
+    }
+  },
+  "$defs": {
+    "routerArtifactBinding": {
+      "const": {
+        "schemaVersion": "programmable.router-v2-artifact-binding.v1",
+        "artifact": {
+          "path": "outputs/shards-nested-factory-route-v1.canonical.json",
+          "bytes": 1287041,
+          "sha256": "sha256:066475058bfd47b85b4216f95b434756d67d7e289ffb36535c121ef5d7c11bab",
+          "keccak256": "0x8c5521d6796e3e63c3e2cf82e1122c952e6465c345d8a10b3773a70aa2419fb3"
+        },
+        "integrity": {
+          "path": "outputs/shards-nested-factory-route-v1.canonical.integrity.json",
+          "bytes": 3739,
+          "sha256": "sha256:74028d65363189804912f2907400da11098d90579c9261e1d087b2d5a709ae6f"
+        },
+        "generator": {
+          "path": "work/generate-shards-route-artifact.mjs",
+          "sha256": "sha256:3876075dfdb50f82bf5168bd12d42ae11594dbb8ffd68c9cbadcd7111ca0650a"
+        },
+        "routerSource": {
+          "repository": "https://github.com/0xprogrammable/programmable",
+          "commit": "1ac92f9694fb5c3ae534c65669775e634e3214f7",
+          "tree": "8e6920b46aa30e5a8afbebc3a86adfba22cc7628"
+        },
+        "code": {
+          "routerCreationCodeHash": "0xac1bd98a474524a5439ff802c52a9e29d5599dceadc5dbd2d82b14279fb40aeb",
+          "routerRuntimeTemplateHash": "0x182953a51b7eb4516309cba54d5718f2130ec729e96396b9253cfc7ff5a03df9",
+          "exactProfileCreationCodeHash": "0xb4638678498ff8b2da30c1e694245e19802b54efd4f27cb6114595c3ac29b2b8",
+          "exactProfileRuntimeCodeHash": "0xd0c75719f16ac181d3d1b51725d7a0aff1c61132140f948f321736c6ef14ee49",
+          "exactProfileSchemaHash": "0x7c7780343b4d82d25cc8c62581afca0ae5290e04dc7ee3aeccba5bd9e942d00c",
+          "routerInterfaceAbiSha256": "sha256:610e9bccf4bb23804ecb8eb4b15c3d16a7eebf0fff8fd2a3102db321f5585704",
+          "launchStampTypeHash": "0x4644c77f61b8969cdfb13dc2ddb2085492bcbb00ba305d30c8fdc6a4d137f66f"
+        },
+        "routeBinding": {
+          "routePayloadHash": "0x75403c2f52dbdf623cfcd077fab52308b3e1e0623016ec73539fac5234f21356",
+          "expectedResultHash": "0x29de1a5462fe7b07a0d58894f7ec5e2eb4e870c83153e2109647c7f4094c828b",
+          "launchId": "0xd225b22ea82ef2425660da409849a55c1c44751eedd9cd1b581a48358a0905eb",
+          "stampRequestHash": "0x276a295580bcb65ed286a2a02efba575eaee87c090f54c94e5ad8a2b78552bce"
+        }
+      }
+    },
+    "reviewedPlanSupersession": {
+      "const": {
+        "schemaVersion": "programmable.reviewed-plan-supersession.v1",
+        "originalRoute": {
+          "routeId": "custom-graph",
+          "routeVersion": "1.0.0",
+          "chainId": "1"
+        },
+        "acceptedRoute": {
+          "routeId": "nested-factory",
+          "routeVersion": "1.0.0",
+          "chainId": "1"
+        },
+        "acceptedProfile": {
+          "profileId": "exact-shards-nested-factory",
+          "profileVersion": "1.0.0",
+          "profileKey": "0xb90e215e0e29c0dacf021e5e778847af4100433ee7d22014b73f8ca4add09d0c"
+        },
+        "acceptanceChannel": "programmable-website-only",
+        "acceptanceRequired": true,
+        "reviewedRequestedActions": ["review"],
+        "authorizationGranted": false,
+        "factoryPredeploymentPrerequisite": {
+          "required": true,
+          "plannedDeploymentSender": "0x2Bb333d48DFAF1596D9036671d2E43168994249E",
+          "acceptedObservedDeploymentSender": "any-eoa",
+          "acceptedObservedDeploymentSenderCondition": "exact-canonical-create2-proxy-salt-initcode-calldata-factory-renderer-only",
+          "create2Proxy": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
+          "create2ProxyRuntimeCodeHash": "0x2fa86add0aed31f33a762c9d88e807c475bd51d0f52bd0955754b2608f7e4989",
+          "factorySalt": "0x655a4b5a2b704bef84b4ff94adde0a7ac40ad0366c82ddca5290180fe4c3986d",
+          "factoryInitCodeHash": "0x7d05592489495559b1288f8ad342239b3fb95a6aa005b5b0b1551c9523401585",
+          "factoryDeploymentCalldataHash": "0xf37ce9748abe4d5243cbd26f48c6ea5789ab1ebe8e19ea96d2198693e957c4ec",
+          "factory": "0x9442a520e7b31D10177C75A363355C2C29141ac5",
+          "factoryRuntimeCodeHash": "0x134a9e5674f22e62e939c2238693077b8027c553bb26d6a4e9e3d8554e5f85b5",
+          "renderer": "0x090DBD2FaB1a467f90ed82a443eFa9AAb658DE14",
+          "rendererRuntimeCodeHash": "0x9b54a61918b2ddf9b7daf41d9bf2d705cbef3a0fd618275762b99e19c53459bf",
+          "vacantAtomicRoute": {
+            "status": "unsupported",
+            "reason": "exceeds-mainnet-eip-7825-transaction-gas-cap",
+            "candidateGas": 18159332,
+            "mainnetTransactionGasCap": 16777216
+          },
+          "senderDisclosure": {
+            "planned": "Programmable plans to send the exact canonical factory deployment.",
+            "acceptedObserved": "An identical deployment sent by another EOA does not invalidate the factory identity when every canonical CREATE2 binding and resulting runtime matches exactly."
+          }
+        },
+        "allowedExecutionModes": [
+          {
+            "executionMode": "EXACT_FACTORY_LAUNCH_EXECUTED",
+            "abiOrdinal": 1,
+            "preState": {
+              "tokenCode": "empty",
+              "hookCode": "empty",
+              "nftCode": "empty",
+              "poolSlot0": "zero"
+            },
+            "routerAction": "factory-launch-and-stamp",
+            "factoryCall": "exact-shards-launch-selector",
+            "postStateProofs": [
+              "exact-configured-start-price",
+              "original-builder-fee-recipient",
+              "zero-factory-token-balance"
+            ]
+          },
+          {
+            "executionMode": "EXACT_EXISTING_LAUNCH_ADOPTED",
+            "abiOrdinal": 2,
+            "preState": {
+              "completedIdentity": "exact-reviewed-shards-identity",
+              "token": "0x50d17EAaeB52c66E64b918385AbF6523fDAE57CF",
+              "tokenRuntimeCodeHash": "0xb2737fd93f2ff31e850e2be773e6e7a92a239b28091be1d4b122ff864cd7aae8",
+              "hook": "0xbA318baA8649962fD77CC7082d098f2C09Fd60cC",
+              "hookRuntimeCodeHash": "0x2a2174aff52c3ea9ddf0a6081464c9c6dbc43ddc93609c74d9610f50f486c1e1",
+              "nft": "0x9fDA98dE1B7061ae02A9Aec7A6f8ed75a8Feb8F3",
+              "nftRuntimeCodeHash": "0xc3e3ea6cf4d2e13fa07a3b053d57cd7d6a6ecac7633aed86ab971d5e53959bb3",
+              "configurationHash": "0xa98b7b95777267181a2b93a33632991e80a49f4a57d94150f8dfbd90421f34c1",
+              "poolId": "0x075885e47ec15084de91826faafab9c2cd4fda4d24fd9e5ce3af6a4be4ad926d",
+              "poolKeyHash": "0x95c1d301b4a0be5bf2ec99270902aae6e8d8bd16a96a005d5985583c0b49835a",
+              "poolSlot0": "nonzero",
+              "seedLiquidityIdentity": "exact-reviewed-positions-and-dust"
+            },
+            "routerAction": "stamp-existing-exact-identity",
+            "factoryCall": "none",
+            "identityProofs": [
+              "exact-runtime-hashes",
+              "exact-factory-configuration-and-predictions",
+              "exact-hook-token-nft-renderer-pool-wiring",
+              "exact-immutable-ticks-start-price-and-launcher-recipient",
+              "exact-token-and-nft-metadata-and-token-supply",
+              "exact-seed-records-and-two-hook-liquidity-positions"
+            ],
+            "ignoredMutableState": [
+              "current-builder-fee-recipient",
+              "mutable-balances",
+              "current-market-price"
+            ]
+          }
+        ],
+        "expectedResultHashPolicy": "same-configured-identity-hash-for-both-modes",
+        "modeRecording": "stamp-hash-events-and-record",
+        "otherwise": "reject",
+        "adoptionDisclosure": {
+          "attests": "The Router validates and stamps the exact reviewed Shards launch identity.",
+          "doesNotAttest": [
+            "The launch wallet called the Shards factory.",
+            "The market remained pristine or untraded."
+          ]
+        },
+        "revenue": {
+          "change": "none",
+          "revenuePolicyHash": "0xaa78b0bf63fca83fa9b969fbb6b2bb1ecabcbe49908a48f92403e8e51e4adab2"
+        }
+      }
+    },
+    "reviewedRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "applicationManifestSha256", "pullRequest"],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "applicationManifestSha256": { "$ref": "#/$defs/sha256" },
+        "pullRequest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["number", "headCommit", "authorGithubUserId"],
+          "properties": {
+            "number": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+            "headCommit": { "$ref": "#/$defs/gitObjectId" },
+            "authorGithubUserId": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
+          }
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "repositoryId", "commit", "tree"],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "pattern": "^https://github\\.com/(?![^/]*--)[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?/(?!\\.{1,2}$)(?!.*\\.git$)(?=[A-Za-z0-9._-]*[A-Za-z0-9])[A-Za-z0-9._-]{1,100}$",
+          "maxLength": 200
+        },
+        "repositoryId": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "commit": {
+          "$ref": "#/$defs/gitObjectId"
+        },
+        "tree": {
+          "$ref": "#/$defs/gitObjectId"
+        }
+      }
+    },
+    "reviewedPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "profile",
+        "reviewedPlanSupersessionSha256",
+        "routerArtifactBinding",
+        "reviewedRequest",
+        "source",
+        "artifact",
+        "routeTarget",
+        "poolManager",
+        "factoryInterface",
+        "artifactCode",
+        "configurationHash",
+        "revenuePolicy",
+        "pool",
+        "launchPlan",
+        "components"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "1.0.0"
+        },
+        "profile": {
+          "const": "exact-shards-nested-factory"
+        },
+        "reviewedPlanSupersessionSha256": {
+          "const": "sha256:925a7675a61761e0148d40acb6f18ecad6bacccb3dc9809aae40abc021e26ef5"
+        },
+        "routerArtifactBinding": {
+          "$ref": "#/$defs/routerArtifactBinding"
+        },
+        "reviewedRequest": {
+          "$ref": "#/$defs/reviewedRequest"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "artifact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "bytes", "sha256"],
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/repositoryPath"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 16777216
+            },
+            "sha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          }
+        },
+        "routeTarget": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["role", "address", "runtimeCodeHash"],
+          "properties": {
+            "role": {
+              "const": "applicant-factory"
+            },
+            "address": {
+              "$ref": "#/$defs/nonzeroEthereumAddress"
+            },
+            "runtimeCodeHash": {
+              "$ref": "#/$defs/bytes32"
+            }
+          }
+        },
+        "configurationHash": {
+          "$ref": "#/$defs/bytes32"
+        },
+        "revenuePolicy": {
+          "$ref": "#/$defs/revenuePolicy"
+        },
+        "pool": {
+          "$ref": "#/$defs/pool"
+        },
+        "poolManager": {
+          "$ref": "#/$defs/codeBinding"
+        },
+        "factoryInterface": {
+          "$ref": "#/$defs/factoryInterface"
+        },
+        "artifactCode": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "expectedRuntimeCodeHash", "creationCodeHash"],
+            "properties": {
+              "kind": { "$ref": "#/$defs/id" },
+              "expectedRuntimeCodeHash": { "$ref": "#/$defs/bytes32" },
+              "creationCodeHash": { "$ref": "#/$defs/bytes32" }
+            }
+          }
+        },
+        "launchPlan": {
+          "$ref": "#/$defs/launchPlan"
+        },
+        "components": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "address", "deployer", "expectedRuntimeCodeHash"],
+            "properties": {
+              "kind": {
+                "$ref": "#/$defs/id"
+              },
+              "address": {
+                "$ref": "#/$defs/nonzeroEthereumAddress"
+              },
+              "deployer": {
+                "$ref": "#/$defs/nonzeroEthereumAddress"
+              },
+              "expectedRuntimeCodeHash": {
+                "$ref": "#/$defs/bytes32"
+              }
+            }
+          }
+        }
+      }
+    },
+    "gitObjectId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 80
+    },
+    "repositoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*\\\\)[^\\u0000-\\u001f\\u007f-\\u009f]+$"
+    },
+    "nonzeroEthereumAddress": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{40}$",
+      "not": {
+        "const": "0x0000000000000000000000000000000000000000"
+      }
+    },
+    "ethereumAddress": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{40}$"
+    },
+    "bytes32": {
+      "type": "string",
+      "pattern": "^0x[0-9a-f]{64}$",
+      "not": {
+        "const": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "codeBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "runtimeCodeHash"],
+      "properties": {
+        "address": { "$ref": "#/$defs/nonzeroEthereumAddress" },
+        "runtimeCodeHash": { "$ref": "#/$defs/bytes32" }
+      }
+    },
+    "factoryInterface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["abiSha256", "descriptor"],
+      "properties": {
+        "abiSha256": { "$ref": "#/$defs/sha256" },
+        "descriptor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schemaVersion", "launch", "configurationRead"],
+          "properties": {
+            "schemaVersion": { "const": "programmable.shards-factory-route-abi.v1" },
+            "launch": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["signature", "selector", "stateMutability", "returns"],
+              "properties": {
+                "signature": { "type": "string", "minLength": 1, "maxLength": 300 },
+                "selector": { "$ref": "#/$defs/bytes4" },
+                "stateMutability": { "enum": ["nonpayable", "payable"] },
+                "returns": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 16,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["index", "kind", "solidityType"],
+                    "properties": {
+                      "index": { "type": "integer", "minimum": 0, "maximum": 15 },
+                      "kind": { "$ref": "#/$defs/id" },
+                      "solidityType": { "type": "string", "minLength": 1, "maxLength": 100 }
+                    }
+                  }
+                }
+              }
+            },
+            "configurationRead": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["signature", "selector", "stateMutability", "returns"],
+              "properties": {
+                "signature": { "type": "string", "minLength": 1, "maxLength": 200 },
+                "selector": { "$ref": "#/$defs/bytes4" },
+                "stateMutability": { "const": "view" },
+                "returns": { "const": "bytes32" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "launchPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "priorReleaseFactoryPredeployment",
+        "hookCreationCodeHash",
+        "tokenInitCodeBytes",
+        "tokenInitCodeHash",
+        "hookInitCodeBytes",
+        "hookInitCodeHash",
+        "nftInitCodeBytes",
+        "nftInitCodeHash",
+        "launchCalldataBytes",
+        "launchCalldataHash",
+        "transactionCount",
+        "transactionSender",
+        "executionEntry",
+        "rawTokenSalt",
+        "effectiveTokenSalt",
+        "hookSalt",
+        "tickLower",
+        "tickBand",
+        "tickUpper",
+        "startSqrtPriceX96",
+        "rendererSelection",
+        "tokenName",
+        "tokenSymbol",
+        "nftName",
+        "nftSymbol",
+        "launcherFeeRecipient",
+        "builderFeeRecipient"
+      ],
+      "properties": {
+        "priorReleaseFactoryPredeployment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "applicantAction",
+            "method",
+            "reviewedManifestExpectedTransactionSender",
+            "productionExecutionPhase",
+            "create2Proxy",
+            "create2ProxyRuntimeCodeHash",
+            "factorySalt",
+            "factoryInitCodeBytes",
+            "factoryInitCodeHash",
+            "factoryDeploymentCalldataBytes",
+            "factoryDeploymentCalldataHash",
+            "expectedFactory",
+            "expectedFactoryRuntimeCodeHash",
+            "expectedRenderer",
+            "expectedRendererRuntimeCodeHash",
+            "predeploymentEvidenceSha256",
+            "gasCapReceiptSha256"
+          ],
+          "properties": {
+            "status": { "const": "pending-production-release-evidence" },
+            "applicantAction": { "const": false },
+            "method": { "const": "pinned-create2-proxy" },
+            "reviewedManifestExpectedTransactionSender": { "const": "0x2Bb333d48DFAF1596D9036671d2E43168994249E" },
+            "productionExecutionPhase": { "const": "platform-release-before-applicant-acceptance" },
+            "create2Proxy": { "const": "0x4e59b44847b379578588920cA78FbF26c0B4956C" },
+            "create2ProxyRuntimeCodeHash": { "const": "0x2fa86add0aed31f33a762c9d88e807c475bd51d0f52bd0955754b2608f7e4989" },
+            "factorySalt": { "const": "0x655a4b5a2b704bef84b4ff94adde0a7ac40ad0366c82ddca5290180fe4c3986d" },
+            "factoryInitCodeBytes": { "const": 37942 },
+            "factoryInitCodeHash": { "const": "0x7d05592489495559b1288f8ad342239b3fb95a6aa005b5b0b1551c9523401585" },
+            "factoryDeploymentCalldataBytes": { "const": 37974 },
+            "factoryDeploymentCalldataHash": { "const": "0xf37ce9748abe4d5243cbd26f48c6ea5789ab1ebe8e19ea96d2198693e957c4ec" },
+            "expectedFactory": { "const": "0x9442a520e7b31D10177C75A363355C2C29141ac5" },
+            "expectedFactoryRuntimeCodeHash": { "const": "0x134a9e5674f22e62e939c2238693077b8027c553bb26d6a4e9e3d8554e5f85b5" },
+            "expectedRenderer": { "const": "0x090DBD2FaB1a467f90ed82a443eFa9AAb658DE14" },
+            "expectedRendererRuntimeCodeHash": { "const": "0x9b54a61918b2ddf9b7daf41d9bf2d705cbef3a0fd618275762b99e19c53459bf" },
+            "predeploymentEvidenceSha256": { "const": null },
+            "gasCapReceiptSha256": { "const": null }
+          }
+        },
+        "hookCreationCodeHash": { "$ref": "#/$defs/bytes32" },
+        "tokenInitCodeBytes": { "type": "integer", "minimum": 1, "maximum": 49152 },
+        "tokenInitCodeHash": { "$ref": "#/$defs/bytes32" },
+        "hookInitCodeBytes": { "type": "integer", "minimum": 1, "maximum": 49152 },
+        "hookInitCodeHash": { "$ref": "#/$defs/bytes32" },
+        "nftInitCodeBytes": { "type": "integer", "minimum": 1, "maximum": 49152 },
+        "nftInitCodeHash": { "$ref": "#/$defs/bytes32" },
+        "launchCalldataBytes": { "type": "integer", "minimum": 4, "maximum": 16777216 },
+        "launchCalldataHash": { "$ref": "#/$defs/bytes32" },
+        "transactionCount": { "const": 1 },
+        "transactionSender": { "$ref": "#/$defs/nonzeroEthereumAddress" },
+        "executionEntry": { "const": "acceptance-bound-router" },
+        "rawTokenSalt": { "$ref": "#/$defs/bytes32" },
+        "effectiveTokenSalt": { "$ref": "#/$defs/bytes32" },
+        "hookSalt": { "$ref": "#/$defs/bytes32" },
+        "tickLower": { "type": "integer", "minimum": -887272, "maximum": 887272 },
+        "tickBand": { "type": "integer", "minimum": -887272, "maximum": 887272 },
+        "tickUpper": { "type": "integer", "minimum": -887272, "maximum": 887272 },
+        "startSqrtPriceX96": { "type": "string", "maxLength": 78, "pattern": "^[1-9][0-9]{0,77}$" },
+        "rendererSelection": { "enum": ["factory-default", "explicit-address"] },
+        "tokenName": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "tokenSymbol": { "type": "string", "minLength": 1, "maxLength": 12 },
+        "nftName": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "nftSymbol": { "type": "string", "minLength": 1, "maxLength": 12 },
+        "launcherFeeRecipient": { "$ref": "#/$defs/nonzeroEthereumAddress" },
+        "builderFeeRecipient": { "$ref": "#/$defs/nonzeroEthereumAddress" }
+      }
+    },
+    "revenuePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "legType",
+        "legTypeHash",
+        "policyType",
+        "policyTypeHash",
+        "profileKey",
+        "feeAsset",
+        "feeBasisLabel",
+        "feeBasisHash",
+        "totalFeeBps",
+        "legOrder",
+        "legs",
+        "legsHashEncoding",
+        "legsAbiPreimage",
+        "legsHash",
+        "policyAbiPreimage",
+        "revenuePolicyHash"
+      ],
+      "properties": {
+        "legType": {
+          "const": "ProgrammableRevenueLegV1(bytes32 roleHash,uint16 feeBps,address recipient,bytes32 recipientModeHash)"
+        },
+        "legTypeHash": { "$ref": "#/$defs/bytes32" },
+        "policyType": {
+          "const": "ProgrammableRevenuePolicyV1(bytes32 profileKey,address feeAsset,bytes32 feeBasisHash,uint16 totalFeeBps,bytes32 legsHash)"
+        },
+        "policyTypeHash": { "$ref": "#/$defs/bytes32" },
+        "profileKey": { "$ref": "#/$defs/bytes32" },
+        "feeAsset": { "$ref": "#/$defs/ethereumAddress" },
+        "feeBasisLabel": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "feeBasisHash": { "$ref": "#/$defs/bytes32" },
+        "totalFeeBps": { "type": "integer", "minimum": 1, "maximum": 10000 },
+        "legOrder": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/id" }
+        },
+        "legs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "roleLabel",
+              "roleHash",
+              "feeBps",
+              "recipient",
+              "recipientModeLabel",
+              "recipientModeHash",
+              "abiPreimage",
+              "legHash"
+            ],
+            "properties": {
+              "roleLabel": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "roleHash": { "$ref": "#/$defs/bytes32" },
+              "feeBps": { "type": "integer", "minimum": 0, "maximum": 10000 },
+              "recipient": { "$ref": "#/$defs/nonzeroEthereumAddress" },
+              "recipientModeLabel": { "type": "string", "minLength": 1, "maxLength": 240 },
+              "recipientModeHash": { "$ref": "#/$defs/bytes32" },
+              "abiPreimage": { "type": "string", "pattern": "^0x(?:[0-9a-f]{2})+$", "minLength": 322, "maxLength": 322 },
+              "legHash": { "$ref": "#/$defs/bytes32" }
+            }
+          }
+        },
+        "legsHashEncoding": {
+          "const": "keccak256(abi.encode(builderLegHash,programmableLegHash,holdersLegHash))"
+        },
+        "legsAbiPreimage": { "type": "string", "pattern": "^0x(?:[0-9a-f]{2})+$", "minLength": 66, "maxLength": 1026 },
+        "legsHash": { "$ref": "#/$defs/bytes32" },
+        "policyAbiPreimage": { "type": "string", "pattern": "^0x(?:[0-9a-f]{2})+$", "minLength": 386, "maxLength": 386 },
+        "revenuePolicyHash": { "$ref": "#/$defs/bytes32" }
+      }
+    },
+    "pool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["poolId", "poolKeyHash", "currency0", "currency1", "fee", "tickSpacing"],
+      "properties": {
+        "poolId": { "$ref": "#/$defs/bytes32" },
+        "poolKeyHash": { "$ref": "#/$defs/bytes32" },
+        "currency0": { "$ref": "#/$defs/ethereumAddress" },
+        "currency1": { "$ref": "#/$defs/nonzeroEthereumAddress" },
+        "fee": { "type": "integer", "minimum": 0, "maximum": 16777215 },
+        "tickSpacing": { "type": "integer", "minimum": -8388608, "maximum": 8388607 }
+      }
+    },
+    "bytes4": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 10,
+      "pattern": "^0x(?:[0-9a-f]{2})*$"
+    }
+  }
+}

@@ -40,6 +40,12 @@ export function createRepositoryCheckPlan({
       timeoutMs: 120_000
     },
     {
+      id: "route-capabilities",
+      command: nodeExecutable,
+      args: ["scripts/validate-route-capability-catalog.mjs"],
+      timeoutMs: 120_000
+    },
+    {
       id: "mcp-server",
       command: nodeExecutable,
       args: ["--test", ...mcpTests],
