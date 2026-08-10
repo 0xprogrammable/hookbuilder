@@ -7,7 +7,7 @@
   },
   "applicant": {
     "githubLogin": "voladelta",
-    "launchWallet": "0xA0B5Bb39878507E06bCA49956294aE7c907d4e61"
+    "launchWallet": "0x20c9d5674f3b31d23acF76Ceca8C8691E8e08408"
   },
   "source": {
     "repository": "https://github.com/voladelta/lucky-hook",
@@ -55,5 +55,5 @@
     "chainId": "1"
   },
   "requestedActions": ["review"],
-  "notes": "Review-only request for a native-ETH quote hook with immutable launch rates, four-quadrant return-delta accounting, bounded holder rewards, and native-paid VRF reserve funding. Local unit, integration, invariant, mainnet-fork, Sepolia-fork, build, and UI checks pass for the bound source revision. Public VRF subscription binding, independent review, deployment, routing, and availability remain separate gates."
+  "notes": "Launch-wallet declaration updated at the applicant's request; the previous declaration is superseded. This remains review-only and does not authorize any transaction. Native-ETH quote hook with immutable launch rates, four-quadrant return-delta accounting, bounded holder rewards, and native-paid VRF reserve funding. Public VRF subscription binding, independent review, deployment, routing, and availability remain separate gates."
 }
