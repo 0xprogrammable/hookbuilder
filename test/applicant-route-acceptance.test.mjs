@@ -257,11 +257,11 @@ test("exact Shards profile requires predeployment and binds one applicant launch
   );
   assert.equal(
     EXACT_SHARDS_REVIEWED_PLAN_V1.routerArtifactBinding.artifact.sha256,
-    "sha256:7385a806d831e7b89e598dca16de1c6107590659375d43d97d4d6ab30292f6d0"
+    "sha256:066475058bfd47b85b4216f95b434756d67d7e289ffb36535c121ef5d7c11bab"
   );
   assert.equal(
     EXACT_SHARDS_REVIEWED_PLAN_V1.routerArtifactBinding.routerSource.commit,
-    "3d71e9243dd1b604099c79038c4c52a36062b0e4"
+    "1ac92f9694fb5c3ae534c65669775e634e3214f7"
   );
   assert.deepEqual(
     EXACT_SHARDS_REVIEWED_PLAN_V1.routerArtifactBinding.routeBinding,
@@ -736,14 +736,14 @@ test("immutable acceptance record core has one strict content-addressed hash", (
   assert.equal(canonicalBytes.length, 3488);
   assert.equal(
     applicantAcceptanceRecordHash(recordCore),
-    "sha256:d4b08661a90cff595368d5a3be2ae62380bd59293764c478ef2b27b415f437dc"
+    "sha256:1b079965e5ef4d09eb42aaab77bd843d6c340bb1d4cba37e3165918200f97251"
   );
   assert.equal(
     applicantAcceptanceRecordHash(recordCore),
     `sha256:${crypto.createHash("sha256").update(canonicalBytes).digest("hex")}`
   );
   assert.deepEqual(verifyApplicantRouteAcceptanceRecordCore(recordCore, acceptanceExample), {
-    recordSha256: "sha256:d4b08661a90cff595368d5a3be2ae62380bd59293764c478ef2b27b415f437dc",
+    recordSha256: "sha256:1b079965e5ef4d09eb42aaab77bd843d6c340bb1d4cba37e3165918200f97251",
     claimSha256: acceptanceGolden.claimSha256,
     acceptanceSubjectHash: acceptanceGolden.acceptanceSubjectHash,
     stateVersion: 8,

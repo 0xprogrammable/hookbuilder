@@ -78,22 +78,22 @@ try {
   );
   requireEqual(
     EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1.artifact.sha256,
-    "sha256:7385a806d831e7b89e598dca16de1c6107590659375d43d97d4d6ab30292f6d0",
+    "sha256:066475058bfd47b85b4216f95b434756d67d7e289ffb36535c121ef5d7c11bab",
     "canonical Router artifact digest drifted"
   );
   requireEqual(
     EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1.integrity.sha256,
-    "sha256:de0d683e7eaeae6a1bb0e08a6c0a02318a7e22fb534f1f2d7df60284b6694e91",
+    "sha256:74028d65363189804912f2907400da11098d90579c9261e1d087b2d5a709ae6f",
     "canonical Router artifact integrity digest drifted"
   );
   requireEqual(
     EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1.routerSource.commit,
-    "3d71e9243dd1b604099c79038c4c52a36062b0e4",
+    "1ac92f9694fb5c3ae534c65669775e634e3214f7",
     "frozen Router source commit drifted"
   );
   requireEqual(
     EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1.routerSource.tree,
-    "d38e368c591c6e4a511915a7397f887beb082db7",
+    "8e6920b46aa30e5a8afbebc3a86adfba22cc7628",
     "frozen Router source tree drifted"
   );
   requireEqual(

@@ -5,9 +5,9 @@
   "canonicalization": "urn:programmable:canonical-json:2.0.0",
   "canonicalClaimEncoding": "canonical-json-v2-utf8-no-trailing-newline",
   "canonicalByteLength": 22202,
-  "claimSha256": "sha256:b2b5abe3c521a0058ab1779423632757d065b6b167c23742af12d1af25847da8",
+  "claimSha256": "sha256:02e0fba56c294bcef1d6d40dace601b96cf647f60f1b24fc16e1303f19b1aa39",
   "reviewedPlanSupersessionSha256": "sha256:925a7675a61761e0148d40acb6f18ecad6bacccb3dc9809aae40abc021e26ef5",
-  "routerArtifactBindingSha256": "sha256:b645b6e55bc32c3a78f1adea66bba598ea98a48c0840734b9a74e21724d59ed2",
+  "routerArtifactBindingSha256": "sha256:f93920386d226d26dcf55105fcfcc2400bcb3b211974daa3e09cd12082bb6b53",
   "allowedExecutionModes": [
     "EXACT_FACTORY_LAUNCH_EXECUTED",
     "EXACT_EXISTING_LAUNCH_ADOPTED"

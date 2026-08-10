@@ -213,23 +213,23 @@ export const EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1 = deepFreeze({
   schemaVersion: "programmable.router-v2-artifact-binding.v1",
   artifact: {
     path: "outputs/shards-nested-factory-route-v1.canonical.json",
-    bytes: 1281987,
-    sha256: "sha256:7385a806d831e7b89e598dca16de1c6107590659375d43d97d4d6ab30292f6d0",
-    keccak256: "0xe058d7fc4fb69c6a0860506caca5a32f0fc6845499fbb9b2dadbc0c4cd4cf21a"
+    bytes: 1287041,
+    sha256: "sha256:066475058bfd47b85b4216f95b434756d67d7e289ffb36535c121ef5d7c11bab",
+    keccak256: "0x8c5521d6796e3e63c3e2cf82e1122c952e6465c345d8a10b3773a70aa2419fb3"
   },
   integrity: {
     path: "outputs/shards-nested-factory-route-v1.canonical.integrity.json",
-    bytes: 3066,
-    sha256: "sha256:de0d683e7eaeae6a1bb0e08a6c0a02318a7e22fb534f1f2d7df60284b6694e91"
+    bytes: 3739,
+    sha256: "sha256:74028d65363189804912f2907400da11098d90579c9261e1d087b2d5a709ae6f"
   },
   generator: {
     path: "work/generate-shards-route-artifact.mjs",
-    sha256: "sha256:87f11e9272e6110bab1e7d2d92d983d2c45757bb76422b2df65be61bbdc2451d"
+    sha256: "sha256:3876075dfdb50f82bf5168bd12d42ae11594dbb8ffd68c9cbadcd7111ca0650a"
   },
   routerSource: {
     repository: "https://github.com/0xprogrammable/programmable",
-    commit: "3d71e9243dd1b604099c79038c4c52a36062b0e4",
-    tree: "d38e368c591c6e4a511915a7397f887beb082db7"
+    commit: "1ac92f9694fb5c3ae534c65669775e634e3214f7",
+    tree: "8e6920b46aa30e5a8afbebc3a86adfba22cc7628"
   },
   code: {
     routerCreationCodeHash:
@@ -428,7 +428,7 @@ export const EXACT_SHARDS_REVIEWED_PLAN_V1 = deepFreeze({
   ]
 });
 export const EXACT_SHARDS_REVIEWED_PLAN_SHA256 =
-  "sha256:5ce30f968d89712faaf5c7739fd7976ceacf7cb8cc13e3fec99616408fcfcd23";
+  "sha256:cfe926c42918ce1ca23efe8fa7352c2b6ed7090002f62a0d6d64481883205591";
 export const NESTED_FACTORY_PROFILE_KEY_DOMAIN =
   "ProgrammableNestedFactoryProfileV1(bytes32 profileIdHash,bytes32 profileVersionHash)";
 export const NESTED_FACTORY_PROFILE_KEY_TYPEHASH =
