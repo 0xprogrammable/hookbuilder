@@ -1,0 +1,59 @@
+{
+  "$schema": "urn:programmable:applicant-submission:1.1.0",
+  "schemaVersion": "1.1.0",
+  "intake": {
+    "repository": "0xprogrammable/hookbuilder",
+    "repositoryId": 1320085947
+  },
+  "applicant": {
+    "githubLogin": "voladelta",
+    "launchWallet": "0xA0B5Bb39878507E06bCA49956294aE7c907d4e61"
+  },
+  "source": {
+    "repository": "https://github.com/voladelta/lucky-hook",
+    "repositoryId": 1326630533,
+    "commit": "94d4294de7f03e54ee806de98f021cd7a9c94db6",
+    "tree": "52fcf8ec9ddd57e25e203306e2813c10c9d49d13"
+  },
+  "identifiers": {
+    "hookId": "random-holder-rewards",
+    "hookVersion": "1.0.0",
+    "templateId": "custom-hook",
+    "templateVersion": "1.0.0",
+    "modelId": "random-holder-rewards",
+    "modelVersion": "1.0.0"
+  },
+  "hook": {
+    "addressFlagMask": "0x00cc",
+    "permissions": {
+      "beforeInitialize": false,
+      "afterInitialize": false,
+      "beforeAddLiquidity": false,
+      "afterAddLiquidity": false,
+      "beforeRemoveLiquidity": false,
+      "afterRemoveLiquidity": false,
+      "beforeSwap": true,
+      "afterSwap": true,
+      "beforeDonate": false,
+      "afterDonate": false,
+      "beforeSwapReturnDelta": true,
+      "afterSwapReturnDelta": true,
+      "afterAddLiquidityReturnDelta": false,
+      "afterRemoveLiquidityReturnDelta": false
+    }
+  },
+  "fee": {
+    "amountPips": 1000,
+    "denominator": 1000000,
+    "currencyBasis": "quote",
+    "recipient": "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c",
+    "mutable": false
+  },
+  "requestedRoute": {
+    "routeId": "custom-graph",
+    "routeVersion": "1.0.0",
+    "chainId": "1"
+  },
+  "requestedActions": ["review"],
+  "notes": "Review-only request for a native-ETH quote hook with immutable launch rates, four-quadrant return-delta accounting, bounded holder rewards, and native-paid VRF reserve funding. Local unit, integration, invariant, mainnet-fork, Sepolia-fork, build, and UI checks pass for the bound source revision. Public VRF subscription binding, independent review, deployment, routing, and availability remain separate gates."
+}
