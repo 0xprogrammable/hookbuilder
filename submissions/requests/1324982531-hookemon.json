@@ -12,8 +12,8 @@
   "source": {
     "repository": "https://github.com/hookemonv4/hookemon",
     "repositoryId": 1324982531,
-    "commit": "d44ce2c3ee2cb2e8e3cc2ce1056d1bdcf3879c60",
-    "tree": "d83c7cd234a347da73a82bd192e515e043eb7024"
+    "commit": "23336e60ae5859dbb0ae9c0db3399af4ef4af8e8",
+    "tree": "7624bde3bb09f654e77881880c419e356ed85c29"
   },
   "identifiers": {
     "hookId": "hookemon",
@@ -55,5 +55,5 @@
     "chainId": "1"
   },
   "requestedActions": ["review"],
-  "notes": "Requests review of the exact Hookemon prototype revision merged through final one-shot source PR #28. The fee record declares Programmable's immutable 0.1% share of Hookemon's inclusive 3% canonical-pool quote-side hook charge; the remaining 2.9% is the separately accounted project share."
+  "notes": "Requests review of the exact Hookemon prototype revision merged through final Collector precision source PR #29 after the one-shot source PR #28. The fee record declares Programmable's immutable 0.1% share of Hookemon's inclusive 3% canonical-pool quote-side hook charge; the remaining 2.9% is the separately accounted project share."
 }
