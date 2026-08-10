@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "programmable.applicant-route-acceptance-golden.v1",
+  "claimPath": "submissions/examples/applicant-route-acceptance-v1.example.json",
+  "claimSchema": "urn:programmable:applicant-route-acceptance:1.0.0",
+  "canonicalization": "urn:programmable:canonical-json:2.0.0",
+  "canonicalClaimEncoding": "canonical-json-v2-utf8-no-trailing-newline",
+  "canonicalByteLength": 14115,
+  "claimSha256": "sha256:017b43d20536061fdb11e4cc01fdb38323b98c2b2e49710e119450542bd12912",
+  "expectedValidationBlockers": [
+    "ROUTE_ACCEPTANCE_CAPABILITY_DISABLED",
+    "ROUTE_ACCEPTANCE_EXAMPLE_PLACEHOLDER"
+  ],
+  "authorizationGranted": false
+}

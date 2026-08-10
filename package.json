@@ -18,6 +18,8 @@
     "test:skill": "node skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
     "submission:check": "node scripts/validate-applicant-submission.mjs",
     "submission:check:all": "node scripts/validate-applicant-submission.mjs --all",
+    "route:check": "node scripts/check-route-compatibility.mjs",
+    "route:catalog:check": "node scripts/validate-route-capability-catalog.mjs",
     "plugin:check": "node scripts/generate-plugin-manifests.mjs --check",
     "plugin:write": "node scripts/generate-plugin-manifests.mjs --write",
     "release:candidate": "node scripts/prepare-release-candidate.mjs",

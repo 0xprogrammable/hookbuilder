@@ -1,0 +1,554 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:programmable:reviewed-route-plan:1.0.0",
+  "title": "Programmable reviewed route plan",
+  "description": "Deterministic deployment-topology projection used to select a supported production route before approval.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "profile",
+    "source",
+    "artifact",
+    "routeTarget",
+    "configurationHash",
+    "components"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "urn:programmable:reviewed-route-plan:1.0.0"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "profile": {
+      "enum": ["direct-graph", "exact-shards-nested-factory"]
+    },
+    "reviewedRequest": {
+      "$ref": "#/$defs/reviewedRequest"
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "sha256"],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16777216
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "routeTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "address"],
+      "properties": {
+        "role": {
+          "enum": ["platform-graph-factory", "applicant-factory"]
+        },
+        "address": {
+          "$ref": "#/$defs/nonzeroEthereumAddress"
+        },
+        "runtimeCodeHash": {
+          "$ref": "#/$defs/bytes32"
+        }
+      }
+    },
+    "configurationHash": {
+      "$ref": "#/$defs/bytes32"
+    },
+    "revenuePolicy": {
+      "$ref": "#/$defs/revenuePolicy"
+    },
+    "pool": {
+      "$ref": "#/$defs/pool"
+    },
+    "poolManager": {
+      "$ref": "#/$defs/codeBinding"
+    },
+    "factoryInterface": {
+      "$ref": "#/$defs/factoryInterface"
+    },
+    "artifactCode": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "expectedRuntimeCodeHash", "creationCodeHash"],
+        "properties": {
+          "kind": {
+            "$ref": "#/$defs/id"
+          },
+          "expectedRuntimeCodeHash": {
+            "$ref": "#/$defs/bytes32"
+          },
+          "creationCodeHash": {
+            "$ref": "#/$defs/bytes32"
+          }
+        }
+      }
+    },
+    "launchPlan": {
+      "$ref": "#/$defs/launchPlan"
+    },
+    "components": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "address", "deployer", "expectedRuntimeCodeHash"],
+        "properties": {
+          "kind": {
+            "$ref": "#/$defs/id"
+          },
+          "address": {
+            "$ref": "#/$defs/nonzeroEthereumAddress"
+          },
+          "deployer": {
+            "$ref": "#/$defs/nonzeroEthereumAddress"
+          },
+          "expectedRuntimeCodeHash": {
+            "$ref": "#/$defs/bytes32"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "reviewedRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "applicationManifestSha256", "pullRequest"],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/repositoryPath"
+        },
+        "applicationManifestSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "pullRequest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["number", "headCommit", "authorGithubUserId"],
+          "properties": {
+            "number": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "headCommit": {
+              "$ref": "#/$defs/gitObjectId"
+            },
+            "authorGithubUserId": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "repositoryId", "commit", "tree"],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "pattern": "^https://github\\.com/(?![^/]*--)[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?/(?!\\.{1,2}$)(?!.*\\.git$)(?=[A-Za-z0-9._-]*[A-Za-z0-9])[A-Za-z0-9._-]{1,100}$",
+          "maxLength": 200
+        },
+        "repositoryId": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "commit": {
+          "$ref": "#/$defs/gitObjectId"
+        },
+        "tree": {
+          "$ref": "#/$defs/gitObjectId"
+        }
+      }
+    },
+    "gitObjectId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 80
+    },
+    "repositoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 300,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*\\\\)[^\\u0000-\\u001f\\u007f-\\u009f]+$"
+    },
+    "nonzeroEthereumAddress": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{40}$",
+      "not": {
+        "const": "0x0000000000000000000000000000000000000000"
+      }
+    },
+    "ethereumAddress": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{40}$"
+    },
+    "bytes32": {
+      "type": "string",
+      "pattern": "^0x[0-9a-f]{64}$",
+      "not": {
+        "const": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "codeBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["address", "runtimeCodeHash"],
+      "properties": {
+        "address": {
+          "$ref": "#/$defs/nonzeroEthereumAddress"
+        },
+        "runtimeCodeHash": {
+          "$ref": "#/$defs/bytes32"
+        }
+      }
+    },
+    "factoryInterface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["abiSha256", "descriptor"],
+      "properties": {
+        "abiSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "descriptor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schemaVersion", "launch", "configurationRead"],
+          "properties": {
+            "schemaVersion": {
+              "const": "programmable.shards-factory-route-abi.v1"
+            },
+            "launch": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["signature", "selector", "stateMutability", "returns"],
+              "properties": {
+                "signature": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "selector": {
+                  "$ref": "#/$defs/bytes4"
+                },
+                "stateMutability": {
+                  "enum": ["nonpayable", "payable"]
+                },
+                "returns": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 16,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["index", "kind", "solidityType"],
+                    "properties": {
+                      "index": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 15
+                      },
+                      "kind": {
+                        "$ref": "#/$defs/id"
+                      },
+                      "solidityType": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "configurationRead": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["signature", "selector", "stateMutability", "returns"],
+              "properties": {
+                "signature": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "selector": {
+                  "$ref": "#/$defs/bytes4"
+                },
+                "stateMutability": {
+                  "const": "view"
+                },
+                "returns": {
+                  "const": "bytes32"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "launchPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "create2Proxy",
+        "create2ProxyRuntimeCodeHash",
+        "factorySalt",
+        "factoryInitCodeBytes",
+        "factoryInitCodeHash",
+        "factoryDeploymentCalldataBytes",
+        "factoryDeploymentCalldataHash",
+        "hookCreationCodeHash",
+        "tokenInitCodeBytes",
+        "tokenInitCodeHash",
+        "hookInitCodeBytes",
+        "hookInitCodeHash",
+        "nftInitCodeBytes",
+        "nftInitCodeHash",
+        "launchCalldataBytes",
+        "launchCalldataHash",
+        "transactionCount",
+        "transactionSender",
+        "executionEntry",
+        "factoryDeploymentExecution",
+        "factoryLaunchExecution",
+        "factoryInitialStatePolicyV1",
+        "rawTokenSalt",
+        "effectiveTokenSalt",
+        "hookSalt",
+        "tickLower",
+        "tickBand",
+        "tickUpper",
+        "startSqrtPriceX96",
+        "rendererSelection",
+        "tokenName",
+        "tokenSymbol",
+        "nftName",
+        "nftSymbol",
+        "launcherFeeRecipient",
+        "builderFeeRecipient"
+      ],
+      "properties": {
+        "create2Proxy": { "$ref": "#/$defs/nonzeroEthereumAddress" },
+        "create2ProxyRuntimeCodeHash": { "$ref": "#/$defs/bytes32" },
+        "factorySalt": { "$ref": "#/$defs/bytes32" },
+        "factoryInitCodeBytes": { "type": "integer", "minimum": 1, "maximum": 49152 },
+        "factoryInitCodeHash": { "$ref": "#/$defs/bytes32" },
+        "factoryDeploymentCalldataBytes": { "type": "integer", "minimum": 33, "maximum": 16777216 },
+        "factoryDeploymentCalldataHash": { "$ref": "#/$defs/bytes32" },
+        "hookCreationCodeHash": { "$ref": "#/$defs/bytes32" },
+        "tokenInitCodeBytes": { "type": "integer", "minimum": 1, "maximum": 49152 },
+        "tokenInitCodeHash": { "$ref": "#/$defs/bytes32" },
+        "hookInitCodeBytes": { "type": "integer", "minimum": 1, "maximum": 49152 },
+        "hookInitCodeHash": { "$ref": "#/$defs/bytes32" },
+        "nftInitCodeBytes": { "type": "integer", "minimum": 1, "maximum": 49152 },
+        "nftInitCodeHash": { "$ref": "#/$defs/bytes32" },
+        "launchCalldataBytes": { "type": "integer", "minimum": 4, "maximum": 16777216 },
+        "launchCalldataHash": { "$ref": "#/$defs/bytes32" },
+        "transactionCount": { "const": 1 },
+        "transactionSender": { "$ref": "#/$defs/nonzeroEthereumAddress" },
+        "executionEntry": { "const": "acceptance-bound-router" },
+        "factoryDeploymentExecution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reviewedManifestExpectedTransactionSender", "productionExecutionCaller"],
+          "properties": {
+            "reviewedManifestExpectedTransactionSender": { "const": "0x2Bb333d48DFAF1596D9036671d2E43168994249E" },
+            "productionExecutionCaller": { "const": "router-owned-exact-shards-profile-module" }
+          }
+        },
+        "factoryLaunchExecution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["productionExecutionCaller"],
+          "properties": {
+            "productionExecutionCaller": { "const": "programmable-launch-stamp-router-v2" }
+          }
+        },
+        "factoryInitialStatePolicyV1": {
+          "const": {
+            "mode": "vacant-or-exact-predeployed",
+            "allowedStates": [
+              {
+                "id": "vacant-pair",
+                "factoryCode": "empty",
+                "rendererCode": "empty",
+                "action": "deploy-via-pinned-create2-proxy-then-launch-and-stamp"
+              },
+              {
+                "id": "exact-predeployed-pair",
+                "factoryRuntimeCodeHash": "0x134a9e5674f22e62e939c2238693077b8027c553bb26d6a4e9e3d8554e5f85b5",
+                "rendererRuntimeCodeHash": "0x9b54a61918b2ddf9b7daf41d9bf2d705cbef3a0fd618275762b99e19c53459bf",
+                "action": "launch-and-stamp"
+              }
+            ],
+            "exactFactoryInitcode": {
+              "requirement": "mandatory-in-both-allowed-states",
+              "byteLength": 37942,
+              "keccak256": "0x7d05592489495559b1288f8ad342239b3fb95a6aa005b5b0b1551c9523401585"
+            },
+            "commonPreconditions": {
+              "tokenCode": "empty",
+              "hookCode": "empty",
+              "nftCode": "empty",
+              "poolSlot0": "zero"
+            },
+            "rejectedStates": [
+              "partial-factory-renderer-pair",
+              "wrong-factory-runtime",
+              "wrong-renderer-runtime",
+              "occupied-child",
+              "initialized-pool"
+            ]
+          }
+        },
+        "rawTokenSalt": { "$ref": "#/$defs/bytes32" },
+        "effectiveTokenSalt": { "$ref": "#/$defs/bytes32" },
+        "hookSalt": { "$ref": "#/$defs/bytes32" },
+        "tickLower": { "type": "integer", "minimum": -887272, "maximum": 887272 },
+        "tickBand": { "type": "integer", "minimum": -887272, "maximum": 887272 },
+        "tickUpper": { "type": "integer", "minimum": -887272, "maximum": 887272 },
+        "startSqrtPriceX96": { "type": "string", "maxLength": 78, "pattern": "^[1-9][0-9]{0,77}$" },
+        "rendererSelection": { "enum": ["factory-default", "explicit-address"] },
+        "tokenName": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "tokenSymbol": { "type": "string", "minLength": 1, "maxLength": 12 },
+        "nftName": { "type": "string", "minLength": 1, "maxLength": 32 },
+        "nftSymbol": { "type": "string", "minLength": 1, "maxLength": 12 },
+        "launcherFeeRecipient": { "$ref": "#/$defs/nonzeroEthereumAddress" },
+        "builderFeeRecipient": { "$ref": "#/$defs/nonzeroEthereumAddress" }
+      }
+    },
+    "revenuePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "legType",
+        "legTypeHash",
+        "policyType",
+        "policyTypeHash",
+        "profileKey",
+        "feeAsset",
+        "feeBasisLabel",
+        "feeBasisHash",
+        "totalFeeBps",
+        "legOrder",
+        "legs",
+        "legsHashEncoding",
+        "legsAbiPreimage",
+        "legsHash",
+        "policyAbiPreimage",
+        "revenuePolicyHash"
+      ],
+      "properties": {
+        "legType": {
+          "const": "ProgrammableRevenueLegV1(bytes32 roleHash,uint16 feeBps,address recipient,bytes32 recipientModeHash)"
+        },
+        "legTypeHash": { "$ref": "#/$defs/bytes32" },
+        "policyType": {
+          "const": "ProgrammableRevenuePolicyV1(bytes32 profileKey,address feeAsset,bytes32 feeBasisHash,uint16 totalFeeBps,bytes32 legsHash)"
+        },
+        "policyTypeHash": { "$ref": "#/$defs/bytes32" },
+        "profileKey": { "$ref": "#/$defs/bytes32" },
+        "feeAsset": { "$ref": "#/$defs/ethereumAddress" },
+        "feeBasisLabel": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "feeBasisHash": { "$ref": "#/$defs/bytes32" },
+        "totalFeeBps": { "type": "integer", "minimum": 1, "maximum": 10000 },
+        "legOrder": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/id" }
+        },
+        "legs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "roleLabel",
+              "roleHash",
+              "feeBps",
+              "recipient",
+              "recipientModeLabel",
+              "recipientModeHash",
+              "abiPreimage",
+              "legHash"
+            ],
+            "properties": {
+              "roleLabel": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "roleHash": { "$ref": "#/$defs/bytes32" },
+              "feeBps": { "type": "integer", "minimum": 0, "maximum": 10000 },
+              "recipient": { "$ref": "#/$defs/nonzeroEthereumAddress" },
+              "recipientModeLabel": { "type": "string", "minLength": 1, "maxLength": 240 },
+              "recipientModeHash": { "$ref": "#/$defs/bytes32" },
+              "abiPreimage": { "type": "string", "pattern": "^0x(?:[0-9a-f]{2})+$", "minLength": 322, "maxLength": 322 },
+              "legHash": { "$ref": "#/$defs/bytes32" }
+            }
+          }
+        },
+        "legsHashEncoding": {
+          "const": "keccak256(abi.encode(builderLegHash,programmableLegHash,holdersLegHash))"
+        },
+        "legsAbiPreimage": { "type": "string", "pattern": "^0x(?:[0-9a-f]{2})+$", "minLength": 66, "maxLength": 1026 },
+        "legsHash": { "$ref": "#/$defs/bytes32" },
+        "policyAbiPreimage": { "type": "string", "pattern": "^0x(?:[0-9a-f]{2})+$", "minLength": 386, "maxLength": 386 },
+        "revenuePolicyHash": { "$ref": "#/$defs/bytes32" }
+      }
+    },
+    "pool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["poolId", "poolKeyHash", "currency0", "currency1", "fee", "tickSpacing"],
+      "properties": {
+        "poolId": { "$ref": "#/$defs/bytes32" },
+        "poolKeyHash": { "$ref": "#/$defs/bytes32" },
+        "currency0": { "$ref": "#/$defs/ethereumAddress" },
+        "currency1": { "$ref": "#/$defs/nonzeroEthereumAddress" },
+        "fee": { "type": "integer", "minimum": 0, "maximum": 16777215 },
+        "tickSpacing": { "type": "integer", "minimum": -8388608, "maximum": 8388607 }
+      }
+    },
+    "bytes4": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 10,
+      "pattern": "^0x(?:[0-9a-f]{2})*$"
+    }
+  }
+}
