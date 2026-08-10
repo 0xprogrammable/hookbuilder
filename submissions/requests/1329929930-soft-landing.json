@@ -1,0 +1,61 @@
+{
+  "$schema": "urn:programmable:applicant-submission:1.1.0",
+  "schemaVersion": "1.1.0",
+  "intake": {
+    "repository": "0xprogrammable/hookbuilder",
+    "repositoryId": 1320085947
+  },
+  "applicant": {
+    "githubLogin": "voladelta",
+    "launchWallet": "0x20c9d5674f3b31d23acF76Ceca8C8691E8e08408"
+  },
+  "source": {
+    "repository": "https://github.com/voladelta/soft-landing-hook",
+    "repositoryId": 1329929930,
+    "commit": "4e12c2da23b2158659ed3cbb0b4c62edbf3e1e2d",
+    "tree": "a7fbc7d99ce29e77469f91e233edaf77a80b628c"
+  },
+  "identifiers": {
+    "hookId": "soft-landing",
+    "hookVersion": "0.1.0",
+    "templateId": "custom-hook",
+    "templateVersion": "1.0.0",
+    "modelId": "soft-landing",
+    "modelVersion": "1.0.0"
+  },
+  "hook": {
+    "addressFlagMask": "0x20cc",
+    "permissions": {
+      "beforeInitialize": true,
+      "afterInitialize": false,
+      "beforeAddLiquidity": false,
+      "afterAddLiquidity": false,
+      "beforeRemoveLiquidity": false,
+      "afterRemoveLiquidity": false,
+      "beforeSwap": true,
+      "afterSwap": true,
+      "beforeDonate": false,
+      "afterDonate": false,
+      "beforeSwapReturnDelta": true,
+      "afterSwapReturnDelta": true,
+      "afterAddLiquidityReturnDelta": false,
+      "afterRemoveLiquidityReturnDelta": false
+    }
+  },
+  "fee": {
+    "amountPips": 1000,
+    "denominator": 1000000,
+    "currencyBasis": "quote",
+    "recipient": "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c",
+    "mutable": false
+  },
+  "requestedRoute": {
+    "routeId": "custom-graph",
+    "routeVersion": "1.0.0",
+    "chainId": "1"
+  },
+  "requestedActions": [
+    "review"
+  ],
+  "notes": "Soft Landing charges for exceeding a launch pool's directional throughput target, not for price movement. The immutable 1000-pip Programmable fee is charged on executed gross quote volume; there is no project hook charge. The repository owner states that this fork is used with permission from speedruntradev, which is credited in NOTICE.md. This request is for review of the exact pinned revision only."
+}
