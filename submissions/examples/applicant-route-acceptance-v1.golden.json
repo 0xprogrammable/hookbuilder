@@ -6,6 +6,16 @@
   "canonicalClaimEncoding": "canonical-json-v2-utf8-no-trailing-newline",
   "canonicalByteLength": 14660,
   "claimSha256": "sha256:1bd15db09da53b391136a898e62eb04f8b7560c20d475c24ed54a5734bb3fc44",
+  "applicationAcceptanceSubjectV1": {
+    "schemaVersion": "programmable.application-acceptance-subject.v1",
+    "applicantGithubUserId": 155705664,
+    "reviewedRequest": {
+      "path": "submissions/requests/1329073878-shards-v1.json",
+      "applicationManifestSha256": "sha256:e069926d380e56bee001dd7cfeda591db56164b1acf7478b478dd62a6e119ec2"
+    }
+  },
+  "canonicalSubjectByteLength": 278,
+  "acceptanceSubjectHash": "sha256:948a920b86aa915bc2dfcdcf56b271f41a2843fc1360b734e9221c0533d960b8",
   "expectedValidationBlockers": [
     "ROUTE_ACCEPTANCE_CAPABILITY_DISABLED",
     "ROUTE_ACCEPTANCE_PREDEPLOYMENT_EVIDENCE_PENDING",

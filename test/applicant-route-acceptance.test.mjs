@@ -10,10 +10,14 @@ import { canonicalJsonBytesV2 } from "../skills/programmable-v4-hook-builder/scr
 import {
   APPLICANT_ROUTE_ACCEPTANCE_CANONICAL_CLAIM_ENCODING,
   MAXIMUM_APPLICANT_ROUTE_ACCEPTANCE_BYTES,
+  applicantAcceptanceRecordHash,
   applicantRouteAcceptanceClaimHash,
-  applicantRouteAcceptanceSubject,
   applicantRouteAcceptanceTransition,
+  applicationAcceptanceSubjectHash,
+  applicationAcceptanceSubjectV1,
   assertApplicantRouteAcceptanceSession,
+  canonicalApplicantRouteAcceptanceRecordCoreBytes,
+  canonicalApplicationAcceptanceSubjectV1Bytes,
   canonicalApplicantRouteAcceptanceBytes,
   canonicalApplicantRouteAcceptanceJsonUtf8,
   createApplicantRouteAcceptanceCommand,
@@ -86,6 +90,26 @@ function productionShapedAcceptance() {
     expectedResultHash: `0x${"7".repeat(64)}`
   };
   return value;
+}
+
+function acceptanceRecordCoreHashFixture(value) {
+  const applicationAcceptanceSubject = applicationAcceptanceSubjectV1(value);
+  return {
+    schemaVersion: "programmable.applicant-route-acceptance-record-core.v1",
+    recordRevision: 8,
+    acceptedAt: "2026-08-10T12:34:56.000Z",
+    previousState: "pending",
+    previousStateVersion: 7,
+    state: "accepted",
+    stateVersion: 8,
+    authenticatedGithubUserId: value.applicant.githubUserId,
+    expectedLaunchWallet: value.applicant.launchWallet,
+    claimSha256: applicantRouteAcceptanceClaimHash(value),
+    canonicalClaimEncoding: APPLICANT_ROUTE_ACCEPTANCE_CANONICAL_CLAIM_ENCODING,
+    applicationAcceptanceSubject,
+    acceptanceSubjectHash: applicationAcceptanceSubjectHash(applicationAcceptanceSubject),
+    transition: applicantRouteAcceptanceTransition(value)
+  };
 }
 
 function directGraphPlan() {
@@ -421,9 +445,47 @@ test("canonical acceptance UTF-8 bytes and SHA-256 match the portable Golden", (
     acceptanceGolden.claimSha256
   );
   assert.equal(acceptanceGolden.authorizationGranted, false);
+  const subject = applicationAcceptanceSubjectV1(acceptanceExample);
+  assert.deepEqual(subject, acceptanceGolden.applicationAcceptanceSubjectV1);
+  assert.equal(
+    canonicalApplicationAcceptanceSubjectV1Bytes(subject).length,
+    acceptanceGolden.canonicalSubjectByteLength
+  );
+  assert.equal(
+    applicationAcceptanceSubjectHash(subject),
+    acceptanceGolden.acceptanceSubjectHash
+  );
   assert.deepEqual(
     validateApplicantRouteAcceptance(acceptanceExample, acceptanceSchema).map(({ code }) => code),
     acceptanceGolden.expectedValidationBlockers
+  );
+});
+
+test("application acceptance subject is stable across claim revisions and route reacceptance", () => {
+  const subject = applicationAcceptanceSubjectV1(acceptanceExample);
+  const subjectHash = applicationAcceptanceSubjectHash(subject);
+  const revisedClaim = structuredClone(acceptanceExample);
+  revisedClaim.acceptedRoute.routeVersion = "2.0.0";
+  revisedClaim.routeBinding.routePayloadHash = `0x${"8".repeat(64)}`;
+  revisedClaim.router.runtimeCodeHash = `0x${"7".repeat(64)}`;
+  revisedClaim.source.commit = "0".repeat(40);
+  revisedClaim.applicant.launchWallet = "0x52908400098527886E0F7030069857D2E4169EE7";
+  assert.equal(
+    applicationAcceptanceSubjectHash(applicationAcceptanceSubjectV1(revisedClaim)),
+    subjectHash
+  );
+
+  const differentApplicant = structuredClone(acceptanceExample);
+  differentApplicant.applicant.githubUserId += 1;
+  assert.notEqual(
+    applicationAcceptanceSubjectHash(applicationAcceptanceSubjectV1(differentApplicant)),
+    subjectHash
+  );
+  const differentApplication = structuredClone(acceptanceExample);
+  differentApplication.reviewedRequest.applicationManifestSha256 = `sha256:${"0".repeat(64)}`;
+  assert.notEqual(
+    applicationAcceptanceSubjectHash(applicationAcceptanceSubjectV1(differentApplication)),
+    subjectHash
   );
 });
 
@@ -494,10 +556,17 @@ test("Website acceptance and CAS record creation stay terminally disabled before
     }),
     /applicant route acceptance is not ready/u
   );
-  const subject = applicantRouteAcceptanceSubject(activated);
+  const subject = applicationAcceptanceSubjectV1(activated);
   assert.equal(subject.applicantGithubUserId, 155705664);
-  assert.equal(subject.launchWallet, value.applicant.launchWallet);
-  assert.equal(subject.hookId, "shards-v1");
+  assert.deepEqual(subject.reviewedRequest, {
+    path: requestPath,
+    applicationManifestSha256:
+      "sha256:e069926d380e56bee001dd7cfeda591db56164b1acf7478b478dd62a6e119ec2"
+  });
+  assert.equal(
+    applicationAcceptanceSubjectHash(subject),
+    applicationAcceptanceSubjectHash(applicationAcceptanceSubjectV1(value))
+  );
   const transition = applicantRouteAcceptanceTransition(activated);
   assert.deepEqual(transition.fromRoute, request.requestedRoute);
   assert.deepEqual(transition.toRoute, value.acceptedRoute);
@@ -530,5 +599,34 @@ test("Website acceptance and CAS record creation stay terminally disabled before
   assert.equal(
     canonicalApplicantRouteAcceptanceJsonUtf8(value),
     canonicalApplicantRouteAcceptanceBytes(value).toString("utf8")
+  );
+});
+
+test("immutable acceptance record core has one strict content-addressed hash", () => {
+  const recordCore = acceptanceRecordCoreHashFixture(acceptanceExample);
+  const canonicalBytes = canonicalApplicantRouteAcceptanceRecordCoreBytes(recordCore);
+  assert.equal(canonicalBytes.at(-1), "}".charCodeAt(0));
+  assert.equal(canonicalBytes.length, 3204);
+  assert.equal(
+    applicantAcceptanceRecordHash(recordCore),
+    "sha256:c9501539e6586b4b03df34e7cdeb9b27ec74a3e1d5e328522f4c5878a647a2ec"
+  );
+  assert.equal(
+    applicantAcceptanceRecordHash(recordCore),
+    `sha256:${crypto.createHash("sha256").update(canonicalBytes).digest("hex")}`
+  );
+
+  const wrongSubjectHash = structuredClone(recordCore);
+  wrongSubjectHash.acceptanceSubjectHash = `sha256:${"0".repeat(64)}`;
+  assert.throws(
+    () => applicantAcceptanceRecordHash(wrongSubjectHash),
+    /internally inconsistent/u
+  );
+
+  const pointerField = structuredClone(recordCore);
+  pointerField.previousAcceptanceHash = null;
+  assert.throws(
+    () => applicantAcceptanceRecordHash(pointerField),
+    /unsupported shape/u
   );
 });

@@ -20,8 +20,8 @@ import {
 export const APPLICANT_ROUTE_ACCEPTANCE_SCHEMA_VERSION = "1.0.0";
 export const APPLICANT_ROUTE_ACCEPTANCE_CLAIM_TYPE =
   "urn:programmable:applicant-route-acceptance:1.0.0";
-export const APPLICANT_ROUTE_ACCEPTANCE_SUBJECT_TYPE =
-  "programmable.applicant-route-acceptance-subject.v1";
+export const APPLICATION_ACCEPTANCE_SUBJECT_V1_TYPE =
+  "programmable.application-acceptance-subject.v1";
 export const APPLICANT_ROUTE_ACCEPTANCE_TRANSITION_TYPE =
   "programmable.applicant-route-acceptance-transition.v1";
 export const APPLICANT_ROUTE_ACCEPTANCE_COMMAND_TYPE =
@@ -267,24 +267,27 @@ export function canonicalApplicantRouteAcceptanceJsonUtf8(value) {
 }
 
 export function applicantRouteAcceptanceClaimHash(value) {
-  return `sha256:${crypto.createHash("sha256")
-    .update(canonicalApplicantRouteAcceptanceBytes(value))
-    .digest("hex")}`;
+  return sha256(canonicalApplicantRouteAcceptanceBytes(value));
 }
 
-export function applicantRouteAcceptanceSubject(value) {
+export function applicationAcceptanceSubjectV1(value) {
   return deepFreeze({
-    schemaVersion: APPLICANT_ROUTE_ACCEPTANCE_SUBJECT_TYPE,
+    schemaVersion: APPLICATION_ACCEPTANCE_SUBJECT_V1_TYPE,
     applicantGithubUserId: value.applicant.githubUserId,
-    applicantGithubLogin: value.applicant.githubLogin,
-    launchWallet: value.applicant.launchWallet,
-    hookId: "shards-v1",
-    reviewedRequestPath: value.reviewedRequest.path,
-    reviewedRequestManifestSha256: value.reviewedRequest.applicationManifestSha256,
-    sourceRepositoryId: value.source.repositoryId,
-    sourceCommit: value.source.commit,
-    sourceTree: value.source.tree
+    reviewedRequest: {
+      path: value.reviewedRequest.path,
+      applicationManifestSha256: value.reviewedRequest.applicationManifestSha256
+    }
   });
+}
+
+export function canonicalApplicationAcceptanceSubjectV1Bytes(subject) {
+  assertApplicationAcceptanceSubjectV1(subject);
+  return canonicalJsonBytesV2(subject, { trailingNewline: false });
+}
+
+export function applicationAcceptanceSubjectHash(subject) {
+  return sha256(canonicalApplicationAcceptanceSubjectV1Bytes(subject));
 }
 
 export function applicantRouteAcceptanceTransition(value) {
@@ -320,6 +323,7 @@ export function createApplicantRouteAcceptanceRecordCore(
   requireAcceptedAt(acceptedAt);
   requireReadyAcceptance(value, schema);
   assertApplicantRouteAcceptanceSession(value, authenticatedGithubUserId);
+  const applicationAcceptanceSubject = applicationAcceptanceSubjectV1(value);
   return deepFreeze({
     schemaVersion: APPLICANT_ROUTE_ACCEPTANCE_RECORD_CORE_TYPE,
     recordRevision: expectedStateVersion + 1,
@@ -332,9 +336,19 @@ export function createApplicantRouteAcceptanceRecordCore(
     expectedLaunchWallet: value.applicant.launchWallet,
     claimSha256: applicantRouteAcceptanceClaimHash(value),
     canonicalClaimEncoding: APPLICANT_ROUTE_ACCEPTANCE_CANONICAL_CLAIM_ENCODING,
-    subject: applicantRouteAcceptanceSubject(value),
+    applicationAcceptanceSubject,
+    acceptanceSubjectHash: applicationAcceptanceSubjectHash(applicationAcceptanceSubject),
     transition: applicantRouteAcceptanceTransition(value)
   });
+}
+
+export function canonicalApplicantRouteAcceptanceRecordCoreBytes(recordCore) {
+  assertApplicantRouteAcceptanceRecordCore(recordCore);
+  return canonicalJsonBytesV2(recordCore, { trailingNewline: false });
+}
+
+export function applicantAcceptanceRecordHash(recordCore) {
+  return sha256(canonicalApplicantRouteAcceptanceRecordCoreBytes(recordCore));
 }
 
 export function assertApplicantRouteAcceptanceSession(value, authenticatedGithubUserId) {
@@ -383,6 +397,105 @@ function requireAcceptedAt(value) {
     || Number.isNaN(Date.parse(value))
     || new Date(value).toISOString() !== value
   ) throw new TypeError("acceptedAt must be an exact UTC RFC 3339 timestamp with milliseconds");
+}
+
+function assertApplicationAcceptanceSubjectV1(subject) {
+  if (
+    subject === null
+    || typeof subject !== "object"
+    || Array.isArray(subject)
+    || subject.schemaVersion !== APPLICATION_ACCEPTANCE_SUBJECT_V1_TYPE
+    || !Number.isSafeInteger(subject.applicantGithubUserId)
+    || subject.applicantGithubUserId < 1
+    || subject.reviewedRequest === null
+    || typeof subject.reviewedRequest !== "object"
+    || Array.isArray(subject.reviewedRequest)
+    || !isNormalizedRepositoryPath(subject.reviewedRequest.path)
+    || !isSha256(subject.reviewedRequest.applicationManifestSha256)
+    || !hasExactKeys(subject, ["schemaVersion", "applicantGithubUserId", "reviewedRequest"])
+    || !hasExactKeys(subject.reviewedRequest, ["path", "applicationManifestSha256"])
+  ) {
+    throw new TypeError("application acceptance subject must match applicationAcceptanceSubjectV1");
+  }
+}
+
+function assertApplicantRouteAcceptanceRecordCore(recordCore) {
+  if (
+    recordCore === null
+    || typeof recordCore !== "object"
+    || Array.isArray(recordCore)
+    || recordCore.schemaVersion !== APPLICANT_ROUTE_ACCEPTANCE_RECORD_CORE_TYPE
+    || recordCore.transition === null
+    || typeof recordCore.transition !== "object"
+    || Array.isArray(recordCore.transition)
+    || !hasExactKeys(recordCore, [
+      "schemaVersion",
+      "recordRevision",
+      "acceptedAt",
+      "previousState",
+      "previousStateVersion",
+      "state",
+      "stateVersion",
+      "authenticatedGithubUserId",
+      "expectedLaunchWallet",
+      "claimSha256",
+      "canonicalClaimEncoding",
+      "applicationAcceptanceSubject",
+      "acceptanceSubjectHash",
+      "transition"
+    ])
+    || !hasExactKeys(recordCore.transition, [
+      "schemaVersion",
+      "fromRoute",
+      "toRoute",
+      "routeCapability",
+      "router",
+      "routeBinding",
+      "reviewedPlanSha256",
+      "authorizationGranted"
+    ])
+  ) {
+    throw new TypeError("applicant route acceptance record core has an unsupported shape");
+  }
+  requireAcceptedAt(recordCore.acceptedAt);
+  requireStateVersion(recordCore.previousStateVersion);
+  requireStateVersion(recordCore.stateVersion);
+  assertApplicationAcceptanceSubjectV1(recordCore.applicationAcceptanceSubject);
+  if (
+    !Number.isSafeInteger(recordCore.recordRevision)
+    || recordCore.recordRevision !== recordCore.stateVersion
+    || recordCore.stateVersion !== recordCore.previousStateVersion + 1
+    || recordCore.previousState !== APPLICANT_ROUTE_ACCEPTANCE_PENDING_STATE
+    || recordCore.state !== APPLICANT_ROUTE_ACCEPTANCE_ACCEPTED_STATE
+    || recordCore.authenticatedGithubUserId
+      !== recordCore.applicationAcceptanceSubject.applicantGithubUserId
+    || !isSha256(recordCore.claimSha256)
+    || recordCore.canonicalClaimEncoding !== APPLICANT_ROUTE_ACCEPTANCE_CANONICAL_CLAIM_ENCODING
+    || recordCore.acceptanceSubjectHash
+      !== applicationAcceptanceSubjectHash(recordCore.applicationAcceptanceSubject)
+    || recordCore.transition?.schemaVersion !== APPLICANT_ROUTE_ACCEPTANCE_TRANSITION_TYPE
+    || !isSha256(recordCore.transition?.reviewedPlanSha256)
+    || recordCore.transition?.authorizationGranted !== false
+  ) {
+    throw new TypeError("applicant route acceptance record core is internally inconsistent");
+  }
+  if (
+    checksumAddress(recordCore.expectedLaunchWallet, { label: "expectedLaunchWallet" })
+      !== recordCore.expectedLaunchWallet
+  ) {
+    throw new TypeError("applicant route acceptance record core launch wallet is not EIP-55 canonical");
+  }
+}
+
+function hasExactKeys(value, expectedKeys) {
+  const actual = Object.keys(value).sort();
+  const expected = [...expectedKeys].sort();
+  return actual.length === expected.length
+    && actual.every((key, index) => key === expected[index]);
+}
+
+function sha256(bytes) {
+  return `sha256:${crypto.createHash("sha256").update(bytes).digest("hex")}`;
 }
 
 function sameJson(left, right) {
