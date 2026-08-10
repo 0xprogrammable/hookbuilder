@@ -279,33 +279,38 @@ test("every GitHub Action is pinned to an immutable commit", () => {
 test("every CI analysis job checks out and verifies the exact pull-request head", () => {
   const workflow = fs.readFileSync(path.join(repositoryRoot, ".github", "workflows", "ci.yml"), "utf8");
   const exactRevisionExpression = "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}";
+  const plannedRevisionExpression = "${{ needs.plan.outputs.head_sha }}";
+  const trustedRevisionExpression = "${{ needs.plan.outputs.trusted_revision }}";
   assert.doesNotMatch(workflow, /^\s*pull_request_target:/mu);
   assert.match(workflow, /permissions:\n  contents: read\n/u);
   for (const requiredJobName of [
-    "    name: Repository and skill / Node ${{ matrix.node }}\n",
-    "    name: Reference fee kernel\n",
-    "    name: CodeQL\n"
+    "    name: Applicant gate\n",
+    "    name: Platform/profile gate\n",
+    "    name: Internal / repository and skill / Node ${{ matrix.node }}\n",
+    "    name: Internal / reference fee kernel / ${{ matrix.kernel }}\n",
+    "    name: Internal / CodeQL\n"
   ]) assert.ok(workflow.includes(requiredJobName), requiredJobName.trim());
-  const checkoutMarker = "      - name: Checkout exact revision\n";
-  const checkoutSteps = workflow.split(checkoutMarker).slice(1).map((section) => (
-    section.split("\n      - name:", 1)[0]
-  ));
-  assert.equal(checkoutSteps.length, 3);
+  const checkoutSteps = workflow.match(/^\s*uses: actions\/checkout@[0-9a-f]{40}.*\n\s*with:\n(?:\s{10}.*\n)+/gmu) ?? [];
+  assert.equal(checkoutSteps.length, 9);
   for (const step of checkoutSteps) {
     assert.match(step, /^\s*uses: actions\/checkout@[0-9a-f]{40}/mu);
-    assert.ok(step.includes(`          ref: ${exactRevisionExpression}\n`));
+    assert.ok(
+      step.includes(`          ref: ${exactRevisionExpression}\n`)
+      || step.includes(`          ref: ${plannedRevisionExpression}\n`)
+      || step.includes(`          ref: ${trustedRevisionExpression}\n`)
+    );
     assert.ok(step.includes("          persist-credentials: false"));
   }
 
-  const verificationMarker = "      - name: Verify exact revision\n";
-  const verificationSteps = workflow.split(verificationMarker).slice(1).map((section) => (
-    section.split("\n      - name:", 1)[0]
-  ));
-  assert.equal(verificationSteps.length, checkoutSteps.length);
-  for (const step of verificationSteps) {
-    assert.ok(step.includes(`          EXPECTED_REVISION: ${exactRevisionExpression}\n`));
-    assert.ok(step.includes('        run: test "$(git rev-parse HEAD)" = "$EXPECTED_REVISION"'));
-  }
+  assert.equal([
+    ...workflow.matchAll(/^\s*- name: Verify (?:exact revision|protected control-plane revision|protected gate revision)$/gmu)
+  ].length, checkoutSteps.length);
+  assert.equal([
+    ...workflow.matchAll(/^\s*run: test "\$\(git rev-parse HEAD\)" = "\$EXPECTED_REVISION"$/gmu)
+  ].length, checkoutSteps.length);
+  assert.ok(workflow.includes(`          EXPECTED_REVISION: ${exactRevisionExpression}\n`));
+  assert.ok(workflow.includes(`          EXPECTED_REVISION: ${plannedRevisionExpression}\n`));
+  assert.ok(workflow.includes(`          EXPECTED_REVISION: ${trustedRevisionExpression}\n`));
 });
 
 test("raw Git permits only the exact recursive bound-tree enumeration shape", () => {
@@ -423,12 +428,12 @@ test("CI deterministically covers both Programmable fee reference kernels", () =
   const requiredJobEnd = workflow.indexOf("\n  codeql:\n", requiredJobStart);
   assert.ok(requiredJobStart >= 0 && requiredJobEnd > requiredJobStart, "reference-kernel required-check aggregator boundary missing");
   const requiredJob = workflow.slice(requiredJobStart, requiredJobEnd);
-  assert.match(requiredJob, /^\s*name: Reference fee kernel$/mu);
-  assert.match(requiredJob, /^\s*needs: reference-kernel$/mu);
-  assert.match(requiredJob, /^\s*if: \$\{\{ always\(\) \}\}$/mu);
+  assert.match(requiredJob, /^\s*name: Internal \/ reference fee kernel aggregate$/mu);
+  assert.match(requiredJob, /^\s*needs: \[plan, reference-kernel\]$/mu);
+  assert.match(requiredJob, /^\s*if: \$\{\{ always\(\) && \(needs\.plan\.outputs\.mode == 'platform' \|\| needs\.plan\.outputs\.mode == 'mixed'\) \}\}$/mu);
   assert.match(requiredJob, /^\s*MATRIX_RESULT: \$\{\{ needs\.reference-kernel\.result \}\}$/mu);
   assert.match(requiredJob, /^\s*run: test "\$MATRIX_RESULT" = success$/mu);
-  assert.equal([...workflow.matchAll(/^\s*name: Reference fee kernel$/gmu)].length, 1);
+  assert.equal([...workflow.matchAll(/^\s*name: Internal \/ reference fee kernel aggregate$/gmu)].length, 1);
 });
 
 test("relative Markdown links resolve inside the repository", () => {

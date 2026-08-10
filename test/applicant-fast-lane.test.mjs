@@ -219,6 +219,23 @@ test("Website acceptance transforms only a claim-and-record-bound route into sup
   }), /cannot enable a disabled route capability/u);
 });
 
+test("workflow keeps two independent stable contexts and never executes a PR head as applicant control plane", () => {
+  const workflow = fs.readFileSync(path.join(repositoryRoot, ".github/workflows/ci.yml"), "utf8");
+  assert.match(workflow, /name: Applicant gate/u);
+  assert.match(workflow, /name: Platform\/profile gate/u);
+  assert.match(workflow, /needs: \[plan, applicant-acceptance, applicant-mutable\]/u);
+  assert.match(workflow, /needs: \[plan, repository, reference-kernel-required, codeql, platform-attestation\]/u);
+  assert.match(workflow, /ref: \$\{\{ needs\.plan\.outputs\.trusted_revision \}\}/u);
+  assert.doesNotMatch(workflow, /applicant-capability/u);
+  assert.doesNotMatch(workflow, /applicant-revision-evidence|fetch-applicant-evidence|acceptance-resolver/u);
+  assert.match(workflow, /WEBSITE_APPLICANT_ROUTE_ACCEPTANCE_CLAIM_URL/u);
+  assert.match(workflow, /WEBSITE_APPLICANT_ROUTE_ACCEPTANCE_RECORD_URL/u);
+  assert.match(workflow, /accepted-route-report\.json/u);
+  assert.match(workflow, /applicant-acceptance:[\s\S]*?timeout-minutes: 2/u);
+  assert.match(workflow, /applicant-mutable:[\s\S]*?timeout-minutes: 8/u);
+  assert.match(fs.readFileSync(path.join(repositoryRoot, "scripts/ci/plan-applicant-fast-lane.mjs"), "utf8"), /git", \["merge-base", base, head\]/u);
+});
+
 test("the two stable gates remain disjoint in applicant, mixed, and platform modes", () => {
   const runGate = (args) => childProcess.spawnSync(process.execPath, ["scripts/ci/assert-fast-lane-gate.mjs", ...args], {
     cwd: repositoryRoot,
