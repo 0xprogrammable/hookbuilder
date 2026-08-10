@@ -1,0 +1,61 @@
+{
+  "$schema": "urn:programmable:applicant-submission:1.1.0",
+  "schemaVersion": "1.1.0",
+  "intake": {
+    "repository": "0xprogrammable/hookbuilder",
+    "repositoryId": 1320085947
+  },
+  "applicant": {
+    "githubLogin": "voladelta",
+    "launchWallet": "0xA0B5Bb39878507E06bCA49956294aE7c907d4e61"
+  },
+  "source": {
+    "repository": "https://github.com/voladelta/bankroll-hook",
+    "repositoryId": 1322997237,
+    "commit": "d45840649049638713416349a99a83782ff76145",
+    "tree": "1fc9f25d73b19d43f6a72462ad1d4f64eab7c435"
+  },
+  "identifiers": {
+    "hookId": "bankroll-hook",
+    "hookVersion": "0.1.0",
+    "templateId": "custom-hook",
+    "templateVersion": "1.0.0",
+    "modelId": "bankroll-hook",
+    "modelVersion": "0.1.0"
+  },
+  "hook": {
+    "addressFlagMask": "0x30cc",
+    "permissions": {
+      "beforeInitialize": true,
+      "afterInitialize": true,
+      "beforeAddLiquidity": false,
+      "afterAddLiquidity": false,
+      "beforeRemoveLiquidity": false,
+      "afterRemoveLiquidity": false,
+      "beforeSwap": true,
+      "afterSwap": true,
+      "beforeDonate": false,
+      "afterDonate": false,
+      "beforeSwapReturnDelta": true,
+      "afterSwapReturnDelta": true,
+      "afterAddLiquidityReturnDelta": false,
+      "afterRemoveLiquidityReturnDelta": false
+    }
+  },
+  "fee": {
+    "amountPips": 1000,
+    "denominator": 1000000,
+    "currencyBasis": "quote",
+    "recipient": "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c",
+    "mutable": false
+  },
+  "requestedRoute": {
+    "routeId": "custom-graph",
+    "routeVersion": "1.0.0",
+    "chainId": "1"
+  },
+  "requestedActions": [
+    "review"
+  ],
+  "notes": "Custom canonical v4 bankroll game. Ordinary swaps support all four modes; wagered swaps are exact-input only through the bound router. The inclusive fee is 1000 pips (10 bps) of executed gross native-ETH quote, entirely allocated to the immutable Programmable recipient. Chainlink VRF v2.5 uses native-ETH direct funding. The source package is a proposal generated under submission standard 1.5.0; the current 1.6.0 local preflight reports schema/channel drift and does not imply readiness. A fresh clean clone passed 76 tests, build, size, launch-specification, format and lint checks; the RPC-dependent fork test was not rerun. This request is for review only."
+}
