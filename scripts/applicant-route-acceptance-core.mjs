@@ -11,8 +11,11 @@ import { checksumAddress } from "../skills/programmable-v4-hook-builder/scripts/
 import { validateAgainstSchema } from "../skills/programmable-v4-hook-builder/scripts/restricted-json-schema-core.mjs";
 import {
   EXACT_SHARDS_APPLICANT_GITHUB_USER_ID,
+  EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_SHA256,
+  EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1,
   EXACT_SHARDS_REVIEWED_PLAN_SHA256,
   EXACT_SHARDS_REVIEWED_PLAN_V1,
+  EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1,
   assessRouteCompatibility,
   isNormalizedRepositoryPath
 } from "./route-compatibility-core.mjs";
@@ -125,6 +128,38 @@ export function validateApplicantRouteAcceptance(value, schema) {
       "Use jesse-stahl/shards-v1 at the exact reviewed commit and root tree."
     );
   }
+  const supersessionSha256 = reviewedPlanSupersessionHash(value.reviewedPlanSupersession);
+  if (!sameJson(value.reviewedPlanSupersession, EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1)) {
+    add(
+      "ROUTE_ACCEPTANCE_SUPERSESSION_MISMATCH",
+      "$.reviewedPlanSupersession",
+      "Acceptance does not bind the exact reviewed-plan supersession and its two allowed Router execution modes.",
+      "Use the Website-projected supersession for the exact Shards nested-factory profile without changing its mode policy, disclosure, or revenue."
+    );
+  }
+  if (
+    supersessionSha256 !== EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_SHA256
+    || value.reviewedPlan.reviewedPlanSupersessionSha256 !== supersessionSha256
+    || value.routeCapability.reviewedPlanSupersessionSha256 !== supersessionSha256
+  ) {
+    add(
+      "ROUTE_ACCEPTANCE_SUPERSESSION_HASH_MISMATCH",
+      "$.reviewedPlanSupersession",
+      "Reviewed plan, route capability, and acceptance do not commit the same canonical supersession bytes.",
+      "Use one Canonical JSON V2 supersession object and its exact SHA-256 commitment in the reviewed plan and route capability."
+    );
+  }
+  if (
+    !sameJson(value.routerArtifactBinding, EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1)
+    || !sameJson(value.reviewedPlan.routerArtifactBinding, value.routerArtifactBinding)
+  ) {
+    add(
+      "ROUTE_ACCEPTANCE_ROUTER_ARTIFACT_MISMATCH",
+      "$.routerArtifactBinding",
+      "Acceptance and reviewed plan do not bind the exact final Router V2 artifact ledger.",
+      "Use the compact frozen artifact, integrity, generator, source, code, route, result, launch, and stamp commitments without embedding the artifact bytes."
+    );
+  }
   if (!sameJson(value.originalRoute, {
     routeId: "custom-graph",
     routeVersion: "1.0.0",
@@ -228,6 +263,27 @@ export function validateApplicantRouteAcceptance(value, schema) {
       "Use both independently derived hashes from the final frozen Router V2 compiler artifact."
     );
   }
+  if (!sameJson(value.routeBinding, value.routerArtifactBinding.routeBinding)) {
+    add(
+      "ROUTE_ACCEPTANCE_ROUTE_BINDING_MISMATCH",
+      "$.routeBinding",
+      "Applicant route binding differs from the frozen Router V2 artifact commitment.",
+      "Use the exact routePayloadHash, expectedResultHash, launchId, and stampRequestHash from the final canonical artifact."
+    );
+  }
+  if (
+    value.router.source.repository !== value.routerArtifactBinding.routerSource.repository
+    || value.router.source.repositoryId !== 1314365508
+    || value.router.source.commit !== value.routerArtifactBinding.routerSource.commit
+    || value.router.source.tree !== value.routerArtifactBinding.routerSource.tree
+  ) {
+    add(
+      "ROUTE_ACCEPTANCE_ROUTER_SOURCE_MISMATCH",
+      "$.router.source",
+      "Router source does not match the frozen repository identity, commit, and tree in the artifact binding.",
+      "Use the exact immutable Router V2 source binding from the final canonical artifact."
+    );
+  }
   const predeployment = value.reviewedPlan.launchPlan.priorReleaseFactoryPredeployment;
   if (
     predeployment.status !== "completed-and-verified"
@@ -268,6 +324,10 @@ export function canonicalApplicantRouteAcceptanceJsonUtf8(value) {
 
 export function applicantRouteAcceptanceClaimHash(value) {
   return sha256(canonicalApplicantRouteAcceptanceBytes(value));
+}
+
+export function reviewedPlanSupersessionHash(value) {
+  return sha256(canonicalJsonBytesV2(value, { trailingNewline: false }));
 }
 
 export function applicationAcceptanceSubjectV1(value) {
@@ -349,6 +409,30 @@ export function canonicalApplicantRouteAcceptanceRecordCoreBytes(recordCore) {
 
 export function applicantAcceptanceRecordHash(recordCore) {
   return sha256(canonicalApplicantRouteAcceptanceRecordCoreBytes(recordCore));
+}
+
+export function verifyApplicantRouteAcceptanceRecordCore(recordCore, value) {
+  assertApplicantRouteAcceptanceRecordCore(recordCore);
+  const expectedSubject = applicationAcceptanceSubjectV1(value);
+  const expectedClaimSha256 = applicantRouteAcceptanceClaimHash(value);
+  const expectedTransition = applicantRouteAcceptanceTransition(value);
+  if (
+    recordCore.claimSha256 !== expectedClaimSha256
+    || recordCore.acceptanceSubjectHash !== applicationAcceptanceSubjectHash(expectedSubject)
+    || !sameJson(recordCore.applicationAcceptanceSubject, expectedSubject)
+    || recordCore.expectedLaunchWallet !== value.applicant.launchWallet
+    || !sameJson(recordCore.transition, expectedTransition)
+  ) {
+    throw new TypeError("applicant route acceptance record does not bind the supplied canonical claim");
+  }
+  return deepFreeze({
+    recordSha256: applicantAcceptanceRecordHash(recordCore),
+    claimSha256: expectedClaimSha256,
+    acceptanceSubjectHash: recordCore.acceptanceSubjectHash,
+    stateVersion: recordCore.stateVersion,
+    authenticatedGithubUserId: recordCore.authenticatedGithubUserId,
+    expectedLaunchWallet: recordCore.expectedLaunchWallet
+  });
 }
 
 export function assertApplicantRouteAcceptanceSession(value, authenticatedGithubUserId) {

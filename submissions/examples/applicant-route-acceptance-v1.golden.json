@@ -4,8 +4,26 @@
   "claimSchema": "urn:programmable:applicant-route-acceptance:1.0.0",
   "canonicalization": "urn:programmable:canonical-json:2.0.0",
   "canonicalClaimEncoding": "canonical-json-v2-utf8-no-trailing-newline",
-  "canonicalByteLength": 14660,
-  "claimSha256": "sha256:1bd15db09da53b391136a898e62eb04f8b7560c20d475c24ed54a5734bb3fc44",
+  "canonicalByteLength": 22202,
+  "claimSha256": "sha256:b2b5abe3c521a0058ab1779423632757d065b6b167c23742af12d1af25847da8",
+  "reviewedPlanSupersessionSha256": "sha256:925a7675a61761e0148d40acb6f18ecad6bacccb3dc9809aae40abc021e26ef5",
+  "routerArtifactBindingSha256": "sha256:b645b6e55bc32c3a78f1adea66bba598ea98a48c0840734b9a74e21724d59ed2",
+  "allowedExecutionModes": [
+    "EXACT_FACTORY_LAUNCH_EXECUTED",
+    "EXACT_EXISTING_LAUNCH_ADOPTED"
+  ],
+  "adoptionDisclosure": {
+    "attests": "The Router validates and stamps the exact reviewed Shards launch identity.",
+    "doesNotAttest": [
+      "The launch wallet called the Shards factory.",
+      "The market remained pristine or untraded."
+    ]
+  },
+  "factoryDeploymentSenderPolicy": {
+    "plannedDeploymentSender": "0x2Bb333d48DFAF1596D9036671d2E43168994249E",
+    "acceptedObservedDeploymentSender": "any-eoa",
+    "acceptedObservedDeploymentSenderCondition": "exact-canonical-create2-proxy-salt-initcode-calldata-factory-renderer-only"
+  },
   "applicationAcceptanceSubjectV1": {
     "schemaVersion": "programmable.application-acceptance-subject.v1",
     "applicantGithubUserId": 155705664,

@@ -24,6 +24,8 @@ import {
   createApplicantRouteAcceptanceRecordCore,
   loadApplicantRouteAcceptanceSchema,
   parseApplicantRouteAcceptance,
+  reviewedPlanSupersessionHash,
+  verifyApplicantRouteAcceptanceRecordCore,
   validateApplicantRouteAcceptance
 } from "../scripts/applicant-route-acceptance-core.mjs";
 import {
@@ -36,8 +38,11 @@ import {
   EXACT_SHARDS_PROFILE_VERSION_HASH,
   EXACT_SHARDS_REVENUE_POLICY_HASH,
   EXACT_SHARDS_REVENUE_POLICY_V1,
+  EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_SHA256,
+  EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1,
   EXACT_SHARDS_REVIEWED_PLAN_V1,
   EXACT_SHARDS_REVIEWED_PLAN_SHA256,
+  EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1,
   PRODUCTION_GRAPH_FACTORY_ADDRESS,
   PRODUCTION_GRAPH_FACTORY_RUNTIME_CODE_HASH,
   SUPPORTED_ROUTE_BINDINGS,
@@ -48,6 +53,7 @@ import {
   isExactShardsApplicantRequest,
   loadReviewedRoutePlanSchema,
   parseReviewedRoutePlan,
+  resolveApplicantRouteReview,
   validateReviewedRoutePlan,
   validateReviewedRoutePlanRequestBinding
 } from "../scripts/route-compatibility-core.mjs";
@@ -78,17 +84,14 @@ function productionShapedAcceptance() {
     deploymentKind: "immutable",
     source: {
       repository: "https://github.com/0xprogrammable/programmable",
-      repositoryId: 1320085947,
-      commit: "3".repeat(40),
-      tree: "4".repeat(40)
+      repositoryId: 1314365508,
+      commit: EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1.routerSource.commit,
+      tree: EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1.routerSource.tree
     },
     contractPath: "src/ProgrammableLaunchStampRouterV2.sol",
     runtimeCodeHash: `0x${"5".repeat(64)}`
   };
-  value.routeBinding = {
-    routePayloadHash: `0x${"6".repeat(64)}`,
-    expectedResultHash: `0x${"7".repeat(64)}`
-  };
+  value.routeBinding = structuredClone(EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1.routeBinding);
   return value;
 }
 
@@ -122,6 +125,8 @@ function directGraphPlan() {
   delete value.factoryInterface;
   delete value.artifactCode;
   delete value.launchPlan;
+  delete value.reviewedPlanSupersessionSha256;
+  delete value.routerArtifactBinding;
   value.routeTarget = {
     role: "platform-graph-factory",
     address: PRODUCTION_GRAPH_FACTORY_ADDRESS,
@@ -172,6 +177,21 @@ test("capability catalog publishes only direct graph and the exact Shards nested
     SUPPORTED_ROUTE_BINDINGS[0].revenuePolicySemantics,
     "artifact-required/profile-specific"
   );
+});
+
+test("applicant review resolver uses only the immutable compiler-owned catalog entry", () => {
+  const resolved = resolveApplicantRouteReview(request, requestEvidence);
+  assert.equal(resolved.reviewedPlan, EXACT_SHARDS_REVIEWED_PLAN_V1);
+  assert.equal(resolved.bindingSha256, EXACT_SHARDS_REVIEWED_PLAN_SHA256);
+  assert.equal(resolved.applicantRevenuePolicyHash, EXACT_SHARDS_REVENUE_POLICY_HASH);
+
+  const uncataloged = structuredClone(request);
+  uncataloged.source.repositoryId += 1;
+  assert.equal(resolveApplicantRouteReview(uncataloged, requestEvidence), null);
+  const routeOnly = structuredClone(request);
+  routeOnly.source.commit = "0".repeat(40);
+  assert.deepEqual(routeOnly.requestedRoute, request.requestedRoute);
+  assert.equal(resolveApplicantRouteReview(routeOnly, requestEvidence), null);
 });
 
 test("exact Shards plan validates and its canonical codehash-bound profile digest is frozen", () => {
@@ -227,19 +247,94 @@ test("exact Shards profile requires predeployment and binds one applicant launch
     request.applicant.launchWallet
   );
   assert.equal(EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.executionEntry, "acceptance-bound-router");
-  assert.deepEqual(EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryInitialStatePolicyV1.allowedStates, [
-    {
-      id: "exact-predeployed-pair",
-      factoryRuntimeCodeHash:
-        "0x134a9e5674f22e62e939c2238693077b8027c553bb26d6a4e9e3d8554e5f85b5",
-      rendererRuntimeCodeHash:
-        "0x9b54a61918b2ddf9b7daf41d9bf2d705cbef3a0fd618275762b99e19c53459bf",
-      action: "launch-and-stamp"
-    }
-  ]);
+  assert.equal(
+    EXACT_SHARDS_REVIEWED_PLAN_V1.reviewedPlanSupersessionSha256,
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_SHA256
+  );
+  assert.equal(
+    reviewedPlanSupersessionHash(EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1),
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_SHA256
+  );
+  assert.equal(
+    EXACT_SHARDS_REVIEWED_PLAN_V1.routerArtifactBinding.artifact.sha256,
+    "sha256:7385a806d831e7b89e598dca16de1c6107590659375d43d97d4d6ab30292f6d0"
+  );
+  assert.equal(
+    EXACT_SHARDS_REVIEWED_PLAN_V1.routerArtifactBinding.routerSource.commit,
+    "3d71e9243dd1b604099c79038c4c52a36062b0e4"
+  );
   assert.deepEqual(
-    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryInitialStatePolicyV1.commonPreconditions,
+    EXACT_SHARDS_REVIEWED_PLAN_V1.routerArtifactBinding.routeBinding,
+    EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1.routeBinding
+  );
+  assert.deepEqual(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.allowedExecutionModes.map(({ executionMode }) => (
+      executionMode
+    )),
+    ["EXACT_FACTORY_LAUNCH_EXECUTED", "EXACT_EXISTING_LAUNCH_ADOPTED"]
+  );
+  assert.deepEqual(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.allowedExecutionModes.map(({ abiOrdinal }) => (
+      abiOrdinal
+    )),
+    [1, 2]
+  );
+  assert.deepEqual(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.allowedExecutionModes[0].preState,
     { tokenCode: "empty", hookCode: "empty", nftCode: "empty", poolSlot0: "zero" }
+  );
+  assert.equal(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.allowedExecutionModes[1]
+      .preState.completedIdentity,
+    "exact-reviewed-shards-identity"
+  );
+  assert.equal(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.allowedExecutionModes[1].factoryCall,
+    "none"
+  );
+  assert.deepEqual(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.allowedExecutionModes[1].ignoredMutableState,
+    ["current-builder-fee-recipient", "mutable-balances", "current-market-price"]
+  );
+  assert.equal(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.expectedResultHashPolicy,
+    "same-configured-identity-hash-for-both-modes"
+  );
+  assert.equal(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.modeRecording,
+    "stamp-hash-events-and-record"
+  );
+  assert.deepEqual(EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.adoptionDisclosure.doesNotAttest, [
+    "The launch wallet called the Shards factory.",
+    "The market remained pristine or untraded."
+  ]);
+  assert.equal(EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.acceptanceChannel, "programmable-website-only");
+  assert.deepEqual(EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.reviewedRequestedActions, ["review"]);
+  assert.equal(EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.authorizationGranted, false);
+  assert.equal(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.factoryPredeploymentPrerequisite
+      .plannedDeploymentSender,
+    "0x2Bb333d48DFAF1596D9036671d2E43168994249E"
+  );
+  assert.equal(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.factoryPredeploymentPrerequisite
+      .acceptedObservedDeploymentSender,
+    "any-eoa"
+  );
+  assert.equal(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.factoryPredeploymentPrerequisite
+      .acceptedObservedDeploymentSenderCondition,
+    "exact-canonical-create2-proxy-salt-initcode-calldata-factory-renderer-only"
+  );
+  assert.match(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.factoryPredeploymentPrerequisite
+      .senderDisclosure.acceptedObserved,
+    /another EOA.*every canonical CREATE2 binding.*runtime matches exactly/u
+  );
+  assert.equal(EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.revenue.change, "none");
+  assert.equal(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.revenue.revenuePolicyHash,
+    EXACT_SHARDS_REVENUE_POLICY_HASH
   );
   assert.equal(
     EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.priorReleaseFactoryPredeployment
@@ -254,14 +349,7 @@ test("exact Shards profile requires predeployment and binds one applicant launch
     EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.priorReleaseFactoryPredeployment.productionExecutionPhase,
     "platform-release-before-applicant-acceptance"
   );
-  assert.equal(
-    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryLaunchExecution.productionExecutionCaller,
-    "programmable-launch-stamp-router-v2"
-  );
-  assert.equal(
-    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryLaunchExecution.applicantAction,
-    "launch-and-stamp"
-  );
+  assert.equal(Object.hasOwn(EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan, "factoryLaunchExecution"), false);
   assert.equal(
     EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.priorReleaseFactoryPredeployment.factoryInitCodeBytes,
     37942
@@ -281,13 +369,14 @@ test("exact Shards profile requires predeployment and binds one applicant launch
     "0xf37ce9748abe4d5243cbd26f48c6ea5789ab1ebe8e19ea96d2198693e957c4ec"
   );
   assert.equal(
-    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryInitialStatePolicyV1.vacantAtomicRoute.status,
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.factoryPredeploymentPrerequisite
+      .vacantAtomicRoute.status,
     "unsupported"
   );
   assert.ok(
-    EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryInitialStatePolicyV1.vacantAtomicRoute
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.factoryPredeploymentPrerequisite.vacantAtomicRoute
       .candidateGas
-      > EXACT_SHARDS_REVIEWED_PLAN_V1.launchPlan.factoryInitialStatePolicyV1.vacantAtomicRoute
+      > EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.factoryPredeploymentPrerequisite.vacantAtomicRoute
         .mainnetTransactionGasCap
   );
   assert.equal(
@@ -389,10 +478,9 @@ test("all non-published nested factory variants fail closed", () => {
     (value) => { value.launchPlan.transactionCount = 2; },
     (value) => { value.launchPlan.transactionSender = value.launchPlan.launcherFeeRecipient; },
     (value) => { value.launchPlan.executionEntry = "factory"; },
-    (value) => { value.launchPlan.factoryInitialStatePolicyV1.allowedStates.push({ id: "vacant-pair" }); },
-    (value) => { value.launchPlan.factoryInitialStatePolicyV1.commonPreconditions.poolSlot0 = "any"; },
-    (value) => { value.launchPlan.factoryInitialStatePolicyV1.vacantAtomicRoute.candidateGas = 1; },
-    (value) => { value.launchPlan.factoryLaunchExecution.applicantAction = "deploy-and-launch"; },
+    (value) => { value.reviewedPlanSupersessionSha256 = `sha256:${"1".repeat(64)}`; },
+    (value) => { value.routerArtifactBinding.artifact.sha256 = `sha256:${"1".repeat(64)}`; },
+    (value) => { value.launchPlan.factoryLaunchExecution = { applicantAction: "deploy-and-launch" }; },
     (value) => { value.launchPlan.tickUpper += 1; },
     (value) => { value.pool.poolId = `0x${"1".repeat(64)}`; },
     (value) => { value.components.shift(); },
@@ -443,6 +531,37 @@ test("canonical acceptance UTF-8 bytes and SHA-256 match the portable Golden", (
   assert.equal(
     applicantRouteAcceptanceClaimHash(acceptanceExample),
     acceptanceGolden.claimSha256
+  );
+  assert.equal(
+    reviewedPlanSupersessionHash(acceptanceExample.reviewedPlanSupersession),
+    acceptanceGolden.reviewedPlanSupersessionSha256
+  );
+  assert.equal(
+    `sha256:${crypto.createHash("sha256")
+      .update(canonicalJsonBytesV2(acceptanceExample.routerArtifactBinding, { trailingNewline: false }))
+      .digest("hex")}`,
+    acceptanceGolden.routerArtifactBindingSha256
+  );
+  assert.deepEqual(
+    acceptanceExample.reviewedPlanSupersession.allowedExecutionModes.map(({ executionMode }) => (
+      executionMode
+    )),
+    acceptanceGolden.allowedExecutionModes
+  );
+  assert.deepEqual(
+    acceptanceExample.reviewedPlanSupersession.adoptionDisclosure,
+    acceptanceGolden.adoptionDisclosure
+  );
+  assert.deepEqual(
+    {
+      plannedDeploymentSender: acceptanceExample.reviewedPlanSupersession
+        .factoryPredeploymentPrerequisite.plannedDeploymentSender,
+      acceptedObservedDeploymentSender: acceptanceExample.reviewedPlanSupersession
+        .factoryPredeploymentPrerequisite.acceptedObservedDeploymentSender,
+      acceptedObservedDeploymentSenderCondition: acceptanceExample.reviewedPlanSupersession
+        .factoryPredeploymentPrerequisite.acceptedObservedDeploymentSenderCondition
+    },
+    acceptanceGolden.factoryDeploymentSenderPolicy
   );
   assert.equal(acceptanceGolden.authorizationGranted, false);
   const subject = applicationAcceptanceSubjectV1(acceptanceExample);
@@ -498,7 +617,16 @@ test("acceptance validator freezes applicant, request, route, capability and exa
     (value) => { value.source.tree = "0".repeat(40); },
     (value) => { value.acceptedRoute.routeVersion = "2.0.0"; },
     (value) => { value.routeCapability.profileKey = `0x${"1".repeat(64)}`; },
+    (value) => { value.routeCapability.reviewedPlanSupersessionSha256 = `sha256:${"1".repeat(64)}`; },
+    (value) => { value.reviewedPlanSupersession.allowedExecutionModes.pop(); },
+    (value) => { value.reviewedPlanSupersession.adoptionDisclosure.doesNotAttest.pop(); },
+    (value) => { value.reviewedPlanSupersession.factoryPredeploymentPrerequisite.acceptedObservedDeploymentSender = "planned-only"; },
+    (value) => { value.reviewedPlanSupersession.revenue.change = "changed"; },
+    (value) => { value.routerArtifactBinding.routeBinding.launchId = `0x${"1".repeat(64)}`; },
     (value) => { value.reviewedPlan.configurationHash = `0x${"1".repeat(64)}`; },
+    (value) => { value.reviewedPlan.reviewedPlanSupersessionSha256 = `sha256:${"1".repeat(64)}`; },
+    (value) => { value.reviewedPlan.routerArtifactBinding.integrity.sha256 = `sha256:${"1".repeat(64)}`; },
+    (value) => { value.router.source.repositoryId += 1; },
     (value) => { value.router.source.commit = "0".repeat(40); },
     (value) => { value.router.contractPath = "../Router.sol"; },
     (value) => { value.routeBinding.expectedResultHash = value.routeBinding.routePayloadHash; }
@@ -510,10 +638,9 @@ test("acceptance validator freezes applicant, request, route, capability and exa
 
   const newPayload = structuredClone(original);
   newPayload.routeBinding.routePayloadHash = `0x${"8".repeat(64)}`;
-  assert.deepEqual(
-    validateApplicantRouteAcceptance(newPayload, acceptanceSchema).map(({ code }) => code),
-    ["ROUTE_ACCEPTANCE_CAPABILITY_DISABLED", "ROUTE_ACCEPTANCE_PREDEPLOYMENT_EVIDENCE_PENDING"]
-  );
+  assert.ok(validateApplicantRouteAcceptance(newPayload, acceptanceSchema).some(({ code }) => (
+    code === "ROUTE_ACCEPTANCE_ROUTE_BINDING_MISMATCH"
+  )));
   assert.notEqual(applicantRouteAcceptanceClaimHash(newPayload), applicantRouteAcceptanceClaimHash(original));
 });
 
@@ -606,15 +733,23 @@ test("immutable acceptance record core has one strict content-addressed hash", (
   const recordCore = acceptanceRecordCoreHashFixture(acceptanceExample);
   const canonicalBytes = canonicalApplicantRouteAcceptanceRecordCoreBytes(recordCore);
   assert.equal(canonicalBytes.at(-1), "}".charCodeAt(0));
-  assert.equal(canonicalBytes.length, 3204);
+  assert.equal(canonicalBytes.length, 3488);
   assert.equal(
     applicantAcceptanceRecordHash(recordCore),
-    "sha256:c9501539e6586b4b03df34e7cdeb9b27ec74a3e1d5e328522f4c5878a647a2ec"
+    "sha256:d4b08661a90cff595368d5a3be2ae62380bd59293764c478ef2b27b415f437dc"
   );
   assert.equal(
     applicantAcceptanceRecordHash(recordCore),
     `sha256:${crypto.createHash("sha256").update(canonicalBytes).digest("hex")}`
   );
+  assert.deepEqual(verifyApplicantRouteAcceptanceRecordCore(recordCore, acceptanceExample), {
+    recordSha256: "sha256:d4b08661a90cff595368d5a3be2ae62380bd59293764c478ef2b27b415f437dc",
+    claimSha256: acceptanceGolden.claimSha256,
+    acceptanceSubjectHash: acceptanceGolden.acceptanceSubjectHash,
+    stateVersion: 8,
+    authenticatedGithubUserId: 155705664,
+    expectedLaunchWallet: "0xceeBB3A6543CeBEB2ED66963897A0abEA52A50cC"
+  });
 
   const wrongSubjectHash = structuredClone(recordCore);
   wrongSubjectHash.acceptanceSubjectHash = `sha256:${"0".repeat(64)}`;
@@ -628,5 +763,12 @@ test("immutable acceptance record core has one strict content-addressed hash", (
   assert.throws(
     () => applicantAcceptanceRecordHash(pointerField),
     /unsupported shape/u
+  );
+
+  const wrongTransition = structuredClone(recordCore);
+  wrongTransition.transition.routeBinding.routePayloadHash = `0x${"0".repeat(64)}`;
+  assert.throws(
+    () => verifyApplicantRouteAcceptanceRecordCore(wrongTransition, acceptanceExample),
+    /does not bind the supplied canonical claim/u
   );
 });

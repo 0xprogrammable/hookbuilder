@@ -83,9 +83,182 @@ export const EXACT_SHARDS_REVENUE_POLICY_V1 = deepFreeze({
     "0x59529fb66a882121389cebbaa9a4bbbfa4ccf1fe6ce4bcecc00d5f38935f3202b90e215e0e29c0dacf021e5e778847af4100433ee7d22014b73f8ca4add09d0c0000000000000000000000000000000000000000000000000000000000000000fb8110e8ea13fee890a868300dd1a9a5c467acb19a53f63beccc482757a36191000000000000000000000000000000000000000000000000000000000000006414e66b725eaebf6f894323565651567cc05a71bbb263db373d1f9f59ea171899",
   revenuePolicyHash: EXACT_SHARDS_REVENUE_POLICY_HASH
 });
+export const EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1 = deepFreeze({
+  schemaVersion: "programmable.reviewed-plan-supersession.v1",
+  originalRoute: {
+    routeId: "custom-graph",
+    routeVersion: "1.0.0",
+    chainId: "1"
+  },
+  acceptedRoute: {
+    routeId: "nested-factory",
+    routeVersion: "1.0.0",
+    chainId: "1"
+  },
+  acceptedProfile: {
+    profileId: "exact-shards-nested-factory",
+    profileVersion: "1.0.0",
+    profileKey: "0xb90e215e0e29c0dacf021e5e778847af4100433ee7d22014b73f8ca4add09d0c"
+  },
+  acceptanceChannel: "programmable-website-only",
+  acceptanceRequired: true,
+  reviewedRequestedActions: ["review"],
+  authorizationGranted: false,
+  factoryPredeploymentPrerequisite: {
+    required: true,
+    plannedDeploymentSender: "0x2Bb333d48DFAF1596D9036671d2E43168994249E",
+    acceptedObservedDeploymentSender: "any-eoa",
+    acceptedObservedDeploymentSenderCondition:
+      "exact-canonical-create2-proxy-salt-initcode-calldata-factory-renderer-only",
+    create2Proxy: "0x4e59b44847b379578588920cA78FbF26c0B4956C",
+    create2ProxyRuntimeCodeHash:
+      "0x2fa86add0aed31f33a762c9d88e807c475bd51d0f52bd0955754b2608f7e4989",
+    factorySalt: "0x655a4b5a2b704bef84b4ff94adde0a7ac40ad0366c82ddca5290180fe4c3986d",
+    factoryInitCodeHash:
+      "0x7d05592489495559b1288f8ad342239b3fb95a6aa005b5b0b1551c9523401585",
+    factoryDeploymentCalldataHash:
+      "0xf37ce9748abe4d5243cbd26f48c6ea5789ab1ebe8e19ea96d2198693e957c4ec",
+    factory: "0x9442a520e7b31D10177C75A363355C2C29141ac5",
+    factoryRuntimeCodeHash:
+      "0x134a9e5674f22e62e939c2238693077b8027c553bb26d6a4e9e3d8554e5f85b5",
+    renderer: "0x090DBD2FaB1a467f90ed82a443eFa9AAb658DE14",
+    rendererRuntimeCodeHash:
+      "0x9b54a61918b2ddf9b7daf41d9bf2d705cbef3a0fd618275762b99e19c53459bf",
+    vacantAtomicRoute: {
+      status: "unsupported",
+      reason: "exceeds-mainnet-eip-7825-transaction-gas-cap",
+      candidateGas: 18159332,
+      mainnetTransactionGasCap: 16777216
+    },
+    senderDisclosure: {
+      planned: "Programmable plans to send the exact canonical factory deployment.",
+      acceptedObserved:
+        "An identical deployment sent by another EOA does not invalidate the factory identity when every canonical CREATE2 binding and resulting runtime matches exactly."
+    }
+  },
+  allowedExecutionModes: [
+    {
+      executionMode: "EXACT_FACTORY_LAUNCH_EXECUTED",
+      abiOrdinal: 1,
+      preState: {
+        tokenCode: "empty",
+        hookCode: "empty",
+        nftCode: "empty",
+        poolSlot0: "zero"
+      },
+      routerAction: "factory-launch-and-stamp",
+      factoryCall: "exact-shards-launch-selector",
+      postStateProofs: [
+        "exact-configured-start-price",
+        "original-builder-fee-recipient",
+        "zero-factory-token-balance"
+      ]
+    },
+    {
+      executionMode: "EXACT_EXISTING_LAUNCH_ADOPTED",
+      abiOrdinal: 2,
+      preState: {
+        completedIdentity: "exact-reviewed-shards-identity",
+        token: "0x50d17EAaeB52c66E64b918385AbF6523fDAE57CF",
+        tokenRuntimeCodeHash:
+          "0xb2737fd93f2ff31e850e2be773e6e7a92a239b28091be1d4b122ff864cd7aae8",
+        hook: "0xbA318baA8649962fD77CC7082d098f2C09Fd60cC",
+        hookRuntimeCodeHash:
+          "0x2a2174aff52c3ea9ddf0a6081464c9c6dbc43ddc93609c74d9610f50f486c1e1",
+        nft: "0x9fDA98dE1B7061ae02A9Aec7A6f8ed75a8Feb8F3",
+        nftRuntimeCodeHash:
+          "0xc3e3ea6cf4d2e13fa07a3b053d57cd7d6a6ecac7633aed86ab971d5e53959bb3",
+        configurationHash:
+          "0xa98b7b95777267181a2b93a33632991e80a49f4a57d94150f8dfbd90421f34c1",
+        poolId: "0x075885e47ec15084de91826faafab9c2cd4fda4d24fd9e5ce3af6a4be4ad926d",
+        poolKeyHash: "0x95c1d301b4a0be5bf2ec99270902aae6e8d8bd16a96a005d5985583c0b49835a",
+        poolSlot0: "nonzero",
+        seedLiquidityIdentity: "exact-reviewed-positions-and-dust"
+      },
+      routerAction: "stamp-existing-exact-identity",
+      factoryCall: "none",
+      identityProofs: [
+        "exact-runtime-hashes",
+        "exact-factory-configuration-and-predictions",
+        "exact-hook-token-nft-renderer-pool-wiring",
+        "exact-immutable-ticks-start-price-and-launcher-recipient",
+        "exact-token-and-nft-metadata-and-token-supply",
+        "exact-seed-records-and-two-hook-liquidity-positions"
+      ],
+      ignoredMutableState: [
+        "current-builder-fee-recipient",
+        "mutable-balances",
+        "current-market-price"
+      ]
+    }
+  ],
+  expectedResultHashPolicy: "same-configured-identity-hash-for-both-modes",
+  modeRecording: "stamp-hash-events-and-record",
+  otherwise: "reject",
+  adoptionDisclosure: {
+    attests: "The Router validates and stamps the exact reviewed Shards launch identity.",
+    doesNotAttest: [
+      "The launch wallet called the Shards factory.",
+      "The market remained pristine or untraded."
+    ]
+  },
+  revenue: {
+    change: "none",
+    revenuePolicyHash: EXACT_SHARDS_REVENUE_POLICY_HASH
+  }
+});
+export const EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_SHA256 =
+  "sha256:925a7675a61761e0148d40acb6f18ecad6bacccb3dc9809aae40abc021e26ef5";
+export const EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1 = deepFreeze({
+  schemaVersion: "programmable.router-v2-artifact-binding.v1",
+  artifact: {
+    path: "outputs/shards-nested-factory-route-v1.canonical.json",
+    bytes: 1281987,
+    sha256: "sha256:7385a806d831e7b89e598dca16de1c6107590659375d43d97d4d6ab30292f6d0",
+    keccak256: "0xe058d7fc4fb69c6a0860506caca5a32f0fc6845499fbb9b2dadbc0c4cd4cf21a"
+  },
+  integrity: {
+    path: "outputs/shards-nested-factory-route-v1.canonical.integrity.json",
+    bytes: 3066,
+    sha256: "sha256:de0d683e7eaeae6a1bb0e08a6c0a02318a7e22fb534f1f2d7df60284b6694e91"
+  },
+  generator: {
+    path: "work/generate-shards-route-artifact.mjs",
+    sha256: "sha256:87f11e9272e6110bab1e7d2d92d983d2c45757bb76422b2df65be61bbdc2451d"
+  },
+  routerSource: {
+    repository: "https://github.com/0xprogrammable/programmable",
+    commit: "3d71e9243dd1b604099c79038c4c52a36062b0e4",
+    tree: "d38e368c591c6e4a511915a7397f887beb082db7"
+  },
+  code: {
+    routerCreationCodeHash:
+      "0xac1bd98a474524a5439ff802c52a9e29d5599dceadc5dbd2d82b14279fb40aeb",
+    routerRuntimeTemplateHash:
+      "0x182953a51b7eb4516309cba54d5718f2130ec729e96396b9253cfc7ff5a03df9",
+    exactProfileCreationCodeHash:
+      "0xb4638678498ff8b2da30c1e694245e19802b54efd4f27cb6114595c3ac29b2b8",
+    exactProfileRuntimeCodeHash:
+      "0xd0c75719f16ac181d3d1b51725d7a0aff1c61132140f948f321736c6ef14ee49",
+    exactProfileSchemaHash:
+      "0x7c7780343b4d82d25cc8c62581afca0ae5290e04dc7ee3aeccba5bd9e942d00c",
+    routerInterfaceAbiSha256:
+      "sha256:610e9bccf4bb23804ecb8eb4b15c3d16a7eebf0fff8fd2a3102db321f5585704",
+    launchStampTypeHash:
+      "0x4644c77f61b8969cdfb13dc2ddb2085492bcbb00ba305d30c8fdc6a4d137f66f"
+  },
+  routeBinding: {
+    routePayloadHash: "0x75403c2f52dbdf623cfcd077fab52308b3e1e0623016ec73539fac5234f21356",
+    expectedResultHash: "0x29de1a5462fe7b07a0d58894f7ec5e2eb4e870c83153e2109647c7f4094c828b",
+    launchId: "0xd225b22ea82ef2425660da409849a55c1c44751eedd9cd1b581a48358a0905eb",
+    stampRequestHash: "0x276a295580bcb65ed286a2a02efba575eaee87c090f54c94e5ad8a2b78552bce"
+  }
+});
 export const EXACT_SHARDS_REVIEWED_PLAN_V1 = deepFreeze({
   schemaVersion: "1.0.0",
   profile: "exact-shards-nested-factory",
+  reviewedPlanSupersessionSha256: EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_SHA256,
+  routerArtifactBinding: EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1,
   reviewedRequest: {
     path: "submissions/requests/1329073878-shards-v1.json",
     applicationManifestSha256: "sha256:e069926d380e56bee001dd7cfeda591db56164b1acf7478b478dd62a6e119ec2",
@@ -212,43 +385,6 @@ export const EXACT_SHARDS_REVIEWED_PLAN_V1 = deepFreeze({
     transactionCount: 1,
     transactionSender: "0xceeBB3A6543CeBEB2ED66963897A0abEA52A50cC",
     executionEntry: "acceptance-bound-router",
-    factoryLaunchExecution: {
-      productionExecutionCaller: "programmable-launch-stamp-router-v2",
-      applicantAction: "launch-and-stamp"
-    },
-    factoryInitialStatePolicyV1: {
-      mode: "exact-predeployed-only",
-      allowedStates: [
-        {
-          id: "exact-predeployed-pair",
-          factoryRuntimeCodeHash:
-            "0x134a9e5674f22e62e939c2238693077b8027c553bb26d6a4e9e3d8554e5f85b5",
-          rendererRuntimeCodeHash:
-            "0x9b54a61918b2ddf9b7daf41d9bf2d705cbef3a0fd618275762b99e19c53459bf",
-          action: "launch-and-stamp"
-        }
-      ],
-      commonPreconditions: {
-        tokenCode: "empty",
-        hookCode: "empty",
-        nftCode: "empty",
-        poolSlot0: "zero"
-      },
-      rejectedStates: [
-        "vacant-factory-renderer-pair",
-        "partial-factory-renderer-pair",
-        "wrong-factory-runtime",
-        "wrong-renderer-runtime",
-        "occupied-child",
-        "initialized-pool"
-      ],
-      vacantAtomicRoute: {
-        status: "unsupported",
-        reason: "exceeds-mainnet-eip-7825-transaction-gas-cap",
-        candidateGas: 18159332,
-        mainnetTransactionGasCap: 16777216
-      }
-    },
     rawTokenSalt: "0xca9944c923e24ba5cb3188a29b18c3305158e686e39473e91bbe31fc019816ab",
     effectiveTokenSalt: "0x2fb771368a131f3ebf686980b44c57230bf257f4b82e95a10ef46d9b2bd7db37",
     hookSalt: "0x00000000000000000000000000000000000000000000000000000000000052e1",
@@ -292,7 +428,7 @@ export const EXACT_SHARDS_REVIEWED_PLAN_V1 = deepFreeze({
   ]
 });
 export const EXACT_SHARDS_REVIEWED_PLAN_SHA256 =
-  "sha256:ff152774734024130c575552555fad8f23c08c543e20ba0a396007db70888c6c";
+  "sha256:5ce30f968d89712faaf5c7739fd7976ceacf7cb8cc13e3fec99616408fcfcd23";
 export const NESTED_FACTORY_PROFILE_KEY_DOMAIN =
   "ProgrammableNestedFactoryProfileV1(bytes32 profileIdHash,bytes32 profileVersionHash)";
 export const NESTED_FACTORY_PROFILE_KEY_TYPEHASH =
@@ -313,6 +449,7 @@ export const SUPPORTED_ROUTE_BINDINGS = Object.freeze([
     profileVersion: "1.0.0",
     planSchemaId: "urn:programmable:reviewed-route-plan:1.0.0",
     profileSha256: null,
+    reviewedPlanSupersessionSha256: null,
     profileKeyDomain: null,
     profileKeyTypehash: null,
     profileIdHash: null,
@@ -347,6 +484,7 @@ export const SUPPORTED_ROUTE_BINDINGS = Object.freeze([
     profileVersion: "1.0.0",
     planSchemaId: "urn:programmable:reviewed-route-plan:1.0.0",
     profileSha256: EXACT_SHARDS_REVIEWED_PLAN_SHA256,
+    reviewedPlanSupersessionSha256: EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_SHA256,
     profileKeyDomain: NESTED_FACTORY_PROFILE_KEY_DOMAIN,
     profileKeyTypehash: NESTED_FACTORY_PROFILE_KEY_TYPEHASH,
     profileIdHash: EXACT_SHARDS_PROFILE_ID_HASH,
@@ -511,7 +649,9 @@ export function validateReviewedRoutePlan(value, schema) {
       "revenuePolicy",
       "factoryInterface",
       "artifactCode",
-      "launchPlan"
+      "launchPlan",
+      "reviewedPlanSupersessionSha256",
+      "routerArtifactBinding"
     ]) {
       if (Object.hasOwn(value, forbidden)) {
         add(
@@ -626,6 +766,7 @@ export function assessRouteCompatibility(requestedRoute, reviewedPlan) {
     profileVersion: required.profileVersion,
     planSchemaId: required.planSchemaId,
     profileSha256: required.profileSha256,
+    reviewedPlanSupersessionSha256: required.reviewedPlanSupersessionSha256,
     profileKeyDomain: required.profileKeyDomain,
     profileKeyTypehash: required.profileKeyTypehash,
     profileIdHash: required.profileIdHash,
@@ -689,6 +830,17 @@ export function assessRouteCompatibility(requestedRoute, reviewedPlan) {
     requiredRoute,
     capability,
     acceptanceRequired: false
+  });
+}
+
+/// Resolve only a platform/compiler-owned exact review catalog entry for this immutable applicant revision.
+/// A requested route is never evidence of its own implementation topology.
+export function resolveApplicantRouteReview(request, evidence) {
+  if (!isExactShardsApplicantRequest(request, evidence)) return null;
+  return Object.freeze({
+    reviewedPlan: EXACT_SHARDS_REVIEWED_PLAN_V1,
+    bindingSha256: EXACT_SHARDS_REVIEWED_PLAN_SHA256,
+    applicantRevenuePolicyHash: EXACT_SHARDS_REVENUE_POLICY_HASH
   });
 }
 

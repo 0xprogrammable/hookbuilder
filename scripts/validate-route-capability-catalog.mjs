@@ -19,7 +19,10 @@ import {
   EXACT_SHARDS_PROFILE_VERSION_HASH,
   EXACT_SHARDS_REVENUE_POLICY_HASH,
   EXACT_SHARDS_REVENUE_POLICY_V1,
+  EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_SHA256,
+  EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1,
   EXACT_SHARDS_REVIEWED_PLAN_SHA256,
+  EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1,
   SUPPORTED_ROUTE_BINDINGS,
   assessRouteCompatibility,
   deriveNestedFactoryProfileKeyV1,
@@ -68,6 +71,51 @@ try {
     .update(canonicalJsonBytesV2(profile, { trailingNewline: false }))
     .digest("hex")}`;
   requireEqual(profileSha256, EXACT_SHARDS_REVIEWED_PLAN_SHA256, "exact Shards profile digest drifted");
+  requireEqual(
+    JSON.stringify(reviewedPlan.routerArtifactBinding),
+    JSON.stringify(EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1),
+    "exact Shards Router artifact binding drifted"
+  );
+  requireEqual(
+    EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1.artifact.sha256,
+    "sha256:7385a806d831e7b89e598dca16de1c6107590659375d43d97d4d6ab30292f6d0",
+    "canonical Router artifact digest drifted"
+  );
+  requireEqual(
+    EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1.integrity.sha256,
+    "sha256:de0d683e7eaeae6a1bb0e08a6c0a02318a7e22fb534f1f2d7df60284b6694e91",
+    "canonical Router artifact integrity digest drifted"
+  );
+  requireEqual(
+    EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1.routerSource.commit,
+    "3d71e9243dd1b604099c79038c4c52a36062b0e4",
+    "frozen Router source commit drifted"
+  );
+  requireEqual(
+    EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1.routerSource.tree,
+    "d38e368c591c6e4a511915a7397f887beb082db7",
+    "frozen Router source tree drifted"
+  );
+  requireEqual(
+    EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1.routeBinding.routePayloadHash,
+    "0x75403c2f52dbdf623cfcd077fab52308b3e1e0623016ec73539fac5234f21356",
+    "Shards route payload hash drifted"
+  );
+  requireEqual(
+    EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1.routeBinding.expectedResultHash,
+    "0x29de1a5462fe7b07a0d58894f7ec5e2eb4e870c83153e2109647c7f4094c828b",
+    "Shards expected result hash drifted"
+  );
+  requireEqual(
+    EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1.routeBinding.launchId,
+    "0xd225b22ea82ef2425660da409849a55c1c44751eedd9cd1b581a48358a0905eb",
+    "Shards launch ID drifted"
+  );
+  requireEqual(
+    EXACT_SHARDS_ROUTER_ARTIFACT_BINDING_V1.routeBinding.stampRequestHash,
+    "0x276a295580bcb65ed286a2a02efba575eaee87c090f54c94e5ad8a2b78552bce",
+    "Shards stamp request hash drifted"
+  );
 
   requireEqual(SUPPORTED_ROUTE_BINDINGS.length, 2, "capability catalog must publish exactly two profiles");
   requireEqual(
@@ -107,20 +155,60 @@ try {
     "artifact-required/profile-specific",
     "direct graph revenue policy semantics drifted"
   );
+  const supersessionSha256 = `sha256:${crypto.createHash("sha256")
+    .update(canonicalJsonBytesV2(EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1, { trailingNewline: false }))
+    .digest("hex")}`;
   requireEqual(
-    reviewedPlan.launchPlan.factoryInitialStatePolicyV1.mode,
-    "exact-predeployed-only",
-    "Shards factory initial-state policy drifted"
+    supersessionSha256,
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_SHA256,
+    "Shards reviewed-plan supersession digest drifted"
   );
   requireEqual(
-    reviewedPlan.launchPlan.factoryInitialStatePolicyV1.allowedStates.length,
-    1,
-    "Shards must expose exactly one allowed factory initial state"
+    reviewedPlan.reviewedPlanSupersessionSha256,
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_SHA256,
+    "Shards reviewed plan no longer commits its exact supersession"
   );
   requireEqual(
-    reviewedPlan.launchPlan.factoryInitialStatePolicyV1.allowedStates[0].id,
-    "exact-predeployed-pair",
-    "Shards allowed factory initial state drifted"
+    JSON.stringify(EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.allowedExecutionModes.map(
+      ({ executionMode }) => executionMode
+    )),
+    JSON.stringify(["EXACT_FACTORY_LAUNCH_EXECUTED", "EXACT_EXISTING_LAUNCH_ADOPTED"]),
+    "Shards allowed Router execution-mode policy drifted"
+  );
+  requireEqual(
+    JSON.stringify(EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.allowedExecutionModes.map(
+      ({ abiOrdinal }) => abiOrdinal
+    )),
+    JSON.stringify([1, 2]),
+    "Shards Router execution-mode ABI ordinals drifted"
+  );
+  requireEqual(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.expectedResultHashPolicy,
+    "same-configured-identity-hash-for-both-modes",
+    "Shards expected-result cross-mode binding drifted"
+  );
+  requireEqual(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.otherwise,
+    "reject",
+    "Shards supersession no longer rejects every unlisted pre-state"
+  );
+  requireEqual(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.factoryPredeploymentPrerequisite
+      .plannedDeploymentSender,
+    "0x2Bb333d48DFAF1596D9036671d2E43168994249E",
+    "planned platform factory sender drifted"
+  );
+  requireEqual(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.factoryPredeploymentPrerequisite
+      .acceptedObservedDeploymentSender,
+    "any-eoa",
+    "anti-grief observed factory sender policy drifted"
+  );
+  requireEqual(
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.factoryPredeploymentPrerequisite
+      .acceptedObservedDeploymentSenderCondition,
+    "exact-canonical-create2-proxy-salt-initcode-calldata-factory-renderer-only",
+    "anti-grief factory identity condition drifted"
   );
   requireEqual(
     reviewedPlan.launchPlan.priorReleaseFactoryPredeployment.applicantAction,
@@ -128,13 +216,16 @@ try {
     "factory predeployment became an applicant action"
   );
   requireEqual(
-    reviewedPlan.launchPlan.factoryInitialStatePolicyV1.vacantAtomicRoute.status,
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.factoryPredeploymentPrerequisite
+      .vacantAtomicRoute.status,
     "unsupported",
     "vacant atomic Shards route became admissible"
   );
   if (
-    reviewedPlan.launchPlan.factoryInitialStatePolicyV1.vacantAtomicRoute.candidateGas
-    <= reviewedPlan.launchPlan.factoryInitialStatePolicyV1.vacantAtomicRoute.mainnetTransactionGasCap
+    EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.factoryPredeploymentPrerequisite
+      .vacantAtomicRoute.candidateGas
+    <= EXACT_SHARDS_REVIEWED_PLAN_SUPERSESSION_V1.factoryPredeploymentPrerequisite
+      .vacantAtomicRoute.mainnetTransactionGasCap
   ) throw new Error("vacant atomic Shards gas proof no longer exceeds the Mainnet transaction cap");
 
   const originalAssessment = assessRouteCompatibility(request.requestedRoute, reviewedPlan);
