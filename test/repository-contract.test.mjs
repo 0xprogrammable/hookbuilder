@@ -276,6 +276,38 @@ test("every GitHub Action is pinned to an immutable commit", () => {
   }
 });
 
+test("every CI analysis job checks out and verifies the exact pull-request head", () => {
+  const workflow = fs.readFileSync(path.join(repositoryRoot, ".github", "workflows", "ci.yml"), "utf8");
+  const exactRevisionExpression = "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}";
+  assert.doesNotMatch(workflow, /^\s*pull_request_target:/mu);
+  assert.match(workflow, /permissions:\n  contents: read\n/u);
+  for (const requiredJobName of [
+    "    name: Repository and skill / Node ${{ matrix.node }}\n",
+    "    name: Reference fee kernel\n",
+    "    name: CodeQL\n"
+  ]) assert.ok(workflow.includes(requiredJobName), requiredJobName.trim());
+  const checkoutMarker = "      - name: Checkout exact revision\n";
+  const checkoutSteps = workflow.split(checkoutMarker).slice(1).map((section) => (
+    section.split("\n      - name:", 1)[0]
+  ));
+  assert.equal(checkoutSteps.length, 3);
+  for (const step of checkoutSteps) {
+    assert.match(step, /^\s*uses: actions\/checkout@[0-9a-f]{40}/mu);
+    assert.ok(step.includes(`          ref: ${exactRevisionExpression}\n`));
+    assert.ok(step.includes("          persist-credentials: false"));
+  }
+
+  const verificationMarker = "      - name: Verify exact revision\n";
+  const verificationSteps = workflow.split(verificationMarker).slice(1).map((section) => (
+    section.split("\n      - name:", 1)[0]
+  ));
+  assert.equal(verificationSteps.length, checkoutSteps.length);
+  for (const step of verificationSteps) {
+    assert.ok(step.includes(`          EXPECTED_REVISION: ${exactRevisionExpression}\n`));
+    assert.ok(step.includes('        run: test "$(git rev-parse HEAD)" = "$EXPECTED_REVISION"'));
+  }
+});
+
 test("raw Git permits only the exact recursive bound-tree enumeration shape", () => {
   const revision = "0123456789abcdef0123456789abcdef01234567";
   const accepted = ["-C", "/tmp/example", "ls-tree", "-r", "-z", "--full-tree", revision, "--", "."];

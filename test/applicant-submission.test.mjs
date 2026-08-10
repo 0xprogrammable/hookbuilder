@@ -320,18 +320,32 @@ test("applicationManifest binds deterministic canonical JSON v2 bytes independen
   );
 });
 
-test("CLI all-mode is offline and accepts an empty request directory", () => {
-  const result = childProcess.spawnSync(
-    process.execPath,
-    [path.join(repositoryRoot, "scripts", "validate-applicant-submission.mjs"), "--all"],
-    { cwd: repositoryRoot, encoding: "utf8", shell: false }
-  );
+test("CLI all-mode is offline and accepts an isolated empty request directory", (t) => {
+  const fixtureRoot = createApplicantCliFixture(t);
+  const result = runApplicantCli(fixtureRoot, "--all");
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(result.stdout);
   assert.equal(report.status, "APPLICANT_SUBMISSIONS_VALID");
   assert.equal(report.networkAccessed, false);
   assert.deepEqual(report.externalActionsPerformed, []);
   assert.deepEqual(report.files, []);
+});
+
+test("CLI all-mode discovers and validates canonical requests in its repository", (t) => {
+  const fixtureRoot = createApplicantCliFixture(t);
+  const canonicalPath = "submissions/requests/123456789-example-fee-hook.json";
+  fs.writeFileSync(path.join(fixtureRoot, canonicalPath), exampleBytes);
+
+  const result = runApplicantCli(fixtureRoot, "--all");
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.status, "APPLICANT_SUBMISSIONS_VALID");
+  assert.equal(report.networkAccessed, false);
+  assert.deepEqual(report.externalActionsPerformed, []);
+  assert.deepEqual(report.files, [{
+    ...applicantSubmissionEvidence(example, exampleBytes, canonicalPath),
+    findings: []
+  }]);
 });
 
 test("CLI accepts only the exact canonical request path without path substitution", (t) => {
