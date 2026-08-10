@@ -1,0 +1,61 @@
+{
+  "$schema": "urn:programmable:applicant-submission:1.1.0",
+  "schemaVersion": "1.1.0",
+  "intake": {
+    "repository": "0xprogrammable/hookbuilder",
+    "repositoryId": 1320085947
+  },
+  "applicant": {
+    "githubLogin": "voladelta",
+    "launchWallet": "0xA0B5Bb39878507E06bCA49956294aE7c907d4e61"
+  },
+  "source": {
+    "repository": "https://github.com/voladelta/discovery-box-hook",
+    "repositoryId": 1320282862,
+    "commit": "3a55f2bf19abc319bb40b26b54863cd62bf163b5",
+    "tree": "1fd4cce689399ff3c30e46ce153bad29bf0864a5"
+  },
+  "identifiers": {
+    "hookId": "discovery-box",
+    "hookVersion": "1.0.0",
+    "templateId": "custom-hook",
+    "templateVersion": "1.0.0",
+    "modelId": "discovery-box",
+    "modelVersion": "1.0.0"
+  },
+  "hook": {
+    "addressFlagMask": "0x10cc",
+    "permissions": {
+      "beforeInitialize": false,
+      "afterInitialize": true,
+      "beforeAddLiquidity": false,
+      "afterAddLiquidity": false,
+      "beforeRemoveLiquidity": false,
+      "afterRemoveLiquidity": false,
+      "beforeSwap": true,
+      "afterSwap": true,
+      "beforeDonate": false,
+      "afterDonate": false,
+      "beforeSwapReturnDelta": true,
+      "afterSwapReturnDelta": true,
+      "afterAddLiquidityReturnDelta": false,
+      "afterRemoveLiquidityReturnDelta": false
+    }
+  },
+  "fee": {
+    "amountPips": 1000,
+    "denominator": 1000000,
+    "currencyBasis": "quote",
+    "recipient": "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c",
+    "mutable": false
+  },
+  "requestedRoute": {
+    "routeId": "custom-graph",
+    "routeVersion": "1.0.0",
+    "chainId": "1"
+  },
+  "requestedActions": [
+    "review"
+  ],
+  "notes": "Discovery Box pairs native ETH with a fixed-supply openable BOX token. Opening whole BOX units irreversibly advances maturity; buys use a 0.30% LP fee and the sell LP fee declines from 1.00% to 0.30% over 40 openings. The hook accrues the immutable 0.10% Programmable fee on executed gross native-ETH quote volume in all four swap quadrants with carried rounding and owner-only ERC-6909-backed claims. Both return-delta permissions perform real fee accounting; specified-ETH partial fills revert atomically. The project takes no hook-owned fee. This request seeks review only and claims no deployment, routing support, audit, approval, or availability."
+}
