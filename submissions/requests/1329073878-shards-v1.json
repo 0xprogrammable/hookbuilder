@@ -1,0 +1,61 @@
+{
+  "$schema": "urn:programmable:applicant-submission:1.1.0",
+  "schemaVersion": "1.1.0",
+  "intake": {
+    "repository": "0xprogrammable/hookbuilder",
+    "repositoryId": 1320085947
+  },
+  "applicant": {
+    "githubLogin": "jesse-stahl",
+    "launchWallet": "0xceeBB3A6543CeBEB2ED66963897A0abEA52A50cC"
+  },
+  "source": {
+    "repository": "https://github.com/jesse-stahl/shards-v1",
+    "repositoryId": 1329073878,
+    "commit": "91b38f3de64d96cac7e29f127c004f128fc1da59",
+    "tree": "92d6def8609e829487adea66c13901734e43c8c7"
+  },
+  "identifiers": {
+    "hookId": "shards-v1",
+    "hookVersion": "1.1.1",
+    "templateId": "custom-hook",
+    "templateVersion": "1.0.0",
+    "modelId": "shards",
+    "modelVersion": "1.0.0"
+  },
+  "hook": {
+    "addressFlagMask": "0x20cc",
+    "permissions": {
+      "beforeInitialize": true,
+      "afterInitialize": false,
+      "beforeAddLiquidity": false,
+      "afterAddLiquidity": false,
+      "beforeRemoveLiquidity": false,
+      "afterRemoveLiquidity": false,
+      "beforeSwap": true,
+      "afterSwap": true,
+      "beforeDonate": false,
+      "afterDonate": false,
+      "beforeSwapReturnDelta": true,
+      "afterSwapReturnDelta": true,
+      "afterAddLiquidityReturnDelta": false,
+      "afterRemoveLiquidityReturnDelta": false
+    }
+  },
+  "fee": {
+    "amountPips": 10000,
+    "denominator": 1000000,
+    "currencyBasis": "quote",
+    "recipient": "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c",
+    "mutable": true
+  },
+  "requestedRoute": {
+    "routeId": "custom-graph",
+    "routeVersion": "1.0.0",
+    "chainId": "1"
+  },
+  "requestedActions": [
+    "review"
+  ],
+  "notes": "Inclusive 1.00% (10000 pips) on the native-ETH quote leg, never additive. 1000 pips is the Programmable liability to the declared recipient, a compile-time constant no launch or builder can redirect. The 9000-pip project share is 8000 pips to NFT holders via an internal per-piece accumulator with a holder-called claim path, and 1000 pips to the builder at 0xceeBB3A6543CeBEB2ED66963897A0abEA52A50cC. mutable is true only because that builder destination is rotatable by the current builder; the rate and the Programmable destination are immutable. A 10000-piece on-chain generative ERC-721 market-made against two permanently locked single-sided positions in native ETH; collection profile is sync-custom-zero-amm. Both return-delta branches perform real accounting. 1.1.1 scopes the documented size gate to deployable artifacts; contract bytes are unchanged from 1.1.0, so the artifact tables and the candidate plan carry over and src/ hashes to the same tree the manifest already commits to."
+}
