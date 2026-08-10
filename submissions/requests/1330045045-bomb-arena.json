@@ -1,0 +1,59 @@
+{
+  "$schema": "urn:programmable:applicant-submission:1.1.0",
+  "schemaVersion": "1.1.0",
+  "intake": {
+    "repository": "0xprogrammable/hookbuilder",
+    "repositoryId": 1320085947
+  },
+  "applicant": {
+    "githubLogin": "voladelta",
+    "launchWallet": "0x20c9d5674f3b31d23acF76Ceca8C8691E8e08408"
+  },
+  "source": {
+    "repository": "https://github.com/voladelta/bomb-area",
+    "repositoryId": 1330045045,
+    "commit": "12df905bdb34427950bb60d1d491a6d6ef1da66a",
+    "tree": "5385c3bcc8cc6d30fb24306acf43bf223d446810"
+  },
+  "identifiers": {
+    "hookId": "bomb-arena",
+    "hookVersion": "0.1.0",
+    "templateId": "blank-custom",
+    "templateVersion": "1.0.0",
+    "modelId": "bomb-arena",
+    "modelVersion": "0.1.0"
+  },
+  "hook": {
+    "addressFlagMask": "0x20cc",
+    "permissions": {
+      "beforeInitialize": true,
+      "afterInitialize": false,
+      "beforeAddLiquidity": false,
+      "afterAddLiquidity": false,
+      "beforeRemoveLiquidity": false,
+      "afterRemoveLiquidity": false,
+      "beforeSwap": true,
+      "afterSwap": true,
+      "beforeDonate": false,
+      "afterDonate": false,
+      "beforeSwapReturnDelta": true,
+      "afterSwapReturnDelta": true,
+      "afterAddLiquidityReturnDelta": false,
+      "afterRemoveLiquidityReturnDelta": false
+    }
+  },
+  "fee": {
+    "amountPips": 1000,
+    "denominator": 1000000,
+    "currencyBasis": "quote",
+    "recipient": "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c",
+    "mutable": false
+  },
+  "requestedRoute": {
+    "routeId": "custom-graph",
+    "routeVersion": "1.0.0",
+    "chainId": "1"
+  },
+  "requestedActions": ["review"],
+  "notes": "Bomb Arena is a custom game and escrow hook with native quote return-delta fee accounting. This request seeks review only; independent accounting and security review remain required."
+}
