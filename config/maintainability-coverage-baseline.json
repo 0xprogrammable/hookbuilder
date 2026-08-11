@@ -49,7 +49,7 @@
       "modules": [
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-constants.mjs",
-          "sourceSha256": "sha256:16b7682306d2573780f16eca926248a3a79087736b4c348d4d07f58b927dca79"
+          "sourceSha256": "sha256:4c094828aa3a59087ea716e1326578836e9e5e5bf89b06b22fa43b44262ab0ca"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-core.mjs",
@@ -57,45 +57,45 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-flow-core.mjs",
-          "sourceSha256": "sha256:3c28083cc0d119e59d69ac91fa1a1a2547ba26ce378d16673f9d1c22bd50af52"
+          "sourceSha256": "sha256:ec130d363acb1b139d4b15e2c5645a65232820f40ae198783d5e71faee58bdb6"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-normalizers.mjs",
-          "sourceSha256": "sha256:f406d429accbb246d6991df4ebf2be5d0d17cf548cc2b68225e58dbe0562bb46"
+          "sourceSha256": "sha256:bcdfbbf7c249c0883de3f2ea5606d1c8784bb1fcab50aca1bfb66620476c12a6"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-prepared-core.mjs",
-          "sourceSha256": "sha256:4841fc995439629727bf31037314300cffb6c4f2e3c5d982d1ce17baf8a34d4a"
+          "sourceSha256": "sha256:f63e3aa3170e73b1d129d28d4030829ec7e8f6d875416307bc154cde37dffe40"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-primitives.mjs",
-          "sourceSha256": "sha256:5b4e5a54487830ac595ee11693944c1d85677ea290d554b8bdc5fca654139c74"
+          "sourceSha256": "sha256:6e66128eeefeed4cdffc1a67a28875a1139c36e4f6e632f322dc33db283d8d85"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-remote-core.mjs",
-          "sourceSha256": "sha256:a1ff2dcc15e1decd3004e14472cec8ec7f1890d15a8e73bfa12e7a3850c44737"
+          "sourceSha256": "sha256:92701696bbe3a817fc903d65224e96bf7666ec505e7c2034a110d77bfa1902e4"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-status-core.mjs",
-          "sourceSha256": "sha256:045f4d6412917a17e0f61302d7ba7d4d916ff0cf668508662ca4dfba9b33eff5"
+          "sourceSha256": "sha256:fc60bd4072e2eccd2267e351f009a736689a43937583eb964e74ed8e2d96392a"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-transport-core.mjs",
-          "sourceSha256": "sha256:a23fc1e4106d3231e8e5bdafd4fcc93397232f9a168caa85dc2983752ddb816b"
+          "sourceSha256": "sha256:7dde5214b53ed8fc6734c9f94feecff5421a9bbcd910a1b7005821a760e2351b"
         }
       ],
       "observed": {
         "lines": {
-          "covered": 2610,
-          "found": 3220
+          "covered": 2838,
+          "found": 3335
         },
         "functions": {
-          "covered": 161,
-          "found": 194
+          "covered": 177,
+          "found": 199
         },
         "branches": {
-          "covered": 511,
-          "found": 731
+          "covered": 595,
+          "found": 817
         }
       },
       "minimumBasisPoints": {

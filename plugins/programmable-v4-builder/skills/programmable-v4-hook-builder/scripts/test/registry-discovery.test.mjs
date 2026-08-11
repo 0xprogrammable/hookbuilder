@@ -28,6 +28,7 @@ import { canonicalJson } from "../submission-core.mjs";
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "../..");
 const snapshot = JSON.parse(fs.readFileSync(path.join(skillRoot, "references/programmable-registry-snapshot.json"), "utf8"));
+const activeSnapshot = activeDiscoverySnapshot(snapshot);
 const LIVE_COMMIT = "a".repeat(40);
 const LIVE_TREE = "b".repeat(40);
 
@@ -52,9 +53,9 @@ test("working-tree maintenance input cannot mint a public baseline snapshot", as
   const repositoryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-registry-local-fixture-"));
   t.after(() => fs.rmSync(repositoryRoot, { recursive: true, force: true }));
   fs.mkdirSync(path.join(repositoryRoot, "registry/projects"), { recursive: true });
-  fs.writeFileSync(path.join(repositoryRoot, "registry/index.json"), `${canonicalJson(snapshot.index)}\n`);
-  fs.writeFileSync(path.join(repositoryRoot, "registry/search-index.json"), `${canonicalJson(snapshot.search)}\n`);
-  for (const { record } of snapshot.projects) {
+  fs.writeFileSync(path.join(repositoryRoot, "registry/index.json"), `${canonicalJson(activeSnapshot.index)}\n`);
+  fs.writeFileSync(path.join(repositoryRoot, "registry/search-index.json"), `${canonicalJson(activeSnapshot.search)}\n`);
+  for (const { record } of activeSnapshot.projects) {
     const directory = path.join(repositoryRoot, `registry/projects/${record.id}`);
     fs.mkdirSync(directory, { recursive: true });
     fs.writeFileSync(path.join(directory, "project.json"), `${JSON.stringify(record, null, 2)}\n`);
@@ -67,7 +68,7 @@ test("working-tree maintenance input cannot mint a public baseline snapshot", as
 });
 
 test("local discovery preserves the exact legacy 1.0.0 index and digest contract", async (t) => {
-  const legacy = legacyDiscoverySnapshot(snapshot);
+  const legacy = activeDiscoverySnapshot(legacyDiscoverySnapshot(snapshot));
   const repositoryRoot = writeLocalRegistryFixture(t, legacy, "programmable-registry-legacy-fixture-");
   const session = openLocalRegistry({ repositoryRoot });
 
@@ -168,7 +169,7 @@ test("offline source provenance tampering fails closed for every Git binding lay
 });
 
 test("accepted project bindings are paired, digest-bound, and visible in discovery", async (t) => {
-  const accepted = acceptedClassicSnapshot(snapshot);
+  const accepted = activeDiscoverySnapshot(acceptedClassicSnapshot(snapshot));
   const summary = accepted.index.records[0];
   const repositoryRoot = writeLocalRegistryFixture(t, accepted, "programmable-registry-accepted-");
   const session = openLocalRegistry({ repositoryRoot });
@@ -291,8 +292,8 @@ test("live discovery pins repository id, commit, tree, and exact raw index URLs"
       commit: { tree: { sha: LIVE_TREE } },
       sha: LIVE_COMMIT
     }],
-    [`${PROGRAMMABLE_REGISTRY.rawRepository}/${LIVE_COMMIT}/registry/index.json`, snapshot.index],
-    [`${PROGRAMMABLE_REGISTRY.rawRepository}/${LIVE_COMMIT}/registry/search-index.json`, snapshot.search]
+    [`${PROGRAMMABLE_REGISTRY.rawRepository}/${LIVE_COMMIT}/registry/index.json`, activeSnapshot.index],
+    [`${PROGRAMMABLE_REGISTRY.rawRepository}/${LIVE_COMMIT}/registry/search-index.json`, activeSnapshot.search]
   ]);
   const session = await openLiveRegistry({ fetchImplementation: async (url, options) => {
     requested.push({ options, url });
@@ -333,8 +334,8 @@ test("live project loading rejects bytes that do not match the indexed source di
       commit: { tree: { sha: LIVE_TREE } },
       sha: LIVE_COMMIT
     }],
-    [`${PROGRAMMABLE_REGISTRY.rawRepository}/${LIVE_COMMIT}/registry/index.json`, snapshot.index],
-    [`${PROGRAMMABLE_REGISTRY.rawRepository}/${LIVE_COMMIT}/registry/search-index.json`, snapshot.search],
+    [`${PROGRAMMABLE_REGISTRY.rawRepository}/${LIVE_COMMIT}/registry/index.json`, activeSnapshot.index],
+    [`${PROGRAMMABLE_REGISTRY.rawRepository}/${LIVE_COMMIT}/registry/search-index.json`, activeSnapshot.search],
     [`${PROGRAMMABLE_REGISTRY.rawRepository}/${LIVE_COMMIT}/registry/projects/classic/project.json`, snapshot.projects[0].record]
   ]);
   const session = await openLiveRegistry({ fetchImplementation: async (url) => {
@@ -354,6 +355,12 @@ function hasCode(code) {
 
 function digest(bytes) {
   return `sha256:${crypto.createHash("sha256").update(bytes).digest("hex")}`;
+}
+
+function activeDiscoverySnapshot(value) {
+  const active = structuredClone(value);
+  active.index.activeIntake.repository = PROGRAMMABLE_REGISTRY.repository;
+  return active;
 }
 
 function legacyDiscoverySnapshot(value) {

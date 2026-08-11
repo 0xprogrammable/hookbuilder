@@ -3,6 +3,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { runBoundedChildProcess } from "../skills/programmable-v4-hook-builder/scripts/bounded-child-process-core.mjs";
+import { SUBMIT_LAUNCH_REPOSITORY } from "../skills/programmable-v4-hook-builder/scripts/registry-intake-contract.mjs";
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 export const repositoryRoot = path.resolve(moduleDirectory, "..");
@@ -118,7 +119,7 @@ export const toolDefinitions = Object.freeze([
   {
     name: "programmable_application_status",
     title: "Read Application V3 status",
-    description: "Read GitHub transport/review status for an exact Application V3 revision. This never approves, merges, deploys, or launches.",
+    description: `Read ${SUBMIT_LAUNCH_REPOSITORY} transport/review status for an exact Application V3 revision. This never approves, merges, deploys, or launches.`,
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -139,7 +140,7 @@ export const toolDefinitions = Object.freeze([
   {
     name: "programmable_application_plan",
     title: "Plan an Application V3 GitHub action",
-    description: "Recompute a read-only submit or update plan and return its exact confirmation digest. It performs no GitHub mutation.",
+    description: `Recompute a read-only ${SUBMIT_LAUNCH_REPOSITORY} submit or update plan and return its exact confirmation digest. It performs no GitHub mutation.`,
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -161,7 +162,7 @@ export const toolDefinitions = Object.freeze([
   {
     name: "programmable_application_reconcile",
     title: "Reconcile an interrupted Application V3 action",
-    description: "Use GET-only GitHub reads to reconcile a crash-safe mutation receipt and return the exact resumable state. It performs no GitHub mutation.",
+    description: `Use GET-only GitHub reads to reconcile a crash-safe ${SUBMIT_LAUNCH_REPOSITORY} mutation receipt and return the exact resumable state. It performs no GitHub mutation.`,
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -184,7 +185,7 @@ export const toolDefinitions = Object.freeze([
   {
     name: "programmable_application_execute",
     title: "Execute one digest-bound Application V3 GitHub action",
-    description: "Recompute and execute only the exact submit/update plan authorized by confirmationDigest. This can create a fork, branch, commit, Git ref, and draft pull request; it never approves, merges, deploys, launches, signs, or moves funds.",
+    description: `Recompute and execute only the exact ${SUBMIT_LAUNCH_REPOSITORY} submit/update plan authorized by confirmationDigest. This can create a fork, branch, commit, Git ref, and draft pull request; it never approves, merges, deploys, launches, signs, or moves funds.`,
     inputSchema: {
       type: "object",
       additionalProperties: false,

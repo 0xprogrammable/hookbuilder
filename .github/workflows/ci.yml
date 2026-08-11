@@ -58,6 +58,7 @@ jobs:
           --event "${{ github.event_name }}"
           --base "${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'push' && github.event.before || github.sha }}"
           --head "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+          --pull-request "${{ github.event_name == 'pull_request' && github.event.pull_request.number || 0 }}"
           --output "$RUNNER_TEMP/applicant-fast-lane-plan.json"
           --github-output "$GITHUB_OUTPUT"
       - name: Check route compatibility before expensive work

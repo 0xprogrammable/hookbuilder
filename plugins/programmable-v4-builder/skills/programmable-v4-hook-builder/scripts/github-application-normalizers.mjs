@@ -1,6 +1,7 @@
 import {
   CENTRAL_BASE_BRANCH,
   CENTRAL_REPOSITORY,
+  CENTRAL_REPOSITORY_ID,
   CENTRAL_REPOSITORY_NAME,
   MAX_CHECK_RUNS,
   MAX_PULL_FILES,
@@ -95,17 +96,18 @@ export function validateFork(fork, viewer, centralRepositoryId) {
     || fork.parent?.fullName !== CENTRAL_REPOSITORY
     || (fork.permissions !== undefined && fork.permissions.push !== true)
   ) {
-    fail("FORK_COLLISION", "the viewer's programmable-registry repository is not the exact fork of the central application repository");
+    fail("FORK_COLLISION", "the viewer's submit-launch repository is not the exact fork of the central application repository");
   }
 }
 
 export function validateCentralRepository(repository) {
   if (
-    repository.fullName !== CENTRAL_REPOSITORY
+    repository.id !== CENTRAL_REPOSITORY_ID
+    || repository.fullName !== CENTRAL_REPOSITORY
     || repository.private !== false
     || repository.defaultBranch !== CENTRAL_BASE_BRANCH
   ) {
-    fail("CENTRAL_REPOSITORY_MISMATCH", "the fixed Programmable public beta repository is unavailable or changed");
+    fail("CENTRAL_REPOSITORY_MISMATCH", "the fixed Submit a Launch repository is unavailable or changed");
   }
 }
 

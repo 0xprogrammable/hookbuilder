@@ -62,7 +62,7 @@ function runApplicantCli(fixtureRoot, input) {
   );
 }
 
-test("example binds the singleton hookbuilder intake and passes schema plus semantic validation", () => {
+test("legacy example keeps its frozen Hookbuilder intake and passes schema plus semantic validation", () => {
   assert.equal(example.schemaVersion, APPLICANT_SUBMISSION_SCHEMA_VERSION);
   assert.equal(example.intake.repository, APPLICANT_INTAKE_REPOSITORY);
   assert.equal(example.intake.repositoryId, APPLICANT_INTAKE_REPOSITORY_ID);
@@ -73,38 +73,46 @@ test("example binds the singleton hookbuilder intake and passes schema plus sema
   assert.deepEqual(validateApplicantSubmission(example, schema), []);
 });
 
-test("every active Applicant surface routes exclusively to Hookbuilder", () => {
-  const targetSurfaces = [
+test("every active Applicant surface routes new applications to Submit a Launch", () => {
+  const activeSurfaces = [
     "README.md",
-    ".github/PULL_REQUEST_TEMPLATE/applicant-submission.md",
     "docs/AGENT_SKILL.md",
     "docs/ARCHITECTURE.md",
     "docs/PUBLIC_GITHUB_PR_BETA.md",
-    "submissions/README.md",
-    "submissions/requests/README.md",
     "skills/programmable-v4-hook-builder/SKILL.md",
     "skills/programmable-v4-hook-builder/references/agent-entry-and-application.md"
   ];
-  for (const relativePath of targetSurfaces) {
+  for (const relativePath of activeSurfaces) {
     const contents = fs.readFileSync(path.join(repositoryRoot, relativePath), "utf8");
-    assert.match(contents, /0xprogrammable\/hookbuilder/u, relativePath);
+    assert.match(contents, /0xprogrammable\/submit-launch/u, relativePath);
     assert.doesNotMatch(contents, /0xprogrammable\/programmable-registry/u, relativePath);
-    assert.match(contents, /(?:launchWallet|launch[- ]wallet)/iu, relativePath);
-    assert.doesNotMatch(contents, /githubAppInstallationScope/u, relativePath);
   }
 });
 
-test("active Applicant contract surfaces freeze the 1.1.0 canonical applicationManifest", () => {
+test("Hookbuilder Applicant surfaces are frozen to the exact eight legacy continuations", () => {
   for (const relativePath of [
-    "docs/PUBLIC_GITHUB_PR_BETA.md",
+    ".github/PULL_REQUEST_TEMPLATE/applicant-submission.md",
     "submissions/README.md",
-    "skills/programmable-v4-hook-builder/references/agent-entry-and-application.md"
+    "submissions/requests/README.md"
   ]) {
     const contents = fs.readFileSync(path.join(repositoryRoot, relativePath), "utf8");
-    assert.match(contents, /applicationManifest/u, relativePath);
-    assert.match(contents, /Canonical JSON V2/u, relativePath);
-    assert.match(contents, /no\s+trailing newline/u, relativePath);
-    assert.match(contents, /custom-graph@1\.0\.0/u, relativePath);
+    assert.match(contents, /0xprogrammable\/submit-launch/u, relativePath);
+    for (const pullRequest of [10, 11, 12, 14, 15, 18, 19, 20]) {
+      assert.match(contents, new RegExp(`#${pullRequest}(?:\\b|,)`, "u"), relativePath);
+    }
+    assert.match(contents, /(?:legacy|former|existing)/iu, relativePath);
+  }
+});
+
+test("legacy Hookbuilder contract keeps the 1.1.0 canonical applicationManifest", () => {
+  const legacyReadme = fs.readFileSync(path.join(repositoryRoot, "submissions/README.md"), "utf8");
+  for (const pattern of [
+    /applicationManifest/u,
+    /Canonical JSON V2/u,
+    /no\s+trailing newline/u,
+    /custom-graph@1\.0\.0/u
+  ]) {
+    assert.match(legacyReadme, pattern);
   }
   assert.equal(schema.$id, "urn:programmable:applicant-submission:1.1.0");
   assert.deepEqual(schema.properties.intake.required, ["repository", "repositoryId"]);
@@ -129,20 +137,28 @@ test("current install and Builder identity surfaces use the canonical Hookbuilde
   }
 });
 
-test("legacy and candidate transports cannot masquerade as current Applicant instructions", () => {
-  const archivalSurfaces = [
+test("released and candidate transports keep the canonical Submit a Launch target", () => {
+  const transportSurfaces = [
     "github-application-journey.md",
     "github-application-v3.md",
     "output-contract.md",
     "submission-workflow.md",
     "workflow.md"
   ];
-  for (const filename of archivalSurfaces) {
+  for (const filename of transportSurfaces) {
     const relativePath = path.join("skills", "programmable-v4-hook-builder", "references", filename);
     const contents = fs.readFileSync(path.join(repositoryRoot, relativePath), "utf8");
-    assert.match(contents.slice(0, 1_200), /0xprogrammable\/hookbuilder:main/u, relativePath);
-    assert.match(contents.slice(0, 1_200), /(?:Archived|Candidate|archived|candidate)/u, relativePath);
+    assert.match(contents, /0xprogrammable\/submit-launch:main/u, relativePath);
+    assert.doesNotMatch(contents, /0xprogrammable\/(?:hookbuilder|programmable-registry):main/u, relativePath);
   }
+  const candidate = fs.readFileSync(path.join(
+    repositoryRoot,
+    "skills",
+    "programmable-v4-hook-builder",
+    "references",
+    "github-application-v3.md"
+  ), "utf8");
+  assert.match(candidate.slice(0, 1_200), /Candidate/u);
 
   const cli = fs.readFileSync(path.join(
     repositoryRoot,
@@ -151,8 +167,9 @@ test("legacy and candidate transports cannot masquerade as current Applicant ins
     "scripts",
     "cli.mjs"
   ), "utf8");
-  assert.match(cli, /Historical V1: 0xprogrammable\/programmable-registry:main; not Applicant\./u);
-  assert.match(cli, /historical V1 target is 0xprogrammable\/programmable-registry:main; use the Applicant validator/u);
+  assert.match(cli, /Prepare Submit a Launch PR metadata without a GitHub write\./u);
+  assert.match(cli, /Create a draft-only Submit a Launch PR\./u);
+  assert.doesNotMatch(cli, /Historical V1 GitHub transport/u);
 });
 
 test("schema rejects intake drift, mutable source refs, missing versions, and direct-write requests", () => {

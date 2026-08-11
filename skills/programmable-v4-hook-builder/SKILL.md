@@ -35,7 +35,7 @@ evidence and authority.
 | Prototype | Complete isolated repository and local evidence |
 | Repair | Root cause, smallest compatible repair, rerun evidence |
 | Review | Pinned findings; no edits unless requested |
-| Submit | `0xprogrammable/hookbuilder`; no GitHub write |
+| Submit | `submit-launch`; exact-confirmed draft |
 | Handoff | Accepted 1.1.0 source, launchWallet and route to authorized owner |
 
 Never skip semantic preflight. Continue Autopilot until a material owner decision, conflict or unproved prerequisite stops it. `DESIGN_READY` permits implementation only.
@@ -98,8 +98,7 @@ node "$SKILL_ROOT/scripts/cli.mjs" project require-output --repository-root "$NE
    schema-valid `NOT_APPROVED` manifest binding PoolKey, router/quoter, Permit2, hookData, limits, fees and tests.
    Emit no route for `no-market`. Local evidence proves no approval, reachability, deployment, discovery or live state.
 8. Escalate novel, value-bearing or ambiguous slices. Mark unavailable provider gates `EXTERNAL_BLOCKED`.
-9. Report only gate-bound identity, intent, architecture, source, checkpoint, evidence, blockers and next owner.
-   Without exact public GitHub identity report `NOT_SUBMITTED`, never reviewed.
+9. New: `prepare-pr` to `0xprogrammable/submit-launch` (`1320171831`, `main`, status v2), then plan; no new Hookbuilder PR. Report bound identity, evidence and blockers; else `NOT_SUBMITTED`.
 
 ## Runtime
 

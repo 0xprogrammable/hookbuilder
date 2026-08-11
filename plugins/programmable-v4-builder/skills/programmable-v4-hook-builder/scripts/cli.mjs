@@ -12,7 +12,9 @@ import { assertInsideRepository, resolveInstalledPackageRoot, resolveRepositoryR
 import { CliFailure, emitFailure, emitSuccess, requireJsonResult, runBundledCommand } from "./cli-runtime.mjs";
 import { canonicalJson } from "./submission-core.mjs";
 import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
+import { SUBMIT_LAUNCH_INTAKE_CONTRACT as INTAKE } from "./registry-intake-contract.mjs";
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
+const launchTarget = INTAKE.repository;
 const delegatedCommands = new Map([
   ["open-world", { script: "open-world.mjs", prefix: [] }],
   ["application-recheck", { script: "application-recheck.mjs", prefix: [] }],
@@ -67,7 +69,7 @@ const commandSpecs = new Map([
   }],
   ["package", {
     usage: "cli.mjs package <submission-directory> [--require-intake-ready | --require-ready] [--repository-root <path>]",
-    summary: "Historical V1 package gate; never execute project code.",
+    summary: "Validate the released V1 package; never execute project code.",
     options: [
       repositoryOption(),
       { name: "--require-intake-ready", key: "requireIntakeReady", type: "boolean", description: "Fail unless static package intake is READY." },
@@ -86,10 +88,10 @@ const commandSpecs = new Map([
   }],
   ["prepare-pr", {
     usage: "cli.mjs prepare-pr <submission-directory> [--base main] [--companion-manifest <path>]... [--output-dir <path>] [--replace-existing | --replace-draft] [--repository-root <path>]",
-    summary: "Historical V1 PR metadata only; no PR write.",
+    summary: "Prepare Submit a Launch PR metadata without a GitHub write.",
     options: [
       repositoryOption(),
-      { name: "--base", key: "baseBranch", type: "value", valueName: "main", description: "Historical V1: 0xprogrammable/programmable-registry:main; not Applicant." },
+      { name: "--base", key: "baseBranch", type: "value", valueName: "main", description: `Fixed target: ${launchTarget.slug}:${launchTarget.defaultBranch}.` },
       {
         name: "--companion-manifest",
         key: "companionManifests",
@@ -137,10 +139,10 @@ if (command === "start" && (argv.slice(1).includes("--help") || argv.slice(1).in
   }
 }
 async function execute(command, options, positionals) {
-  if (command === "prepare-pr" && options.baseBranch !== null && options.baseBranch !== "main") {
+  if (command === "prepare-pr" && options.baseBranch !== null && options.baseBranch !== launchTarget.defaultBranch) {
     throw new CliFailure(
       "USAGE_ERROR",
-      "historical V1 target is 0xprogrammable/programmable-registry:main; use the Applicant validator"
+      `the fixed target is ${launchTarget.slug}:${launchTarget.defaultBranch}`
     );
   }
   if (command === "prepare-pr" && options.replaceExisting && options.replaceDraft) {
@@ -450,12 +452,12 @@ function globalHelp() {
     "  fee           Create or check structural fee-conformance evidence.",
     "  launch-bundle Build an unsigned DeploymentSpec candidate from exact local bytes.",
     "  launch-bundle-v2  Check exact multi-repository V2 bytes read-only; never authorize.",
-    "  package       Validate a historical V1 package.",
+    "  package       Validate the released V1 package.",
     "  companion     Validate or canonicalize one companion manifest.",
-    "  prepare-pr    Historical V1 PR metadata.",
-    "  submit        Historical V1 GitHub transport.",
-    "  status        Historical V1 GitHub status.",
-    "  update        Historical V1 GitHub update.",
+    "  prepare-pr    Prepare Submit a Launch PR metadata.",
+    "  submit        Create a draft-only Submit a Launch PR.",
+    "  status        Read Submit a Launch status.",
+    "  update        Update an existing Submit a Launch draft.",
     "  version       Report bundled versions or an explicit installed-state override.",
     "  update-check  Verify a supplied signed and pinned update.",
     "  migrate       Produce a migration dry-run; never write it.",

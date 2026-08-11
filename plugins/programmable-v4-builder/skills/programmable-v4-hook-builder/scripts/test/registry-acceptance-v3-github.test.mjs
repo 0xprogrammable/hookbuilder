@@ -11,7 +11,7 @@ import {
 } from "../registry-acceptance-v3-github-core.mjs";
 import { canonicalJson } from "../submission-core.mjs";
 
-const REGISTRY = "0xprogrammable/programmable-registry";
+const REGISTRY = "0xprogrammable/submit-launch";
 const REGISTRY_URI = `https://github.com/${REGISTRY}`;
 const REGISTRY_ID = 1320171831;
 const PULL_NUMBER = "123";

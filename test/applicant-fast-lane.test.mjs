@@ -24,6 +24,11 @@ import {
   loadApplicantRouteAcceptanceSchema,
   verifyApplicantRouteAcceptanceRecordCore
 } from "../scripts/applicant-route-acceptance-core.mjs";
+import {
+  HOOKBUILDER_LEGACY_APPLICANT_PULL_REQUESTS,
+  SUBMIT_LAUNCH_INTAKE_CONTRACT,
+  classifyHookbuilderApplicantPullRequest
+} from "../skills/programmable-v4-hook-builder/scripts/registry-intake-contract.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const requestPath = "submissions/requests/123456789-example-fee-hook.json";
@@ -208,10 +213,17 @@ test("trusted planner accepts the transition pull-request argument without chang
   const numberedPullRequest = runPlanner({ event: "pull_request", pullRequest: "27" });
   assert.equal(legacyPullRequest.status, 0, legacyPullRequest.stderr);
   assert.equal(numberedPullRequest.status, 0, numberedPullRequest.stderr);
-  assert.equal(numberedPullRequest.stdout, legacyPullRequest.stdout);
+  const legacyPlan = JSON.parse(legacyPullRequest.stdout);
+  const numberedPlan = JSON.parse(numberedPullRequest.stdout);
+  assert.equal(legacyPlan.pullRequest, null);
+  assert.equal(numberedPlan.pullRequest, 27);
+  const withoutPullRequest = ({ pullRequest: _pullRequest, ...plan }) => plan;
+  assert.deepEqual(withoutPullRequest(numberedPlan), withoutPullRequest(legacyPlan));
   const largePullRequest = runPlanner({ event: "pull_request", pullRequest: "10000000000" });
   assert.equal(largePullRequest.status, 0, largePullRequest.stderr);
-  assert.equal(largePullRequest.stdout, legacyPullRequest.stdout);
+  const largePlan = JSON.parse(largePullRequest.stdout);
+  assert.equal(largePlan.pullRequest, 10000000000);
+  assert.deepEqual(withoutPullRequest(largePlan), withoutPullRequest(legacyPlan));
 
   for (const event of ["push", "workflow_dispatch"]) {
     const absent = runPlanner({ event });
@@ -238,6 +250,41 @@ test("trusted planner accepts the transition pull-request argument without chang
   const unsafe = runPlanner({ event: "pull_request", pullRequest: "9007199254740992" });
   assert.notEqual(unsafe.status, 0);
   assert.match(unsafe.stderr, /--pull-request is outside the safe integer range/u);
+});
+
+test("Hookbuilder accepts only the frozen legacy Applicant pull requests and redirects every new one", () => {
+  assert.equal(SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.slug, "0xprogrammable/submit-launch");
+  assert.equal(SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.numericId, "1320171831");
+  assert.equal(SUBMIT_LAUNCH_INTAKE_CONTRACT.schemaVersion, 2);
+  assert.equal(SUBMIT_LAUNCH_INTAKE_CONTRACT.draftOnly, true);
+  assert.deepEqual(
+    HOOKBUILDER_LEGACY_APPLICANT_PULL_REQUESTS,
+    [10, 11, 12, 14, 15, 18, 19, 20]
+  );
+  for (const pullRequest of HOOKBUILDER_LEGACY_APPLICANT_PULL_REQUESTS) {
+    assert.equal(classifyHookbuilderApplicantPullRequest({
+      event: "pull_request",
+      pullRequest,
+      requestPaths: [requestPath]
+    }), "legacy-continuation");
+  }
+  for (const pullRequest of [1, 9, 13, 16, 17, 21, 999]) {
+    assert.equal(classifyHookbuilderApplicantPullRequest({
+      event: "pull_request",
+      pullRequest,
+      requestPaths: [requestPath]
+    }), "submit-launch-required");
+  }
+  assert.equal(classifyHookbuilderApplicantPullRequest({
+    event: "push",
+    pullRequest: null,
+    requestPaths: [requestPath]
+  }), "not-applicant-pull-request");
+  assert.equal(classifyHookbuilderApplicantPullRequest({
+    event: "pull_request",
+    pullRequest: 21,
+    requestPaths: []
+  }), "not-applicant-pull-request");
 });
 
 test("canonical direct-graph catalog is positive while exact Shards stays disabled", () => {
@@ -420,9 +467,13 @@ test("workflow keeps two independent stable contexts and never executes a PR hea
   assert.match(workflow, /WEBSITE_APPLICANT_ROUTE_ACCEPTANCE_CLAIM_URL/u);
   assert.match(workflow, /WEBSITE_APPLICANT_ROUTE_ACCEPTANCE_RECORD_URL/u);
   assert.match(workflow, /accepted-route-report\.json/u);
+  assert.match(workflow, /--pull-request "\$\{\{ github\.event_name == 'pull_request' && github\.event\.pull_request\.number \|\| 0 \}\}"/u);
   assert.match(workflow, /applicant-acceptance:[\s\S]*?timeout-minutes: 2/u);
   assert.match(workflow, /applicant-mutable:[\s\S]*?timeout-minutes: 8/u);
-  assert.match(fs.readFileSync(path.join(repositoryRoot, "scripts/ci/plan-applicant-fast-lane.mjs"), "utf8"), /git", \["merge-base", base, head\]/u);
+  const planner = fs.readFileSync(path.join(repositoryRoot, "scripts/ci/plan-applicant-fast-lane.mjs"), "utf8");
+  assert.match(planner, /git", \["merge-base", base, head\]/u);
+  assert.match(planner, /classifyHookbuilderApplicantPullRequest/u);
+  assert.match(planner, /HOOKBUILDER_APPLICANT_INTAKE_CLOSED/u);
 });
 
 test("the two stable gates remain disjoint in applicant, mixed, and platform modes", () => {
