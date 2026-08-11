@@ -310,9 +310,11 @@ export async function verifyPullPackage({ prepared, transport, pull, requireMatc
   };
 }
 
-export async function verifyPackageAtRef({ prepared, transport, repository, commit }) {
+export async function verifyPackageAtRef({ prepared, transport, repository, commit, allowNotFound = false }) {
   for (const record of prepared.package.files) {
-    const bytes = normalizeContent(await transport.getContent(repository, record.path, commit), record.path);
+    const response = await transport.getContent(repository, record.path, commit, { allowNotFound });
+    if (response === null) return false;
+    const bytes = normalizeContent(response, record.path);
     if (
       bytes.length !== record.byteLength
       || sha256Bytes(bytes) !== record.sha256
@@ -321,6 +323,7 @@ export async function verifyPackageAtRef({ prepared, transport, repository, comm
       fail("APPLICATION_BRANCH_VERIFY_FAILED", "the application branch does not contain the exact six-file package");
     }
   }
+  return true;
 }
 
 export async function inspectPackageAtRef({ prepared, transport, repository, commit }) {

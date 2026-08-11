@@ -14,6 +14,16 @@ import {
   OPAQUE_DECIMAL_PATTERN,
   REPOSITORY_SLUG_PATTERN
 } from "./github-application-constants.mjs";
+import { SUBMIT_LAUNCH_REPOSITORY_URL } from "./registry-intake-contract.mjs";
+
+const submitLaunchPullUrl = new RegExp(
+  `^${escapeRegex(SUBMIT_LAUNCH_REPOSITORY_URL)}/pull/[1-9][0-9]*$`,
+  "u"
+);
+const submitLaunchCheckUrl = new RegExp(
+  `^${escapeRegex(SUBMIT_LAUNCH_REPOSITORY_URL)}/actions/runs/[1-9][0-9]{0,63}(?:/job/[1-9][0-9]{0,63})?$`,
+  "u"
+);
 
 export class GitHubApplicationError extends Error {
   constructor(code, message, { exitCode = 1, details = null } = {}) {
@@ -146,7 +156,7 @@ export function requireGitHubUserUrl(value, login) {
 }
 
 export function requirePullUrl(value) {
-  if (typeof value !== "string" || !/^https:\/\/github\.com\/0xprogrammable\/programmable-registry\/pull\/[1-9][0-9]*$/u.test(value)) {
+  if (typeof value !== "string" || !submitLaunchPullUrl.test(value)) {
     fail("GITHUB_OUTPUT_INVALID", "pull-request URL is noncanonical");
   }
   return value;
@@ -155,11 +165,15 @@ export function requirePullUrl(value) {
 export function requireCheckDetailsUrl(value) {
   if (
     typeof value !== "string"
-    || !/^https:\/\/github\.com\/0xprogrammable\/programmable-registry\/actions\/runs\/[1-9][0-9]{0,63}(?:\/job\/[1-9][0-9]{0,63})?$/u.test(value)
+    || !submitLaunchCheckUrl.test(value)
   ) {
     fail("GITHUB_OUTPUT_INVALID", "check-run details URL is noncanonical");
   }
   return value;
+}
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
 
 export function requireRepositoryPath(value, label) {

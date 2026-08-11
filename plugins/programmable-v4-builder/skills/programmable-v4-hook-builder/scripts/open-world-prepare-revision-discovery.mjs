@@ -46,7 +46,7 @@ export function installOpenWorldPrepareRevisionDiscovery(runtime) {
       || central.private
       || central.fork
     ) {
-      throw new CliFailure("CENTRAL_REPOSITORY_CHANGED", "the fixed public Programmable Registry identity is unavailable", { exitCode: 1 });
+      throw new CliFailure("CENTRAL_REPOSITORY_CHANGED", "the fixed public Submit a Launch identity is unavailable", { exitCode: 1 });
     }
     const baseRef = normalizeGitHubRef(
       await transport.getRef(CENTRAL_GITHUB_REPOSITORY, CENTRAL_GITHUB_BASE_BRANCH),

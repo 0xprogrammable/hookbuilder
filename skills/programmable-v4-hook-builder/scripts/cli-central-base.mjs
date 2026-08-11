@@ -15,12 +15,12 @@ import { CliFailure } from "./cli-runtime.mjs";
 import { canonicalJson } from "./submission-core.mjs";
 import { hasForbiddenInvisibleOrBidi } from "./metadata-core.mjs";
 import { parseBoundedStrictJson } from "./strict-json-core.mjs";
+import { SUBMIT_LAUNCH_INTAKE_CONTRACT as INTAKE } from "./registry-intake-contract.mjs";
 
+const launchRepository = INTAKE.repository;
 export const CENTRAL_GITHUB_TARGET = Object.freeze({
-  owner: "0xprogrammable",
-  repository: "programmable-registry",
-  repositorySlug: "0xprogrammable/programmable-registry",
-  repositoryUrl: "https://github.com/0xprogrammable/programmable-registry"
+  owner: launchRepository.owner, repository: launchRepository.name,
+  repositorySlug: launchRepository.slug, repositoryUrl: launchRepository.url
 });
 
 const COMMIT_PATTERN = /^[0-9a-f]{40}$/u;
@@ -28,7 +28,6 @@ const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 const APPLICATION_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const GITHUB_LOGIN_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/u;
 const OPAQUE_DECIMAL_PATTERN = /^[1-9][0-9]{0,63}$/u;
-const SAFE_BRANCH_PATTERN = /^(?!\/)(?!.*(?:\.\.|\/\/|@\{|\\|[\u0000-\u0020\u007f~^:?*\[]))[A-Za-z0-9._/-]{1,255}(?<![\/.])$/u;
 const DEFAULT_ATTEMPTS = 3;
 const MAX_REQUESTS = 24;
 const MAX_COMMIT_RESPONSE_BYTES = 256 * 1024;
@@ -638,10 +637,7 @@ function createRequestState({ fetchImplementation, sleepImplementation, attempts
 
 function validateInputs({ baseBranch, applicationId, fetchImplementation, sleepImplementation, attempts, timeoutMs }) {
   if (
-    typeof baseBranch !== "string"
-    || !SAFE_BRANCH_PATTERN.test(baseBranch)
-    || baseBranch.endsWith(".lock")
-    || baseBranch.startsWith("refs/")
+    baseBranch !== launchRepository.defaultBranch
     || typeof fetchImplementation !== "function"
     || typeof sleepImplementation !== "function"
     || !Number.isInteger(attempts)

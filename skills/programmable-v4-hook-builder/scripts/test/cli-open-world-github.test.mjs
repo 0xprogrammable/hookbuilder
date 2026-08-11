@@ -1636,7 +1636,7 @@ test("open-world submit performs only the digest-confirmed writes against a fake
   assert.equal(payload.result.action, "submit");
   assert.equal(payload.result.confirmationDigest, confirmationDigest);
   assert.equal(payload.result.writePerformed, true);
-  assert.equal(payload.result.target.forkRepository, "example-builder/programmable-registry");
+  assert.equal(payload.result.target.forkRepository, "example-builder/submit-launch");
   assert.equal(payload.result.target.branchCommit, "7".repeat(40));
   assert.equal(payload.result.target.pullRequestNumber, 7);
   assert.equal(payload.result.approvalGranted, false);
@@ -1660,11 +1660,11 @@ test("open-world submit performs only the digest-confirmed writes against a fake
   assert.equal(fs.statSync(receiptPath).mode & 0o777, 0o600);
   assert.equal(payload.result.mutationReceipt.path, fs.realpathSync(receiptPath));
   assert.deepEqual(mutatingCalls(fixture).map(({ method, endpoint }) => ({ method, endpoint })), [
-    { method: "POST", endpoint: "repos/0xprogrammable/programmable-registry/forks" },
-    { method: "POST", endpoint: "repos/example-builder/programmable-registry/git/trees" },
-    { method: "POST", endpoint: "repos/example-builder/programmable-registry/git/commits" },
-    { method: "POST", endpoint: "repos/example-builder/programmable-registry/git/refs" },
-    { method: "POST", endpoint: "repos/0xprogrammable/programmable-registry/pulls" }
+    { method: "POST", endpoint: "repos/0xprogrammable/submit-launch/forks" },
+    { method: "POST", endpoint: "repos/example-builder/submit-launch/git/trees" },
+    { method: "POST", endpoint: "repos/example-builder/submit-launch/git/commits" },
+    { method: "POST", endpoint: "repos/example-builder/submit-launch/git/refs" },
+    { method: "POST", endpoint: "repos/0xprogrammable/submit-launch/pulls" }
   ]);
 });
 
@@ -1673,8 +1673,8 @@ test("read-only receipt reconciliation never rewrites a receipt or retries an un
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   state.forkRepository = {
     id: 666,
-    full_name: "example-builder/programmable-registry",
-    html_url: "https://github.com/example-builder/programmable-registry",
+    full_name: "example-builder/submit-launch",
+    html_url: "https://github.com/example-builder/submit-launch",
     private: false,
     fork: true,
     owner: state.viewer,
@@ -1714,8 +1714,8 @@ test("GET-only resume diagnoses a dynamically orphaned lock without changing the
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   state.forkRepository = {
     id: 666,
-    full_name: "example-builder/programmable-registry",
-    html_url: "https://github.com/example-builder/programmable-registry",
+    full_name: "example-builder/submit-launch",
+    html_url: "https://github.com/example-builder/submit-launch",
     private: false,
     fork: true,
     owner: state.viewer,
@@ -1785,8 +1785,8 @@ test("a wrong resume digest cannot persist reconciliation or alter the receipt",
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   state.forkRepository = {
     id: 666,
-    full_name: "example-builder/programmable-registry",
-    html_url: "https://github.com/example-builder/programmable-registry",
+    full_name: "example-builder/submit-launch",
+    html_url: "https://github.com/example-builder/submit-launch",
     private: false,
     fork: true,
     owner: state.viewer,
@@ -1909,7 +1909,7 @@ test("resume reconciles a persisted branch response and continues without replay
   assert.equal(resumed.status, 0, resumed.stdout || resumed.stderr);
   assert.equal(JSON.parse(resumed.stdout).result.pullRequestNumber, 7);
   assert.deepEqual(mutatingCalls(fixture).map(({ method, endpoint }) => ({ method, endpoint })), [
-    { method: "POST", endpoint: "repos/0xprogrammable/programmable-registry/pulls" }
+    { method: "POST", endpoint: "repos/0xprogrammable/submit-launch/pulls" }
   ]);
   const completed = JSON.parse(fs.readFileSync(receiptPath, "utf8"));
   assert.equal(completed.state, "COMPLETE");
@@ -1963,12 +1963,12 @@ test("confirmed submit reports a typed partial-write journal if the Registry bas
   assert.equal(error.details.writePerformed, true);
   assert.equal(error.details.recoveryStatus, "MANUAL_RECONCILIATION_REQUIRED");
   assert.deepEqual(error.details.externalActionsPerformed, ["created-viewer-fork"]);
-  assert.equal(error.details.identifiers.forkRepository, "example-builder/programmable-registry");
+  assert.equal(error.details.identifiers.forkRepository, "example-builder/submit-launch");
   assert.equal(error.details.identifiers.treeObjectId, null);
   assert.equal(error.details.approvalGranted, false);
   assert.equal(error.details.launchAuthorizationGranted, false);
   assert.deepEqual(mutatingCalls(fixture).map(({ endpoint }) => endpoint), [
-    "repos/0xprogrammable/programmable-registry/forks"
+    "repos/0xprogrammable/submit-launch/forks"
   ]);
 });
 
@@ -1997,9 +1997,9 @@ test("confirmed submit journals fork, tree, and commit if the branch races befor
   assert.equal(error.details.identifiers.pullRequestNumber, null);
   assert.equal(error.details.writePerformed, true);
   assert.deepEqual(mutatingCalls(fixture).map(({ endpoint }) => endpoint), [
-    "repos/0xprogrammable/programmable-registry/forks",
-    "repos/example-builder/programmable-registry/git/trees",
-    "repos/example-builder/programmable-registry/git/commits"
+    "repos/0xprogrammable/submit-launch/forks",
+    "repos/example-builder/submit-launch/git/trees",
+    "repos/example-builder/submit-launch/git/commits"
   ]);
 });
 
@@ -2008,8 +2008,8 @@ test("persisted Git tree with a lost response is reported as outcome-unknown wit
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   state.forkRepository = {
     id: 666,
-    full_name: "example-builder/programmable-registry",
-    html_url: "https://github.com/example-builder/programmable-registry",
+    full_name: "example-builder/submit-launch",
+    html_url: "https://github.com/example-builder/submit-launch",
     private: false,
     fork: true,
     owner: state.viewer,
@@ -2032,13 +2032,13 @@ test("persisted Git tree with a lost response is reported as outcome-unknown wit
   assert.equal(error.details.mutationLedger.length, 1);
   assert.equal(error.details.mutationLedger[0].attempt, "ATTEMPTED");
   assert.equal(error.details.mutationLedger[0].outcome, "OUTCOME_UNKNOWN");
-  assert.equal(error.details.mutationLedger[0].target.repository, "example-builder/programmable-registry");
+  assert.equal(error.details.mutationLedger[0].target.repository, "example-builder/submit-launch");
   assert.match(error.details.mutationLedger[0].requestSha256, /^sha256:[0-9a-f]{64}$/u);
   assert.ok(error.details.mutationLedger[0].safeInspectionSteps.some((step) => step.includes("do not repeat the POST")));
   assert.ok(error.details.recoveryInstructions.some((step) => step.includes("Do not retry")));
   assert.equal(result.stdout.includes("Exact public proposal"), false);
   assert.deepEqual(mutatingCalls(fixture).map(({ endpoint }) => endpoint), [
-    "repos/example-builder/programmable-registry/git/trees"
+    "repos/example-builder/submit-launch/git/trees"
   ]);
 });
 
@@ -2088,8 +2088,8 @@ test("update rereads the exact open draft before ref mutation and stops on close
     "create-application-commit"
   ]);
   assert.deepEqual(mutatingCalls(fixture).map(({ endpoint }) => endpoint), [
-    "repos/example-builder/programmable-registry/git/trees",
-    "repos/example-builder/programmable-registry/git/commits"
+    "repos/example-builder/submit-launch/git/trees",
+    "repos/example-builder/submit-launch/git/commits"
   ]);
 });
 
@@ -2577,7 +2577,7 @@ test("shared V2/V3 GitHub path transport accepts the former 1024-character bound
   const transport = createGhTransport({
     runner: async ({ args }) => {
       observed.push(args.at(-1));
-      return { status: 1, stdout: "", stderr: "HTTP 404 Not Found" };
+      return { status: 1, stdout: "", stderr: "gh: Not Found (HTTP 404)" };
     }
   });
   for (const length of [1_024, 1_025]) {
@@ -2680,7 +2680,7 @@ test("GitHub GET transport retries are bounded, Retry-After aware, typed, and ne
       sleep: async () => { assert.fail("a mutation must never enter GET retry backoff"); }
     });
     await assert.rejects(
-      () => writeTransport.createFork("0xprogrammable/programmable-registry"),
+      () => writeTransport.createFork("0xprogrammable/submit-launch"),
       (error) => error?.code === "GITHUB_REQUEST_FAILED"
         && error.details?.attempts === 1
         && error.details?.requestMethod === "POST"
@@ -2764,8 +2764,8 @@ function createTransportFixture(t, {
   const viewer = { id: Number(application.builder.githubUserId), login: application.builder.githubLogin };
   const centralRepository = {
     id: 1320171831,
-    full_name: "0xprogrammable/programmable-registry",
-    html_url: "https://github.com/0xprogrammable/programmable-registry",
+    full_name: "0xprogrammable/submit-launch",
+    html_url: "https://github.com/0xprogrammable/submit-launch",
     private: false,
     fork: false,
     owner: { id: 777, login: "0xprogrammable" },
@@ -2773,8 +2773,8 @@ function createTransportFixture(t, {
   };
   const forkRepository = hasPull ? {
     id: 666,
-    full_name: "example-builder/programmable-registry",
-    html_url: "https://github.com/example-builder/programmable-registry",
+    full_name: "example-builder/submit-launch",
+    html_url: "https://github.com/example-builder/submit-launch",
     private: false,
     fork: true,
     owner: viewer,
@@ -2798,7 +2798,7 @@ function createTransportFixture(t, {
     draft: true,
     merged_at: null,
     merge_commit_sha: null,
-    html_url: "https://github.com/0xprogrammable/programmable-registry/pull/7",
+    html_url: "https://github.com/0xprogrammable/submit-launch/pull/7",
     title: `[Application V3] ${application.applicationId}`,
     body: "Existing exact Application V3 review thread.",
     labels: [],
@@ -2865,14 +2865,9 @@ function createTransportFixture(t, {
     centralContents: priorIsMerged ? priorProjection.contents : {},
     centralTreeEntries: [],
     intakeStatus: Buffer.from(`${canonicalJson({
-      activeIntake: {
-        baseBranch: "main",
-        directory: "submissions",
-        repository: "0xprogrammable/programmable-registry",
-        state: "open"
-      },
       continuingPullRequests: [],
-      schemaVersion: 3
+      schemaVersion: 2,
+      state: "open"
     })}\n`, "utf8").toString("base64"),
     centralContentFailure: null,
     workflowRunMode: null,
@@ -4342,7 +4337,7 @@ const stdin = method === "GET" ? "" : fs.readFileSync(0, "utf8");
 const body = stdin.length === 0 ? null : JSON.parse(stdin);
 fs.appendFileSync(process.env.FAKE_GH_CALL_LOG, JSON.stringify({ method, endpoint, body }) + "\\n");
 function output(value) { fs.writeFileSync(1, JSON.stringify(value)); process.exit(0); }
-function missing() { process.stderr.write("HTTP 404 Not Found\\n"); process.exit(1); }
+function missing() { process.stderr.write("gh: Not Found (HTTP 404)\\n"); process.exit(1); }
 function persist() { fs.writeFileSync(process.env.FAKE_GH_STATE, JSON.stringify(state) + "\\n"); }
 function treeEntriesForContents(contents) {
   return Object.entries(contents ?? {}).map(([repositoryPath, content]) => {
@@ -4375,11 +4370,11 @@ function sourceMetadata(repositorySlug) {
   return state.sourceArchives?.[repositorySlug]?.metadata ?? null;
 }
 if (method !== "GET" && process.env.FAKE_GH_ALLOW_WRITES !== "1") { process.stderr.write("unexpected mutation\\n"); process.exit(9); }
-if (method === "POST" && endpoint === "repos/0xprogrammable/programmable-registry/forks") {
+if (method === "POST" && endpoint === "repos/0xprogrammable/submit-launch/forks") {
   state.forkRepository = {
     id: 666,
-    full_name: "example-builder/programmable-registry",
-    html_url: "https://github.com/example-builder/programmable-registry",
+    full_name: "example-builder/submit-launch",
+    html_url: "https://github.com/example-builder/submit-launch",
     private: false,
     fork: true,
     owner: state.viewer,
@@ -4394,7 +4389,7 @@ if (method === "POST" && endpoint === "repos/0xprogrammable/programmable-registr
   if (state.raceMode === "fork-response-loss") { process.stderr.write("simulated response loss\\n"); process.exit(1); }
   output(state.forkRepository);
 }
-if (method === "POST" && endpoint === "repos/example-builder/programmable-registry/git/trees") {
+if (method === "POST" && endpoint === "repos/example-builder/submit-launch/git/trees") {
   state.createdTree = "6".repeat(40);
   const baseContents = body.base_tree === state.centralTree
     ? state.centralContents
@@ -4425,7 +4420,7 @@ if (method === "POST" && endpoint === "repos/example-builder/programmable-regist
   if (state.raceMode === "tree-response-loss") { process.stderr.write("simulated response loss\\n"); process.exit(1); }
   output({ sha: state.createdTree });
 }
-if (method === "POST" && endpoint === "repos/example-builder/programmable-registry/git/commits") {
+if (method === "POST" && endpoint === "repos/example-builder/submit-launch/git/commits") {
   const createdCommit = "7".repeat(40);
   state.createdCommit = createdCommit;
   state.createdCommitTree = body.tree;
@@ -4443,7 +4438,7 @@ if (method === "POST" && endpoint === "repos/example-builder/programmable-regist
   if (state.raceMode === "commit-response-loss") { process.stderr.write("simulated response loss\\n"); process.exit(1); }
   output({ sha: createdCommit, tree: { sha: state.createdCommitTree } });
 }
-if (method === "POST" && endpoint === "repos/example-builder/programmable-registry/git/refs") {
+if (method === "POST" && endpoint === "repos/example-builder/submit-launch/git/refs") {
   const createdRef = String(body.ref || "");
   const createdBranch = createdRef.startsWith("refs/heads/") ? createdRef.slice("refs/heads/".length) : "";
   if (createdBranch !== state.branch) { process.stderr.write("unexpected branch\\n"); process.exit(9); }
@@ -4454,7 +4449,7 @@ if (method === "POST" && endpoint === "repos/example-builder/programmable-regist
   if (state.raceMode === "ref-response-loss") { process.stderr.write("simulated response loss\\n"); process.exit(1); }
   output({ ref: body.ref, object: { sha: body.sha } });
 }
-if (method === "PATCH" && endpoint === "repos/example-builder/programmable-registry/git/refs/heads/" + encodeURIComponent(state.branch)) {
+if (method === "PATCH" && endpoint === "repos/example-builder/submit-launch/git/refs/heads/" + encodeURIComponent(state.branch)) {
   state.branchExists = true;
   state.branchCommit = body.sha;
   state.branchTree = state.createdCommitTree;
@@ -4463,14 +4458,14 @@ if (method === "PATCH" && endpoint === "repos/example-builder/programmable-regis
   if (state.raceMode === "update-ref-response-loss") { process.stderr.write("simulated response loss\\n"); process.exit(1); }
   output({ ref: "refs/heads/" + state.branch, object: { sha: body.sha } });
 }
-if (method === "POST" && endpoint === "repos/0xprogrammable/programmable-registry/pulls") {
+if (method === "POST" && endpoint === "repos/0xprogrammable/submit-launch/pulls") {
   state.pull = {
     number: 7,
     state: "open",
     draft: body.draft,
     merged_at: null,
     merge_commit_sha: null,
-    html_url: "https://github.com/0xprogrammable/programmable-registry/pull/7",
+    html_url: "https://github.com/0xprogrammable/submit-launch/pull/7",
     title: body.title,
     body: body.body,
     labels: [],
@@ -4491,7 +4486,7 @@ if (method === "POST" && endpoint === "repos/0xprogrammable/programmable-registr
   if (state.raceMode === "pull-response-loss") { process.stderr.write("simulated response loss\\n"); process.exit(1); }
   output(state.pull);
 }
-if (method === "PATCH" && endpoint === "repos/0xprogrammable/programmable-registry/pulls/7") {
+if (method === "PATCH" && endpoint === "repos/0xprogrammable/submit-launch/pulls/7") {
   state.pull.title = body.title;
   state.pull.body = body.body;
   persist();
@@ -4517,13 +4512,13 @@ if (endpoint === "user") {
   }
   output(state.viewer);
 }
-if (endpoint === "repos/0xprogrammable/programmable-registry") output(state.centralRepository);
+if (endpoint === "repos/0xprogrammable/submit-launch") output(state.centralRepository);
 const sourceRepositoryMatch = /^repos\\/([^/]+\\/[^/]+)$/.exec(endpoint);
 if (sourceRepositoryMatch !== null) {
   const metadata = sourceMetadata(sourceRepositoryMatch[1]);
   if (metadata !== null) output(metadata);
 }
-if (endpoint === "repos/example-builder/programmable-registry") {
+if (endpoint === "repos/example-builder/submit-launch") {
   if (state.forkRepository === null) missing();
   output(state.forkRepository);
 }
@@ -4590,16 +4585,16 @@ if (sourceContentMatch !== null && sourceMetadata(sourceContentMatch[1]) !== nul
   const bytes = Buffer.from(content, "base64");
   output({ type: "file", path: repositoryPath, encoding: "base64", content, sha: crypto.createHash("sha1").update(Buffer.from("blob " + bytes.length + "\\0", "utf8")).update(bytes).digest("hex") });
 }
-if (endpoint === "repos/0xprogrammable/programmable-registry/git/ref/heads/main") {
+if (endpoint === "repos/0xprogrammable/submit-launch/git/ref/heads/main") {
   output({ ref: "refs/heads/main", object: { sha: state.centralCommit } });
 }
-if (endpoint === "repos/0xprogrammable/programmable-registry/git/commits/" + state.centralCommit) {
+if (endpoint === "repos/0xprogrammable/submit-launch/git/commits/" + state.centralCommit) {
   output({ sha: state.centralCommit, tree: { sha: state.centralTree } });
 }
-if (endpoint === "repos/0xprogrammable/programmable-registry/git/trees/" + state.centralTree + "?recursive=1") {
+if (endpoint === "repos/0xprogrammable/submit-launch/git/trees/" + state.centralTree + "?recursive=1") {
   output({ sha: state.centralTree, truncated: false, tree: [...(state.centralTreeEntries ?? []), ...treeEntriesForContents(state.centralContents)] });
 }
-if (endpoint === "repos/example-builder/programmable-registry/git/ref/heads/" + encodeURIComponent(state.branch)) {
+if (endpoint === "repos/example-builder/submit-launch/git/ref/heads/" + encodeURIComponent(state.branch)) {
   if (!state.branchExists) missing();
   if (state.raceMode === "ref-readback-failure" && state.createdCommit && state.branchCommit === state.createdCommit) {
     process.stderr.write("HTTP 403 simulated ref readback failure\\n");
@@ -4607,16 +4602,16 @@ if (endpoint === "repos/example-builder/programmable-registry/git/ref/heads/" + 
   }
   output({ ref: "refs/heads/" + state.branch, object: { sha: state.branchCommit } });
 }
-if (state.branchCommit !== state.createdCommit && endpoint === "repos/example-builder/programmable-registry/git/commits/" + state.branchCommit) {
+if (state.branchCommit !== state.createdCommit && endpoint === "repos/example-builder/submit-launch/git/commits/" + state.branchCommit) {
   output({ sha: state.branchCommit, tree: { sha: state.branchTree } });
 }
-if (endpoint === "repos/example-builder/programmable-registry/git/trees/" + state.centralTree + "?recursive=1") {
+if (endpoint === "repos/example-builder/submit-launch/git/trees/" + state.centralTree + "?recursive=1") {
   output({ sha: state.centralTree, truncated: false, tree: [...(state.centralTreeEntries ?? []), ...treeEntriesForContents(state.centralContents)] });
 }
-if (state.branchTree !== state.createdTree && endpoint === "repos/example-builder/programmable-registry/git/trees/" + state.branchTree + "?recursive=1") {
+if (state.branchTree !== state.createdTree && endpoint === "repos/example-builder/submit-launch/git/trees/" + state.branchTree + "?recursive=1") {
   output({ sha: state.branchTree, truncated: false, tree: treeEntriesForContents(state.contents) });
 }
-if (state.createdTree && endpoint === "repos/example-builder/programmable-registry/git/trees/" + state.createdTree + "?recursive=1") {
+if (state.createdTree && endpoint === "repos/example-builder/submit-launch/git/trees/" + state.createdTree + "?recursive=1") {
   const tree = state.raceMode === "created-tree-readback-tamper"
     ? [...state.createdTreeEntries, {
         path: state.createdTreeEntries[0].path + ".extra",
@@ -4636,7 +4631,7 @@ if (state.createdTree && endpoint === "repos/example-builder/programmable-regist
     : state.createdTreeEntries;
   output({ sha: state.createdTree, truncated: false, tree });
 }
-if (state.createdCommit && endpoint === "repos/example-builder/programmable-registry/git/commits/" + state.createdCommit) {
+if (state.createdCommit && endpoint === "repos/example-builder/submit-launch/git/commits/" + state.createdCommit) {
   output({
     sha: state.createdCommit,
     tree: { sha: state.createdCommitTree },
@@ -4644,16 +4639,16 @@ if (state.createdCommit && endpoint === "repos/example-builder/programmable-regi
     parents: state.createdCommitParents.map((sha) => ({ sha }))
   });
 }
-if (endpoint.startsWith("repos/0xprogrammable/programmable-registry/pulls?")) {
+if (endpoint.startsWith("repos/0xprogrammable/submit-launch/pulls?")) {
   output(state.pull !== null && state.pull.state === "open" ? [state.pull] : []);
 }
 if (endpoint.startsWith("search/issues?")) output(state.prepareSearch ?? { total_count: 0, items: [] });
-if (endpoint === "repos/0xprogrammable/programmable-registry/pulls/7") {
+if (endpoint === "repos/0xprogrammable/submit-launch/pulls/7") {
   output(state.raceMode === "pull-final-readback-tamper"
     ? { ...state.pull, title: "tampered final title" }
     : state.pull);
 }
-if (endpoint.startsWith("repos/0xprogrammable/programmable-registry/pulls/7/files?")) {
+if (endpoint.startsWith("repos/0xprogrammable/submit-launch/pulls/7/files?")) {
   const pageMatch = /(?:[?&])page=([0-9]+)/.exec(endpoint);
   const page = pageMatch === null ? 1 : Number(pageMatch[1]);
   let records = state.pullFiles.slice((page - 1) * 100, page * 100);
@@ -4668,10 +4663,10 @@ if (endpoint.startsWith("repos/0xprogrammable/programmable-registry/pulls/7/file
   }
   output(records);
 }
-if (endpoint.startsWith("repos/0xprogrammable/programmable-registry/pulls/7/reviews?")) output(state.reviews);
-if (endpoint.startsWith("repos/0xprogrammable/programmable-registry/commits/" + state.branchCommit + "/check-runs?")) output(state.checks);
-if (endpoint.startsWith("repos/example-builder/programmable-registry/contents/")) {
-  const suffix = endpoint.slice("repos/example-builder/programmable-registry/contents/".length);
+if (endpoint.startsWith("repos/0xprogrammable/submit-launch/pulls/7/reviews?")) output(state.reviews);
+if (endpoint.startsWith("repos/0xprogrammable/submit-launch/commits/" + state.branchCommit + "/check-runs?")) output(state.checks);
+if (endpoint.startsWith("repos/example-builder/submit-launch/contents/")) {
+  const suffix = endpoint.slice("repos/example-builder/submit-launch/contents/".length);
   const query = suffix.indexOf("?ref=");
   const encodedPath = query === -1 ? suffix : suffix.slice(0, query);
   const repositoryPath = encodedPath.split("/").map(decodeURIComponent).join("/");
@@ -4688,11 +4683,11 @@ if (endpoint.startsWith("repos/example-builder/programmable-registry/contents/")
   const bytes = Buffer.from(content, "base64");
   output({ type: "file", path: repositoryPath, encoding: "base64", content, sha: crypto.createHash("sha1").update(Buffer.from("blob " + bytes.length + "\\0", "utf8")).update(bytes).digest("hex") });
 }
-if (endpoint.startsWith("repos/0xprogrammable/programmable-registry/contents/")) {
+if (endpoint.startsWith("repos/0xprogrammable/submit-launch/contents/")) {
   if (state.centralContentFailure === "403") { process.stderr.write("HTTP 403 Forbidden\\n"); process.exit(1); }
   if (state.centralContentFailure === "500") { process.stderr.write("HTTP 500 Internal Server Error\\n"); process.exit(1); }
   if (state.centralContentFailure === "malformed") { process.stdout.write("{"); process.exit(0); }
-  const suffix = endpoint.slice("repos/0xprogrammable/programmable-registry/contents/".length);
+  const suffix = endpoint.slice("repos/0xprogrammable/submit-launch/contents/".length);
   const query = suffix.indexOf("?ref=");
   const encodedPath = query === -1 ? suffix : suffix.slice(0, query);
   const repositoryPath = encodedPath.split("/").map(decodeURIComponent).join("/");
@@ -4703,7 +4698,7 @@ if (endpoint.startsWith("repos/0xprogrammable/programmable-registry/contents/"))
     state.intakeReads = (state.intakeReads ?? 0) + 1;
     if (state.intakeReads >= 2) {
       const intake = JSON.parse(Buffer.from(state.intakeStatus, "base64").toString("utf8"));
-      intake.activeIntake.state = "paused-all";
+      intake.state = "paused-all";
       state.intakeStatus = Buffer.from(JSON.stringify(intake) + "\\n", "utf8").toString("base64");
       content = state.intakeStatus;
     }

@@ -140,7 +140,7 @@ test("prepare-pr exposes output materialization only through an explicit value o
   assert.match(help.stdout, /--replace-existing/);
   assert.match(help.stdout, /--replace-draft/);
   assert.match(help.stdout, /--base <main>/);
-  assert.match(help.stdout, /0xprogrammable\/programmable-registry:main/);
+  assert.match(help.stdout, /0xprogrammable\/submit-launch:main/);
   assert.doesNotMatch(help.stdout, /--base <branch>/);
 
   const missing = run("cli.mjs", ["prepare-pr", "submission", "--output-dir"]);
@@ -182,7 +182,7 @@ test("prepare-pr exposes output materialization only through an explicit value o
   assert.equal(unsupportedBase.status, 2, unsupportedBase.stderr);
   const unsupportedOutput = JSON.parse(unsupportedBase.stdout);
   assert.equal(unsupportedOutput.error.code, "USAGE_ERROR");
-  assert.match(unsupportedOutput.error.message, /0xprogrammable\/programmable-registry:main/);
+  assert.match(unsupportedOutput.error.message, /0xprogrammable\/submit-launch:main/);
 
   const explicitMain = run("cli.mjs", [
     "prepare-pr",

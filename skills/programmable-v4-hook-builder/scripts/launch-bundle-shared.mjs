@@ -32,6 +32,8 @@ export const OPAQUE_DECIMAL = /^[1-9][0-9]{0,63}$/u;
 export const SHA1 = /^[0-9a-f]{40}$/u;
 export const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 export const UTC_TIMESTAMP = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,9})?Z$/u;
+// Historical Launch Bundle V1 replay identity. Current Applicant transport is
+// owned by registry-intake-contract.mjs and must not rewrite V1 receipts.
 export const CANONICAL_REGISTRY_REPOSITORY = "https://github.com/0xprogrammable/programmable-registry";
 export const submissionSchema = Object.freeze(JSON.parse(fs.readFileSync(new URL("../references/submission.schema.json", import.meta.url), "utf8")));
 

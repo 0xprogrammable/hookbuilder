@@ -6,6 +6,7 @@ import {
   relativeRepositoryPath,
   toHex32
 } from "./cli-prepare-pr-values.mjs";
+import { SUBMIT_LAUNCH_REPOSITORY } from "./registry-intake-contract.mjs";
 
 export function buildPullRequestDocument({
   repositoryRoot,
@@ -35,7 +36,7 @@ export function buildPullRequestDocument({
   }
   const relativePackage = relativeRepositoryPath(repositoryRoot, packageRoot);
   if (
-    centralBase?.repositorySlug !== "0xprogrammable/programmable-registry"
+    centralBase?.repositorySlug !== SUBMIT_LAUNCH_REPOSITORY
     || centralBase.applicationPath !== `submissions/${modelId}/application.json`
     || !COMMIT_PATTERN.test(centralBase.baseCommit ?? "")
     || !COMMIT_PATTERN.test(centralBase.baseTree ?? "")

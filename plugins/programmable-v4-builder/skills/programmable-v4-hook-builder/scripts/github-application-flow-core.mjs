@@ -66,6 +66,11 @@ import {
 
 import { buildStatus } from "./github-application-status-core.mjs";
 
+const MAX_DRAFT_PULL_CREATE_ATTEMPTS = 10;
+const DRAFT_PULL_CREATE_RETRY_DELAY_MS = 500;
+const MAX_BRANCH_REF_READBACK_RETRIES = 10;
+const BRANCH_REF_READBACK_DELAY_MS = 500;
+
 export async function planGitHubApplication({
   operation,
   prepared,
@@ -277,30 +282,32 @@ export async function executeGitHubApplication({
     }
     await assertAuthoritySnapshotUnchanged({ prepared: normalizedPrepared, transport, plan });
     if (branchRef === null) {
-      normalizeRef(await transport.createRef(forkSlug, {
+      const writtenRef = normalizeRef(await transport.createRef(forkSlug, {
         branch: normalizedPrepared.branch,
         commit: commit.sha
       }), normalizedPrepared.branch);
+      if (writtenRef.commit !== commit.sha) {
+        fail("GITHUB_WRITE_VERIFY_FAILED", "GitHub created the application branch at a different commit");
+      }
       actions.push("created-application-branch");
     } else {
-      normalizeRef(await transport.updateRef(forkSlug, {
+      const writtenRef = normalizeRef(await transport.updateRef(forkSlug, {
         branch: normalizedPrepared.branch,
         commit: commit.sha
       }), normalizedPrepared.branch);
+      if (writtenRef.commit !== commit.sha) {
+        fail("GITHUB_WRITE_VERIFY_FAILED", "GitHub updated the application branch to a different commit");
+      }
       actions.push("updated-application-branch");
     }
-    branchRef = normalizeRef(
-      await transport.getRef(forkSlug, normalizedPrepared.branch),
-      normalizedPrepared.branch
-    );
-    if (branchRef.commit !== commit.sha) {
-      fail("APPLICATION_BRANCH_VERIFY_FAILED", "GitHub did not retain the exact application commit");
-    }
-    await verifyPackageAtRef({
+    branchRef = await readBackWrittenBranchAndPackage({
       prepared: normalizedPrepared,
       transport,
-      repository: forkSlug,
-      commit: commit.sha
+      plan,
+      fork,
+      branch: normalizedPrepared.branch,
+      expectedCommit: commit.sha,
+      sleep
     });
   }
 
@@ -309,29 +316,54 @@ export async function executeGitHubApplication({
     ? null
     : normalizePull(await transport.getPull(CENTRAL_REPOSITORY, plan.pullRequest.number));
   if (pull === null) {
-    const duplicateSnapshot = await discoverApplicationPull({
-      prepared: normalizedPrepared,
-      transport,
-      viewer: plan.activeAccount,
-      explicitPull: null
-    });
-    if (duplicateSnapshot.pullRequest !== null) {
-      fail("APPLICATION_PULL_REQUEST_RACE", "an application pull request appeared after confirmation; no duplicate was opened");
+    const inspectDraftBoundary = async () => {
+      await assertAuthoritySnapshotUnchanged({ prepared: normalizedPrepared, transport, plan });
+      await assertExecutionForkUnchanged({ transport, fork, plan });
+      const observedRef = normalizeRef(
+        await transport.getRef(forkSlug, normalizedPrepared.branch),
+        normalizedPrepared.branch
+      );
+      if (observedRef.commit !== branchRef.commit) {
+        fail("APPLICATION_BRANCH_CHANGED", "the application branch changed during draft creation");
+      }
+      return discoverApplicationPull({
+        prepared: normalizedPrepared,
+        transport,
+        viewer: plan.activeAccount,
+        explicitPull: null
+      });
+    };
+    let createdPullNumber = null;
+    for (let attempt = 0; attempt < MAX_DRAFT_PULL_CREATE_ATTEMPTS; attempt += 1) {
+      if (attempt > 0) await sleep(DRAFT_PULL_CREATE_RETRY_DELAY_MS);
+      const duplicateSnapshot = await inspectDraftBoundary();
+      if (duplicateSnapshot.pullRequest !== null) {
+        if (attempt === 0) {
+          fail("APPLICATION_PULL_REQUEST_RACE", "an application pull request appeared after confirmation; no duplicate was opened");
+        }
+        pull = duplicateSnapshot.pullRequest;
+        break;
+      }
+      const response = await transport.createDraftPull(CENTRAL_REPOSITORY, {
+        title: normalizedPrepared.title,
+        body: normalizedPrepared.body,
+        head: `${plan.activeAccount.login}:${normalizedPrepared.branch}`,
+        base: CENTRAL_BASE_BRANCH
+      });
+      if (response !== null) {
+        createdPullNumber = normalizePullWriteResponse(response);
+        break;
+      }
     }
-    const prePullRef = normalizeRef(
-      await transport.getRef(forkSlug, normalizedPrepared.branch),
-      normalizedPrepared.branch
-    );
-    if (prePullRef.commit !== branchRef.commit) {
-      fail("APPLICATION_BRANCH_CHANGED", "the application branch changed before draft creation");
+    if (createdPullNumber === null && pull === null) {
+      await sleep(DRAFT_PULL_CREATE_RETRY_DELAY_MS);
+      const finalRecovery = await inspectDraftBoundary();
+      if (finalRecovery.pullRequest === null) {
+        fail("PULL_REQUEST_CREATE_NOT_READY", "GitHub did not accept the exact verified application branch before the bounded retry expired; rerun with a fresh plan");
+      }
+      pull = finalRecovery.pullRequest;
     }
-    const createdPullNumber = normalizePullWriteResponse(await transport.createDraftPull(CENTRAL_REPOSITORY, {
-      title: normalizedPrepared.title,
-      body: normalizedPrepared.body,
-      head: `${plan.activeAccount.login}:${normalizedPrepared.branch}`,
-      base: CENTRAL_BASE_BRANCH
-    }));
-    pull = normalizePull(await transport.getPull(CENTRAL_REPOSITORY, createdPullNumber));
+    if (pull === null) pull = normalizePull(await transport.getPull(CENTRAL_REPOSITORY, createdPullNumber));
     actions.push("opened-draft-pull-request");
   } else if (plan.externalWrites.includes("update-draft-pull-request-metadata")) {
     assertOpenDraftPullTarget({
@@ -368,6 +400,55 @@ export async function executeGitHubApplication({
   });
   const status = await buildStatus({ prepared: normalizedPrepared, transport, pull: finalPull, remotePackage });
   return executionResult({ plan, status, actions, alreadyApplied: false });
+}
+
+async function assertExecutionForkUnchanged({ transport, fork, plan }) {
+  const observedFork = normalizeRepository(
+    await transport.getRepository(fork.fullName),
+    "execution fork"
+  );
+  validateFork(observedFork, plan.activeAccount, plan.central.numericRepositoryId);
+  if (
+    observedFork.id !== fork.id
+    || observedFork.fullName.toLowerCase() !== fork.fullName.toLowerCase()
+    || observedFork.owner.login.toLowerCase() !== plan.activeAccount.login.toLowerCase()
+  ) {
+    fail("FORK_CHANGED", "the exact viewer fork changed during the confirmed GitHub write");
+  }
+  return observedFork;
+}
+
+async function readBackWrittenBranchAndPackage({
+  prepared,
+  transport,
+  plan,
+  fork,
+  branch,
+  expectedCommit,
+  sleep
+}) {
+  for (let retry = 0; retry <= MAX_BRANCH_REF_READBACK_RETRIES; retry += 1) {
+    if (retry > 0) await sleep(BRANCH_REF_READBACK_DELAY_MS);
+    await assertAuthoritySnapshotUnchanged({ prepared, transport, plan });
+    await assertExecutionForkUnchanged({ transport, fork, plan });
+    const observed = normalizeNullableRef(
+      await transport.getRef(fork.fullName, branch, { allowNotFound: true }),
+      branch
+    );
+    if (observed === null) continue;
+    if (observed.commit !== expectedCommit) {
+      fail("APPLICATION_BRANCH_VERIFY_FAILED", "the application branch resolved to a different commit after its write");
+    }
+    const packageReadable = await verifyPackageAtRef({
+      prepared,
+      transport,
+      repository: fork.fullName,
+      commit: expectedCommit,
+      allowNotFound: true
+    });
+    if (packageReadable) return observed;
+  }
+  fail("APPLICATION_BRANCH_NOT_READY", "the exact written application branch and package were not readable before the bounded retry expired");
 }
 
 export async function readGitHubApplicationStatus({

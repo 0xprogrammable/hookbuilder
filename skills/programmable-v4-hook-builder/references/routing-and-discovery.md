@@ -1,8 +1,7 @@
 # Routing and discovery
 
-Registry repositories and snapshots in this chapter are read-only discovery inputs, never Applicant pull-request
-targets. Current public Applicant requests go only to `0xprogrammable/hookbuilder:main` through the root
-`submissions/` contract.
+Registry records and snapshots in this chapter are read-only discovery inputs. Current public Applicant drafts go only
+to `0xprogrammable/submit-launch:main` through the generated application client; discovery data never approves them.
 
 Use this reference when a submission claims that a pool can be found, quoted, routed, displayed, or traded through an
 external Uniswap surface. The source snapshot is dated 2026-07-31.
@@ -32,9 +31,9 @@ indexing or availability.
 
 ## Programmable project discovery
 
-The canonical Programmable project archive is the separate public
-[`0xprogrammable/programmable-registry`](https://github.com/0xprogrammable/programmable-registry). Query it through the
-bounded Builder command instead of crawling repositories or loading every application:
+The canonical Programmable project archive shares the immutable repository now named
+[`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch), GitHub ID `1320171831`. Query it
+through the bounded Builder command instead of crawling repositories or loading every application:
 
 ```bash
 node "$SKILL_ROOT/scripts/cli.mjs" discover search "plain-language project idea"

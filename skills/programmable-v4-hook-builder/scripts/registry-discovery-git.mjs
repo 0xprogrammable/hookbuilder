@@ -206,6 +206,10 @@ export function isCanonicalRegistryRemote(value) {
   return new Set([
     `${PROGRAMMABLE_REGISTRY.repositoryUri}.git`,
     PROGRAMMABLE_REGISTRY.repositoryUri,
+    "git@github.com:0xprogrammable/submit-launch.git",
+    "ssh://git@github.com/0xprogrammable/submit-launch.git",
+    "https://github.com/0xprogrammable/programmable-registry.git",
+    "https://github.com/0xprogrammable/programmable-registry",
     "git@github.com:0xprogrammable/programmable-registry.git",
     "ssh://git@github.com/0xprogrammable/programmable-registry.git"
   ]).has(value);

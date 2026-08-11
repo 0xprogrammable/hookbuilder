@@ -58,6 +58,12 @@ import {
 import { runSourceManifestCli } from "./source-manifest.mjs";
 import { parseBoundedStrictJson } from "./strict-json-core.mjs";
 import { analyzeSubmission, canonicalJson, validateAgainstSchema } from "./submission-core.mjs";
+import {
+  SUBMIT_LAUNCH_BASE_BRANCH,
+  SUBMIT_LAUNCH_REPOSITORY,
+  SUBMIT_LAUNCH_REPOSITORY_ID,
+  SUBMIT_LAUNCH_REPOSITORY_NAME
+} from "./registry-intake-contract.mjs";
 
 export {
   fs,
@@ -146,11 +152,12 @@ export const STRICT_JSON_RESOURCE_CODES = new Set([
   "STRICT_JSON_NODE_LIMIT",
   "STRICT_JSON_SOURCE_LIMIT"
 ]);
-// Frozen candidate Application V3 transport identity; public Applicants use the root submissions/ contract.
-export const CENTRAL_GITHUB_REPOSITORY = "0xprogrammable/programmable-registry";
-export const CENTRAL_GITHUB_NUMERIC_REPOSITORY_ID = "1320171831";
-export const CENTRAL_GITHUB_REPOSITORY_NAME = "programmable-registry";
-export const CENTRAL_GITHUB_BASE_BRANCH = "main";
+// Application V3 transport identity. All live one-off applications use the
+// canonical Submit a Launch intake contract.
+export const CENTRAL_GITHUB_REPOSITORY = SUBMIT_LAUNCH_REPOSITORY;
+export const CENTRAL_GITHUB_NUMERIC_REPOSITORY_ID = SUBMIT_LAUNCH_REPOSITORY_ID;
+export const CENTRAL_GITHUB_REPOSITORY_NAME = SUBMIT_LAUNCH_REPOSITORY_NAME;
+export const CENTRAL_GITHUB_BASE_BRANCH = SUBMIT_LAUNCH_BASE_BRANCH;
 export const CONTROL_OR_BIDI_PATTERN = /[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/u;
 export const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 export const FULL_GIT_OBJECT_PATTERN = /^[0-9a-f]{40}$/u;

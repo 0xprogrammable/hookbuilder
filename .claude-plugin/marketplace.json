@@ -4,14 +4,14 @@
   "owner": {
     "name": "Programmable"
   },
-  "description": "Loads one portable skill that compiles a plain-language idea into the smallest complete Programmable system, then designs, builds, checks, reviews, and prepares its exact source- and launch-wallet-bound GitHub application without limiting unfamiliar products to known templates.",
+  "description": "Loads one portable skill that turns an idea or repository into the smallest complete Programmable system, checks its exact source and evidence, and prepares a draft-only application for 0xprogrammable/submit-launch without limiting unfamiliar products to known templates.",
   "plugins": [
     {
       "name": "programmable-v4-builder",
       "displayName": "Programmable v4 Builder",
       "version": "0.5.1",
       "source": "./skills/programmable-v4-hook-builder",
-      "description": "Design, build, review, or track Programmable hooks, tokens, apps, games, services, and standalone settlement projects.",
+      "description": "Design, build, review, and submit Programmable hooks, tokens, apps, games, services, and standalone settlement projects through Submit a Launch.",
       "author": {
         "name": "Programmable"
       },
