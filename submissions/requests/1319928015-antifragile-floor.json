@@ -1,0 +1,61 @@
+{
+  "$schema": "urn:programmable:applicant-submission:1.1.0",
+  "schemaVersion": "1.1.0",
+  "intake": {
+    "repository": "0xprogrammable/hookbuilder",
+    "repositoryId": 1320085947
+  },
+  "applicant": {
+    "githubLogin": "ToanPham247",
+    "launchWallet": "0x72422F4471a477731ce0fB8C30052F4fdB454B1D"
+  },
+  "source": {
+    "repository": "https://github.com/ToanPham247/antifragile-floor-hook",
+    "repositoryId": 1319928015,
+    "commit": "190770ba73649daefce37ef6c1d7d1cb4160e31d",
+    "tree": "106ca2f9a3497a2f810509996a1512735b60e0b4"
+  },
+  "identifiers": {
+    "hookId": "antifragile-floor",
+    "hookVersion": "1.0.0",
+    "templateId": "custom-hook",
+    "templateVersion": "1.0.0",
+    "modelId": "antifragile-floor",
+    "modelVersion": "1.0.0"
+  },
+  "hook": {
+    "addressFlagMask": "0x10cc",
+    "permissions": {
+      "beforeInitialize": false,
+      "afterInitialize": true,
+      "beforeAddLiquidity": false,
+      "afterAddLiquidity": false,
+      "beforeRemoveLiquidity": false,
+      "afterRemoveLiquidity": false,
+      "beforeSwap": true,
+      "afterSwap": true,
+      "beforeDonate": false,
+      "afterDonate": false,
+      "beforeSwapReturnDelta": true,
+      "afterSwapReturnDelta": true,
+      "afterAddLiquidityReturnDelta": false,
+      "afterRemoveLiquidityReturnDelta": false
+    }
+  },
+  "fee": {
+    "amountPips": 3000,
+    "denominator": 1000000,
+    "currencyBasis": "quote",
+    "recipient": "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c",
+    "mutable": false
+  },
+  "requestedRoute": {
+    "routeId": "custom-graph",
+    "routeVersion": "1.0.0",
+    "chainId": "1"
+  },
+  "requestedActions": [
+    "review"
+  ],
+  "notes": "Antifragile Floor: every swap funds a self-nourishing, monotonically ratcheting price floor sellers can always realise; unrug-able-by-design. Inclusive 0.30% (3000 pips) gross-quote-side fee: 1000 pips immutable Programmable liability to 0x4957f4...376c, 2000 pips project share funding the reserve-backed floor internally (no rotatable external recipient => immutable). afterInitialize precommits exact launch PoolKey (one-time _bound); before/afterSwap collect fee executed-basis-or-revert; floor top-up sized on executed TKN."
+}
