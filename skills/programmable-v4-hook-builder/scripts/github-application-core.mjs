@@ -9,7 +9,9 @@ import { canonicalJson } from "./submission-core.mjs";
 import { hasForbiddenInvisibleOrBidi } from "./metadata-core.mjs";
 
 export const GITHUB_APPLICATION_CLIENT_VERSION = "1.0.0-beta.1";
-export const CENTRAL_REPOSITORY = "0xprogrammable/programmable";
+export const CENTRAL_REPOSITORY = "0xprogrammable/submit-launch";
+export const CENTRAL_REPOSITORY_ID = "1320171831";
+export const CENTRAL_REPOSITORY_NAME = "submit-launch";
 export const CENTRAL_BASE_BRANCH = "main";
 export const INTAKE_STATUS_PATH = "docs/builder/intake-status.json";
 export const CENTRAL_APPLICATION_FILES = Object.freeze([
@@ -122,7 +124,7 @@ export function normalizePreparedApplication(input) {
     || centralTarget.applicationDirectory !== applicationDirectory
     || centralTarget.applicationPath !== `${applicationDirectory}/application.json`
   ) {
-    invalidPrepared("the prepare-pr result does not target the fixed Programmable public beta repository and path");
+    invalidPrepared("the prepare-pr result does not target the fixed Submit a Launch repository and path");
   }
   const centralBaseCommit = requireCommit(centralTarget.baseCommit, "central base commit");
   const centralBaseTree = requireCommit(centralTarget.baseTree, "central base tree");
@@ -583,7 +585,7 @@ export async function executeGitHubApplication({
     actions.push("created-viewer-fork");
     fork = null;
     for (let attempt = 0; attempt < 10; attempt += 1) {
-      const observed = await transport.getRepository(`${plan.activeAccount.login}/programmable`, { allowNotFound: true });
+      const observed = await transport.getRepository(`${plan.activeAccount.login}/${CENTRAL_REPOSITORY_NAME}`, { allowNotFound: true });
       if (observed !== null) {
         fork = normalizeRepository(observed, "viewer fork");
         validateFork(fork, plan.activeAccount, plan.central.numericRepositoryId);
@@ -889,7 +891,7 @@ async function inspectRemoteState({ prepared, transport, explicitPull }) {
     CENTRAL_BASE_BRANCH
   );
   if (baseRef.commit !== prepared.central.baseCommit) {
-    fail("PREPARE_PR_STALE", "Programmable main changed after prepare-pr; regenerate the six-file package");
+    fail("PREPARE_PR_STALE", "Submit a Launch main changed after prepare-pr; regenerate the six-file package");
   }
   const centralCommit = normalizeGitCommit(
     await transport.getGitCommit(CENTRAL_REPOSITORY, prepared.central.baseCommit),
@@ -899,7 +901,7 @@ async function inspectRemoteState({ prepared, transport, explicitPull }) {
     fail("PREPARE_PR_STALE", "the prepared central base tree no longer matches GitHub");
   }
   const intake = await readIntakeStatus({ transport, commit: prepared.central.baseCommit });
-  const forkValue = await transport.getRepository(`${viewer.login}/programmable`, { allowNotFound: true });
+  const forkValue = await transport.getRepository(`${viewer.login}/${CENTRAL_REPOSITORY_NAME}`, { allowNotFound: true });
   const fork = forkValue === null ? null : normalizeRepository(forkValue, "viewer fork");
   if (fork !== null) validateFork(fork, viewer, centralRepository.id);
   const branchRef = fork === null
@@ -1302,7 +1304,7 @@ async function assertAuthoritySnapshotUnchanged({ prepared, transport, plan }) {
     CENTRAL_BASE_BRANCH
   );
   if (baseRef.commit !== prepared.central.baseCommit) {
-    fail("PREPARE_PR_STALE", "Programmable main changed after confirmation; the public pull request was not opened");
+    fail("PREPARE_PR_STALE", "Submit a Launch main changed after confirmation; the public pull request was not opened");
   }
   const centralCommit = normalizeGitCommit(
     await transport.getGitCommit(CENTRAL_REPOSITORY, prepared.central.baseCommit),
@@ -1679,24 +1681,25 @@ function normalizeRepository(value, label) {
 
 function validateFork(fork, viewer, centralRepositoryId) {
   if (
-    fork.fullName.toLowerCase() !== `${viewer.login}/programmable`.toLowerCase()
+    fork.fullName.toLowerCase() !== `${viewer.login}/${CENTRAL_REPOSITORY_NAME}`.toLowerCase()
     || fork.owner.id !== viewer.id
     || fork.fork !== true
     || fork.parent?.id !== centralRepositoryId
     || fork.parent?.fullName !== CENTRAL_REPOSITORY
     || (fork.permissions !== undefined && fork.permissions.push !== true)
   ) {
-    fail("FORK_COLLISION", "the viewer's programmable repository is not the exact fork of the central beta repository");
+    fail("FORK_COLLISION", "the viewer's submit-launch repository is not the exact fork of Submit a Launch");
   }
 }
 
 function validateCentralRepository(repository) {
   if (
-    repository.fullName !== CENTRAL_REPOSITORY
+    repository.id !== CENTRAL_REPOSITORY_ID
+    || repository.fullName !== CENTRAL_REPOSITORY
     || repository.private !== false
     || repository.defaultBranch !== CENTRAL_BASE_BRANCH
   ) {
-    fail("CENTRAL_REPOSITORY_MISMATCH", "the fixed Programmable public beta repository is unavailable or changed");
+    fail("CENTRAL_REPOSITORY_MISMATCH", "the fixed Submit a Launch repository is unavailable or changed");
   }
 }
 
@@ -2077,7 +2080,7 @@ function requireGitHubUserUrl(value, login) {
 }
 
 function requirePullUrl(value) {
-  if (typeof value !== "string" || !/^https:\/\/github\.com\/0xprogrammable\/programmable\/pull\/[1-9][0-9]*$/u.test(value)) {
+  if (typeof value !== "string" || !/^https:\/\/github\.com\/0xprogrammable\/submit-launch\/pull\/[1-9][0-9]*$/u.test(value)) {
     fail("GITHUB_OUTPUT_INVALID", "pull-request URL is noncanonical");
   }
   return value;

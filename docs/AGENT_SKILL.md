@@ -1,7 +1,7 @@
 # Build with the Programmable agent skill
 
 The Programmable v4 Builder gives compatible coding agents one shared process for turning an idea or existing
-Uniswap v4 project into a checkable public GitHub revision and a small application pull request.
+Uniswap v4 project into a checkable public GitHub revision and a six-file application for Submit a Launch.
 
 The complete project stays in the builder-controlled public repository. The application pull request binds the
 repository's immutable GitHub numeric id, one exact commit, its exact tree and the public check evidence for that
@@ -26,8 +26,10 @@ Use the skill to:
 - Use `scaffold` only when a new project needs a starting structure.
 - Run `check` against one exact project revision and keep planned, blocked and completed checks distinct.
 - Use `package` to validate the local review package and report deterministic hashes without executing project code.
-- Use `prepare-pr` to resolve the clean pushed public revision and create the six-file application record and
+- Use `prepare-pr` to resolve the clean pushed public revision and create the six-file Submit a Launch record and
   copy-ready pull-request body.
+- Use `submit` or `update` to plan the public draft write, then execute only the exact plan the builder explicitly
+  authorizes. Use `status` for read-only GitHub state.
 - Work through architecture questions or evidence-based findings, then review a new commit in the same pull request.
 
 The beta journey is deliberately small:
@@ -39,7 +41,7 @@ idea or public project
   -> check
   -> package
   -> prepare-pr
-  -> draft GitHub PR
+  -> authorized draft PR to Submit a Launch
   -> architecture discussion or exact-revision review
   -> repair in a new project commit when needed
   -> public beta review record
@@ -64,13 +66,13 @@ policy.
 For an interactive install, use the repository-only command:
 
 ```bash
-gh skill install 0xprogrammable/programmable-v4-builder
+gh skill install 0xprogrammable/hookbuilder
 ```
 
 To preselect the Builder while keeping the agent setup interactive:
 
 ```bash
-gh skill install 0xprogrammable/programmable-v4-builder programmable-v4-hook-builder
+gh skill install 0xprogrammable/hookbuilder programmable-v4-hook-builder
 ```
 
 Without a version argument, `gh skill` selects the latest tagged release. For reproducible review work, preview and
@@ -79,19 +81,19 @@ install the exact protected revision below.
 First preview the protected Builder release tag:
 
 ```bash
-gh skill preview 0xprogrammable/programmable-v4-builder \
-  programmable-v4-hook-builder@v0.4.0
+gh skill preview 0xprogrammable/hookbuilder \
+  programmable-v4-hook-builder@v0.4.1
 ```
 
 Then install that same release for your agent. User scope is the beginner default because it keeps the project
 repository clean while the installed package remains pinned:
 
 ```bash
-gh skill install 0xprogrammable/programmable-v4-builder \
+gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.4.0
+  --pin v0.4.1
 ```
 
 Replace `codex` with `claude-code` or `github-copilot` when appropriate. Use `--scope project` only when the project
@@ -100,7 +102,7 @@ untracked project-scoped installation makes the worktree dirty and correctly blo
 
 Builder `v0.1.1` remains available only to reproduce pre-fee legacy records, `v0.2.0` preserves the first fee-policy
 release, and `v0.2.1` preserves the trusted-intake correction for declared Solidity contract paths. New applications
-use `v0.4.0`, submission standard `1.5.0`, and fee policy `1.1.0`, including open starter templates,
+use `v0.4.1`, submission standard `1.5.0`, and fee policy `1.1.0`, including open starter templates,
 provider-by-provider evidence, GitHub application status, separate design and implementation readiness, and v4 SDK
 quote/router safety checks.
 
@@ -122,13 +124,13 @@ validators are part of the contract.
 For a new idea, give a compatible coding agent this direct starting prompt:
 
 ```text
-Use the Programmable v4 Builder skill. Help me turn this idea into a public GitHub project and prepare it for the Public GitHub PR Builder Beta: <idea>
+Use the Programmable v4 Builder skill. Build and check this project, then prepare its six-file application for Submit a Launch. Submit the draft only when I explicitly authorize the GitHub write: <idea>
 ```
 
 For an existing public project, use:
 
 ```text
-Use the Programmable v4 Builder skill. Inspect this public GitHub project, run the Public GitHub PR Builder Beta checks for one exact revision, repair objective findings, and prepare the small application PR: <repository URL>
+Use the Programmable v4 Builder skill. Inspect this public GitHub project, run the checks for one exact revision, repair objective findings, and prepare its six-file application for Submit a Launch. Submit the draft only when I explicitly authorize the GitHub write: <repository URL>
 ```
 
 The agent handles the local build-and-repair loop. It asks only for a decision that materially changes intent,
@@ -136,7 +138,7 @@ economics, custody, authority, risk or external publication. Unknown facts stay 
 addresses, fees, repository identifiers, evidence, test results, review decisions or deployment records.
 
 There is no connected Programmable chat or application service in this beta. The builder works in their existing
-coding agent and keeps the complete project in their own public GitHub repository. The Programmable pull request holds
+coding agent and keeps the complete project in their own public GitHub repository. The Submit a Launch pull request holds
 only the small six-file application record and public evidence. Its stable `applicationId` is the project slug and
 directory name; the pull-request number is the review thread, not a connected-service identity.
 
@@ -151,7 +153,7 @@ legacy pull request to make it look like it entered through the beta.
 The public build-and-application operation names are:
 
 ```text
-doctor -> scaffold -> check -> package -> prepare-pr
+doctor -> scaffold -> check -> package -> prepare-pr -> submit or update -> status
 ```
 
 Before those operations, use `context --mode <mode>` with the exact materialized template plan. It performs no network
@@ -260,13 +262,14 @@ output directory must be outside the builder source repository. Its parent must 
 symbolic-link alias, and should be supplied using its canonical real path (for example `/private/tmp/...` rather than
 macOS's `/tmp` alias).
 
-Preparing a pull request is local work. Publishing source, pushing a branch or opening the pull request is an external
-action and still needs the builder's explicit confirmation.
+Preparing a pull request is local work. `submit` and `update` first return a read-only action plan. A second invocation
+with that plan's exact digest may change GitHub only after the builder explicitly authorizes the listed writes.
 
 ### 7. Review and repair in one pull request
 
-Open one draft pull request titled `[Builder Beta] ...` against `0xprogrammable/programmable:main`. GitHub's draft,
-ready, comment, review, requested-changes, commit, merged and closed states form the beta status and audit trail.
+Submit one draft pull request titled `[Builder Beta] ...` against `0xprogrammable/submit-launch:main`. The client uses
+the canonical `<builder>/submit-launch` fork. GitHub's draft, ready, comment, review, requested-changes, commit, merged
+and closed states form the beta status and audit trail.
 
 An objective finding names the exact affected revision and location, reproducible evidence, the published rule or trust
 boundary, practical impact, a repair or missing-evidence path and the check to rerun. Unknown mechanics remain in
@@ -276,7 +279,7 @@ For every project change:
 
 1. push a new commit in the same public project repository;
 2. rerun `check`, `package` and `prepare-pr`;
-3. replace the exact prior generated package and update the same Programmable pull request; and
+3. replace the exact prior generated package and update the same Submit a Launch pull request; and
 4. identify the finding or question the new revision addresses.
 
 Avoid force-pushing or deleting referenced commits while review is open. A reviewer conclusion applies only to the

@@ -669,7 +669,7 @@ export function buildPullRequestDocument({
   }
   const relativePackage = relativeRepositoryPath(repositoryRoot, packageRoot);
   if (
-    centralBase?.repositorySlug !== "0xprogrammable/programmable"
+    centralBase?.repositorySlug !== "0xprogrammable/submit-launch"
     || centralBase.applicationPath !== `submissions/${modelId}/application.json`
     || !COMMIT_PATTERN.test(centralBase.baseCommit ?? "")
     || !COMMIT_PATTERN.test(centralBase.baseTree ?? "")

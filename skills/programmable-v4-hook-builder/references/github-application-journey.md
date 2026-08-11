@@ -1,6 +1,6 @@
 # GitHub application journey
 
-This reference defines the safe client-side transport for the **Public GitHub PR Builder Beta**. It consumes the
+This reference defines the safe client-side transport from Hookbuilder to **Submit a Launch**. It consumes the
 already verified six-file output of `prepare-pr`, plans a public GitHub draft pull request, updates that same draft,
 and reads GitHub review state. It does not create a Connected Submission/W2 application and it never approves,
 merges, deploys, launches, lists, or marks a project ready for review.
@@ -61,7 +61,7 @@ CLI envelope whose `command` is `prepare-pr`, whose `ok` value is `true`, and wh
 
 The client revalidates, rather than trusts, all of the following before any GitHub write:
 
-- the fixed central target `0xprogrammable/programmable:main`;
+- the fixed central target `0xprogrammable/submit-launch:main` with numeric repository id `1320171831`;
 - the application id and `submissions/<application-id>/` path;
 - the exact file order:
   `application.json`, `PROPOSAL.md`, `TEST_PLAN.md`, `THREAT_MODEL.md`, `compatibility-report.json`, and
@@ -89,7 +89,7 @@ node "$SKILL_ROOT/scripts/github-application.mjs" submit \
 
 This performs authenticated GitHub reads only. Its `externalWrites` list states exactly which of these steps remain:
 
-- create the active user's fork of `0xprogrammable/programmable`;
+- create the active user's fork of `0xprogrammable/submit-launch`;
 - create or append the deterministic application branch commit;
 - fast-forward that branch without force-pushing;
 - open one draft pull request; or
@@ -307,7 +307,7 @@ writes.
 
 - This client is for the public `github.com` PR beta only. It does not handle private source, GitHub Enterprise, other
   hosts, ZIPs, loose files, pasted source, deployed-only hooks, external pools, or source-free applications.
-- It expects the active user's fork at `<login>/programmable`. A renamed existing fork requires manual normalization
+- It expects the active user's fork at `<login>/submit-launch`. A renamed existing fork requires manual normalization
   or a later reviewed client version; the client will not guess or mutate repositories.
 - Open-PR duplicate discovery uses the deterministic head and canonical Builder Beta title. A deliberately renamed,
   different-branch manual PR may require the exact `--pull-request` number for status and manual maintainer cleanup.

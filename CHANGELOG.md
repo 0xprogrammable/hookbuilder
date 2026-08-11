@@ -2,6 +2,22 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.4.1 - 2026-08-11
+
+### Changed
+
+- Route the six-file GitHub application to [`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch)
+  and bind its unchanged numeric repository id `1320171831`.
+- Use the canonical `<builder>/submit-launch` fork for the two-step draft submission and update flow.
+- Tell agents to build and check the project before preparing the application, and to perform the public GitHub write
+  only after the builder explicitly authorizes it.
+
+### Preserved
+
+- Submission standard `1.5.0`, application package shape, fee policy `1.1.0`, and every historical release and
+  snapshot record.
+- The boundary that Hookbuilder cannot approve, merge, deploy, sign, launch, or mark a draft ready for review.
+
 ## 0.4.0 - 2026-08-02
 
 ### Added

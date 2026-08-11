@@ -196,7 +196,7 @@ and separately asserted source match. Builder evidence remains untrusted until a
 `prepare-pr` returns one machine-readable object with:
 
 - `sourceHead`: the builder-controlled primary repository, branch, exact commit, and root tree;
-- `centralPullRequestTarget`: fixed `0xprogrammable/programmable:main` identity, observed base commit and tree, central
+- `centralPullRequestTarget`: fixed `0xprogrammable/submit-launch:main` identity, observed base commit and tree, central
   application path, prior revision, and next revision;
 - `github.sourceRequest`: the immutable primary authority and zero to eight sorted companion authorities;
 - `github.companionClosure`: one verified exact-closure receipt per v2 companion; v1 has no receipt and retains its

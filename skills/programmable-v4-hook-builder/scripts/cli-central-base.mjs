@@ -17,9 +17,9 @@ import { hasForbiddenInvisibleOrBidi } from "./metadata-core.mjs";
 
 export const CENTRAL_GITHUB_TARGET = Object.freeze({
   owner: "0xprogrammable",
-  repository: "programmable",
-  repositorySlug: "0xprogrammable/programmable",
-  repositoryUrl: "https://github.com/0xprogrammable/programmable"
+  repository: "submit-launch",
+  repositorySlug: "0xprogrammable/submit-launch",
+  repositoryUrl: "https://github.com/0xprogrammable/submit-launch"
 });
 
 const COMMIT_PATTERN = /^[0-9a-f]{40}$/u;

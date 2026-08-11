@@ -148,7 +148,7 @@ function buildSpdx(lock, release) {
     SPDXID: "SPDXRef-Package-Builder",
     name: "programmable-v4-hook-builder",
     versionInfo: release.version,
-    downloadLocation: `https://github.com/0xprogrammable/programmable-v4-builder/tree/${release.commit}/skills/programmable-v4-hook-builder`,
+    downloadLocation: `https://github.com/0xprogrammable/hookbuilder/tree/${release.commit}/skills/programmable-v4-hook-builder`,
     filesAnalyzed: false,
     licenseConcluded: "MIT",
     licenseDeclared: "MIT",
@@ -156,7 +156,7 @@ function buildSpdx(lock, release) {
     externalRefs: [{
       referenceCategory: "PACKAGE-MANAGER",
       referenceType: "purl",
-      referenceLocator: `pkg:github/0xprogrammable/programmable-v4-builder@${release.commit}`
+      referenceLocator: `pkg:github/0xprogrammable/hookbuilder@${release.commit}`
     }]
   };
   return {
@@ -164,7 +164,7 @@ function buildSpdx(lock, release) {
     dataLicense: "CC0-1.0",
     SPDXID: "SPDXRef-DOCUMENT",
     name: `programmable-v4-hook-builder-${release.version}`,
-    documentNamespace: `https://github.com/0xprogrammable/programmable-v4-builder/releases/download/v${release.version}/spdx-${release.commit}`,
+    documentNamespace: `https://github.com/0xprogrammable/hookbuilder/releases/download/v${release.version}/spdx-${release.commit}`,
     creationInfo: {
       created: release.created,
       creators: ["Organization: Programmable", "Tool: programmable-v4-builder-release-artifacts-1.0.0"]

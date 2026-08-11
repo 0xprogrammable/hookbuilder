@@ -1,6 +1,6 @@
 {
   "name": "@programmable/v4-builder-repository",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Portable, evidence-first Uniswap v4 project builder for Programmable.",
   "private": true,
   "type": "module",
@@ -22,10 +22,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/0xprogrammable/programmable-v4-builder.git"
+    "url": "git+https://github.com/0xprogrammable/hookbuilder.git"
   },
   "bugs": {
-    "url": "https://github.com/0xprogrammable/programmable-v4-builder/issues"
+    "url": "https://github.com/0xprogrammable/hookbuilder/issues"
   },
-  "homepage": "https://github.com/0xprogrammable/programmable-v4-builder#readme"
+  "homepage": "https://github.com/0xprogrammable/hookbuilder#readme"
 }

@@ -39,9 +39,9 @@ After the exact candidate is committed, pushed and authorized:
 
 ```bash
 release_artifacts=$(mktemp -d /private/tmp/programmable-v4-builder-release.XXXXXX)
-npm run release:artifacts -- --tag v0.4.0 --output-dir "$release_artifacts"
-gh skill publish --tag v0.4.0
-gh release upload v0.4.0 "$release_artifacts"/*
+npm run release:artifacts -- --tag v0.4.1 --output-dir "$release_artifacts"
+gh skill publish --tag v0.4.1
+gh release upload v0.4.1 "$release_artifacts"/*
 ```
 
 The artifact generator refuses a dirty worktree and writes outside the repository. It produces a deterministic skill
@@ -53,7 +53,7 @@ discovery, a platform deployment or any project built with the skill is live; ve
 
 - Resolve the release and tag to the intended commit.
 - Verify GitHub release assets, checksums and source archive.
-- Install `programmable-v4-hook-builder@v0.4.0` into clean temporary targets for supported hosts.
+- Install `programmable-v4-hook-builder@v0.4.1` into clean temporary targets for supported hosts.
 - Run the installed package verifier and one ordinary plus one novel dry-run journey.
 - Confirm repository topics, README links, CI, security reporting and release visibility.
 - Record exact failures or unavailable external evidence without weakening the release claim.

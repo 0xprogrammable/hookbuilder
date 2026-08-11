@@ -2,10 +2,10 @@
 
 Policy id: `programmable-volume-fee-v1`
 Policy version: `1.1.0`
-Builder release: `v0.4.0`
+Builder release: `v0.4.1`
 
-Apply this policy to every new Programmable launch application. Builder releases `v0.1.1` and `v0.2.0` remain
-reproducible for earlier review records, but they are not the current release for a new launch application.
+Apply this policy to every new Programmable launch application. Builder releases `v0.1.1`, `v0.2.0`, and `v0.4.0`
+remain reproducible for earlier review records, but they are not the current release for a new launch application.
 
 This policy does not narrow which ideas may be proposed. A missing or incomplete integration produces an architecture
 or changes-required result. It never turns the project category itself into an automatic rejection. It also does not

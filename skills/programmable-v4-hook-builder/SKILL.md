@@ -8,9 +8,10 @@ license: MIT
 
 ## Outcome
 
-Take a builder from “I have an idea” to an exact, reviewable GitHub application. Understand the product, choose the
+Take a builder from “I have an idea” to an exact, reviewable Submit a Launch application. Understand the product, choose the
 smallest sound architecture, create or repair the project, produce evidence, check it, bind the exact source revision,
-and prepare or submit the application when the builder explicitly authorizes that GitHub action.
+and prepare the six-file application. Submit or update its draft pull request only when the builder explicitly
+authorizes that GitHub write.
 
 This skill serves non-technical builders as well as protocol engineers. Speak in plain language, do the technical
 translation, and ask only questions whose answers change the product, custody, authority, economics, or failure model.
@@ -123,7 +124,7 @@ review and executable evidence.
 | Prototype | Design is ready | Isolated implementation, tests, evidence, and implementation readiness |
 | Repair | A repository or failed application exists | Observed design, root cause, smallest compatible repair, rerun checks |
 | Review | The user asks whether it is ready | Evidence-backed gaps without edits unless requested |
-| Submit | A checked package needs a GitHub application | Exact revision, bounded package, dry-run plan, optional confirmed PR action |
+| Submit | A checked package needs a Submit a Launch application | Exact revision, six-file package, read-only plan, optional confirmed draft PR action |
 | Handoff | Maintainers approved one exact revision | Platform integration specification and independent gate ledger |
 
 Do not jump from Explore to implementation. `DESIGN_READY` permits implementation work; it does not mean the
@@ -279,21 +280,26 @@ required.
 
 ### 6. Prepare, submit, and track the GitHub application
 
-Require a clean, pushed public source revision. Resolve the canonical repository URL, immutable numeric repository id,
-full commit, full tree, declared paths, and bound CI evidence independently. Prepare the closed six-file central
-package with `cli.mjs prepare-pr`; it performs no GitHub write.
+Finish the build and applicable checks before submission. Require a clean, pushed public source revision. Resolve the
+canonical repository URL, immutable numeric repository id, full commit, full tree, declared paths, and bound CI
+evidence independently. Prepare the closed six-file application for
+[`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch) with `cli.mjs prepare-pr`; it performs
+no GitHub write.
 
 Exact anonymous source verification currently requires Git 2.49.0 or newer with `git backfill --sparse`. If that safe
 capability is unavailable, report a tooling blocker and preserve the application draft; never downgrade to an
 unbounded clone or treat the project as unsafe.
 
 The GitHub application client is read-only by default. `submit` and `update` first return an exact action-plan digest.
-Only a second invocation with that same `--confirm-external-write` digest may create or update the draft pull request.
-Never approve, merge, mark ready, or deploy. `status` is read-only and reports submitted, checks running, changes
-requested, waiting for review, review record merged, or closed.
+Only a second invocation with that same `--confirm-external-write` digest, made after the builder explicitly authorizes
+that public GitHub write, may create or update the draft pull request. Use the canonical `<builder>/submit-launch` fork;
+the central repository remains bound to numeric id `1320171831`. Never approve, merge, mark ready, deploy, sign, or
+launch. `status` is read-only and reports submitted, checks running, changes requested, waiting for review, review
+record merged, or closed.
 
 Use `cli.mjs submit`, `cli.mjs status`, or `cli.mjs update` and their `--help` output. Keep the prepared result and any
-local receipt outside the source repository.
+local receipt outside the source repository. Read
+[github-application-journey.md](references/github-application-journey.md) before planning or confirming a GitHub write.
 
 The pull request is the current transport and review thread, not the normative W2 application, approval, or deployment
 record. Tell the builder “applied; waiting for review” only after receipt-backed GitHub state confirms it.
