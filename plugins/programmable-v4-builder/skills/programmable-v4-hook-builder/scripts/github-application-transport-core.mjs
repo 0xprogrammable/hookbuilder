@@ -87,7 +87,13 @@ export function createGhTransport({
   if (!Number.isSafeInteger(getAttempts) || getAttempts < 1 || getAttempts > MAX_GET_ATTEMPTS) {
     throw new TypeError("getAttempts must be a bounded positive integer");
   }
-  const request = async ({ method = "GET", endpoint, body = null, allowNotFound = false }) => {
+  const request = async ({
+    method = "GET",
+    endpoint,
+    body = null,
+    allowNotFound = false,
+    requireResponse = false
+  }) => {
     if (!/^(?:GET|POST|PATCH)$/u.test(method)) fail("INTERNAL_ERROR", "unsupported GitHub API method");
     if (!isSafeGitHubApiEndpoint(endpoint)) {
       fail("INTERNAL_ERROR", "unsafe GitHub API endpoint");
@@ -126,7 +132,9 @@ export function createGhTransport({
       }
       const response = splitIncludedGitHubResponse(rawStdout, result?.headers);
       const httpStatus = response.statusCode ?? extractGitHubHttpStatus(stderr);
-      if (allowNotFound && httpStatus === 404) return null;
+      const terminalNotFound = response.statusCode === 404
+        || (response.statusCode === null && /(?:^|\s)(?:\(HTTP 404\)|HTTP 404)\s*$/iu.test(stderr));
+      if (allowNotFound && terminalNotFound) return null;
       const failed = result?.status !== 0 || (httpStatus !== null && (httpStatus < 200 || httpStatus >= 300));
       if (failed) {
         const failure = classifyGitHubGetFailure({
@@ -160,7 +168,10 @@ export function createGhTransport({
           details: githubTransportFailureDetails({ method, failure, attempt, maximumAttempts, totalBackoffMs })
         });
       }
-      if (response.body.length === 0) return null;
+      if (response.body.length === 0) {
+        if (requireResponse) fail("GITHUB_OUTPUT_INVALID", "GitHub returned an empty response");
+        return null;
+      }
       try {
         return parseBoundedStrictJson(response.body, {
           maxSourceBytes: MAX_API_OUTPUT_BYTES,
@@ -351,10 +362,9 @@ export function createGhTransport({
       );
     },
     async compareBranch({ centralRepository, baseCommit, headLogin, headBranch }) {
-      const head = `${requireGitHubLogin(headLogin, "comparison head login")}:${requireBranch(headBranch, "comparison head branch")}`;
       return request({
         method: "GET",
-        endpoint: `repos/${apiSlug(centralRepository)}/compare/${apiCommit(baseCommit)}...${encodeURIComponent(head)}?per_page=100`
+        endpoint: `repos/${apiSlug(centralRepository)}/compare/${apiCompareSpec(baseCommit, headLogin, headBranch)}?per_page=100`
       });
     },
     async createFork(centralRepository) {
@@ -380,7 +390,7 @@ export function createGhTransport({
         method: "POST",
         endpoint: `repos/${apiSlug(repository)}/git/commits`,
         body: {
-          message: requireBoundedText(message, "commit message", 500),
+          message: requireBoundedMultilineText(message, "commit message", 500),
           tree: apiCommit(tree),
           parents: parents.map(apiCommit)
         }
@@ -411,7 +421,9 @@ export function createGhTransport({
           base: requireBranch(base, "pull-request base"),
           draft: true,
           maintainer_can_modify: false
-        }
+        },
+        allowNotFound: true,
+        requireResponse: true
       });
     },
     async updatePull(centralRepository, number, { title, body }) {
@@ -425,6 +437,11 @@ export function createGhTransport({
       });
     }
   });
+}
+
+function apiCompareSpec(baseCommit, headLogin, headBranch) {
+  const head = `${requireGitHubLogin(headLogin, "comparison head login")}:${requireBranch(headBranch, "comparison head branch")}`;
+  return encodeURIComponent(`${apiCommit(baseCommit)}...${head}`).replaceAll(".", "%2E");
 }
 
 

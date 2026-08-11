@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import { canonicalJson } from "./submission-core.mjs";
+import { SUBMIT_LAUNCH_REPOSITORY_ID } from "./registry-intake-contract.mjs";
 import {
   FEE_POLICY_V2_SCHEMA_ID,
   PROGRAMMABLE_FEE_V2_OWNER,
@@ -26,7 +27,7 @@ export const INTENT_FIDELITY_V1_SCHEMA_ID = "urn:programmable:intent-fidelity:1.
 export const SECURITY_V1_SCHEMA_ID = "urn:programmable:open-world-security:1.0.0";
 export const EXECUTION_SURFACE_COVERAGE_V1_SCHEMA_ID = "urn:programmable:execution-surface-coverage:1.0.0";
 export const REGISTRY_ACCEPTANCE_V3_SCHEMA_ID = "urn:programmable:registry-acceptance-v3:3.0.0";
-export const PROGRAMMABLE_REGISTRY_NUMERIC_REPOSITORY_ID = "1320171831";
+export const PROGRAMMABLE_REGISTRY_NUMERIC_REPOSITORY_ID = SUBMIT_LAUNCH_REPOSITORY_ID;
 
 export const REVIEW_STATES = new Set(["unresolved", "satisfied", "not-applicable", "conflict"]);
 export const REQUIRED_V4_CHECKS = Object.freeze([

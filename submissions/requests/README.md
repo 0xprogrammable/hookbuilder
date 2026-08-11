@@ -1,11 +1,8 @@
-# Submission requests
+# Frozen legacy requests
 
-Add one JSON file per pull request to `0xprogrammable/hookbuilder`. The filename must be:
+Do not add a new request here. New one-off applications go through the Builder to
+`0xprogrammable/submit-launch` as generated draft pull requests.
 
-```text
-<source-repository-id>-<hook-id>.json
-```
-
-The request must declare the applicant's public, nonzero EIP-55 `launchWallet`. Do not add a private key, seed phrase,
-wallet session, credential, source code, private link, deployment transaction, or generated review claim here. The
-request points to one exact public GitHub source commit and tree and remains review-only.
+This directory remains only for the existing Hookbuilder Applicant pull requests #10, #11, #12, #14, #15, #18, #19,
+and #20. An exact continuation may update its existing request path on the same pull-request thread. It remains
+review-only and must not contain credentials, private source, wallet secrets, signatures, or deployment claims.

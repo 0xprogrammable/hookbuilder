@@ -8,6 +8,7 @@ import {
   ApplicantFastLaneError,
   classifyChangedPaths
 } from "./applicant-fast-lane-core.mjs";
+import { classifyHookbuilderApplicantPullRequest } from "../../skills/programmable-v4-hook-builder/scripts/registry-intake-contract.mjs";
 
 const GIT_OBJECT_ID = /^[0-9a-f]{40}$/u;
 const ZERO_COMMIT = "0".repeat(40);
@@ -17,9 +18,21 @@ try {
   const entries = options.event === "pull_request" || (options.event === "push" && options.base !== ZERO_COMMIT)
     ? readChangedPaths(options.base, options.head)
     : [{ status: "M", path: ".github/workflows/ci.yml" }];
-  const plan = {
-    ...classifyChangedPaths(entries),
+  const classification = classifyChangedPaths(entries);
+  if (classifyHookbuilderApplicantPullRequest({
     event: options.event,
+    pullRequest: options.pullRequest,
+    requestPaths: classification.requestPaths
+  }) === "submit-launch-required") {
+    throw new ApplicantFastLaneError(
+      "HOOKBUILDER_APPLICANT_INTAKE_CLOSED",
+      "new applications belong in 0xprogrammable/submit-launch; Hookbuilder accepts updates only on the frozen legacy pull-request list"
+    );
+  }
+  const plan = {
+    ...classification,
+    event: options.event,
+    pullRequest: options.pullRequest,
     base: options.base,
     head: options.head
   };
@@ -65,6 +78,7 @@ function parseArgs(args) {
   if (values.event !== "pull_request" && values.pullRequest !== null && values.pullRequest !== 0) {
     throw new Error("--pull-request must be 0 or omitted outside pull requests");
   }
+  if (values.event !== "pull_request" && values.pullRequest === 0) values.pullRequest = null;
   if (values.base === null) values.base = values.head;
   return values;
 }

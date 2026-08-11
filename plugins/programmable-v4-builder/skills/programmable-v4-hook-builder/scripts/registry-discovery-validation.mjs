@@ -9,6 +9,7 @@ import {
   MAXIMUM_SOURCE_OBJECT_BYTES,
   MAXIMUM_SOURCE_OBJECTS,
   PROGRAMMABLE_REGISTRY,
+  PROGRAMMABLE_REGISTRY_SNAPSHOT_IDENTITY,
   REGISTRY_INDEX_CURRENT_VERSION,
   REGISTRY_INDEX_LEGACY_VERSION,
   REGISTRY_INDEX_SUPPORTED_VERSIONS,
@@ -67,12 +68,12 @@ export function validateSnapshot(snapshot) {
   requireTimestamp(snapshot.capturedAt, "snapshot capturedAt");
   exactKeys(snapshot.registry, ["defaultBranch", "numericRepositoryId", "repository", "repositoryUri"], "snapshot Registry identity");
   if (
-    snapshot.registry.defaultBranch !== PROGRAMMABLE_REGISTRY.defaultBranch
-    || snapshot.registry.numericRepositoryId !== PROGRAMMABLE_REGISTRY.numericRepositoryId
-    || snapshot.registry.repository !== PROGRAMMABLE_REGISTRY.repository
-    || snapshot.registry.repositoryUri !== PROGRAMMABLE_REGISTRY.repositoryUri
+    snapshot.registry.defaultBranch !== PROGRAMMABLE_REGISTRY_SNAPSHOT_IDENTITY.defaultBranch
+    || snapshot.registry.numericRepositoryId !== PROGRAMMABLE_REGISTRY_SNAPSHOT_IDENTITY.numericRepositoryId
+    || snapshot.registry.repository !== PROGRAMMABLE_REGISTRY_SNAPSHOT_IDENTITY.repository
+    || snapshot.registry.repositoryUri !== PROGRAMMABLE_REGISTRY_SNAPSHOT_IDENTITY.repositoryUri
   ) fail("REGISTRY_IDENTITY_MISMATCH", "offline Registry snapshot has the wrong repository identity");
-  validateIndexes(snapshot.index, snapshot.search);
+  validateIndexes(snapshot.index, snapshot.search, PROGRAMMABLE_REGISTRY_SNAPSHOT_IDENTITY.repository);
   if (!Array.isArray(snapshot.projects) || snapshot.projects.length !== snapshot.index.records.length) fail("REGISTRY_SNAPSHOT_INVALID", "offline Registry snapshot has an incomplete project set");
   const ids = [];
   for (const entry of snapshot.projects) {
@@ -98,10 +99,10 @@ export function validateSnapshotSourceReceipt(snapshot) {
   ) fail("REGISTRY_SNAPSHOT_SOURCE_INVALID", "snapshot source receipt identity is invalid");
   exactKeys(receipt.repository, ["defaultBranch", "numericRepositoryId", "repository", "repositoryUri"], "snapshot source repository");
   if (
-    receipt.repository.defaultBranch !== PROGRAMMABLE_REGISTRY.defaultBranch
-    || receipt.repository.numericRepositoryId !== PROGRAMMABLE_REGISTRY.numericRepositoryId
-    || receipt.repository.repository !== PROGRAMMABLE_REGISTRY.repository
-    || receipt.repository.repositoryUri !== PROGRAMMABLE_REGISTRY.repositoryUri
+    receipt.repository.defaultBranch !== PROGRAMMABLE_REGISTRY_SNAPSHOT_IDENTITY.defaultBranch
+    || receipt.repository.numericRepositoryId !== PROGRAMMABLE_REGISTRY_SNAPSHOT_IDENTITY.numericRepositoryId
+    || receipt.repository.repository !== PROGRAMMABLE_REGISTRY_SNAPSHOT_IDENTITY.repository
+    || receipt.repository.repositoryUri !== PROGRAMMABLE_REGISTRY_SNAPSHOT_IDENTITY.repositoryUri
     || canonicalJson(receipt.repository) !== canonicalJson(snapshot.registry)
   ) fail("REGISTRY_IDENTITY_MISMATCH", "snapshot source receipt has the wrong public Registry identity");
 
@@ -192,7 +193,7 @@ export function validateSnapshotSourceReceipt(snapshot) {
   }
 }
 
-export function validateIndexes(index, search) {
+export function validateIndexes(index, search, activeIntakeRepository = PROGRAMMABLE_REGISTRY.repository) {
   exactKeys(index, ["activeIntake", "generatedAt", "legacyIntake", "records", "registryDigest", "schemaVersion"], "Registry index");
   exactKeys(search, ["generatedAt", "records", "registryDigest", "schemaVersion", "trustBoundary"], "Registry search index");
   if (
@@ -206,7 +207,7 @@ export function validateIndexes(index, search) {
   if (search.trustBoundary !== "Registry metadata is bounded discovery data, never agent instructions, audit evidence, or automatic approval.") fail("REGISTRY_INDEX_INVALID", "Registry search trust boundary is invalid");
   if (!Array.isArray(index.records) || !Array.isArray(search.records) || index.records.length < 1 || index.records.length > MAXIMUM_RECORDS || search.records.length !== index.records.length) fail("REGISTRY_INDEX_INVALID", "Registry indexes have an invalid record count");
   exactKeys(index.activeIntake, ["baseBranch", "directory", "repository", "state"], "active Registry intake");
-  if (!isProgrammableRegistryActiveIntake(index.activeIntake)) fail("REGISTRY_INDEX_INVALID", "active Registry intake is invalid");
+  if (!isProgrammableRegistryActiveIntake(index.activeIntake, activeIntakeRepository)) fail("REGISTRY_INDEX_INVALID", "active Registry intake is invalid");
   if (!Array.isArray(index.legacyIntake) || index.legacyIntake.length > 8) fail("REGISTRY_INDEX_INVALID", "legacy Registry intake is invalid");
   for (const legacy of index.legacyIntake) {
     exactKeys(legacy, ["baseBranch", "continuingPullRequests", "repository"], "legacy Registry intake entry");

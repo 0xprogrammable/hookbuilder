@@ -99,7 +99,7 @@ test("prepare-pr rejects a non-main base before repository or network I/O", asyn
       assert.ok(error instanceof CliFailure, error?.stack ?? String(error));
       assert.equal(error.code, "USAGE_ERROR");
       assert.equal(error.exitCode, 2);
-      assert.match(error.message, /0xprogrammable\/programmable-registry:main/u);
+      assert.match(error.message, /0xprogrammable\/submit-launch:main/u);
       return true;
     }
   );
@@ -397,8 +397,8 @@ test("prepare-pr deterministically binds the pushed public GitHub revision witho
     assert.equal(first.sourceHead.branch, "main");
     assert.equal(first.sourceHead.repositorySlug, "example-builder/programmable-proposal");
     assert.deepEqual(first.centralPullRequestTarget, {
-      repositorySlug: "0xprogrammable/programmable-registry",
-      repositoryUrl: "https://github.com/0xprogrammable/programmable-registry",
+      repositorySlug: "0xprogrammable/submit-launch",
+      repositoryUrl: "https://github.com/0xprogrammable/submit-launch",
       baseBranch: "main",
       baseCommit: centralBaseCommit,
       baseTree: centralBaseTree,
@@ -505,7 +505,7 @@ test("prepare-pr deterministically binds the pushed public GitHub revision witho
     assert.equal(requestedUrls.filter((url) => url.endsWith(`/git/trees/${tree}?recursive=1`)).length, 2);
     assert.equal(requestedUrls.filter((url) => url.includes("/git/blobs/")).length, 0);
     assert.equal(
-      requested.filter(({ url }) => url.includes("/0xprogrammable/programmable-registry/")).length,
+      requested.filter(({ url }) => url.includes("/0xprogrammable/submit-launch/")).length,
       8
     );
     for (const call of requested) {
@@ -2096,7 +2096,7 @@ function githubResponse(fixture, url, companions = []) {
   const head = runGit(fixture.repository, ["rev-parse", "HEAD"]);
   const tree = runGit(fixture.repository, ["rev-parse", "HEAD^{tree}"]);
   const repositoryUrl = "https://api.github.com/repos/example-builder/programmable-proposal";
-  const centralUrl = "https://api.github.com/repos/0xprogrammable/programmable-registry";
+  const centralUrl = "https://api.github.com/repos/0xprogrammable/submit-launch";
   if (url === "https://api.github.com/users/example-builder") {
     return response(
       200,

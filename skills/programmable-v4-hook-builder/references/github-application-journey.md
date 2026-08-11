@@ -1,12 +1,6 @@
-# Historical GitHub Application V1 journey
+# GitHub Application journey
 
-> Archived replay contract. This is not the current Public Applicant Beta and must never route a new Applicant.
-> Current requests go exclusively to `0xprogrammable/hookbuilder:main` as one
-> `submissions/requests/<source-repository-id>-<hook-id>.json` file; follow
-> [agent-entry-and-application.md](agent-entry-and-application.md). Do not run this chapter's `prepare-pr` or
-> `github-application.mjs` write path for a current Applicant.
-
-This reference defines the historical client-side transport for the former **Public GitHub PR Builder Beta**. It consumes the
+This reference defines the released client-side transport for the **Public GitHub PR Builder Beta**. It consumes the
 already verified six-file output of `prepare-pr`, plans a public GitHub draft pull request, updates that same draft,
 and reads GitHub review state. It does not create a Connected Submission/W2 application and it never approves,
 merges, deploys, launches, lists, or marks a project ready for review.
@@ -67,7 +61,7 @@ CLI envelope whose `command` is `prepare-pr`, whose `ok` value is `true`, and wh
 
 The client revalidates, rather than trusts, all of the following before any GitHub write:
 
-- the fixed central target `0xprogrammable/programmable-registry:main`;
+- the fixed central target `0xprogrammable/submit-launch:main`, immutable GitHub ID `1320171831`;
 - the application id and `submissions/<application-id>/` path;
 - the exact file order:
   `application.json`, `PROPOSAL.md`, `TEST_PLAN.md`, `THREAT_MODEL.md`, `compatibility-report.json`, and
@@ -80,9 +74,8 @@ The client revalidates, rather than trusts, all of the following before any GitH
 - the prepared central commit and tree; and
 - the retained human-confirmation and no-external-action markers.
 
-A package prepared with Builder `v0.4.0` is permanently bound to the earlier platform-repository transport. Use the
-pinned `v0.4.0` client to read or update that existing thread. Never edit its prepared target or copy the package into
-the Registry. Builder `v0.5.1` prepares new applications against the Registry only.
+A package prepared by an older client remains bound to its original transport identity. Never edit its prepared target
+or copy it into the current intake. Current clients prepare new applications only against Submit a Launch.
 
 An altered byte, extra file, path escape, symlinked input, stale base, ambiguous checklist, or inconsistent projection
 fails closed. Regenerate with `prepare-pr`; do not hand-repair its machine output.
@@ -99,7 +92,7 @@ node "$SKILL_ROOT/scripts/github-application.mjs" submit \
 
 This performs authenticated GitHub reads only. Its `externalWrites` list states exactly which of these steps remain:
 
-- create the active user's fork of `0xprogrammable/programmable-registry`;
+- create the active user's fork of `0xprogrammable/submit-launch`;
 - create or append the deterministic application branch commit;
 - fast-forward that branch without force-pushing;
 - open one draft pull request; or

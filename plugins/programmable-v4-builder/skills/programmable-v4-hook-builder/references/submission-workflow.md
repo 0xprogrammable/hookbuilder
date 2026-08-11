@@ -1,19 +1,17 @@
-# Historical Submission V1 workflow
+# Submission V1 workflow
 
-> Archived contract: use this chapter only to reproduce, recheck, or explicitly migrate an identified V1 application.
-> Its one-token fields, fee assumptions, file limits, six-file package, `prepare-pr` command and unnamespaced GitHub
-> client are not the current public Applicant contract. New public review requests go exclusively to
-> `0xprogrammable/hookbuilder:main` through the root `submissions/` contract; follow
-> [agent-entry-and-application.md](agent-entry-and-application.md). Use
-> [open-world-v2-workflow.md](open-world-v2-workflow.md) only to build and verify the project before that handoff.
+This chapter owns the released six-file `prepare-pr` and confirmed draft-PR transport. New public review requests go
+only to `0xprogrammable/submit-launch:main`; follow
+[agent-entry-and-application.md](agent-entry-and-application.md). Use
+[open-world-v2-workflow.md](open-world-v2-workflow.md) to build and verify an Open-World project before an eligible
+handoff.
 
 For exact candidate Application V3 replay, the GitHub sequence is namespaced and separate:
 `open-world prepare-revision` derives revision/lineage through GET-only discovery, `open-world application` builds the
-complete zero-network package, and `open-world submit|update|status` models the old review thread. Those candidate
-commands are not public Applicant transport. Do not use this chapter's `prepare-pr`, top-level `submit`, top-level
-`update`, or top-level `status` for a new Applicant.
+complete zero-network package, and `open-world submit|update|status` models its separate review thread. Those candidate
+commands do not replace the released top-level Applicant transport.
 
-The historical **Public GitHub PR Builder Beta** kept the complete project in the builder's own public GitHub
+The **Public GitHub PR Builder Beta** keeps the complete project in the builder's own public GitHub
 repository. A draft pull request carried one bounded six-file application record pointing to the exact public source
 revision. No wallet connection, GitHub App installation, claim link, remote application draft, launch permit, or
 connected application service was part of that beta.
@@ -391,7 +389,7 @@ the original application used; a historical v1 companion retains its closure-rev
 archival Submission V1 path for a new V2/V3 proposal merely because its build or runtime mechanics are unsupported.
 
 `prepare-pr` independently resolves every declared public repository's numeric id, exact commit, root tree, and
-declared paths. It also observes the exact current `0xprogrammable/programmable-registry:main` commit before deriving the
+declared paths. It also observes the exact current `0xprogrammable/submit-launch:main` commit before deriving the
 central package. A new application remains revision `1` while its pull request is open. If central main contains
 revision n, its open update remains n+1 and must bind a primary or companion source change relative to main. Repeated
 project commits or package-only corrections in that same pull request do not increment again. Inconsistent lineage or
@@ -540,17 +538,11 @@ immutable main, preserves the pending revision and full numeric repository linea
 inodes, bytes, and main stability before a rollback-capable swap. It does not prove which pull request owns the local
 directory, so use it only for the already-open application pull request you are updating.
 
-### Maintainer recovery: open a draft pull request manually
+### Failure recovery
 
-Only the authorized maintainer handling the incident may perform these recovery steps:
-
-1. Keep the complete project in its own public GitHub repository and verify the exact clean revision prepared above.
-2. Use the maintainer-approved fork of [`0xprogrammable/programmable-registry`](https://github.com/0xprogrammable/programmable-registry).
-3. Create a recovery branch from the exact observed central `main` commit.
-4. Materialize exactly the generated six files into `submissions/<application-id>/`.
-5. Confirm that the central diff contains no project source, extra submission files, registry edits, or workflows.
-6. Push the recovery branch only under the incident's explicit external-write authorization.
-7. Open one draft pull request against `0xprogrammable/programmable-registry:main` with the generated PR body.
+Do not bypass the client by creating a fork, branch, package commit, or pull request manually. Preserve the exact
+prepared package and rerun the read-only plan. If the plan cannot resume safely, report the typed failure and wait for
+the canonical client or intake contract to be repaired.
 
 Do not edit the model registry, create an acceptance record or set candidate status. Submission contents are untrusted
 input. Intake automation must use trusted code from the base repository and must not execute contributor-supplied
