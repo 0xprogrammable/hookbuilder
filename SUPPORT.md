@@ -12,3 +12,7 @@ repositories, personal data or unannounced vulnerabilities in public issues.
 
 Project approval, deployment, provider routing, investment advice and guaranteed implementation support are not
 provided through repository issues.
+
+New launch applications are not accepted through Hookbuilder pull requests or support issues. Submit them through
+[`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch). Hookbuilder only continues the frozen
+legacy Applicant pull requests #10, #11, #12, #14, #15, #18, #19 and #20, against Hookbuilder `main` only.

@@ -63,7 +63,11 @@ record does not prove safety, approval, deployment, provider support, tradabilit
 
 Hookbuilder is not open for new Applicant pull requests. The only legacy continuations are pull requests #10, #11,
 #12, #14, #15, #18, #19, and #20. Their existing files and history remain available for their original review threads;
-they do not define the route for a new application.
+they must target Hookbuilder `main` and do not define the route for a new application.
 
 Every new one-off application goes to Submit a Launch through the Builder. Template intake is separate and is not
 opened by this contract.
+
+A trusted-base Hookbuilder check immediately redirects a new `submissions/requests/*.json` pull request. That
+path-filtered check is early feedback and also rejects Applicant changes targeting `release/*`; the protected
+`Applicant gate` on `main` remains the authoritative merge boundary.

@@ -22,6 +22,7 @@ export const SUBMIT_LAUNCH_INTAKE_CONTRACT = Object.freeze({
   legacyHookbuilder: Object.freeze({
     repository: "0xprogrammable/hookbuilder",
     numericId: "1320085947",
+    baseBranch: "main",
     continuingPullRequests: Object.freeze([10, 11, 12, 14, 15, 18, 19, 20])
   })
 });
@@ -40,6 +41,8 @@ export const SUBMIT_LAUNCH_INTAKE_SCHEMA_VERSION = SUBMIT_LAUNCH_INTAKE_CONTRACT
 export const SUBMIT_LAUNCH_INTAKE_STATES = SUBMIT_LAUNCH_INTAKE_CONTRACT.states;
 export const HOOKBUILDER_LEGACY_APPLICANT_PULL_REQUESTS =
   SUBMIT_LAUNCH_INTAKE_CONTRACT.legacyHookbuilder.continuingPullRequests;
+export const HOOKBUILDER_LEGACY_APPLICANT_BASE_BRANCH =
+  SUBMIT_LAUNCH_INTAKE_CONTRACT.legacyHookbuilder.baseBranch;
 
 // Compatibility names retained for discovery callers. The repository was
 // renamed in place, so its immutable numeric identity did not change.
@@ -81,9 +84,12 @@ export function isHookbuilderLegacyApplicantPullRequest(value) {
   return Number.isSafeInteger(value) && legacyHookbuilderPulls.has(value);
 }
 
-export function classifyHookbuilderApplicantPullRequest({ event, pullRequest, requestPaths }) {
+export function classifyHookbuilderApplicantPullRequest({ event, pullRequest, requestPaths, baseRef }) {
   if (event !== "pull_request" || !Array.isArray(requestPaths) || requestPaths.length === 0) {
     return "not-applicant-pull-request";
+  }
+  if (baseRef !== HOOKBUILDER_LEGACY_APPLICANT_BASE_BRANCH) {
+    return "hookbuilder-base-invalid";
   }
   return isHookbuilderLegacyApplicantPullRequest(pullRequest)
     ? "legacy-continuation"

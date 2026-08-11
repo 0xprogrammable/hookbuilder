@@ -1,1 +1,4 @@
 * @0xprogrammable
+.github/workflows/** @0xprogrammable
+scripts/ci/** @0xprogrammable
+submissions/requests/** @0xprogrammable

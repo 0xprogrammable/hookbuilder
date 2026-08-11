@@ -6,7 +6,7 @@ without weakening its evidence boundaries.
 Submitting a new hook, project, or model for review is a different path. Use the Builder and follow the
 [Submit a Launch guide](docs/PUBLIC_GITHUB_PR_BETA.md); new applications go to `0xprogrammable/submit-launch`, never
 to this repository. Hookbuilder pull requests #10, #11, #12, #14, #15, #18, #19, and #20 may update only their frozen
-legacy Applicant records. Do not mix Applicant data with a Builder code change.
+legacy Applicant records and must target Hookbuilder `main`. Do not mix Applicant data with a Builder code change.
 
 ## Start with the owning layer
 

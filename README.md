@@ -121,7 +121,8 @@ stops before any write unless intake permits that exact application or continuat
 pull request.
 
 The older Applicant files in this Hookbuilder repository are frozen legacy continuations. Only pull requests #10,
-#11, #12, #14, #15, #18, #19, and #20 may continue on that path. Every new application belongs in Submit a Launch.
+#11, #12, #14, #15, #18, #19, and #20 may continue on that path, and only against Hookbuilder `main`. Every new
+application belongs in Submit a Launch.
 Neither path approves, deploys, signs, routes, or launches a project. See the
 [Submit a Launch guide](docs/PUBLIC_GITHUB_PR_BETA.md).
 

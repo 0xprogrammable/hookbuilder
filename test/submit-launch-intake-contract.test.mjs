@@ -21,6 +21,7 @@ import {
 import { REGISTRY_NUMERIC_ID } from "../skills/programmable-v4-hook-builder/scripts/registry-acceptance-v3-github-constants.mjs";
 import { PROGRAMMABLE_REGISTRY } from "../skills/programmable-v4-hook-builder/scripts/registry-discovery-definitions.mjs";
 import {
+  HOOKBUILDER_LEGACY_APPLICANT_BASE_BRANCH,
   HOOKBUILDER_LEGACY_APPLICANT_PULL_REQUESTS,
   SUBMIT_LAUNCH_INTAKE_CONTRACT,
   SUBMIT_LAUNCH_INTAKE_SCHEMA_VERSION,
@@ -38,6 +39,7 @@ test("one canonical contract owns every active one-off intake identity", () => {
   assert.equal(SUBMIT_LAUNCH_INTAKE_SCHEMA_VERSION, 2);
   assert.equal(SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.defaultBranch, "main");
   assert.equal(SUBMIT_LAUNCH_INTAKE_CONTRACT.draftOnly, true);
+  assert.equal(HOOKBUILDER_LEGACY_APPLICANT_BASE_BRANCH, "main");
   assert.deepEqual(HOOKBUILDER_LEGACY_APPLICANT_PULL_REQUESTS, [10, 11, 12, 14, 15, 18, 19, 20]);
 
   assert.equal(CENTRAL_REPOSITORY, SUBMIT_LAUNCH_REPOSITORY);
