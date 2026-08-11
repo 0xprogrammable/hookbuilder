@@ -1,0 +1,61 @@
+{
+  "$schema": "urn:programmable:applicant-submission:1.1.0",
+  "schemaVersion": "1.1.0",
+  "intake": {
+    "repository": "0xprogrammable/hookbuilder",
+    "repositoryId": 1320085947
+  },
+  "applicant": {
+    "githubLogin": "ToanPham247",
+    "launchWallet": "0x72422F4471a477731ce0fB8C30052F4fdB454B1D"
+  },
+  "source": {
+    "repository": "https://github.com/ToanPham247/harberger-amm-hook",
+    "repositoryId": 1320238335,
+    "commit": "718560abe404b513c6c93eaf19d5139c9fb685ae",
+    "tree": "24e236bc58f766afdafeee86fdc373ca438cc170"
+  },
+  "identifiers": {
+    "hookId": "harberger-amm",
+    "hookVersion": "1.0.0",
+    "templateId": "custom-hook",
+    "templateVersion": "1.0.0",
+    "modelId": "harberger-amm",
+    "modelVersion": "1.0.0"
+  },
+  "hook": {
+    "addressFlagMask": "0x1acc",
+    "permissions": {
+      "beforeInitialize": false,
+      "afterInitialize": true,
+      "beforeAddLiquidity": true,
+      "afterAddLiquidity": false,
+      "beforeRemoveLiquidity": true,
+      "afterRemoveLiquidity": false,
+      "beforeSwap": true,
+      "afterSwap": true,
+      "beforeDonate": false,
+      "afterDonate": false,
+      "beforeSwapReturnDelta": true,
+      "afterSwapReturnDelta": true,
+      "afterAddLiquidityReturnDelta": false,
+      "afterRemoveLiquidityReturnDelta": false
+    }
+  },
+  "fee": {
+    "amountPips": 1000,
+    "denominator": 1000000,
+    "currencyBasis": "quote",
+    "recipient": "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c",
+    "mutable": false
+  },
+  "requestedRoute": {
+    "routeId": "custom-graph",
+    "routeVersion": "1.0.0",
+    "chainId": "1"
+  },
+  "requestedActions": [
+    "review"
+  ],
+  "notes": "Harberger AMM: always-for-sale custodied liquidity (self-priced claims, continuous Harberger tax rebated to LPs, permissionless buyout + liquidation). Inclusive 0.10% (1000 pips) gross-quote-side fee; the entire 1000 pips is the immutable Programmable liability to 0x4957f4...376c (project share 0). afterInitialize precommits the exact launch PoolKey (one-time _bound guard); custody gate on add/remove liquidity; before/afterSwap collect the mandatory fee executed-basis-or-revert."
+}
