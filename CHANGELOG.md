@@ -2,6 +2,20 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.4.4 - 2026-08-11
+
+### Fixed
+
+- Retry only terminal GitHub 404 readbacks while an exact application branch and its six-file package propagate after
+  one successful ref create or update.
+- Revalidate the confirmed authority state, exact fork identity and expected branch commit before every read-only
+  retry, without repeating a commit, ref, pull-request, approval, merge, deployment or launch action.
+
+### Preserved
+
+- The complete `0.4.3` draft-application transport, confirmation and recovery boundaries.
+- Submission standard `1.5.0`, application schema `1.0.0-beta.1`, fee policy `1.1.0`, and every historical release.
+
 ## 0.4.3 - 2026-08-11
 
 ### Fixed

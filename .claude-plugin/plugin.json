@@ -1,7 +1,7 @@
 {
   "displayName": "Programmable v4 Builder",
   "name": "programmable-v4-builder",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Build open-ended Uniswap v4 projects and prepare evidence-bound applications for Submit a Launch.",
   "author": {
     "name": "Programmable"

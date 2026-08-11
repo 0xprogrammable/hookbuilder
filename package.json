@@ -1,6 +1,6 @@
 {
   "name": "@programmable/v4-builder-repository",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Portable, evidence-first Uniswap v4 project builder for Programmable.",
   "private": true,
   "type": "module",
