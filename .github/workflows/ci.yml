@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "release/*"]
   pull_request:
   workflow_dispatch:
 
@@ -24,6 +24,12 @@ jobs:
       request_paths: ${{ steps.plan.outputs.request_paths }}
       change_plan_sha256: ${{ steps.plan.outputs.change_plan_sha256 }}
       head_sha: ${{ steps.plan.outputs.head_sha }}
+      repository_nodes: ${{ steps.routing.outputs.repository_nodes }}
+      reference_kernel_matrix: ${{ steps.routing.outputs.reference_kernel_matrix }}
+      reference_kernel_required: ${{ steps.routing.outputs.reference_kernel_required }}
+      codeql_required: ${{ steps.routing.outputs.codeql_required }}
+      platform_lane_required: ${{ steps.routing.outputs.platform_lane_required }}
+      routing_plan_sha256: ${{ steps.plan.outputs.routing_plan_sha256 }}
       trusted_revision: ${{ steps.trusted.outputs.trusted_revision }}
       capability_status: ${{ steps.capability.outputs.capability_status }}
     steps:
@@ -53,6 +59,8 @@ jobs:
           node-version: 22
       - name: Classify changed immutable inputs once
         id: plan
+        env:
+          CI_ROUTING_REF: ${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}
         run: >-
           node "$RUNNER_TEMP/trusted-ci/scripts/ci/plan-applicant-fast-lane.mjs"
           --event "${{ github.event_name }}"
@@ -61,6 +69,41 @@ jobs:
           --pull-request "${{ github.event_name == 'pull_request' && github.event.pull_request.number || 0 }}"
           --output "$RUNNER_TEMP/applicant-fast-lane-plan.json"
           --github-output "$GITHUB_OUTPUT"
+      - name: Preserve exhaustive checks while a protected base predates routing outputs
+        id: routing
+        env:
+          CI_EVENT_NAME: ${{ github.event_name }}
+          CI_BASE_REF: ${{ github.event_name == 'pull_request' && github.base_ref || '' }}
+          PLANNED_MODE: ${{ steps.plan.outputs.mode }}
+          ROUTED_REPOSITORY_NODES: ${{ steps.plan.outputs.repository_nodes }}
+          ROUTED_REFERENCE_KERNEL_MATRIX: ${{ steps.plan.outputs.reference_kernel_matrix }}
+          ROUTED_REFERENCE_KERNEL_REQUIRED: ${{ steps.plan.outputs.reference_kernel_required }}
+          ROUTED_CODEQL_REQUIRED: ${{ steps.plan.outputs.codeql_required }}
+          ROUTED_PLATFORM_LANE_REQUIRED: ${{ steps.plan.outputs.platform_lane_required }}
+        run: |
+          if test "$CI_EVENT_NAME" = pull_request && test "$CI_BASE_REF" != main && test "$PLANNED_MODE" = applicant; then
+            echo "::error::Legacy Hookbuilder Applicant updates must target main; release branches fail closed during the routing transition."
+            exit 1
+          fi
+          if test -n "$ROUTED_REPOSITORY_NODES"; then
+            test -n "$ROUTED_REFERENCE_KERNEL_MATRIX"
+            test -n "$ROUTED_REFERENCE_KERNEL_REQUIRED"
+            test -n "$ROUTED_CODEQL_REQUIRED"
+            test -n "$ROUTED_PLATFORM_LANE_REQUIRED"
+          else
+            ROUTED_REPOSITORY_NODES='[20,22]'
+            ROUTED_REFERENCE_KERNEL_MATRIX='{"include":[{"kernel":"v1","workdir":"skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v1","lockfile":"skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v1/package-lock.json"},{"kernel":"v2","workdir":"skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v2","lockfile":"skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v2/package-lock.json"}]}'
+            ROUTED_REFERENCE_KERNEL_REQUIRED=true
+            ROUTED_CODEQL_REQUIRED=true
+            ROUTED_PLATFORM_LANE_REQUIRED=true
+          fi
+          {
+            echo "repository_nodes=$ROUTED_REPOSITORY_NODES"
+            echo "reference_kernel_matrix=$ROUTED_REFERENCE_KERNEL_MATRIX"
+            echo "reference_kernel_required=$ROUTED_REFERENCE_KERNEL_REQUIRED"
+            echo "codeql_required=$ROUTED_CODEQL_REQUIRED"
+            echo "platform_lane_required=$ROUTED_PLATFORM_LANE_REQUIRED"
+          } >> "$GITHUB_OUTPUT"
       - name: Check route compatibility before expensive work
         id: capability
         if: ${{ steps.plan.outputs.mode == 'applicant' || steps.plan.outputs.mode == 'mixed' }}
@@ -295,15 +338,15 @@ jobs:
           --mutable "${{ needs.applicant-mutable.result }}"
 
   repository:
-    name: Internal / repository and skill / Node ${{ matrix.node }}
+    name: Repository and skill / Node ${{ matrix.node }}
     needs: plan
-    if: ${{ needs.plan.outputs.mode == 'platform' || needs.plan.outputs.mode == 'mixed' }}
+    if: ${{ needs.plan.outputs.platform_lane_required == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        node: [20, 22]
+        node: ${{ fromJSON(needs.plan.outputs.repository_nodes) }}
     steps:
       - name: Checkout exact revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -338,7 +381,7 @@ jobs:
   reference-kernel:
     name: Internal / reference fee kernel / ${{ matrix.kernel }}
     needs: plan
-    if: ${{ needs.plan.outputs.mode == 'platform' || needs.plan.outputs.mode == 'mixed' }}
+    if: ${{ needs.plan.outputs.platform_lane_required == 'true' && needs.plan.outputs.reference_kernel_required == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -349,14 +392,7 @@ jobs:
       NO_COLOR: "1"
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - kernel: v1
-            workdir: skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v1
-            lockfile: skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v1/package-lock.json
-          - kernel: v2
-            workdir: skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v2
-            lockfile: skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v2/package-lock.json
+      matrix: ${{ fromJSON(needs.plan.outputs.reference_kernel_matrix) }}
     defaults:
       run:
         working-directory: ${{ matrix.workdir }}
@@ -407,21 +443,54 @@ jobs:
         run: slither . --exclude-dependencies --filter-paths 'node_modules|test'
 
   reference-kernel-required:
-    name: Internal / reference fee kernel aggregate
+    name: Reference fee kernel
     needs: [plan, reference-kernel]
-    if: ${{ always() && (needs.plan.outputs.mode == 'platform' || needs.plan.outputs.mode == 'mixed') }}
+    if: ${{ always() && needs.plan.outputs.platform_lane_required == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Require every reference-kernel matrix lane
         env:
+          REQUIRED: ${{ needs.plan.outputs.reference_kernel_required }}
           MATRIX_RESULT: ${{ needs.reference-kernel.result }}
-        run: test "$MATRIX_RESULT" = success
+        run: |
+          if test "$REQUIRED" = true; then
+            test "$MATRIX_RESULT" = success
+          else
+            test "$MATRIX_RESULT" = skipped
+          fi
 
-  codeql:
-    name: Internal / CodeQL
+  security-static:
+    name: Internal / static security
     needs: plan
-    if: ${{ needs.plan.outputs.mode == 'platform' || needs.plan.outputs.mode == 'mixed' }}
+    if: ${{ needs.plan.outputs.platform_lane_required == 'true' && needs.plan.outputs.codeql_required == 'true' && github.event_name != 'push' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify exact revision
+        env:
+          EXPECTED_REVISION: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_REVISION"
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
+        with:
+          languages: javascript-typescript
+      - name: Analyze without a write-capable event token
+        uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
+        with:
+          upload: never
+
+  codeql-upload:
+    name: Internal / CodeQL upload
+    needs: plan
+    if: ${{ needs.plan.outputs.platform_lane_required == 'true' && needs.plan.outputs.codeql_required == 'true' && github.event_name == 'push' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -441,8 +510,41 @@ jobs:
         uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
         with:
           languages: javascript-typescript
-      - name: Analyze
+      - name: Analyze and upload the protected-branch result
         uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
+
+  codeql:
+    name: CodeQL
+    needs: [plan, applicant-gate, security-static, codeql-upload]
+    # CodeQL is required on release/* and is the fail-closed bridge to the
+    # authoritative Applicant gate. A failed planner or Applicant gate must
+    # leave a red required context, never a skipped release check.
+    if: ${{ always() && (needs.plan.result != 'success' || needs.applicant-gate.result != 'success' || needs.plan.outputs.platform_lane_required == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Aggregate the routed static-security lane
+        env:
+          CODEQL_REQUIRED: ${{ needs.plan.outputs.codeql_required }}
+          EVENT_NAME: ${{ github.event_name }}
+          PLAN_RESULT: ${{ needs.plan.result }}
+          APPLICANT_GATE_RESULT: ${{ needs.applicant-gate.result }}
+          PR_RESULT: ${{ needs.security-static.result }}
+          PROTECTED_BRANCH_RESULT: ${{ needs.codeql-upload.result }}
+        run: |
+          test "$PLAN_RESULT" = success
+          test "$APPLICANT_GATE_RESULT" = success
+          if test "$CODEQL_REQUIRED" != true; then
+            test "$PR_RESULT" = skipped
+            test "$PROTECTED_BRANCH_RESULT" = skipped
+          elif test "$EVENT_NAME" = push; then
+            test "$PR_RESULT" = skipped
+            test "$PROTECTED_BRANCH_RESULT" = success
+          else
+            test "$PR_RESULT" = success
+            test "$PROTECTED_BRANCH_RESULT" = skipped
+          fi
 
   platform-profile-gate:
     name: Platform/profile gate

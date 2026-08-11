@@ -8,6 +8,41 @@ import {
 export const APPLICANT_FAST_LANE_SCHEMA_VERSION = "1.0.0";
 export const APPLICANT_REQUEST_PATH = /^submissions\/requests\/[1-9][0-9]*-[a-z0-9]+(?:-[a-z0-9]+)*\.json$/u;
 const APPLICANT_REQUESTS_README_PATH = "submissions/requests/README.md";
+const CI_REF = /^[A-Za-z0-9](?:[A-Za-z0-9._\/-]{0,253}[A-Za-z0-9])?$/u;
+const LIGHTWEIGHT_ROOT_PATHS = new Set([
+  ".editorconfig",
+  ".gitattributes",
+  ".gitignore",
+  "AGENTS.md",
+  "CHANGELOG.md",
+  "CODE_OF_CONDUCT.md",
+  "CONTRIBUTING.md",
+  "GOVERNANCE.md",
+  "LICENSE",
+  "NOTICE.md",
+  "README.md",
+  "SECURITY.md",
+  "SUPPORT.md"
+]);
+const LIGHTWEIGHT_NESTED_PATHS = new Set([
+  ".github/PULL_REQUEST_TEMPLATE.md",
+  "submissions/README.md",
+  APPLICANT_REQUESTS_README_PATH
+]);
+const LIGHTWEIGHT_EXTENSION = /\.(?:gif|jpe?g|md|png|svg|txt|webp)$/iu;
+const REFERENCE_KERNEL_PATH = /^(?:skills\/programmable-v4-hook-builder|plugins\/programmable-v4-builder\/skills\/programmable-v4-hook-builder)\/assets\/reference-kernels\/programmable-volume-fee-v([12])(?:\/|$)/u;
+const SHARED_KERNEL_CONTROL_PATHS = new Set([
+  ".github/workflows/ci.yml",
+  "scripts/ci/applicant-fast-lane-core.mjs",
+  "scripts/ci/plan-applicant-fast-lane.mjs",
+  "scripts/generate-release-artifacts.mjs",
+  "scripts/prepare-release-candidate.mjs",
+  "scripts/release-evidence-core.mjs",
+  "scripts/verify-repository.mjs",
+  "test/applicant-fast-lane.test.mjs",
+  "test/release-evidence.test.mjs",
+  "test/repository-contract.test.mjs"
+]);
 const APPLICANT_SOURCE_PATH = /^[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/u;
 export const PLATFORM_ATTESTATION_KIND = "programmable-platform-profile-release-attestation";
 export const PLATFORM_ATTESTATION_SCHEMA_VERSION = "1.0.0";
@@ -72,6 +107,88 @@ export function classifyChangedPaths(entries) {
     paths,
     requestPaths
   );
+}
+
+export function classifyPlatformChecks({ event, ref, mode, paths }) {
+  if (!new Set(["pull_request", "push", "workflow_dispatch"]).has(event)) {
+    throw new ApplicantFastLaneError("CI_ROUTING_INPUT_INVALID", "CI routing event is invalid");
+  }
+  if (
+    typeof ref !== "string"
+    || !CI_REF.test(ref)
+    || ref.startsWith("/")
+    || ref.endsWith("/")
+    || ref.includes("//")
+    || ref.split("/").some((segment) => segment === "." || segment === "..")
+  ) {
+    throw new ApplicantFastLaneError("CI_ROUTING_INPUT_INVALID", "CI routing ref is invalid");
+  }
+  if (!new Set(["applicant", "invalid", "mixed", "platform"]).has(mode)) {
+    throw new ApplicantFastLaneError("CI_ROUTING_INPUT_INVALID", "CI routing mode is invalid");
+  }
+  if (!Array.isArray(paths)) {
+    throw new ApplicantFastLaneError("CI_ROUTING_INPUT_INVALID", "CI routing paths are invalid");
+  }
+
+  const canonicalPaths = paths.map((repositoryPath) => normalizeRepositoryPath(
+    repositoryPath,
+    "CI_ROUTING_INPUT_INVALID",
+    "CI routing path"
+  ));
+  const platformPaths = [...new Set(canonicalPaths)]
+    .filter((repositoryPath) => !APPLICANT_REQUEST_PATH.test(repositoryPath))
+    .sort(compareUtf8);
+  const protectedBranchRun = event !== "pull_request";
+  const releaseCompatibility = ref.startsWith("release/");
+  const nonLightweightPaths = platformPaths.filter((repositoryPath) => !isLightweightPlatformPath(repositoryPath));
+  const fullNodeCompatibility = protectedBranchRun || releaseCompatibility || nonLightweightPaths.length > 0;
+  const referenceKernels = new Set();
+
+  if (protectedBranchRun || releaseCompatibility || platformPaths.some((repositoryPath) => SHARED_KERNEL_CONTROL_PATHS.has(repositoryPath))) {
+    referenceKernels.add("v1");
+    referenceKernels.add("v2");
+  } else {
+    for (const repositoryPath of platformPaths) {
+      const match = REFERENCE_KERNEL_PATH.exec(repositoryPath);
+      if (match) referenceKernels.add(`v${match[1]}`);
+    }
+  }
+
+  const domains = [];
+  if (platformPaths.length === 0) domains.push("none");
+  if (platformPaths.some(isLightweightPlatformPath)) domains.push("documentation-or-metadata");
+  if (nonLightweightPaths.length > 0) domains.push("executable-or-structured");
+  if (referenceKernels.has("v1")) domains.push("reference-kernel-v1");
+  if (referenceKernels.has("v2")) domains.push("reference-kernel-v2");
+  if (protectedBranchRun) domains.push("protected-branch");
+  if (releaseCompatibility) domains.push("release-compatibility");
+
+  const routing = {
+    schemaVersion: APPLICANT_FAST_LANE_SCHEMA_VERSION,
+    event,
+    ref,
+    mode,
+    platformPaths,
+    domains,
+    repositoryNodes: fullNodeCompatibility ? [20, 22] : [22],
+    referenceKernels: [...referenceKernels].sort(compareUtf8),
+    codeqlRequired: protectedBranchRun || releaseCompatibility || nonLightweightPaths.length > 0,
+    fullNodeCompatibility,
+    platformLaneRequired: protectedBranchRun || releaseCompatibility || mode === "platform" || mode === "mixed"
+  };
+  return deepFreeze({
+    ...routing,
+    routingPlanSha256: sha256(canonicalJsonBytesV2(routing, { trailingNewline: false }))
+  });
+}
+
+function isLightweightPlatformPath(repositoryPath) {
+  if (LIGHTWEIGHT_ROOT_PATHS.has(repositoryPath)) return true;
+  if (LIGHTWEIGHT_NESTED_PATHS.has(repositoryPath)) return true;
+  if (/^\.github\/(?:ISSUE_TEMPLATE|PULL_REQUEST_TEMPLATE)\//u.test(repositoryPath)) {
+    return /\.(?:md|ya?ml)$/iu.test(repositoryPath);
+  }
+  return /^(?:assets|docs)\//u.test(repositoryPath) && LIGHTWEIGHT_EXTENSION.test(repositoryPath);
 }
 
 export function parseRequestPathsJson(source) {
@@ -495,20 +612,25 @@ function normalizeDiffEntry(entry) {
   if (!/^[AMDTU]$/u.test(entry.status ?? "")) {
     throw new ApplicantFastLaneError("FAST_LANE_DIFF_INVALID", "changed path status is unsupported");
   }
-  if (typeof entry.path !== "string" || entry.path.length === 0 || entry.path.includes("\\")) {
-    throw new ApplicantFastLaneError("FAST_LANE_DIFF_INVALID", "changed path is invalid");
+  const normalized = normalizeRepositoryPath(entry.path, "FAST_LANE_DIFF_INVALID", "changed path");
+  return Object.freeze({ status: entry.status, path: normalized });
+}
+
+function normalizeRepositoryPath(repositoryPath, code, label) {
+  if (typeof repositoryPath !== "string" || repositoryPath.length === 0 || repositoryPath.includes("\\")) {
+    throw new ApplicantFastLaneError(code, `${label} is invalid`);
   }
-  const normalized = path.posix.normalize(entry.path);
+  const normalized = path.posix.normalize(repositoryPath);
   if (
-    normalized !== entry.path
+    normalized !== repositoryPath
     || normalized === "."
     || normalized === ".."
     || normalized.startsWith("../")
     || path.posix.isAbsolute(normalized)
   ) {
-    throw new ApplicantFastLaneError("FAST_LANE_DIFF_INVALID", "changed path is not canonical repository-relative form");
+    throw new ApplicantFastLaneError(code, `${label} is not canonical repository-relative form`);
   }
-  return Object.freeze({ status: entry.status, path: normalized });
+  return normalized;
 }
 
 function validatePlatformAttestationPayload(payload, { now }) {

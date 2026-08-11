@@ -1,0 +1,55 @@
+name: Hookbuilder intake routing
+
+on:
+  pull_request_target:
+    branches: [main, "release/*"]
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+    paths:
+      - "submissions/requests/*.json"
+
+permissions: {}
+
+concurrency:
+  group: hookbuilder-intake-route-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # Early feedback only: never make this path-filtered context required. The
+  # protected Applicant gate remains the authoritative merge boundary.
+  route:
+    name: Hookbuilder intake route
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    env:
+      BASE_REF: ${{ github.event.pull_request.base.ref }}
+      LEGACY_APPLICANT_PULL_REQUESTS: "10 11 12 14 15 18 19 20"
+      PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - name: Keep only frozen legacy continuations in Hookbuilder
+        shell: bash --noprofile --norc -euo pipefail {0}
+        run: |
+          if test "$BASE_REF" != main; then
+            echo "::error title=Hookbuilder Applicant base invalid::Legacy Hookbuilder Applicant updates must target main. New launch applications belong in 0xprogrammable/submit-launch."
+            {
+              echo "## Hookbuilder Applicant updates target main"
+              echo
+              echo "Retarget an allowed legacy continuation to Hookbuilder main. New applications belong in https://github.com/0xprogrammable/submit-launch."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          case " $LEGACY_APPLICANT_PULL_REQUESTS " in
+            *" $PULL_REQUEST_NUMBER "*)
+              echo "Legacy Hookbuilder applicant pull request #$PULL_REQUEST_NUMBER may continue through the ordinary untrusted pull_request gates."
+              ;;
+            *)
+              echo "::error title=Hookbuilder applicant intake closed::New launch applications belong in 0xprogrammable/submit-launch."
+              {
+                echo "## Submit this launch in 0xprogrammable/submit-launch"
+                echo
+                echo "Hookbuilder no longer accepts new launch applications. Open the application in https://github.com/0xprogrammable/submit-launch instead."
+                echo
+                echo "Only the frozen legacy Hookbuilder pull requests #10, #11, #12, #14, #15, #18, #19 and #20 may continue here."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+              ;;
+          esac

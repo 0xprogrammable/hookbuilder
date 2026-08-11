@@ -1,7 +1,7 @@
 # Frozen legacy Applicant contract
 
 This directory preserves the former Hookbuilder Applicant contract for pull requests #10, #11, #12, #14, #15, #18,
-#19, and #20 only. It is not open to new requests.
+#19, and #20 against Hookbuilder `main` only. It is not open to new requests.
 
 Every new one-off application must use the Builder's generated six-file draft flow to
 `0xprogrammable/submit-launch`, immutable GitHub repository ID `1320171831`. Do not copy the example or create a new

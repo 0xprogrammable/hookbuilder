@@ -12,6 +12,10 @@ import {
   safeRawGitArguments
 } from "../skills/programmable-v4-hook-builder/scripts/repository-root.mjs";
 import { parseBoundedLosslessJson } from "../skills/programmable-v4-hook-builder/scripts/github-public-source-core.mjs";
+import {
+  HOOKBUILDER_LEGACY_APPLICANT_BASE_BRANCH,
+  HOOKBUILDER_LEGACY_APPLICANT_PULL_REQUESTS
+} from "../skills/programmable-v4-hook-builder/scripts/registry-intake-contract.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(testDirectory, "..");
@@ -287,12 +291,13 @@ test("every CI analysis job checks out and verifies the exact pull-request head"
   for (const requiredJobName of [
     "    name: Applicant gate\n",
     "    name: Platform/profile gate\n",
-    "    name: Internal / repository and skill / Node ${{ matrix.node }}\n",
+    "    name: Repository and skill / Node ${{ matrix.node }}\n",
     "    name: Internal / reference fee kernel / ${{ matrix.kernel }}\n",
-    "    name: Internal / CodeQL\n"
+    "    name: Reference fee kernel\n",
+    "    name: CodeQL\n"
   ]) assert.ok(workflow.includes(requiredJobName), requiredJobName.trim());
   const checkoutSteps = workflow.match(/^\s*uses: actions\/checkout@[0-9a-f]{40}.*\n\s*with:\n(?:\s{10}.*\n)+/gmu) ?? [];
-  assert.equal(checkoutSteps.length, 9);
+  assert.equal(checkoutSteps.length, 10);
   for (const step of checkoutSteps) {
     assert.match(step, /^\s*uses: actions\/checkout@[0-9a-f]{40}/mu);
     assert.ok(
@@ -312,6 +317,48 @@ test("every CI analysis job checks out and verifies the exact pull-request head"
   assert.ok(workflow.includes(`          EXPECTED_REVISION: ${exactRevisionExpression}\n`));
   assert.ok(workflow.includes(`          EXPECTED_REVISION: ${plannedRevisionExpression}\n`));
   assert.ok(workflow.includes(`          EXPECTED_REVISION: ${trustedRevisionExpression}\n`));
+});
+
+test("trusted-base intake routing rejects every new Hookbuilder application without touching candidate code", () => {
+  const workflow = fs.readFileSync(path.join(repositoryRoot, ".github", "workflows", "intake-routing.yml"), "utf8");
+  assert.match(workflow, /^\s*pull_request_target:$/mu);
+  assert.match(workflow, /^\s*branches: \[main, "release\/\*"\]$/mu);
+  assert.match(workflow, /^\s*- "submissions\/requests\/\*\.json"$/mu);
+  assert.match(workflow, /^permissions: \{\}$/mu);
+  assert.match(workflow, /^\s*name: Hookbuilder intake route$/mu);
+  assert.match(workflow, /https:\/\/github\.com\/0xprogrammable\/submit-launch/u);
+  assert.match(workflow, /^\s*exit 1$/mu);
+  assert.match(workflow, /^\s*BASE_REF: \$\{\{ github\.event\.pull_request\.base\.ref \}\}$/mu);
+  assert.match(workflow, /if test "\$BASE_REF" != main/u);
+  assert.match(workflow, /Retarget an allowed legacy continuation to Hookbuilder main/u);
+  assert.doesNotMatch(workflow, /^\s*uses:/mu);
+  assert.doesNotMatch(workflow, /actions\/checkout|head\.sha|github\.token|secrets\.|pull-requests:\s*write/u);
+  assert.doesNotMatch(workflow, /name: (?:Applicant gate|Platform\/profile gate)/u);
+  assert.match(workflow, /never make this path-filtered context required/u);
+  assert.match(workflow, /Applicant gate remains the authoritative merge boundary/u);
+
+  const legacy = workflow.match(/^\s*LEGACY_APPLICANT_PULL_REQUESTS: "([0-9 ]+)"$/mu);
+  assert.ok(legacy, "legacy pull-request list missing");
+  assert.deepEqual(
+    legacy[1].split(" ").map(Number),
+    HOOKBUILDER_LEGACY_APPLICANT_PULL_REQUESTS
+  );
+
+  const codeowners = fs.readFileSync(path.join(repositoryRoot, ".github", "CODEOWNERS"), "utf8");
+  const support = fs.readFileSync(path.join(repositoryRoot, "SUPPORT.md"), "utf8");
+  const publicGuide = fs.readFileSync(path.join(repositoryRoot, "docs", "PUBLIC_GITHUB_PR_BETA.md"), "utf8");
+  assert.match(codeowners, /^\.github\/workflows\/\*\* @0xprogrammable$/mu);
+  assert.match(codeowners, /^scripts\/ci\/\*\* @0xprogrammable$/mu);
+  assert.match(codeowners, /^submissions\/requests\/\*\* @0xprogrammable$/mu);
+  assert.match(support, /0xprogrammable\/submit-launch/u);
+  assert.match(support, /against Hookbuilder `main` only/u);
+  assert.match(publicGuide, /path-filtered check is early feedback/u);
+  assert.match(publicGuide, /rejects Applicant changes targeting `release\/\*`/u);
+  assert.match(publicGuide, /Applicant gate.*authoritative merge boundary/u);
+  assert.equal(HOOKBUILDER_LEGACY_APPLICANT_BASE_BRANCH, "main");
+  for (const pullRequest of HOOKBUILDER_LEGACY_APPLICANT_PULL_REQUESTS) {
+    assert.match(support, new RegExp(`#${pullRequest}(?:,| and|\\.)`, "u"));
+  }
 });
 
 test("raw Git permits only the exact recursive bound-tree enumeration shape", () => {
@@ -378,6 +425,18 @@ test("historical V1 reference-kernel assets remain byte-for-byte frozen", () => 
 
 test("CI deterministically covers both Programmable fee reference kernels", () => {
   const workflow = fs.readFileSync(path.join(repositoryRoot, ".github", "workflows", "ci.yml"), "utf8");
+  const planner = fs.readFileSync(path.join(repositoryRoot, "scripts", "ci", "plan-applicant-fast-lane.mjs"), "utf8");
+  const releaseEvidenceCore = fs.readFileSync(path.join(repositoryRoot, "scripts", "release-evidence-core.mjs"), "utf8");
+  assert.match(workflow, /^\s*branches: \[main, "release\/\*"\]$/mu);
+  assert.match(workflow, /^\s*CI_ROUTING_REF: \$\{\{ github\.event_name == 'pull_request' && github\.base_ref \|\| github\.ref_name \}\}$/mu);
+  assert.doesNotMatch(workflow, /--ref "\$\{\{/u);
+  assert.match(workflow, /Preserve exhaustive checks while a protected base predates routing outputs/u);
+  assert.match(workflow, /ROUTED_REPOSITORY_NODES='\[20,22\]'/u);
+  assert.match(workflow, /ROUTED_REFERENCE_KERNEL_REQUIRED=true/u);
+  assert.match(workflow, /ROUTED_CODEQL_REQUIRED=true/u);
+  assert.match(workflow, /ROUTED_PLATFORM_LANE_REQUIRED=true/u);
+  assert.match(planner, /baseRef: options\.ref/u);
+  assert.match(planner, /HOOKBUILDER_APPLICANT_BASE_INVALID/u);
   const repositoryJobStart = workflow.indexOf("  repository:\n");
   const repositoryJobEnd = workflow.indexOf("\n  reference-kernel:\n", repositoryJobStart);
   assert.ok(repositoryJobStart >= 0 && repositoryJobEnd > repositoryJobStart, "repository job boundary missing");
@@ -386,6 +445,9 @@ test("CI deterministically covers both Programmable fee reference kernels", () =
   assert.match(repositoryJob, /^\s*version: v1\.7\.1$/mu);
   assert.match(repositoryJob, /^\s*mkdir -p -- "\$RUNNER_TEMP\/programmable-foundry-bootstrap"$/mu);
   assert.match(repositoryJob, /^\s*forge build --use 0\.8\.26 --root "\$RUNNER_TEMP\/programmable-foundry-bootstrap"$/mu);
+  assert.match(repositoryJob, /^\s*name: Repository and skill \/ Node \$\{\{ matrix\.node \}\}$/mu);
+  assert.match(repositoryJob, /^\s*if: \$\{\{ needs\.plan\.outputs\.platform_lane_required == 'true' \}\}$/mu);
+  assert.match(repositoryJob, /^\s*node: \$\{\{ fromJSON\(needs\.plan\.outputs\.repository_nodes\) \}\}$/mu);
   const foundryInstall = repositoryJob.indexOf("Install Foundry");
   const compilerPreload = repositoryJob.indexOf("Preload the portable-test Solidity compiler");
   const repositoryGate = repositoryJob.indexOf("run: npm test");
@@ -394,17 +456,17 @@ test("CI deterministically covers both Programmable fee reference kernels", () =
   const kernelJobEnd = workflow.indexOf("\n  reference-kernel-required:\n", kernelJobStart);
   assert.ok(kernelJobStart >= 0 && kernelJobEnd > kernelJobStart, "reference-kernel job boundary missing");
   const kernelJob = workflow.slice(kernelJobStart, kernelJobEnd);
+  assert.match(kernelJob, /^\s*matrix: \$\{\{ fromJSON\(needs\.plan\.outputs\.reference_kernel_matrix\) \}\}$/mu);
+  assert.match(kernelJob, /needs\.plan\.outputs\.platform_lane_required == 'true'/u);
+  assert.match(kernelJob, /needs\.plan\.outputs\.reference_kernel_required == 'true'/u);
+  assert.match(planner, /import \{ RELEASE_KERNELS \} from "\.\.\/release-evidence-core\.mjs"/u);
+  assert.match(planner, /lockfile: `\$\{sourcePath\}\/package-lock\.json`/u);
   const kernelRoot = "skills/programmable-v4-hook-builder/assets/reference-kernels";
   for (const version of ["v1", "v2"]) {
     const workdir = `${kernelRoot}/programmable-volume-fee-${version}`;
     assert.ok(fs.existsSync(path.join(repositoryRoot, workdir, "package-lock.json")), `${version} lockfile missing`);
     assert.ok(fs.existsSync(path.join(repositoryRoot, workdir, "foundry.toml")), `${version} Foundry profile missing`);
-    assert.match(kernelJob, new RegExp(`workdir: ${workdir.replaceAll("/", "\\/")}$`, "mu"), `${version} CI workdir missing`);
-    assert.match(
-      kernelJob,
-      new RegExp(`lockfile: ${workdir.replaceAll("/", "\\/")}\\/package-lock\\.json$`, "mu"),
-      `${version} CI lockfile missing`
-    );
+    assert.match(releaseEvidenceCore, new RegExp(`sourcePath: "${workdir.replaceAll("/", "\\/")}"`, "u"), `${version} release workdir missing`);
   }
 
   assert.match(kernelJob, /^\s*working-directory: \$\{\{ matrix\.workdir \}\}$/mu);
@@ -426,15 +488,44 @@ test("CI deterministically covers both Programmable fee reference kernels", () =
   assert.equal([...workflow.matchAll(/^\s*run: npm ci --ignore-scripts$/gmu)].length, 2);
 
   const requiredJobStart = workflow.indexOf("  reference-kernel-required:\n", kernelJobEnd);
-  const requiredJobEnd = workflow.indexOf("\n  codeql:\n", requiredJobStart);
+  const requiredJobEnd = workflow.indexOf("\n  security-static:\n", requiredJobStart);
   assert.ok(requiredJobStart >= 0 && requiredJobEnd > requiredJobStart, "reference-kernel required-check aggregator boundary missing");
   const requiredJob = workflow.slice(requiredJobStart, requiredJobEnd);
-  assert.match(requiredJob, /^\s*name: Internal \/ reference fee kernel aggregate$/mu);
+  assert.match(requiredJob, /^\s*name: Reference fee kernel$/mu);
   assert.match(requiredJob, /^\s*needs: \[plan, reference-kernel\]$/mu);
-  assert.match(requiredJob, /^\s*if: \$\{\{ always\(\) && \(needs\.plan\.outputs\.mode == 'platform' \|\| needs\.plan\.outputs\.mode == 'mixed'\) \}\}$/mu);
+  assert.match(requiredJob, /^\s*if: \$\{\{ always\(\) && needs\.plan\.outputs\.platform_lane_required == 'true' \}\}$/mu);
+  assert.match(requiredJob, /^\s*REQUIRED: \$\{\{ needs\.plan\.outputs\.reference_kernel_required \}\}$/mu);
   assert.match(requiredJob, /^\s*MATRIX_RESULT: \$\{\{ needs\.reference-kernel\.result \}\}$/mu);
-  assert.match(requiredJob, /^\s*run: test "\$MATRIX_RESULT" = success$/mu);
-  assert.equal([...workflow.matchAll(/^\s*name: Internal \/ reference fee kernel aggregate$/gmu)].length, 1);
+  assert.match(requiredJob, /if test "\$REQUIRED" = true; then[\s\S]*test "\$MATRIX_RESULT" = success[\s\S]*test "\$MATRIX_RESULT" = skipped/u);
+  assert.equal([...workflow.matchAll(/^\s*name: Reference fee kernel$/gmu)].length, 1);
+
+  const securityJobStart = requiredJobEnd + 1;
+  const uploadJobStart = workflow.indexOf("\n  codeql-upload:\n", securityJobStart);
+  const codeqlJobStart = workflow.indexOf("\n  codeql:\n", uploadJobStart);
+  const platformGateStart = workflow.indexOf("\n  platform-profile-gate:\n", codeqlJobStart);
+  assert.ok(uploadJobStart > securityJobStart && codeqlJobStart > uploadJobStart && platformGateStart > codeqlJobStart);
+  const securityJob = workflow.slice(securityJobStart, uploadJobStart);
+  const uploadJob = workflow.slice(uploadJobStart, codeqlJobStart);
+  const codeqlJob = workflow.slice(codeqlJobStart, platformGateStart);
+  assert.match(securityJob, /^\s*name: Internal \/ static security$/mu);
+  assert.match(securityJob, /needs\.plan\.outputs\.platform_lane_required == 'true'/u);
+  assert.match(securityJob, /github\.event_name != 'push'/u);
+  assert.match(securityJob, /^\s*contents: read$/mu);
+  assert.doesNotMatch(securityJob, /security-events: write/u);
+  assert.match(securityJob, /^\s*persist-credentials: false$/mu);
+  assert.match(securityJob, /^\s*upload: never$/mu);
+  assert.match(uploadJob, /github\.event_name == 'push'/u);
+  assert.match(uploadJob, /needs\.plan\.outputs\.platform_lane_required == 'true'/u);
+  assert.match(uploadJob, /^\s*security-events: write$/mu);
+  assert.match(uploadJob, /^\s*persist-credentials: false$/mu);
+  assert.match(codeqlJob, /^\s*name: CodeQL$/mu);
+  assert.match(codeqlJob, /^\s*needs: \[plan, applicant-gate, security-static, codeql-upload\]$/mu);
+  assert.match(codeqlJob, /^\s*permissions: \{\}$/mu);
+  assert.match(codeqlJob, /needs\.plan\.result != 'success'/u);
+  assert.match(codeqlJob, /needs\.applicant-gate\.result != 'success'/u);
+  assert.match(codeqlJob, /test "\$PLAN_RESULT" = success/u);
+  assert.match(codeqlJob, /test "\$APPLICANT_GATE_RESULT" = success/u);
+  assert.match(codeqlJob, /Aggregate the routed static-security lane/u);
 });
 
 test("relative Markdown links resolve inside the repository", () => {

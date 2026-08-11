@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import {
   ApplicantFastLaneError,
   classifyChangedPaths,
+  classifyPlatformChecks,
   fetchJsonWithRetry,
   readResponseBodyBounded
 } from "../scripts/ci/applicant-fast-lane-core.mjs";
@@ -25,6 +26,7 @@ import {
   verifyApplicantRouteAcceptanceRecordCore
 } from "../scripts/applicant-route-acceptance-core.mjs";
 import {
+  HOOKBUILDER_LEGACY_APPLICANT_BASE_BRANCH,
   HOOKBUILDER_LEGACY_APPLICANT_PULL_REQUESTS,
   SUBMIT_LAUNCH_INTAKE_CONTRACT,
   classifyHookbuilderApplicantPullRequest
@@ -188,6 +190,166 @@ test("the complete Submit Launch candidate is one platform change", () => {
   assert.deepEqual(plan.requestPaths, []);
 });
 
+test("platform CI routing is narrow for documentation and fail-closed for executable paths", () => {
+  const documentation = classifyPlatformChecks({
+    event: "pull_request",
+    ref: "main",
+    mode: "platform",
+    paths: ["README.md", "docs/ARCHITECTURE.md"]
+  });
+  assert.deepEqual(documentation.repositoryNodes, [22]);
+  assert.deepEqual(documentation.referenceKernels, []);
+  assert.equal(documentation.codeqlRequired, false);
+  assert.equal(documentation.fullNodeCompatibility, false);
+  assert.equal(documentation.platformLaneRequired, true);
+
+  const executable = classifyPlatformChecks({
+    event: "pull_request",
+    ref: "main",
+    mode: "platform",
+    paths: ["scripts/verify-repository.mjs"]
+  });
+  assert.deepEqual(executable.repositoryNodes, [20, 22]);
+  assert.deepEqual(executable.referenceKernels, ["v1", "v2"]);
+  assert.equal(executable.codeqlRequired, true);
+  assert.equal(executable.fullNodeCompatibility, true);
+  assert.equal(executable.platformLaneRequired, true);
+
+  const unknown = classifyPlatformChecks({
+    event: "pull_request",
+    ref: "main",
+    mode: "platform",
+    paths: ["new-domain/value.bin"]
+  });
+  assert.deepEqual(unknown.repositoryNodes, [20, 22]);
+  assert.deepEqual(unknown.referenceKernels, []);
+  assert.equal(unknown.codeqlRequired, true);
+  assert.equal(unknown.fullNodeCompatibility, true);
+  assert.equal(unknown.platformLaneRequired, true);
+});
+
+test("platform CI routing selects only relevant kernels on pull requests", () => {
+  const v1 = classifyPlatformChecks({
+    event: "pull_request",
+    ref: "main",
+    mode: "platform",
+    paths: [
+      "skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v1/src/ProgrammableVolumeFeeHook.sol"
+    ]
+  });
+  assert.deepEqual(v1.repositoryNodes, [20, 22]);
+  assert.deepEqual(v1.referenceKernels, ["v1"]);
+  assert.equal(v1.codeqlRequired, true);
+
+  const v2Mirror = classifyPlatformChecks({
+    event: "pull_request",
+    ref: "main",
+    mode: "platform",
+    paths: [
+      "plugins/programmable-v4-builder/skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v2/foundry.toml"
+    ]
+  });
+  assert.deepEqual(v2Mirror.referenceKernels, ["v2"]);
+
+  const sharedControl = classifyPlatformChecks({
+    event: "pull_request",
+    ref: "main",
+    mode: "platform",
+    paths: [".github/workflows/ci.yml"]
+  });
+  assert.deepEqual(sharedControl.referenceKernels, ["v1", "v2"]);
+
+  const releaseControl = classifyPlatformChecks({
+    event: "pull_request",
+    ref: "main",
+    mode: "platform",
+    paths: ["scripts/prepare-release-candidate.mjs"]
+  });
+  assert.deepEqual(releaseControl.referenceKernels, ["v1", "v2"]);
+
+  const codeowners = classifyPlatformChecks({
+    event: "pull_request",
+    ref: "main",
+    mode: "platform",
+    paths: [".github/CODEOWNERS"]
+  });
+  assert.deepEqual(codeowners.repositoryNodes, [20, 22]);
+  assert.equal(codeowners.codeqlRequired, true);
+});
+
+test("protected and release CI routing retains the exhaustive compatibility lanes", () => {
+  for (const input of [
+    { event: "push", ref: "main" },
+    { event: "push", ref: "release/0.5" },
+    { event: "workflow_dispatch", ref: "feature/manual-check" },
+    { event: "pull_request", ref: "release/0.5" }
+  ]) {
+    const routing = classifyPlatformChecks({
+      ...input,
+      mode: "platform",
+      paths: ["README.md"]
+    });
+    assert.deepEqual(routing.repositoryNodes, [20, 22], `${input.event}:${input.ref}`);
+    assert.deepEqual(routing.referenceKernels, ["v1", "v2"], `${input.event}:${input.ref}`);
+    assert.equal(routing.codeqlRequired, true, `${input.event}:${input.ref}`);
+    assert.equal(routing.fullNodeCompatibility, true, `${input.event}:${input.ref}`);
+    assert.equal(routing.platformLaneRequired, true, `${input.event}:${input.ref}`);
+  }
+});
+
+test("Applicant-only release and protected-branch runs retain every platform context", () => {
+  const applicantMainPullRequest = classifyPlatformChecks({
+    event: "pull_request",
+    ref: "main",
+    mode: "applicant",
+    paths: [requestPath]
+  });
+  assert.equal(applicantMainPullRequest.platformLaneRequired, false);
+  assert.deepEqual(applicantMainPullRequest.referenceKernels, []);
+
+  for (const input of [
+    { event: "pull_request", ref: "release/0.5" },
+    { event: "push", ref: "main" },
+    { event: "push", ref: "release/0.5" }
+  ]) {
+    const routing = classifyPlatformChecks({
+      ...input,
+      mode: "applicant",
+      paths: [requestPath]
+    });
+    assert.equal(routing.platformLaneRequired, true, `${input.event}:${input.ref}`);
+    assert.deepEqual(routing.repositoryNodes, [20, 22], `${input.event}:${input.ref}`);
+    assert.deepEqual(routing.referenceKernels, ["v1", "v2"], `${input.event}:${input.ref}`);
+    assert.equal(routing.codeqlRequired, true, `${input.event}:${input.ref}`);
+  }
+});
+
+test("CI routing excludes applicant request data and rejects non-canonical inputs", () => {
+  const mixed = classifyPlatformChecks({
+    event: "pull_request",
+    ref: "main",
+    mode: "mixed",
+    paths: [requestPath, "submissions/requests/README.md"]
+  });
+  assert.deepEqual(mixed.platformPaths, ["submissions/requests/README.md"]);
+  assert.deepEqual(mixed.repositoryNodes, [22]);
+  assert.equal(mixed.codeqlRequired, false);
+  assert.equal(mixed.platformLaneRequired, true);
+
+  for (const ref of ["", "/main", "release/", "release//v1", "release/../main"]) {
+    assert.throws(
+      () => classifyPlatformChecks({ event: "pull_request", ref, mode: "platform", paths: ["README.md"] }),
+      (error) => error instanceof ApplicantFastLaneError && error.code === "CI_ROUTING_INPUT_INVALID"
+    );
+  }
+  for (const repositoryPath of ["", "../README.md", "docs//README.md", "/README.md", "docs\\README.md"]) {
+    assert.throws(
+      () => classifyPlatformChecks({ event: "pull_request", ref: "main", mode: "platform", paths: [repositoryPath] }),
+      (error) => error instanceof ApplicantFastLaneError && error.code === "CI_ROUTING_INPUT_INVALID"
+    );
+  }
+});
+
 test("trusted planner accepts the transition pull-request argument without changing its plan", () => {
   const head = childProcess.spawnSync("git", ["rev-parse", "HEAD"], {
     cwd: repositoryRoot,
@@ -198,6 +360,7 @@ test("trusted planner accepts the transition pull-request argument without chang
     const args = [
       "scripts/ci/plan-applicant-fast-lane.mjs",
       "--event", event,
+      "--ref", event === "pull_request" ? "main" : event === "push" ? "main" : "feature/manual-check",
       "--head", head
     ];
     if (event === "pull_request" || event === "push") args.push("--base", head);
@@ -252,11 +415,93 @@ test("trusted planner accepts the transition pull-request argument without chang
   assert.match(unsafe.stderr, /--pull-request is outside the safe integer range/u);
 });
 
+test("trusted planner receives its routing ref through the environment without shell interpolation", () => {
+  const head = childProcess.spawnSync("git", ["rev-parse", "HEAD"], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    shell: false
+  }).stdout.trim();
+  const args = [
+    "scripts/ci/plan-applicant-fast-lane.mjs",
+    "--event", "pull_request",
+    "--base", head,
+    "--head", head,
+    "--pull-request", "27"
+  ];
+  const environmentOnly = childProcess.spawnSync(process.execPath, args, {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    shell: false,
+    env: { ...process.env, CI_ROUTING_REF: "main" }
+  });
+  assert.equal(environmentOnly.status, 0, environmentOnly.stderr);
+  assert.equal(JSON.parse(environmentOnly.stdout).ref, "main");
+
+  const mismatch = childProcess.spawnSync(process.execPath, [...args, "--ref", "release/0.5"], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    shell: false,
+    env: { ...process.env, CI_ROUTING_REF: "main" }
+  });
+  assert.notEqual(mismatch.status, 0);
+  assert.match(mismatch.stderr, /--ref does not match CI_ROUTING_REF/u);
+});
+
+test("trusted planner rejects legacy Applicant paths retargeted to release/*", () => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-fast-lane-fixture-"));
+  const runGit = (args) => childProcess.execFileSync("git", args, {
+    cwd: fixtureRoot,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"]
+  }).trim();
+  try {
+    runGit(["init", "--quiet"]);
+    runGit(["config", "user.email", "tests@example.invalid"]);
+    runGit(["config", "user.name", "Fast lane tests"]);
+    fs.writeFileSync(path.join(fixtureRoot, "README.md"), "fixture\n");
+    runGit(["add", "README.md"]);
+    runGit(["commit", "--quiet", "-m", "base"]);
+    const applicantBase = runGit(["rev-parse", "HEAD"]);
+    fs.mkdirSync(path.join(fixtureRoot, "submissions", "requests"), { recursive: true });
+    fs.writeFileSync(path.join(fixtureRoot, requestPath), "{}\n");
+    runGit(["add", requestPath]);
+    runGit(["commit", "--quiet", "-m", "legacy applicant"]);
+    const applicantHead = runGit(["rev-parse", "HEAD"]);
+    const args = [
+      path.join(repositoryRoot, "scripts/ci/plan-applicant-fast-lane.mjs"),
+      "--event", "pull_request",
+      "--base", applicantBase,
+      "--head", applicantHead,
+      "--pull-request", "10"
+    ];
+    const main = childProcess.spawnSync(process.execPath, [...args, "--ref", "main"], {
+      cwd: fixtureRoot,
+      encoding: "utf8",
+      shell: false,
+      env: { ...process.env, CI_ROUTING_REF: "main" }
+    });
+    assert.equal(main.status, 0, main.stderr);
+    assert.equal(JSON.parse(main.stdout).mode, "applicant");
+
+    const release = childProcess.spawnSync(process.execPath, [...args, "--ref", "release/0.5"], {
+      cwd: fixtureRoot,
+      encoding: "utf8",
+      shell: false,
+      env: { ...process.env, CI_ROUTING_REF: "release/0.5" }
+    });
+    assert.notEqual(release.status, 0);
+    assert.match(release.stderr, /HOOKBUILDER_APPLICANT_BASE_INVALID/u);
+  } finally {
+    fs.rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
 test("Hookbuilder accepts only the frozen legacy Applicant pull requests and redirects every new one", () => {
   assert.equal(SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.slug, "0xprogrammable/submit-launch");
   assert.equal(SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.numericId, "1320171831");
   assert.equal(SUBMIT_LAUNCH_INTAKE_CONTRACT.schemaVersion, 2);
   assert.equal(SUBMIT_LAUNCH_INTAKE_CONTRACT.draftOnly, true);
+  assert.equal(HOOKBUILDER_LEGACY_APPLICANT_BASE_BRANCH, "main");
   assert.deepEqual(
     HOOKBUILDER_LEGACY_APPLICANT_PULL_REQUESTS,
     [10, 11, 12, 14, 15, 18, 19, 20]
@@ -265,16 +510,30 @@ test("Hookbuilder accepts only the frozen legacy Applicant pull requests and red
     assert.equal(classifyHookbuilderApplicantPullRequest({
       event: "pull_request",
       pullRequest,
-      requestPaths: [requestPath]
+      requestPaths: [requestPath],
+      baseRef: "main"
     }), "legacy-continuation");
   }
   for (const pullRequest of [1, 9, 13, 16, 17, 21, 999]) {
     assert.equal(classifyHookbuilderApplicantPullRequest({
       event: "pull_request",
       pullRequest,
-      requestPaths: [requestPath]
+      requestPaths: [requestPath],
+      baseRef: "main"
     }), "submit-launch-required");
   }
+  assert.equal(classifyHookbuilderApplicantPullRequest({
+    event: "pull_request",
+    pullRequest: 10,
+    requestPaths: [requestPath],
+    baseRef: "release/0.5"
+  }), "hookbuilder-base-invalid");
+  assert.equal(classifyHookbuilderApplicantPullRequest({
+    event: "pull_request",
+    pullRequest: 999,
+    requestPaths: [requestPath],
+    baseRef: "release/0.5"
+  }), "hookbuilder-base-invalid");
   assert.equal(classifyHookbuilderApplicantPullRequest({
     event: "push",
     pullRequest: null,
