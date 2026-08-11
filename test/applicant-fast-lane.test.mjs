@@ -51,6 +51,63 @@ test("only added or modified canonical request files use the applicant lane", ()
   ]).mode, "mixed");
 });
 
+test("trusted planner accepts the transition pull-request argument without changing its plan", () => {
+  const head = childProcess.spawnSync("git", ["rev-parse", "HEAD"], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    shell: false
+  }).stdout.trim();
+  const runPlanner = ({ event, pullRequest }) => {
+    const args = [
+      "scripts/ci/plan-applicant-fast-lane.mjs",
+      "--event", event,
+      "--head", head
+    ];
+    if (event === "pull_request" || event === "push") args.push("--base", head);
+    if (pullRequest !== undefined) args.push("--pull-request", pullRequest);
+    return childProcess.spawnSync(process.execPath, args, {
+      cwd: repositoryRoot,
+      encoding: "utf8",
+      shell: false
+    });
+  };
+
+  const legacyPullRequest = runPlanner({ event: "pull_request" });
+  const numberedPullRequest = runPlanner({ event: "pull_request", pullRequest: "27" });
+  assert.equal(legacyPullRequest.status, 0, legacyPullRequest.stderr);
+  assert.equal(numberedPullRequest.status, 0, numberedPullRequest.stderr);
+  assert.equal(numberedPullRequest.stdout, legacyPullRequest.stdout);
+  const largePullRequest = runPlanner({ event: "pull_request", pullRequest: "10000000000" });
+  assert.equal(largePullRequest.status, 0, largePullRequest.stderr);
+  assert.equal(largePullRequest.stdout, legacyPullRequest.stdout);
+
+  for (const event of ["push", "workflow_dispatch"]) {
+    const absent = runPlanner({ event });
+    const zero = runPlanner({ event, pullRequest: "0" });
+    assert.equal(absent.status, 0, absent.stderr);
+    assert.equal(zero.status, 0, zero.stderr);
+    assert.equal(zero.stdout, absent.stdout);
+    const positive = runPlanner({ event, pullRequest: "27" });
+    assert.notEqual(positive.status, 0);
+    assert.match(positive.stderr, /--pull-request must be 0 or omitted outside pull requests/u);
+  }
+
+  const zeroPullRequest = runPlanner({ event: "pull_request", pullRequest: "0" });
+  assert.notEqual(zeroPullRequest.status, 0);
+  assert.match(zeroPullRequest.stderr, /--pull-request must be a positive integer for pull requests/u);
+  for (const value of ["-1", "01", "1.0"]) {
+    const malformed = runPlanner({ event: "pull_request", pullRequest: value });
+    assert.notEqual(malformed.status, 0);
+    assert.match(malformed.stderr, /--pull-request must be a canonical positive integer or 0/u);
+    const malformedPush = runPlanner({ event: "push", pullRequest: value });
+    assert.notEqual(malformedPush.status, 0);
+    assert.match(malformedPush.stderr, /--pull-request must be a canonical positive integer or 0/u);
+  }
+  const unsafe = runPlanner({ event: "pull_request", pullRequest: "9007199254740992" });
+  assert.notEqual(unsafe.status, 0);
+  assert.match(unsafe.stderr, /--pull-request is outside the safe integer range/u);
+});
+
 test("canonical direct-graph catalog is positive while exact Shards stays disabled", () => {
   const direct = assessRouteCompatibility(
     { routeId: "custom-graph", routeVersion: "1.0.0", chainId: "1" },
