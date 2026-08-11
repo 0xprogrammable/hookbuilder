@@ -2,7 +2,7 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
-## 0.4.1 - 2026-08-11
+## 0.4.2 - 2026-08-11
 
 ### Changed
 
@@ -17,6 +17,11 @@ All notable Builder changes are recorded here. Historical releases remain immuta
 - Submission standard `1.5.0`, application package shape, fee policy `1.1.0`, and every historical release and
   snapshot record.
 - The boundary that Hookbuilder cannot approve, merge, deploy, sign, launch, or mark a draft ready for review.
+
+## 0.4.1 - 2026-08-11
+
+This tag was withdrawn from use because the publication tool created it from the default branch instead of the frozen
+maintenance commit. It must not be installed or used as submission evidence.
 
 ## 0.4.0 - 2026-08-02
 

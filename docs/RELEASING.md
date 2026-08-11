@@ -39,21 +39,22 @@ After the exact candidate is committed, pushed and authorized:
 
 ```bash
 release_artifacts=$(mktemp -d /private/tmp/programmable-v4-builder-release.XXXXXX)
-npm run release:artifacts -- --tag v0.4.1 --output-dir "$release_artifacts"
-gh skill publish --tag v0.4.1
-gh release upload v0.4.1 "$release_artifacts"/*
+exact_commit=$(git rev-parse HEAD^{commit})
+npm run release:artifacts -- --tag v0.4.2 --output-dir "$release_artifacts"
+gh release create v0.4.2 --target "$exact_commit" --title "v0.4.2" --generate-notes
+gh release upload v0.4.2 "$release_artifacts"/*
 ```
 
 The artifact generator refuses a dirty worktree and writes outside the repository. It produces a deterministic skill
-archive, file-level SHA-256 manifest, SPDX 2.3 SBOM, release-state receipt and `SHA256SUMS`. The publication command may
-add the `agent-skills` repository topic and create a GitHub release. Neither command proves that CI, marketplace
-discovery, a platform deployment or any project built with the skill is live; verify each state separately.
+archive, file-level SHA-256 manifest, SPDX 2.3 SBOM, release-state receipt and `SHA256SUMS`. The release command binds
+the tag to the exact frozen commit instead of assuming the repository's default branch. Neither command proves that CI,
+marketplace discovery, a platform deployment or any project built with the skill is live; verify each state separately.
 
 ## After publication
 
 - Resolve the release and tag to the intended commit.
 - Verify GitHub release assets, checksums and source archive.
-- Install `programmable-v4-hook-builder@v0.4.1` into clean temporary targets for supported hosts.
+- Install `programmable-v4-hook-builder@v0.4.2` into clean temporary targets for supported hosts.
 - Run the installed package verifier and one ordinary plus one novel dry-run journey.
 - Confirm repository topics, README links, CI, security reporting and release visibility.
 - Record exact failures or unavailable external evidence without weakening the release claim.

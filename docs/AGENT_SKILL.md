@@ -82,7 +82,7 @@ First preview the protected Builder release tag:
 
 ```bash
 gh skill preview 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.4.1
+  programmable-v4-hook-builder@v0.4.2
 ```
 
 Then install that same release for your agent. User scope is the beginner default because it keeps the project
@@ -93,7 +93,7 @@ gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.4.1
+  --pin v0.4.2
 ```
 
 Replace `codex` with `claude-code` or `github-copilot` when appropriate. Use `--scope project` only when the project
@@ -102,7 +102,7 @@ untracked project-scoped installation makes the worktree dirty and correctly blo
 
 Builder `v0.1.1` remains available only to reproduce pre-fee legacy records, `v0.2.0` preserves the first fee-policy
 release, and `v0.2.1` preserves the trusted-intake correction for declared Solidity contract paths. New applications
-use `v0.4.1`, submission standard `1.5.0`, and fee policy `1.1.0`, including open starter templates,
+use `v0.4.2`, submission standard `1.5.0`, and fee policy `1.1.0`, including open starter templates,
 provider-by-provider evidence, GitHub application status, separate design and implementation readiness, and v4 SDK
 quote/router safety checks.
 
