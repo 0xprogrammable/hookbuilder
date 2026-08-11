@@ -475,6 +475,48 @@ test("the gh command transport rejects malicious or ambiguous output", async (t)
   });
 });
 
+test("the gh command transport preserves the exact multiline application commit message", async () => {
+  const message = `chore(builder): submit ${APPLICATION_ID} revision 1\n\nPackage: sha256:${"8".repeat(64)}`;
+  let invocation = null;
+  const response = rawCreatedCommit({ message });
+  const transport = createGhTransport({
+    runner: async (value) => {
+      invocation = value;
+      return { status: 0, stdout: canonicalJson(response), stderr: "" };
+    }
+  });
+
+  assert.deepEqual(await transport.createCommit("builder/submit-launch", {
+    message,
+    tree: FORK_TREE,
+    parents: [CENTRAL_COMMIT]
+  }), response);
+  assert.equal(invocation.command, "gh");
+  assert.ok(invocation.args.includes("repos/builder/submit-launch/git/commits"));
+  assert.deepEqual(JSON.parse(invocation.stdin), {
+    message,
+    parents: [CENTRAL_COMMIT],
+    tree: FORK_TREE
+  });
+});
+
+test("the gh command transport still rejects carriage returns in commit messages before any write", async () => {
+  let calls = 0;
+  const transport = createGhTransport({
+    runner: async () => {
+      calls += 1;
+      return { status: 0, stdout: "{}", stderr: "" };
+    }
+  });
+
+  await assert.rejects(() => transport.createCommit("builder/submit-launch", {
+    message: "subject\r\n\r\nbody",
+    tree: FORK_TREE,
+    parents: [CENTRAL_COMMIT]
+  }), errorCode("GITHUB_OUTPUT_INVALID"));
+  assert.equal(calls, 0);
+});
+
 test("receipts are bounded, idempotent, and cannot enter the source repo", (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-github-receipt-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -851,12 +893,16 @@ class FakeTransport {
     return { sha: FORK_TREE };
   }
 
-  async createCommit(_repository, { tree }) {
+  async createCommit(_repository, { message, tree, parents }) {
     this.writeCalls.push("createCommit");
     assert.equal(tree, FORK_TREE);
+    assert.match(message, /^chore\(builder\): (?:submit|update) /u);
+    assert.match(message, /\n\nPackage: sha256:[0-9a-f]{64}$/u);
+    assert.ok(Array.isArray(parents));
+    assert.ok(parents.length >= 1);
     const commit = this.branchCommit === null ? CREATED_COMMIT : UPDATED_COMMIT;
     this.commitFiles.set(commit, this.pendingFiles);
-    return { sha: commit, tree: { sha: FORK_TREE } };
+    return rawCreatedCommit({ sha: commit, message, parents });
   }
 
   async createRef(_repository, { branch, commit }) {
@@ -946,6 +992,46 @@ function contentResponse(filePath, content) {
     content: bytes.toString("base64"),
     size: bytes.length,
     sha: "a".repeat(40)
+  };
+}
+
+function rawCreatedCommit({
+  sha = CREATED_COMMIT,
+  message,
+  parents = [CENTRAL_COMMIT]
+}) {
+  return {
+    sha,
+    node_id: "C_kwDOBul-99oAKDY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2",
+    url: `https://api.github.com/repos/builder/submit-launch/git/commits/${sha}`,
+    html_url: `https://github.com/builder/submit-launch/commit/${sha}`,
+    author: {
+      date: "2026-08-11T14:29:45Z",
+      email: "builder@users.noreply.github.com",
+      name: "builder"
+    },
+    committer: {
+      date: "2026-08-11T14:29:45Z",
+      email: "builder@users.noreply.github.com",
+      name: "builder"
+    },
+    message,
+    tree: {
+      sha: FORK_TREE,
+      url: `https://api.github.com/repos/builder/submit-launch/git/trees/${FORK_TREE}`
+    },
+    parents: parents.map((parent) => ({
+      sha: parent,
+      url: `https://api.github.com/repos/builder/submit-launch/git/commits/${parent}`,
+      html_url: `https://github.com/builder/submit-launch/commit/${parent}`
+    })),
+    verification: {
+      verified: false,
+      reason: "unsigned",
+      signature: null,
+      payload: null,
+      verified_at: null
+    }
   };
 }
 

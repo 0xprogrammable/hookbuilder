@@ -393,7 +393,7 @@ export function createGhTransport({ runner = defaultCommandRunner } = {}) {
         method: "POST",
         endpoint: `repos/${apiSlug(repository)}/git/commits`,
         body: {
-          message: requireBoundedText(message, "commit message", 500),
+          message: requireBoundedMultilineText(message, "commit message", 500),
           tree: apiCommit(tree),
           parents: parents.map(apiCommit)
         }
