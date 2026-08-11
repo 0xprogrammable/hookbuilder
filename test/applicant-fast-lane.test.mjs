@@ -448,32 +448,52 @@ test("trusted planner receives its routing ref through the environment without s
 });
 
 test("trusted planner rejects legacy Applicant paths retargeted to release/*", () => {
-  const applicantHead = "279dd2fc2ea8c488943ca4e60ca889cb00bab40e";
-  const applicantBase = "71fa79ac3d4a31104f8f43eb6fcc7cdfd5886e28";
-  const args = [
-    "scripts/ci/plan-applicant-fast-lane.mjs",
-    "--event", "pull_request",
-    "--base", applicantBase,
-    "--head", applicantHead,
-    "--pull-request", "10"
-  ];
-  const main = childProcess.spawnSync(process.execPath, [...args, "--ref", "main"], {
-    cwd: repositoryRoot,
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-fast-lane-fixture-"));
+  const runGit = (args) => childProcess.execFileSync("git", args, {
+    cwd: fixtureRoot,
     encoding: "utf8",
-    shell: false,
-    env: { ...process.env, CI_ROUTING_REF: "main" }
-  });
-  assert.equal(main.status, 0, main.stderr);
-  assert.equal(JSON.parse(main.stdout).mode, "applicant");
+    stdio: ["ignore", "pipe", "pipe"]
+  }).trim();
+  try {
+    runGit(["init", "--quiet"]);
+    runGit(["config", "user.email", "tests@example.invalid"]);
+    runGit(["config", "user.name", "Fast lane tests"]);
+    fs.writeFileSync(path.join(fixtureRoot, "README.md"), "fixture\n");
+    runGit(["add", "README.md"]);
+    runGit(["commit", "--quiet", "-m", "base"]);
+    const applicantBase = runGit(["rev-parse", "HEAD"]);
+    fs.mkdirSync(path.join(fixtureRoot, "submissions", "requests"), { recursive: true });
+    fs.writeFileSync(path.join(fixtureRoot, requestPath), "{}\n");
+    runGit(["add", requestPath]);
+    runGit(["commit", "--quiet", "-m", "legacy applicant"]);
+    const applicantHead = runGit(["rev-parse", "HEAD"]);
+    const args = [
+      path.join(repositoryRoot, "scripts/ci/plan-applicant-fast-lane.mjs"),
+      "--event", "pull_request",
+      "--base", applicantBase,
+      "--head", applicantHead,
+      "--pull-request", "10"
+    ];
+    const main = childProcess.spawnSync(process.execPath, [...args, "--ref", "main"], {
+      cwd: fixtureRoot,
+      encoding: "utf8",
+      shell: false,
+      env: { ...process.env, CI_ROUTING_REF: "main" }
+    });
+    assert.equal(main.status, 0, main.stderr);
+    assert.equal(JSON.parse(main.stdout).mode, "applicant");
 
-  const release = childProcess.spawnSync(process.execPath, [...args, "--ref", "release/0.5"], {
-    cwd: repositoryRoot,
-    encoding: "utf8",
-    shell: false,
-    env: { ...process.env, CI_ROUTING_REF: "release/0.5" }
-  });
-  assert.notEqual(release.status, 0);
-  assert.match(release.stderr, /HOOKBUILDER_APPLICANT_BASE_INVALID/u);
+    const release = childProcess.spawnSync(process.execPath, [...args, "--ref", "release/0.5"], {
+      cwd: fixtureRoot,
+      encoding: "utf8",
+      shell: false,
+      env: { ...process.env, CI_ROUTING_REF: "release/0.5" }
+    });
+    assert.notEqual(release.status, 0);
+    assert.match(release.stderr, /HOOKBUILDER_APPLICANT_BASE_INVALID/u);
+  } finally {
+    fs.rmSync(fixtureRoot, { recursive: true, force: true });
+  }
 });
 
 test("Hookbuilder accepts only the frozen legacy Applicant pull requests and redirects every new one", () => {
