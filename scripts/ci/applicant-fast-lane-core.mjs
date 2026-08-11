@@ -7,6 +7,7 @@ import {
 
 export const APPLICANT_FAST_LANE_SCHEMA_VERSION = "1.0.0";
 export const APPLICANT_REQUEST_PATH = /^submissions\/requests\/[1-9][0-9]*-[a-z0-9]+(?:-[a-z0-9]+)*\.json$/u;
+const APPLICANT_REQUESTS_README_PATH = "submissions/requests/README.md";
 const APPLICANT_SOURCE_PATH = /^[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/u;
 export const PLATFORM_ATTESTATION_KIND = "programmable-platform-profile-release-attestation";
 export const PLATFORM_ATTESTATION_SCHEMA_VERSION = "1.0.0";
@@ -52,6 +53,7 @@ export function classifyChangedPaths(entries) {
   const paths = normalized.map(({ path: repositoryPath }) => repositoryPath);
   const invalidApplicantChange = normalized.some(({ status, path: repositoryPath }) => (
     repositoryPath.startsWith("submissions/requests/")
+    && !(status === "M" && repositoryPath === APPLICANT_REQUESTS_README_PATH)
     && ((status !== "A" && status !== "M") || !APPLICANT_REQUEST_PATH.test(repositoryPath))
   ));
   const requestPaths = normalized
