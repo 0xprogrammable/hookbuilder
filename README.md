@@ -16,7 +16,7 @@
   <a href="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-F8F0E9?labelColor=010103"></a>
   <a href="https://agentskills.io/specification"><img alt="Agent Skills compatible" src="https://img.shields.io/badge/Agent%20Skills-compatible-F8F0E9?labelColor=010103"></a>
-  <a href="CHANGELOG.md"><img alt="Current published release 0.4.0" src="https://img.shields.io/badge/published-v0.4.0-F8F0E9?labelColor=010103"></a>
+  <a href="CHANGELOG.md"><img alt="Current published release 0.4.2" src="https://img.shields.io/badge/published-v0.4.2-F8F0E9?labelColor=010103"></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 > [!IMPORTANT]
 > **Release status**
 >
-> `v0.4.0` is the latest published release. `main` contains the public `v0.5.1` development source. Its
+> `v0.4.2` is the latest published release. `main` contains the public `v0.5.1` development source. Its
 > integration on `main`, package version, or green CI does not make it a stable release. The Applicant beta on
 > `main` can prepare a review request; it does not approve, deploy, route, register, or launch a project.
 
@@ -47,7 +47,7 @@ Preview the exact published Skill before installing it:
 
 ```bash
 gh skill preview 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.4.0
+  programmable-v4-hook-builder@v0.4.2
 ```
 
 Install the same immutable release for Codex:
@@ -57,7 +57,7 @@ gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.4.0
+  --pin v0.4.2
 ```
 
 GitHub's `gh skill` commands are in preview. Clean package placement has been checked for Codex, Claude Code, and
@@ -73,7 +73,7 @@ node scripts/verify-skill.mjs --installed
 Then give your agent one clear request:
 
 ```text
-Use the Programmable v4 Builder skill. Start from this idea or repository: <idea or public GitHub URL>. Preserve the intended product, choose the smallest complete architecture, run the available checks, and freeze the exact public source revision and evidence needed for review. Ask before any external write.
+Use the Programmable v4 Builder skill. Build and check this project, then prepare its exact application for Submit a Launch. Submit the draft only when I explicitly authorize the GitHub write: <idea or public GitHub URL>
 ```
 
 ## What the Builder does
@@ -96,7 +96,7 @@ flowchart TD
   B --> C["Architecture and repository plan"]
   C --> D["Implementation and local checks"]
   D --> E["Exact source revision and evidence"]
-  E --> R["Hookbuilder Applicant request"]
+  E --> R["Submit a Launch application"]
   R --> F["Programmable maintainer review"]
   F -. "separate authority and evidence" .-> G["Launch authorization"]
   G -. "separate authority and evidence" .-> H["Deployment and public availability"]
@@ -110,38 +110,20 @@ node skills/programmable-v4-hook-builder/scripts/cli.mjs context --mode explore
 
 ## Submit a hook for review
 
-To use the Applicant 1.1 beta through the Skill, install the exact public beta commit. This commit pin is not a stable
-release; `v0.4.0` remains the latest published release:
+All new one-off applications go through the Builder to
+[`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch), immutable GitHub repository ID
+`1320171831`. Project source stays in the builder's own public repository.
 
-```bash
-gh skill install 0xprogrammable/hookbuilder \
-  skills/programmable-v4-hook-builder \
-  --agent codex \
-  --scope user \
-  --pin 2112f31b1ecdab87fdcdc78197ecf3c04b5fb140
-```
+`prepare-pr` creates the exact six-file application without changing GitHub. `submit` and `update` first return a
+read-only action plan. Only the exact confirmed plan may create the builder's `submit-launch` fork, application branch,
+and one draft pull request. The client reads `docs/builder/intake-status.json` as the released schema-v2 contract and
+stops before any write unless intake permits that exact application or continuation. Do not hand-create an application
+pull request.
 
-Hookbuilder is the canonical Applicant repository (`0xprogrammable/hookbuilder`, repository ID `1320085947`). Copy the
-example, replace every placeholder with the exact source-bound values, and validate it locally:
-
-```bash
-cp submissions/examples/applicant-submission-v1.example.json \
-  submissions/requests/<source-repository-id>-<hook-id>.json
-npm run submission:check -- \
-  submissions/requests/<source-repository-id>-<hook-id>.json
-```
-
-Then open a pull request with the Applicant template selected in the compare URL:
-
-```text
-https://github.com/0xprogrammable/hookbuilder/compare/main...<github-login>:<branch>?expand=1&template=applicant-submission.md
-```
-
-The request binds the exact source commit and tree, applicant GitHub login, nonzero checksummed launch-wallet address,
-hook, template and model IDs with SemVer versions, all v4 permissions, fee terms, and the exact live beta route
-`custom-graph@1.0.0` on Ethereum Mainnet chain `1`. It requests review only; the public address is a declaration, not
-wallet access, ownership proof, a signature, or a Registry, Router, provider, deployment, or launch write. See the
-[Applicant beta guide](docs/PUBLIC_GITHUB_PR_BETA.md).
+The older Applicant files in this Hookbuilder repository are frozen legacy continuations. Only pull requests #10,
+#11, #12, #14, #15, #18, #19, and #20 may continue on that path. Every new application belongs in Submit a Launch.
+Neither path approves, deploys, signs, routes, or launches a project. See the
+[Submit a Launch guide](docs/PUBLIC_GITHUB_PR_BETA.md).
 
 ## Build it with us
 
@@ -201,7 +183,7 @@ skills/programmable-v4-hook-builder/   canonical portable Skill
   scripts/                            deterministic tools and package tests
 evals/                                adversarial agent evaluations
 docs/                                 usage, architecture, security, release records
-submissions/                          public Applicant schema, example, and review requests
+submissions/                          frozen legacy Applicant contracts and continuations
 config/plugin.json                    canonical host metadata
 plugins/programmable-v4-builder/      generated, byte-verified Codex payload
 mcp/ and .mcp.json                    canonical Codex-only MCP companion
@@ -240,8 +222,8 @@ validates their structure; an unavailable model result or provider receipt is ne
 | Extend it safely | [Templates and extensions](docs/TEMPLATES_AND_EXTENSIONS.md) · [Security and review](docs/SECURITY_AND_REVIEW.md) · [Contribution guide](CONTRIBUTING.md) |
 | Inspect portability and releases | [Portability and lifecycle](docs/PORTABILITY_AND_LIFECYCLE.md) · [Release gates](docs/OPEN_WORLD_V2_RELEASE_GATES.md) · [Release process](docs/RELEASING.md) |
 
-Hookbuilder is the canonical public Applicant pull-request surface. Project source stays in the Applicant's own public
-GitHub repository; review remains separate from platform contracts, routing, deployment, and the Explorer.
+Submit a Launch is the canonical public Applicant pull-request surface. Project source stays in the Applicant's own
+public GitHub repository; review remains separate from platform contracts, routing, deployment, and the Explorer.
 
 ## License and independence
 

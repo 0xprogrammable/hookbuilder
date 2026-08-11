@@ -1,8 +1,7 @@
-# Historical V1 output specification
+# V1 output specification
 
-> Archived replay contract. Its `prepare-pr` output and `0xprogrammable/programmable-registry` target are not current
-> Applicant instructions. New public review requests go only to `0xprogrammable/hookbuilder:main` through the root
-> `submissions/` contract documented in [agent-entry-and-application.md](agent-entry-and-application.md).
+This is the released six-file `prepare-pr` output contract. New public review drafts use
+`0xprogrammable/submit-launch:main`; Application V3 remains a separate candidate contract.
 
 Produce only the artifacts required at the current stage. Use explicit unknowns instead of placeholder claims.
 
@@ -222,7 +221,7 @@ and separately asserted source match. Builder evidence remains untrusted until a
 `prepare-pr` returns one machine-readable object with:
 
 - `sourceHead`: the builder-controlled primary repository, branch, exact commit, and root tree;
-- `centralPullRequestTarget`: fixed `0xprogrammable/programmable-registry:main` identity, observed base commit and tree, central
+- `centralPullRequestTarget`: fixed `0xprogrammable/submit-launch:main` identity, observed base commit and tree, central
   application path, prior revision, and next revision;
 - `github.sourceRequest`: the immutable primary authority and zero to eight sorted companion authorities;
 - `github.companionClosure`: one verified exact-closure receipt per v2 companion; v1 has no receipt and retains its

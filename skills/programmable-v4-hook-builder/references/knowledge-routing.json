@@ -12,7 +12,7 @@
   "archivalReferences": [
     {
       "id": "legacy-v1-reproduction",
-      "reason": "Load only to reproduce, recheck, or migrate an explicitly identified historical V1 application; these references must never route into a new open-world V2 project.",
+      "reason": "Load for the exact released V1 application transport or an identified historical V1 replay; never use the V1 product schema to constrain an open-world V2 design.",
       "references": [
         "compatibility-standard.md",
         "github-application-journey.md",
@@ -25,7 +25,7 @@
     },
     {
       "id": "candidate-application-v3-transport",
-      "reason": "Retained only for exact candidate Application V3 replay; it must never route a public Applicant away from Hookbuilder.",
+      "reason": "Retained only for exact candidate Application V3 work; it must never route a public Applicant away from Submit a Launch.",
       "references": [
         "github-application-v3.md"
       ]
@@ -327,7 +327,7 @@
       "later": [
         {
           "reference": "agent-entry-and-application.md",
-          "trigger": "Load only after local checks pass and exact public source is frozen for the Hookbuilder Applicant handoff."
+          "trigger": "Load only after local checks pass and exact public source is frozen for the Submit a Launch handoff."
         },
         {
           "reference": "open-world-v2-output-contract.md",
@@ -376,7 +376,7 @@
         },
         {
           "reference": "agent-entry-and-application.md",
-          "trigger": "Load when emitting or diagnosing the exact Hookbuilder Applicant review handoff."
+          "trigger": "Load when emitting or diagnosing the exact Submit a Launch Applicant review handoff."
         },
         {
           "reference": "launch-bundle-input-v2.schema.json",

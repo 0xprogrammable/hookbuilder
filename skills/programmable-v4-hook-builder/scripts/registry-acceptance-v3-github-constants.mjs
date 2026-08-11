@@ -1,3 +1,5 @@
+import { SUBMIT_LAUNCH_REPOSITORY_ID } from "./registry-intake-contract.mjs";
+
 export {
   CANONICAL_POSITIVE_UINT256_DECIMAL_PATTERN_V2 as positiveDecimalPattern,
   FEE_POLICY_V2_HASH as PROGRAMMABLE_FEE_POLICY_HASH,
@@ -11,7 +13,7 @@ export const REGISTRY_ACCEPTANCE_V3_GITHUB_INSPECTOR = "builder-github-rest-raw-
 export const REGISTRY_ACCEPTANCE_V3_TRUST_MAX_AGE_MS = 5 * 60 * 1000;
 export const REGISTRY_ACCEPTANCE_V3_GITHUB_DEADLINE_MS = 120_000;
 
-export const REGISTRY_NUMERIC_ID = "1320171831";
+export const REGISTRY_NUMERIC_ID = SUBMIT_LAUNCH_REPOSITORY_ID;
 export const REGISTRY_BASE_REF = "main";
 export const MAINTAINER_USER_ID = "309941960";
 export const API_ORIGIN = "https://api.github.com";

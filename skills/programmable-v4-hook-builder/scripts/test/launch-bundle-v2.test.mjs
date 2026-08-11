@@ -77,7 +77,7 @@ const portableExample = readJson(path.join(skillRoot, "assets", "templates", "op
 const registryAcceptanceV3SchemaPath = path.join(skillRoot, "references", "registry-acceptance-v3.schema.json");
 const executionSurfaceSchemaPath = path.join(skillRoot, "references", "execution-surface-coverage-v1.schema.json");
 const EXECUTION_SURFACE_SCHEMA_ID = "urn:programmable:execution-surface-coverage:1.0.0";
-const CANONICAL_REGISTRY_REPOSITORY_URI = "https://github.com/0xprogrammable/programmable-registry";
+const CANONICAL_REGISTRY_REPOSITORY_URI = "https://github.com/0xprogrammable/submit-launch";
 const CANONICAL_REGISTRY_NUMERIC_REPOSITORY_ID = "1320171831";
 const UINT256_MAX_DECIMAL = ((1n << 256n) - 1n).toString();
 
@@ -2320,7 +2320,7 @@ function registryAcceptanceV3Fixture({
   };
 
   const registryRepository = {
-    fullName: "0xprogrammable/programmable-registry",
+    fullName: "0xprogrammable/submit-launch",
     numericRepositoryId: CANONICAL_REGISTRY_NUMERIC_REPOSITORY_ID,
     repositoryUri: CANONICAL_REGISTRY_REPOSITORY_URI
   };
@@ -2594,7 +2594,7 @@ function currentMainRegistryDocuments({ acceptance, acceptanceBinding, applicati
     tags: project.discovery.tags
   };
   const index = {
-    activeIntake: { baseBranch: "main", directory: "submissions", repository: "0xprogrammable/programmable-registry", state: "open" },
+    activeIntake: { baseBranch: "main", directory: "submissions", repository: "0xprogrammable/submit-launch", state: "open" },
     generatedAt: "2026-08-03T08:00:00Z",
     legacyIntake: [],
     records: [projectRecord],
@@ -2698,7 +2698,7 @@ async function inspectRegistryAcceptanceV3ReviewFixture(fixtureValue) {
   });
   for (const [objectId, entries] of mainTrees) trees.set(objectId, entries);
   const repositoryJson = {
-    full_name: "0xprogrammable/programmable-registry",
+    full_name: "0xprogrammable/submit-launch",
     html_url: CANONICAL_REGISTRY_REPOSITORY_URI,
     id: Number(CANONICAL_REGISTRY_NUMERIC_REPOSITORY_ID)
   };
@@ -2712,13 +2712,13 @@ async function inspectRegistryAcceptanceV3ReviewFixture(fixtureValue) {
     const url = new URL(urlValue);
     const route = `${url.pathname}${url.search}`;
     if (route === `/repositories/${CANONICAL_REGISTRY_NUMERIC_REPOSITORY_ID}`) return githubJsonResponse(repositoryJson);
-    if (route === "/repos/0xprogrammable/programmable-registry/git/ref/heads/main") {
+    if (route === "/repos/0xprogrammable/submit-launch/git/ref/heads/main") {
       return githubJsonResponse({
         ref: "refs/heads/main",
         object: { sha: mainCommitObjectId, type: "commit" }
       });
     }
-    if (route === `/repos/0xprogrammable/programmable-registry/pulls/${pull.number}`) {
+    if (route === `/repos/0xprogrammable/submit-launch/pulls/${pull.number}`) {
       return githubJsonResponse({
         base: { ref: "main", repo: repositoryJson, sha: pull.base.sha },
         head: { ref: "deleted-fork-branch", repo: null, sha: pull.head.sha },
@@ -2734,7 +2734,7 @@ async function inspectRegistryAcceptanceV3ReviewFixture(fixtureValue) {
         }
       });
     }
-    if (route === `/repos/0xprogrammable/programmable-registry/pulls/${pull.number}/reviews?per_page=100&page=1`) {
+    if (route === `/repos/0xprogrammable/submit-launch/pulls/${pull.number}/reviews?per_page=100&page=1`) {
       return githubJsonResponse([{
         author_association: "OWNER",
         body: fixtureValue.reviewBody,
@@ -2746,23 +2746,23 @@ async function inspectRegistryAcceptanceV3ReviewFixture(fixtureValue) {
         user: { id: 309941960, login: "0xprogrammable" }
       }]);
     }
-    if (route === `/repos/0xprogrammable/programmable-registry/git/ref/pull/${pull.number}/head`) {
+    if (route === `/repos/0xprogrammable/submit-launch/git/ref/pull/${pull.number}/head`) {
       return githubJsonResponse({ ref: pull.head.pullRef, object: { sha: pull.head.sha, type: "commit" } });
     }
-    if (route === `/repos/0xprogrammable/programmable-registry/git/commits/${pull.base.sha}`) {
+    if (route === `/repos/0xprogrammable/submit-launch/git/commits/${pull.base.sha}`) {
       return githubJsonResponse({ sha: pull.base.sha, tree: { sha: baseTreeObjectId } });
     }
-    if (route === `/repos/0xprogrammable/programmable-registry/git/commits/${pull.head.sha}`) {
+    if (route === `/repos/0xprogrammable/submit-launch/git/commits/${pull.head.sha}`) {
       return githubJsonResponse({ sha: pull.head.sha, tree: { sha: projection.packageAtHead.repositoryTreeObjectId } });
     }
-    if (route === `/repos/0xprogrammable/programmable-registry/git/commits/${mainCommitObjectId}`) {
+    if (route === `/repos/0xprogrammable/submit-launch/git/commits/${mainCommitObjectId}`) {
       return githubJsonResponse({ sha: mainCommitObjectId, tree: { sha: mainTreeObjectId } });
     }
-    const treeMatch = /^\/repos\/0xprogrammable\/programmable-registry\/git\/trees\/([0-9a-f]{40})$/u.exec(url.pathname);
+    const treeMatch = /^\/repos\/0xprogrammable\/submit-launch\/git\/trees\/([0-9a-f]{40})$/u.exec(url.pathname);
     if (treeMatch !== null && trees.has(treeMatch[1])) {
       return githubJsonResponse({ sha: treeMatch[1], tree: trees.get(treeMatch[1]), truncated: false });
     }
-    const blobMatch = /^\/repos\/0xprogrammable\/programmable-registry\/git\/blobs\/([0-9a-f]{40})$/u.exec(url.pathname);
+    const blobMatch = /^\/repos\/0xprogrammable\/submit-launch\/git\/blobs\/([0-9a-f]{40})$/u.exec(url.pathname);
     if (blobMatch !== null && blobBytes.has(blobMatch[1])) {
       const bytes = blobBytes.get(blobMatch[1]);
       return githubJsonResponse({

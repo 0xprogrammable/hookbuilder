@@ -39,7 +39,7 @@ export function installOpenWorldGitHubStatusHistory(runtime) {
       || central.private
       || central.fork
     ) {
-      throw new CliFailure("CENTRAL_REPOSITORY_CHANGED", "the fixed public Programmable Registry identity is unavailable", { exitCode: 1 });
+      throw new CliFailure("CENTRAL_REPOSITORY_CHANGED", "the fixed public Submit a Launch identity is unavailable", { exitCode: 1 });
     }
     const sourceCi = [];
     for (const declared of [

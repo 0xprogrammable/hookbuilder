@@ -172,7 +172,7 @@ test("version and plugin identities agree across canonical and generated package
   assert.equal(Object.hasOwn(claude, "mcpServers"), false);
 });
 
-test("plugin metadata advertises the full project surface and infers the requested mode", () => {
+test("plugin metadata advertises the full project surface and canonical Submit a Launch handoff", () => {
   const metadata = JSON.parse(fs.readFileSync(path.join(repositoryRoot, "config", "plugin.json"), "utf8"));
   const openAiInterface = fs.readFileSync(
     path.join(repositoryRoot, "skills", "programmable-v4-hook-builder", "agents", "openai.yaml"),
@@ -186,7 +186,8 @@ test("plugin metadata advertises the full project surface and infers the request
   for (const projectShape of ["hooks", "tokens", "apps", "games", "services", "standalone settlement"]) {
     assert.match(combinedDescriptions, new RegExp(projectShape, "iu"), projectShape);
   }
-  assert.match(metadata.defaultPrompt[0], /^Use \$programmable-v4-hook-builder to infer the mode/iu);
+  assert.match(metadata.defaultPrompt[0], /^Use \$programmable-v4-hook-builder /u);
+  assert.match(metadata.defaultPrompt[0], /Submit a Launch/u);
   assert.ok(metadata.defaultPrompt[0].length <= 128);
   assert.equal((metadata.defaultPrompt[0].match(/[.!?]/gu) ?? []).length, 1);
   const openAiDefaultPrompt = openAiInterface.match(/^\s*default_prompt:\s*(".*")$/mu);

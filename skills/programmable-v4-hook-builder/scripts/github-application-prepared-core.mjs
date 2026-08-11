@@ -160,7 +160,7 @@ export function normalizePreparedApplication(input) {
     || centralTarget.applicationDirectory !== applicationDirectory
     || centralTarget.applicationPath !== `${applicationDirectory}/application.json`
   ) {
-    invalidPrepared("the prepare-pr result does not target the fixed Programmable public beta repository and path");
+    invalidPrepared("the prepare-pr result does not target the fixed Submit a Launch repository and path");
   }
   const centralBaseCommit = requireCommit(centralTarget.baseCommit, "central base commit");
   const centralBaseTree = requireCommit(centralTarget.baseTree, "central base tree");

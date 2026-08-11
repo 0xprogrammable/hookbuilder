@@ -1,14 +1,27 @@
 import {
-  PROGRAMMABLE_REGISTRY_DEFAULT_BRANCH,
-  PROGRAMMABLE_REGISTRY_REPOSITORY
+  SUBMIT_LAUNCH_API_URL,
+  SUBMIT_LAUNCH_BASE_BRANCH,
+  SUBMIT_LAUNCH_RAW_URL,
+  SUBMIT_LAUNCH_REPOSITORY,
+  SUBMIT_LAUNCH_REPOSITORY_ID,
+  SUBMIT_LAUNCH_REPOSITORY_URL
 } from "./registry-intake-contract.mjs";
 
 export const PROGRAMMABLE_REGISTRY = Object.freeze({
-  apiRepository: "https://api.github.com/repos/0xprogrammable/programmable-registry",
-  defaultBranch: PROGRAMMABLE_REGISTRY_DEFAULT_BRANCH,
-  numericRepositoryId: "1320171831",
-  rawRepository: "https://raw.githubusercontent.com/0xprogrammable/programmable-registry",
-  repository: PROGRAMMABLE_REGISTRY_REPOSITORY,
+  apiRepository: SUBMIT_LAUNCH_API_URL,
+  defaultBranch: SUBMIT_LAUNCH_BASE_BRANCH,
+  numericRepositoryId: SUBMIT_LAUNCH_REPOSITORY_ID,
+  rawRepository: SUBMIT_LAUNCH_RAW_URL,
+  repository: SUBMIT_LAUNCH_REPOSITORY,
+  repositoryUri: SUBMIT_LAUNCH_REPOSITORY_URL
+});
+
+// The bundled snapshot predates the in-place repository rename. Its signed
+// bytes retain the historical slug while sharing the same immutable GitHub id.
+export const PROGRAMMABLE_REGISTRY_SNAPSHOT_IDENTITY = Object.freeze({
+  defaultBranch: SUBMIT_LAUNCH_BASE_BRANCH,
+  numericRepositoryId: SUBMIT_LAUNCH_REPOSITORY_ID,
+  repository: "0xprogrammable/programmable-registry",
   repositoryUri: "https://github.com/0xprogrammable/programmable-registry"
 });
 
