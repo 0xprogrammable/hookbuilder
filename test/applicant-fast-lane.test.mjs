@@ -27,6 +27,88 @@ import {
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const requestPath = "submissions/requests/123456789-example-fee-hook.json";
+const SUBMIT_LAUNCH_CANDIDATE_SHARED_SKILL_PATHS = Object.freeze([
+  "SKILL.md",
+  "agents/openai.yaml",
+  "assets/templates/open-world-v2/launch-bundle-input-v2.example.json",
+  "references/agent-entry-and-application.md",
+  "references/contract-registry-v1.json",
+  "references/github-application-journey.md",
+  "references/github-application-v3.md",
+  "references/knowledge-routing.json",
+  "references/output-contract.md",
+  "references/routing-and-discovery.md",
+  "references/submission-workflow.md",
+  "references/workflow.md",
+  "scripts/cli-central-base.mjs",
+  "scripts/cli-prepare-pr-command.mjs",
+  "scripts/cli-prepare-pr-report.mjs",
+  "scripts/cli.mjs",
+  "scripts/github-application-constants.mjs",
+  "scripts/github-application-flow-core.mjs",
+  "scripts/github-application-normalizers.mjs",
+  "scripts/github-application-prepared-core.mjs",
+  "scripts/github-application-primitives.mjs",
+  "scripts/github-application-remote-core.mjs",
+  "scripts/github-application-status-core.mjs",
+  "scripts/github-application-transport-core.mjs",
+  "scripts/launch-bundle-shared.mjs",
+  "scripts/launch-bundle-v2-shared.mjs",
+  "scripts/open-world-github-status-history.mjs",
+  "scripts/open-world-github-transport-plan.mjs",
+  "scripts/open-world-prepare-revision-discovery.mjs",
+  "scripts/open-world-shared.mjs",
+  "scripts/registry-acceptance-v3-github-constants.mjs",
+  "scripts/registry-discovery-definitions.mjs",
+  "scripts/registry-discovery-git.mjs",
+  "scripts/registry-discovery-validation.mjs",
+  "scripts/registry-intake-contract.mjs",
+  "scripts/test/cli-central-base.test.mjs",
+  "scripts/test/cli-open-world-github.test.mjs",
+  "scripts/test/cli-prepare-pr.test.mjs",
+  "scripts/test/cli.test.mjs",
+  "scripts/test/github-application.test.mjs",
+  "scripts/test/launch-bundle-v2.test.mjs",
+  "scripts/test/registry-acceptance-v3-github.test.mjs",
+  "scripts/test/registry-discovery.test.mjs",
+  "scripts/test/submission.test.mjs"
+]);
+const FULL_SUBMIT_LAUNCH_CANDIDATE_DIFF = Object.freeze([
+  ...[
+    ".claude-plugin/marketplace.json",
+    ".claude-plugin/plugin.json",
+    ".codex-plugin/plugin.json",
+    ".github/PULL_REQUEST_TEMPLATE/applicant-submission.md",
+    ".github/workflows/ci.yml",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "README.md",
+    "config/maintainability-coverage-baseline.json",
+    "config/plugin.json",
+    "docs/AGENT_SKILL.md",
+    "docs/ARCHITECTURE.md",
+    "docs/PUBLIC_GITHUB_PR_BETA.md",
+    "mcp/server-core.mjs",
+    "plugins/programmable-v4-builder/.codex-plugin/plugin.json",
+    "plugins/programmable-v4-builder/mcp/server-core.mjs"
+  ].map((repositoryPath) => Object.freeze({ status: "M", path: repositoryPath })),
+  ...SUBMIT_LAUNCH_CANDIDATE_SHARED_SKILL_PATHS.flatMap((repositoryPath) => [
+    Object.freeze({
+      status: "M",
+      path: `plugins/programmable-v4-builder/skills/programmable-v4-hook-builder/${repositoryPath}`
+    }),
+    Object.freeze({ status: "M", path: `skills/programmable-v4-hook-builder/${repositoryPath}` })
+  ]),
+  ...[
+    "scripts/ci/plan-applicant-fast-lane.mjs",
+    "submissions/README.md",
+    "submissions/requests/README.md",
+    "test/applicant-fast-lane.test.mjs",
+    "test/applicant-submission.test.mjs",
+    "test/repository-contract.test.mjs"
+  ].map((repositoryPath) => Object.freeze({ status: "M", path: repositoryPath })),
+  Object.freeze({ status: "A", path: "test/submit-launch-intake-contract.test.mjs" })
+]);
 const DIRECT_GRAPH_REVIEWED_PLAN_FIXTURE = Object.freeze({
   $schema: "urn:programmable:reviewed-route-plan:1.0.0",
   profile: "direct-graph",
@@ -49,6 +131,56 @@ test("only added or modified canonical request files use the applicant lane", ()
     { status: "M", path: requestPath },
     { status: "M", path: "scripts/applicant-submission-core.mjs" }
   ]).mode, "mixed");
+});
+
+test("only a modification of the exact Applicant README is a platform path", () => {
+  const readmePath = "submissions/requests/README.md";
+  const platform = classifyChangedPaths([{ status: "M", path: readmePath }]);
+  assert.equal(platform.mode, "platform");
+  assert.equal(platform.reason, "platform-profile-or-code-change");
+  assert.deepEqual(platform.requestPaths, []);
+
+  const mixed = classifyChangedPaths([
+    { status: "M", path: readmePath },
+    { status: "M", path: requestPath }
+  ]);
+  assert.equal(mixed.mode, "mixed");
+  assert.deepEqual(mixed.requestPaths, [requestPath]);
+
+  for (const status of ["A", "D", "T", "U"]) {
+    assert.equal(classifyChangedPaths([{ status, path: readmePath }]).mode, "invalid");
+  }
+
+  for (const repositoryPath of [
+    "submissions/requests/readme.md",
+    "submissions/requests/README.MD",
+    "submissions/requests/README.mdx",
+    "submissions/requests/README.md.backup",
+    "submissions/requests/01-example-fee-hook.json",
+    "submissions/requests/example-fee-hook.json",
+    "submissions/requests/123456789-Example-fee-hook.json",
+    "submissions/requests/123456789-example-fee-hook.JSON",
+    "submissions/requests/nested/123456789-example-fee-hook.json"
+  ]) {
+    assert.equal(classifyChangedPaths([{ status: "M", path: repositoryPath }]).mode, "invalid");
+  }
+  assert.equal(classifyChangedPaths([{ status: "D", path: requestPath }]).mode, "invalid");
+  assert.equal(classifyChangedPaths([
+    { status: "D", path: requestPath },
+    { status: "A", path: "submissions/requests/123456789-renamed-hook.json" }
+  ]).mode, "invalid");
+  assert.throws(
+    () => classifyChangedPaths([{ status: "R", path: requestPath }]),
+    (error) => error instanceof ApplicantFastLaneError && error.code === "FAST_LANE_DIFF_INVALID"
+  );
+});
+
+test("the complete Submit Launch candidate is one platform change", () => {
+  assert.equal(FULL_SUBMIT_LAUNCH_CANDIDATE_DIFF.length, 111);
+  const plan = classifyChangedPaths(FULL_SUBMIT_LAUNCH_CANDIDATE_DIFF);
+  assert.equal(plan.mode, "platform");
+  assert.equal(plan.reason, "platform-profile-or-code-change");
+  assert.deepEqual(plan.requestPaths, []);
 });
 
 test("trusted planner accepts the transition pull-request argument without changing its plan", () => {
