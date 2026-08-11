@@ -1,6 +1,6 @@
 # Agent entry and application contract
 
-This reference separates the active **Public GitHub PR Builder Beta** from a later **Connected Submission service**.
+This reference separates the active **Submit a Launch** GitHub path from a later **Connected Submission service**.
 Today, builders keep their complete project in an external public GitHub repository and submit a bounded six-file
 application record through a draft pull request. The wallet, GitHub App, claim, application-service, status-API, permit,
 and website-launch contracts later in this file are future design contracts and are not active beta capabilities.
@@ -58,7 +58,7 @@ idea or existing project
   -> local package gate
   -> clean, pushed, anonymously reachable public GitHub revision
   -> deterministic six-file central application package
-  -> draft pull request to 0xprogrammable/programmable
+  -> draft pull request to 0xprogrammable/submit-launch
   -> GitHub-native review
 ```
 
@@ -90,11 +90,12 @@ primary HEAD. Each companion is independently pinned to its numeric repository i
 paths. This supports split contract, app, game, service, keeper, oracle, indexer, or other reviewable architectures
 without pretending they are one repository.
 
-The implemented beta commands are `doctor`, `scaffold`, `check`, `package`, and `prepare-pr` through
-`scripts/cli.mjs`. `prepare-pr` resolves the pushed public revision and prepares the six files plus draft PR metadata. An
-explicit `--output-dir` may materialize those six files locally, but the command does not push, open a pull request,
-connect an account, sign, deploy, or launch. Opening the draft pull request remains a separate external action requiring
-explicit authority.
+The implemented commands are `doctor`, `scaffold`, `check`, `package`, `prepare-pr`, `submit`, `update`, and `status`
+through `scripts/cli.mjs`. `prepare-pr` resolves the pushed public revision and prepares the six files plus draft PR
+metadata. An explicit `--output-dir` may materialize those six files locally, but the command does not change GitHub.
+`submit` and `update` first return a read-only action plan. Only a second invocation with its exact digest, after the
+builder explicitly authorizes the GitHub write, may create or update the draft in Submit a Launch. The client never
+approves, merges, marks ready, signs, deploys, or launches.
 
 The output distinguishes the builder `sourceHead` from the exact central pull-request target. A new open application
 stays at revision 1; an open update stays at the single prior-main revision plus one. `--replace-existing` creates the

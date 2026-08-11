@@ -1,8 +1,9 @@
-# Public GitHub PR Builder Beta
+# Submit a Launch
 
-The Public GitHub PR Builder Beta is a simple, public review path for builders working on Uniswap v4 projects.
+Submit a Launch is the public review path for builders working on Uniswap v4 projects.
 
-Your project stays in your own public GitHub repository. A beta application is a small pull request to Programmable
+Your project stays in your own public GitHub repository. Hookbuilder builds and checks it, then prepares a six-file
+application for a small pull request to [`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch)
 that binds one exact public repository revision and its public check evidence. GitHub commits, reviews and pull-request
 history are the beta's status and audit trail.
 
@@ -81,7 +82,7 @@ structure plus builder-declared evidence, and `sandboxVerification.state` remain
 
 ### Mandatory Programmable fee
 
-Every new launch application uses Builder `v0.4.0`, submission standard `1.5.0`, fee policy `1.1.0`, and declares the
+Every new launch application uses Builder `v0.4.1`, submission standard `1.5.0`, fee policy `1.1.0`, and declares the
 root `programmableFee` policy:
 
 - `effective total = max(builder-selected total, 10 bps)`;
@@ -266,11 +267,12 @@ small manifest and its blob declarations to the exact public commit and root tre
 assets. Unmaterialized LFS objects and external HTTPS/IPFS resources enter attributable asset review; that status is
 not an unsafe-code conclusion and does not alone block `readiness.design: DESIGN_READY`.
 
-### 7. Open one draft pull request
+### 7. Submit one draft pull request
 
-Open a draft pull request against `0xprogrammable/programmable:main` with a title beginning `[Builder Beta]`. Complete
-the pull-request template and keep the referenced project commit reachable. One pull request represents one public
-project and its revision history during the beta review.
+Run the read-only `submit` plan. After the builder explicitly authorizes the listed GitHub writes, confirm that exact
+plan digest to create the canonical `<builder>/submit-launch` fork, application branch, and one draft pull request
+against `0xprogrammable/submit-launch:main`. Keep the referenced project commit reachable. One pull request represents
+one public project and its revision history during review.
 
 When the record and evidence are ready, mark the pull request ready for review.
 
@@ -295,7 +297,7 @@ project or change any deployment, provider or product state.
 
 Programmable maintainers (`@0xprogrammable`) own the GitHub review queue. The beta has no review-time or response-time
 promise. Its canonical state is
-[`intake-status.json`](https://github.com/0xprogrammable/programmable/blob/main/docs/builder/intake-status.json), read from
+[`intake-status.json`](https://github.com/0xprogrammable/submit-launch/blob/main/docs/builder/intake-status.json), read from
 the trusted `main` revision:
 
 | Intake state | Behavior |
@@ -360,7 +362,7 @@ If the builder changes the project:
 1. commit and push the change in the same public project repository;
 2. rerun `check` and `package` for the new exact commit;
 3. rerun `prepare-pr`, replace the current self-consistent local draft with `--replace-draft`, and update the same
-   Programmable pull request (`--replace-existing` is only for creating the first pending update from merged main); and
+   Submit a Launch pull request (`--replace-existing` is only for creating the first pending update from merged main); and
 4. add a comment summarizing the repair and the superseded revision.
 
 The new commit is a new review target, but the open application stays at revision 1 or main n+1 until merge. Findings
@@ -411,7 +413,7 @@ address, legal identity, private repository permission or GitHub App installatio
 ## Private security reports
 
 Do not describe an unpatched vulnerability in the application pull request, a public issue or a review comment. Use
-[GitHub private vulnerability reporting](https://github.com/0xprogrammable/programmable-v4-builder/security/advisories/new) as
+[GitHub private vulnerability reporting](https://github.com/0xprogrammable/hookbuilder/security/advisories/new) as
 described in [`SECURITY.md`](../SECURITY.md).
 
 If public review uncovers a potentially exploitable issue, stop the public technical discussion. A maintainer may post a
@@ -465,7 +467,7 @@ exact public review trail.**
 ## Related documents
 
 - [Programmable v4 Builder](../README.md)
-- [Builder submission directory](https://github.com/0xprogrammable/programmable/tree/main/submissions)
+- [Submit a Launch application directory](https://github.com/0xprogrammable/submit-launch/tree/main/submissions)
 - [Use the agent skill](AGENT_SKILL.md)
 - [Security reporting](../SECURITY.md)
 - [Contribution guide](../CONTRIBUTING.md)

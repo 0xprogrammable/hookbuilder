@@ -1,18 +1,18 @@
 {
   "name": "programmable-v4-builder",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "owner": {
     "name": "Programmable"
   },
   "metadata": {
-    "description": "Loads one portable skill for designing, building, checking and applying with open-ended Uniswap v4 projects.",
-    "repository": "https://github.com/0xprogrammable/programmable-v4-builder"
+    "description": "Loads one portable skill for designing, building, checking and submitting open-ended Uniswap v4 projects to Submit a Launch.",
+    "repository": "https://github.com/0xprogrammable/hookbuilder"
   },
   "plugins": [
     {
       "name": "programmable-v4-builder",
       "source": "./",
-      "description": "Build open-ended Uniswap v4 projects and prepare evidence-bound Programmable applications."
+      "description": "Build open-ended Uniswap v4 projects and prepare evidence-bound applications for Submit a Launch."
     }
   ]
 }

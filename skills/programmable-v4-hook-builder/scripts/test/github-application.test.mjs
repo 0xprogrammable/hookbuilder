@@ -29,7 +29,7 @@ const UPDATED_COMMIT = "7".repeat(40);
 const VIEWER_ID = "101";
 const SOURCE_REPOSITORY_ID = "202";
 const COMPANION_REPOSITORY_ID = "203";
-const CENTRAL_REPOSITORY_ID = "303";
+const CENTRAL_REPOSITORY_ID = "1320171831";
 const FORK_REPOSITORY_ID = "404";
 const APPLICATION_ID = "example-hook";
 
@@ -129,6 +129,16 @@ test("a central-main race invalidates the confirmed plan before any write", asyn
       sleep: async () => {}
     }),
     errorCode("PREPARE_PR_STALE")
+  );
+  assert.equal(transport.writeCalls.length, 0);
+});
+
+test("the renamed Submit a Launch target remains bound to its numeric repository id", async () => {
+  const prepared = makePrepared();
+  const transport = new FakeTransport({ prepared, centralRepositoryId: "999" });
+  await assert.rejects(
+    () => planGitHubApplication({ operation: "submit", prepared, transport }),
+    errorCode("CENTRAL_REPOSITORY_MISMATCH")
   );
   assert.equal(transport.writeCalls.length, 0);
 });
@@ -476,7 +486,7 @@ test("receipts are bounded, idempotent, and cannot enter the source repo", (t) =
     applicationId: APPLICATION_ID,
     applicationRevision: 1,
     pullRequestNumber: 7,
-    pullRequestUrl: "https://github.com/0xprogrammable/programmable/pull/7",
+    pullRequestUrl: "https://github.com/0xprogrammable/submit-launch/pull/7",
     githubStatus: "submitted",
     headCommit: CREATED_COMMIT,
     packageMatchesPrepared: true,
@@ -579,8 +589,8 @@ function makePrepared({ priorRevision = null, companions = [] } = {}) {
       tree: SOURCE_TREE
     },
     centralPullRequestTarget: {
-      repositorySlug: "0xprogrammable/programmable",
-      repositoryUrl: "https://github.com/0xprogrammable/programmable",
+      repositorySlug: "0xprogrammable/submit-launch",
+      repositoryUrl: "https://github.com/0xprogrammable/submit-launch",
       baseBranch: "main",
       baseCommit: CENTRAL_COMMIT,
       baseTree: CENTRAL_TREE,
@@ -651,6 +661,7 @@ class FakeTransport {
   constructor({
     prepared,
     viewerId = VIEWER_ID,
+    centralRepositoryId = CENTRAL_REPOSITORY_ID,
     sourcePush = true,
     sourceAdmin = false,
     intakeState = "open",
@@ -658,6 +669,7 @@ class FakeTransport {
   }) {
     this.prepared = normalizePreparedApplication(prepared);
     this.viewer = { id: viewerId, login: "builder", html_url: "https://github.com/builder" };
+    this.centralRepositoryId = centralRepositoryId;
     this.sourcePush = sourcePush;
     this.sourceAdmin = sourceAdmin;
     this.intakeState = intakeState;
@@ -680,9 +692,9 @@ class FakeTransport {
   }
 
   async getRepository(slug, { allowNotFound = false } = {}) {
-    if (slug === "0xprogrammable/programmable") return repository({
+    if (slug === "0xprogrammable/submit-launch") return repository({
       slug,
-      id: CENTRAL_REPOSITORY_ID,
+      id: this.centralRepositoryId,
       ownerId: "1",
       ownerLogin: "0xprogrammable",
       permissions: { push: false, admin: false, maintain: false }
@@ -702,18 +714,18 @@ class FakeTransport {
       ownerLogin: slug.split("/")[0],
       permissions: { push: false, admin: false, maintain: false }
     });
-    if (slug.toLowerCase() === "builder/programmable") {
+    if (slug.toLowerCase() === "builder/submit-launch") {
       if (!this.forkExists) {
         if (allowNotFound) return null;
         throw new GitHubApplicationError("GITHUB_REQUEST_FAILED", "fork missing");
       }
       return repository({
-        slug: "builder/programmable",
+        slug: "builder/submit-launch",
         id: FORK_REPOSITORY_ID,
         ownerId: VIEWER_ID,
         ownerLogin: "builder",
         fork: true,
-        parent: { id: CENTRAL_REPOSITORY_ID, full_name: "0xprogrammable/programmable" },
+        parent: { id: CENTRAL_REPOSITORY_ID, full_name: "0xprogrammable/submit-launch" },
         permissions: { push: true, admin: true, maintain: true }
       });
     }
@@ -725,7 +737,7 @@ class FakeTransport {
     if (slug === "builder/project" && commit === SOURCE_COMMIT) {
       return { sha: SOURCE_COMMIT, tree: { sha: SOURCE_TREE } };
     }
-    if (slug === "0xprogrammable/programmable" && commit === CENTRAL_COMMIT) {
+    if (slug === "0xprogrammable/submit-launch" && commit === CENTRAL_COMMIT) {
       return { sha: CENTRAL_COMMIT, tree: { sha: CENTRAL_TREE } };
     }
     const companion = this.prepared.companions.find((record) => (
@@ -734,7 +746,7 @@ class FakeTransport {
     if (companion !== undefined) {
       return { sha: companion.commit, tree: { sha: companion.tree } };
     }
-    if (slug.toLowerCase() === "builder/programmable" && commit === CREATED_COMMIT) {
+    if (slug.toLowerCase() === "builder/submit-launch" && commit === CREATED_COMMIT) {
       return { sha: CREATED_COMMIT, tree: { sha: FORK_TREE } };
     }
     throw new GitHubApplicationError("GITHUB_REQUEST_FAILED", "commit missing");
@@ -742,8 +754,8 @@ class FakeTransport {
 
   async getRef(slug, branch, { allowNotFound = false } = {}) {
     if (slug === "builder/project" && branch === "main") return gitRef("main", SOURCE_COMMIT);
-    if (slug === "0xprogrammable/programmable" && branch === "main") return gitRef("main", this.centralCommit);
-    if (slug.toLowerCase() === "builder/programmable" && branch === this.prepared.branch) {
+    if (slug === "0xprogrammable/submit-launch" && branch === "main") return gitRef("main", this.centralCommit);
+    if (slug.toLowerCase() === "builder/submit-launch" && branch === this.prepared.branch) {
       if (this.branchCommit === null) {
         if (allowNotFound) return null;
         throw new GitHubApplicationError("GITHUB_REQUEST_FAILED", "branch missing");
@@ -755,7 +767,7 @@ class FakeTransport {
   }
 
   async getContent(slug, filePath, ref) {
-    if (slug === "0xprogrammable/programmable" && filePath === "docs/builder/intake-status.json") {
+    if (slug === "0xprogrammable/submit-launch" && filePath === "docs/builder/intake-status.json") {
       const content = `${canonicalJson({
         continuingPullRequests: this.continuations,
         schemaVersion: 2,
@@ -763,7 +775,7 @@ class FakeTransport {
       })}\n`;
       return contentResponse(filePath, content);
     }
-    if (slug.toLowerCase() === "builder/programmable") {
+    if (slug.toLowerCase() === "builder/submit-launch") {
       const files = this.commitFiles.get(ref);
       const content = files?.get(filePath);
       if (content === undefined) throw new GitHubApplicationError("GITHUB_REQUEST_FAILED", "content missing");
@@ -830,7 +842,7 @@ class FakeTransport {
   async createFork() {
     this.writeCalls.push("createFork");
     this.forkExists = true;
-    return this.getRepository("builder/programmable");
+    return this.getRepository("builder/submit-launch");
   }
 
   async createTree(_repository, { files }) {
@@ -952,7 +964,7 @@ function rawPull({
     state,
     draft,
     merged_at: mergedAt,
-    html_url: `https://github.com/0xprogrammable/programmable/pull/${number}`,
+    html_url: `https://github.com/0xprogrammable/submit-launch/pull/${number}`,
     title,
     body,
     changed_files: 6,
@@ -960,12 +972,12 @@ function rawPull({
     head: {
       ref: headRef,
       sha: headSha,
-      repo: { id: FORK_REPOSITORY_ID, full_name: "builder/programmable" }
+      repo: { id: FORK_REPOSITORY_ID, full_name: "builder/submit-launch" }
     },
     base: {
       ref: "main",
       sha: CENTRAL_COMMIT,
-      repo: { id: CENTRAL_REPOSITORY_ID, full_name: "0xprogrammable/programmable" }
+      repo: { id: CENTRAL_REPOSITORY_ID, full_name: "0xprogrammable/submit-launch" }
     }
   };
 }

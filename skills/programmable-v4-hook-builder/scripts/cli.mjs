@@ -90,7 +90,7 @@ const commandSpecs = new Map([
     summary: "Prepare deterministic PR metadata for one clean, pushed, public GitHub revision without opening it.",
     options: [
       repositoryOption(),
-      { name: "--base", key: "baseBranch", type: "value", valueName: "branch", description: "Select the fixed 0xprogrammable/programmable target base branch. Defaults to main." },
+      { name: "--base", key: "baseBranch", type: "value", valueName: "branch", description: "Select the fixed 0xprogrammable/submit-launch target base branch. Defaults to main." },
       {
         name: "--companion-manifest",
         key: "companionManifests",

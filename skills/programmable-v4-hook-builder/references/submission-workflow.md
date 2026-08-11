@@ -1,7 +1,7 @@
-# Submission workflow
+# Submit a Launch workflow
 
-The current public path is the **Public GitHub PR Builder Beta**. The complete project stays in the builder's own public
-GitHub repository. A draft pull request to `0xprogrammable/programmable` carries only one bounded six-file application
+The current public path is **Submit a Launch**. The complete project stays in the builder's own public GitHub
+repository. A draft pull request to `0xprogrammable/submit-launch` carries only one bounded six-file application
 record that points to the exact public source revision. No wallet connection, GitHub App installation, claim link,
 remote application draft, launch permit, or connected application service is part of this beta.
 
@@ -314,7 +314,7 @@ Keep v1 for proposal-only or unsupported build/runtime mechanics. Read `companio
 `companion-manifest-v2.schema.json`; a v1 companion intentionally retains the closure-review diagnostic.
 
 `prepare-pr` independently resolves every declared public repository's numeric id, exact commit, root tree, and
-declared paths. It also observes the exact current `0xprogrammable/programmable:main` commit before deriving the
+declared paths. It also observes the exact current `0xprogrammable/submit-launch:main` commit before deriving the
 central package. A new application remains revision `1` while its pull request is open. If central main contains
 revision n, its open update remains n+1 and must bind a primary or companion source change relative to main. Repeated
 project commits or package-only corrections in that same pull request do not increment again. Inconsistent lineage or
@@ -400,12 +400,12 @@ directory, so use it only for the already-open application pull request you are 
 ## Open a draft pull request
 
 1. Keep the complete project in its own public GitHub repository and push the exact clean revision prepared above.
-2. Fork [`0xprogrammable/programmable`](https://github.com/0xprogrammable/programmable).
+2. Fork [`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch).
 3. Create a branch from the current central `main` branch.
 4. Materialize or copy exactly the generated six files into `submissions/<application-id>/`.
 5. Confirm that the central diff contains no project source, extra submission files, registry edits, or workflows.
 6. Push the central branch to the fork.
-7. Open a draft pull request against `0xprogrammable/programmable:main` with the generated PR body.
+7. Open a draft pull request against `0xprogrammable/submit-launch:main` with the generated PR body.
 
 Do not edit the model registry, create an acceptance record or set candidate status. Submission contents are untrusted
 input. Intake automation must use trusted code from the base repository and must not execute contributor-supplied

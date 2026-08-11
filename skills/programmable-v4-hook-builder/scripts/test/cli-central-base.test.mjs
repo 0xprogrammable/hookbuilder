@@ -26,7 +26,7 @@ test("resolves a first revision from the fixed central ref and immutable tree wi
     sleepImplementation: async () => {}
   });
 
-  assert.equal(observed.repositorySlug, "0xprogrammable/programmable");
+  assert.equal(observed.repositorySlug, "0xprogrammable/submit-launch");
   assert.equal(observed.baseCommit, baseCommit);
   assert.equal(observed.baseTree, baseTree);
   assert.equal(observed.existingApplication, false);
@@ -292,7 +292,7 @@ function createCentralFetch({ files = null, refCommits = [baseCommit] } = {}) {
     : new Map([...files].map(([name, bytes]) => [name, { bytes, sha: gitBlobDigest(bytes) }]));
   const fetch = async (url, options) => {
     calls.push({ url, options });
-    const prefix = "https://api.github.com/repos/0xprogrammable/programmable";
+    const prefix = "https://api.github.com/repos/0xprogrammable/submit-launch";
     if (url === `${prefix}/git/ref/heads/main`) {
       const commit = refCommits[Math.min(refReads, refCommits.length - 1)];
       refReads += 1;

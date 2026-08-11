@@ -5,14 +5,14 @@
 <h1 align="center">Programmable v4 Builder</h1>
 
 <p align="center">
-  Describe a Uniswap v4 product. Give the same portable skill to your coding agent. Build, check, and prepare one exact GitHub application.
+  Describe a Uniswap v4 product. Hookbuilder builds it, checks it, and prepares one exact application for Submit a Launch.
 </p>
 
 <p align="center">
-  <a href="https://github.com/0xprogrammable/programmable-v4-builder/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/0xprogrammable/programmable-v4-builder/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-6f5b95"></a>
   <a href="https://agentskills.io/specification"><img alt="Agent Skills compatible" src="https://img.shields.io/badge/Agent%20Skills-compatible-e86eaf"></a>
-  <a href="CHANGELOG.md"><img alt="Builder version 0.4.0" src="https://img.shields.io/badge/builder-v0.4.0-5e8f7b"></a>
+  <a href="CHANGELOG.md"><img alt="Builder version 0.4.1" src="https://img.shields.io/badge/builder-v0.4.1-5e8f7b"></a>
 </p>
 
 Programmable v4 Builder is an evidence-first [Agent Skill](https://agentskills.io/specification) for open-ended Uniswap
@@ -30,14 +30,14 @@ never define what builders are allowed to invent.
 The shortest interactive command is:
 
 ```bash
-gh skill install 0xprogrammable/programmable-v4-builder
+gh skill install 0xprogrammable/hookbuilder
 ```
 
 For a reproducible Codex installation pinned to this release:
 
 ```bash
-gh skill install 0xprogrammable/programmable-v4-builder \
-  programmable-v4-hook-builder@v0.4.0 \
+gh skill install 0xprogrammable/hookbuilder \
+  programmable-v4-hook-builder@v0.4.1 \
   --agent codex \
   --scope user
 ```
@@ -49,14 +49,20 @@ approval, or external-account authority.
 Then tell the agent:
 
 ```text
-Use the Programmable v4 Builder skill. Turn this idea into a complete checked project and prepare its GitHub application: <your idea>
+Use the Programmable v4 Builder skill. Build and check this project, then prepare its six-file application for Submit a Launch. Submit the draft only when I explicitly authorize the GitHub write: <your idea>
 ```
 
 For an existing project:
 
 ```text
-Use the Programmable v4 Builder skill. Inspect this repository, preserve the intended product, repair objective findings, and prepare one exact GitHub application revision: <repository URL>
+Use the Programmable v4 Builder skill. Inspect this repository, preserve the intended product, repair objective findings, and prepare one exact six-file application for Submit a Launch. Submit the draft only when I explicitly authorize the GitHub write: <repository URL>
 ```
+
+Hookbuilder completes the project and its checks before it packages the application. `prepare-pr` creates the exact
+six-file application without changing GitHub. `submit` and `update` first return a read-only action plan. Only a second
+call with the exact plan digest may write the builder's draft to
+[`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch). The client stops if intake is not
+open. It never approves, merges, marks ready, deploys, signs, or launches.
 
 ## Why this is more than a documentation page
 
@@ -81,7 +87,7 @@ flowchart LR
   B --> C["Starter plus Lego capabilities"]
   C --> D["Design and value-flow checks"]
   D --> E["Implementation and executable evidence"]
-  E --> F["Exact GitHub application revision"]
+  E --> F["Exact Submit a Launch application"]
   F --> G["Programmable maintainer review"]
 ```
 
@@ -158,7 +164,7 @@ money. Structural eval validation is included in `npm test`; no model result or 
 ## Documentation
 
 - [Use the Builder with an agent](docs/AGENT_SKILL.md)
-- [GitHub application journey](docs/PUBLIC_GITHUB_PR_BETA.md)
+- [Submit a Launch journey](docs/PUBLIC_GITHUB_PR_BETA.md)
 - [Architecture and surgical change map](docs/ARCHITECTURE.md)
 - [Knowledge routing and token efficiency](docs/KNOWLEDGE_SYSTEM.md)
 - [Templates and extension model](docs/TEMPLATES_AND_EXTENSIONS.md)
