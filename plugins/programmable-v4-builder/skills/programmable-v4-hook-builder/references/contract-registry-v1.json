@@ -157,7 +157,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 14033,
         "moduleSha256": "sha256:b9bf11e1247a579a7b59b8ca7181e5632e9133359ef908419c93131a51ced9f6",
-        "closureSha256": "sha256:dab39a04eb1f3b54b1e836d4f451d5aa82de85cb119361dd5e2cb982bb9c1ee3"
+        "closureSha256": "sha256:121dbfcfb21220a992e599e9bfe7f53e2704e29679b62dc345823b6720a0786d"
       }
     },
     {
@@ -347,7 +347,7 @@
         "mode": "direct",
         "moduleByteLength": 14033,
         "moduleSha256": "sha256:b9bf11e1247a579a7b59b8ca7181e5632e9133359ef908419c93131a51ced9f6",
-        "closureSha256": "sha256:dab39a04eb1f3b54b1e836d4f451d5aa82de85cb119361dd5e2cb982bb9c1ee3"
+        "closureSha256": "sha256:121dbfcfb21220a992e599e9bfe7f53e2704e29679b62dc345823b6720a0786d"
       }
     },
     {
@@ -385,7 +385,7 @@
         "mode": "direct",
         "moduleByteLength": 14033,
         "moduleSha256": "sha256:b9bf11e1247a579a7b59b8ca7181e5632e9133359ef908419c93131a51ced9f6",
-        "closureSha256": "sha256:dab39a04eb1f3b54b1e836d4f451d5aa82de85cb119361dd5e2cb982bb9c1ee3"
+        "closureSha256": "sha256:121dbfcfb21220a992e599e9bfe7f53e2704e29679b62dc345823b6720a0786d"
       }
     },
     {
@@ -632,7 +632,7 @@
         "mode": "direct",
         "moduleByteLength": 1070,
         "moduleSha256": "sha256:c4561640a691f3cf383ad5b5dd04d58bd9a809e93a3a462e36e8cfe564f5d6c4",
-        "closureSha256": "sha256:0d79aa18b2390625356bc55d8b6b2305256698c487c8cdda719a3dc9d37b0e27"
+        "closureSha256": "sha256:103694d58c1482b6ef2cf2fd5e285db835733f988d45765e6b8739f1eb3ab5f6"
       }
     },
     {
@@ -651,7 +651,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 14033,
         "moduleSha256": "sha256:b9bf11e1247a579a7b59b8ca7181e5632e9133359ef908419c93131a51ced9f6",
-        "closureSha256": "sha256:dab39a04eb1f3b54b1e836d4f451d5aa82de85cb119361dd5e2cb982bb9c1ee3"
+        "closureSha256": "sha256:121dbfcfb21220a992e599e9bfe7f53e2704e29679b62dc345823b6720a0786d"
       }
     },
     {
@@ -1799,7 +1799,7 @@
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/github-application-core.mjs",
       "moduleCount": 72,
-      "totalByteLength": 886318,
+      "totalByteLength": 886574,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -2134,8 +2134,8 @@
         },
         {
           "path": "scripts/registry-intake-contract.mjs",
-          "byteLength": 4584,
-          "sha256": "sha256:269bdcc913788f9de58e7e97e53c2b6c8a61df592456dcd7b03bce07cc17c0e4",
+          "byteLength": 4840,
+          "sha256": "sha256:16341dcf9bbb3143dda8e7b50ef3da1d821e271b1c42e787330cc23e39ad7b3b",
           "localImports": []
         },
         {
@@ -2494,7 +2494,7 @@
           ]
         }
       ],
-      "closureSha256": "sha256:0d79aa18b2390625356bc55d8b6b2305256698c487c8cdda719a3dc9d37b0e27"
+      "closureSha256": "sha256:103694d58c1482b6ef2cf2fd5e285db835733f988d45765e6b8739f1eb3ab5f6"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -3146,7 +3146,7 @@
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/launch-bundle-v2-core.mjs",
       "moduleCount": 126,
-      "totalByteLength": 1848024,
+      "totalByteLength": 1848280,
       "modules": [
         {
           "path": "scripts/application-dependency-core.mjs",
@@ -3983,8 +3983,8 @@
         },
         {
           "path": "scripts/registry-intake-contract.mjs",
-          "byteLength": 4584,
-          "sha256": "sha256:269bdcc913788f9de58e7e97e53c2b6c8a61df592456dcd7b03bce07cc17c0e4",
+          "byteLength": 4840,
+          "sha256": "sha256:16341dcf9bbb3143dda8e7b50ef3da1d821e271b1c42e787330cc23e39ad7b3b",
           "localImports": []
         },
         {
@@ -4383,7 +4383,7 @@
           ]
         }
       ],
-      "closureSha256": "sha256:dab39a04eb1f3b54b1e836d4f451d5aa82de85cb119361dd5e2cb982bb9c1ee3"
+      "closureSha256": "sha256:121dbfcfb21220a992e599e9bfe7f53e2704e29679b62dc345823b6720a0786d"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -10596,8 +10596,8 @@
     "validatorClosureModuleBindingCount": 1010,
     "validatorClosureDistinctModuleCount": 171,
     "schemaPathsSha256": "sha256:610762ddd56550d2852596417842b753d32d5ed509433439435fd492aa3110ab",
-    "validatorBindingsSha256": "sha256:fd36e704deb2d0a7de9bc0300c2b85f80d46d4088abe1ecd5036e54371a68162",
-    "validatorClosuresSha256": "sha256:94dedb400e22cbbb3aa44c102598a5f00454a1cb107a8d71db381a9250cc9a33"
+    "validatorBindingsSha256": "sha256:0e9af48e96ddbedf7e0b8abf02df77486628e4f7e5e9e63dfd42d61da1ffe26c",
+    "validatorClosuresSha256": "sha256:c716e5d77eef3c539fd80e1f42da0d32808b2bd48be6c9d420a38bedb9cf4bda"
   },
-  "registrySha256": "sha256:cfa9767bf52bab3777eabb8e6f70c88dd2af2bb3d9461348bae646bc8e54f8b9"
+  "registrySha256": "sha256:8190c71ef973732d2629bd8908bc1850b8e54203a02a6c02d667913496159220"
 }
