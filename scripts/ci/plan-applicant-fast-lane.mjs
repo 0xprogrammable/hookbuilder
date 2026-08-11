@@ -41,12 +41,13 @@ try {
 }
 
 function parseArgs(args) {
-  const values = { event: null, base: null, head: null, output: null, githubOutput: null };
+  const values = { event: null, base: null, head: null, pullRequest: null, output: null, githubOutput: null };
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === "--event") values.event = take(args, ++index, argument);
     else if (argument === "--base") values.base = take(args, ++index, argument);
     else if (argument === "--head") values.head = take(args, ++index, argument);
+    else if (argument === "--pull-request") values.pullRequest = parsePullRequest(take(args, ++index, argument));
     else if (argument === "--output") values.output = take(args, ++index, argument);
     else if (argument === "--github-output") values.githubOutput = take(args, ++index, argument);
     else throw new Error(`unknown argument: ${argument}`);
@@ -58,8 +59,24 @@ function parseArgs(args) {
   if ((values.event === "pull_request" || values.event === "push") && !GIT_OBJECT_ID.test(values.base ?? "")) {
     throw new Error("--base must be an exact lowercase commit for pull requests and pushes");
   }
+  if (values.event === "pull_request" && values.pullRequest === 0) {
+    throw new Error("--pull-request must be a positive integer for pull requests");
+  }
+  if (values.event !== "pull_request" && values.pullRequest !== null && values.pullRequest !== 0) {
+    throw new Error("--pull-request must be 0 or omitted outside pull requests");
+  }
   if (values.base === null) values.base = values.head;
   return values;
+}
+
+function parsePullRequest(value) {
+  if (value === "0") return 0;
+  if (!/^[1-9][0-9]*$/u.test(value)) {
+    throw new Error("--pull-request must be a canonical positive integer or 0");
+  }
+  const number = Number(value);
+  if (!Number.isSafeInteger(number)) throw new Error("--pull-request is outside the safe integer range");
+  return number;
 }
 
 function readChangedPaths(base, head) {
