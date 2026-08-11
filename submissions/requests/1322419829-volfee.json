@@ -1,0 +1,61 @@
+{
+  "$schema": "urn:programmable:applicant-submission:1.1.0",
+  "schemaVersion": "1.1.0",
+  "intake": {
+    "repository": "0xprogrammable/hookbuilder",
+    "repositoryId": 1320085947
+  },
+  "applicant": {
+    "githubLogin": "ToanPham247",
+    "launchWallet": "0x72422F4471a477731ce0fB8C30052F4fdB454B1D"
+  },
+  "source": {
+    "repository": "https://github.com/ToanPham247/volfee-hook",
+    "repositoryId": 1322419829,
+    "commit": "ec1129bb0af188e2288e2ffd0d6fdb349348d368",
+    "tree": "ff834849627d1f2b162ba9c189f2c00bf01e3756"
+  },
+  "identifiers": {
+    "hookId": "volfee",
+    "hookVersion": "1.0.0",
+    "templateId": "custom-hook",
+    "templateVersion": "1.0.0",
+    "modelId": "volfee",
+    "modelVersion": "1.0.0"
+  },
+  "hook": {
+    "addressFlagMask": "0x10cc",
+    "permissions": {
+      "beforeInitialize": false,
+      "afterInitialize": true,
+      "beforeAddLiquidity": false,
+      "afterAddLiquidity": false,
+      "beforeRemoveLiquidity": false,
+      "afterRemoveLiquidity": false,
+      "beforeSwap": true,
+      "afterSwap": true,
+      "beforeDonate": false,
+      "afterDonate": false,
+      "beforeSwapReturnDelta": true,
+      "afterSwapReturnDelta": true,
+      "afterAddLiquidityReturnDelta": false,
+      "afterRemoveLiquidityReturnDelta": false
+    }
+  },
+  "fee": {
+    "amountPips": 3000,
+    "denominator": 1000000,
+    "currencyBasis": "quote",
+    "recipient": "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c",
+    "mutable": false
+  },
+  "requestedRoute": {
+    "routeId": "custom-graph",
+    "routeVersion": "1.0.0",
+    "chainId": "1"
+  },
+  "requestedActions": [
+    "review"
+  ],
+  "notes": "VolFee: realized-volatility-scaled dynamic swap fee via a single canonical v4 hook with an atomic one-tx launcher. Inclusive 0.30% (3000 pips) gross-quote-side fee: 1000 pips immutable Programmable liability to 0x4957f4...376c, 2000 pips project share. afterInitialize precommits exact launch PoolKey (one-time _bound guard); before/afterSwap collect the mandatory fee executed-basis-or-revert (partial-fill + one-wei dust both revert)."
+}
