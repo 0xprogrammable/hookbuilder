@@ -36,7 +36,7 @@ for (const [id, [command, ...args]] of checks) {
 if (process.exitCode === undefined) {
   process.stdout.write(`${JSON.stringify({
     status: "REPOSITORY_VALID",
-    version: "0.4.1",
+    version: "0.4.2",
     networkAccessed: false,
     externalActionsPerformed: [],
     checks: results

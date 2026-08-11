@@ -63,7 +63,7 @@ test("version and plugin identities agree without duplicating the portable skill
   assert.equal(packageDocument.private, true);
   assert.equal(Object.hasOwn(packageDocument, "dependencies"), false);
   assert.equal(Object.hasOwn(packageDocument, "devDependencies"), false);
-  assert.equal(packageDocument.version, "0.4.1");
+  assert.equal(packageDocument.version, "0.4.2");
   assert.equal(metadata.version, packageDocument.version);
   assert.equal(codex.version, packageDocument.version);
   assert.equal(claude.version, packageDocument.version);
