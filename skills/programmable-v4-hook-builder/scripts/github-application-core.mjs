@@ -55,6 +55,8 @@ const MAX_RECEIPT_BYTES = 65_536;
 const MAX_SEARCH_RESULTS = 20;
 const MAX_PULL_FILES = 100;
 const MAX_REVIEWS = 100;
+const MAX_DRAFT_PULL_CREATE_ATTEMPTS = 10;
+const DRAFT_PULL_CREATE_RETRY_DELAY_MS = 500;
 const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
 const normalizedPreparedValues = new WeakSet();
 
@@ -260,7 +262,13 @@ export function normalizePreparedApplication(input) {
 
 export function createGhTransport({ runner = defaultCommandRunner } = {}) {
   if (typeof runner !== "function") throw new TypeError("runner must be a function");
-  const request = async ({ method = "GET", endpoint, body = null, allowNotFound = false }) => {
+  const request = async ({
+    method = "GET",
+    endpoint,
+    body = null,
+    allowNotFound = false,
+    requireResponse = false
+  }) => {
     if (!/^(?:GET|POST|PATCH)$/u.test(method)) fail("INTERNAL_ERROR", "unsupported GitHub API method");
     if (typeof endpoint !== "string" || !/^[A-Za-z0-9_./?%=&:+-]+$/u.test(endpoint) || endpoint.includes("..")) {
       fail("INTERNAL_ERROR", "unsafe GitHub API endpoint");
@@ -294,10 +302,13 @@ export function createGhTransport({ runner = defaultCommandRunner } = {}) {
       fail("GITHUB_OUTPUT_INVALID", "GitHub returned an oversized response");
     }
     if (result?.status !== 0) {
-      if (allowNotFound && /(?:HTTP\s*404|Not Found)/iu.test(stderr)) return null;
+      if (allowNotFound && /(?:^|\s)(?:\(HTTP 404\)|HTTP 404)\s*$/iu.test(stderr)) return null;
       fail("GITHUB_REQUEST_FAILED", sanitizeMessage(stderr) || "the GitHub request failed");
     }
-    if (stdout.length === 0) return null;
+    if (stdout.length === 0) {
+      if (requireResponse) fail("GITHUB_OUTPUT_INVALID", "GitHub returned an empty response");
+      return null;
+    }
     try {
       return JSON.parse(stdout);
     } catch {
@@ -364,10 +375,9 @@ export function createGhTransport({ runner = defaultCommandRunner } = {}) {
       });
     },
     async compareBranch({ centralRepository, baseCommit, headLogin, headBranch }) {
-      const head = `${requireGitHubLogin(headLogin, "comparison head login")}:${requireBranch(headBranch, "comparison head branch")}`;
       return request({
         method: "GET",
-        endpoint: `repos/${apiSlug(centralRepository)}/compare/${apiCommit(baseCommit)}...${encodeURIComponent(head)}?per_page=100`
+        endpoint: `repos/${apiSlug(centralRepository)}/compare/${apiCompareSpec(baseCommit, headLogin, headBranch)}?per_page=100`
       });
     },
     async createFork(centralRepository) {
@@ -424,7 +434,9 @@ export function createGhTransport({ runner = defaultCommandRunner } = {}) {
           base: requireBranch(base, "pull-request base"),
           draft: true,
           maintainer_can_modify: false
-        }
+        },
+        allowNotFound: true,
+        requireResponse: true
       });
     },
     async updatePull(centralRepository, number, { title, body }) {
@@ -683,29 +695,63 @@ export async function executeGitHubApplication({
     ? null
     : normalizePull(await transport.getPull(CENTRAL_REPOSITORY, plan.pullRequest.number));
   if (pull === null) {
-    const duplicateSnapshot = await discoverApplicationPull({
-      prepared: normalizedPrepared,
-      transport,
-      viewer: plan.activeAccount,
-      explicitPull: null
-    });
-    if (duplicateSnapshot.pullRequest !== null) {
-      fail("APPLICATION_PULL_REQUEST_RACE", "an application pull request appeared after confirmation; no duplicate was opened");
+    const inspectDraftBoundary = async () => {
+      await assertAuthoritySnapshotUnchanged({ prepared: normalizedPrepared, transport, plan });
+      const observedFork = normalizeRepository(
+        await transport.getRepository(forkSlug),
+        "execution fork"
+      );
+      validateFork(observedFork, plan.activeAccount, plan.central.numericRepositoryId);
+      if (observedFork.id !== fork.id || observedFork.fullName.toLowerCase() !== forkSlug.toLowerCase()) {
+        fail("FORK_CHANGED", "the exact viewer fork changed during draft creation");
+      }
+      const observedRef = normalizeRef(
+        await transport.getRef(forkSlug, normalizedPrepared.branch),
+        normalizedPrepared.branch
+      );
+      if (observedRef.commit !== branchRef.commit) {
+        fail("APPLICATION_BRANCH_CHANGED", "the application branch changed during draft creation");
+      }
+      return discoverApplicationPull({
+        prepared: normalizedPrepared,
+        transport,
+        viewer: plan.activeAccount,
+        explicitPull: null
+      });
+    };
+    let createdPullNumber = null;
+    for (let attempt = 0; attempt < MAX_DRAFT_PULL_CREATE_ATTEMPTS; attempt += 1) {
+      if (attempt > 0) await sleep(DRAFT_PULL_CREATE_RETRY_DELAY_MS);
+      const duplicateSnapshot = await inspectDraftBoundary();
+      if (duplicateSnapshot.pullRequest !== null) {
+        if (attempt === 0) {
+          fail("APPLICATION_PULL_REQUEST_RACE", "an application pull request appeared after confirmation; no duplicate was opened");
+        }
+        pull = duplicateSnapshot.pullRequest;
+        break;
+      }
+      const response = await transport.createDraftPull(CENTRAL_REPOSITORY, {
+        title: normalizedPrepared.title,
+        body: normalizedPrepared.body,
+        head: `${plan.activeAccount.login}:${normalizedPrepared.branch}`,
+        base: CENTRAL_BASE_BRANCH
+      });
+      if (response !== null) {
+        createdPullNumber = normalizePullWriteResponse(response);
+        break;
+      }
     }
-    const prePullRef = normalizeRef(
-      await transport.getRef(forkSlug, normalizedPrepared.branch),
-      normalizedPrepared.branch
-    );
-    if (prePullRef.commit !== branchRef.commit) {
-      fail("APPLICATION_BRANCH_CHANGED", "the application branch changed before draft creation");
+    if (createdPullNumber === null && pull === null) {
+      await sleep(DRAFT_PULL_CREATE_RETRY_DELAY_MS);
+      const finalRecovery = await inspectDraftBoundary();
+      if (finalRecovery.pullRequest === null) {
+        fail("PULL_REQUEST_CREATE_NOT_READY", "GitHub did not accept the exact verified application branch before the bounded retry expired; rerun with a fresh plan");
+      }
+      pull = finalRecovery.pullRequest;
     }
-    const createdPullNumber = normalizePullWriteResponse(await transport.createDraftPull(CENTRAL_REPOSITORY, {
-      title: normalizedPrepared.title,
-      body: normalizedPrepared.body,
-      head: `${plan.activeAccount.login}:${normalizedPrepared.branch}`,
-      base: CENTRAL_BASE_BRANCH
-    }));
-    pull = normalizePull(await transport.getPull(CENTRAL_REPOSITORY, createdPullNumber));
+    if (pull === null) {
+      pull = normalizePull(await transport.getPull(CENTRAL_REPOSITORY, createdPullNumber));
+    }
     actions.push("opened-draft-pull-request");
   } else if (plan.externalWrites.includes("update-draft-pull-request-metadata")) {
     assertOpenDraftPullTarget({
@@ -2154,6 +2200,11 @@ function apiSlug(value) {
 
 function apiCommit(value) {
   return requireCommit(value, "GitHub commit");
+}
+
+function apiCompareSpec(baseCommit, headLogin, headBranch) {
+  const head = `${requireGitHubLogin(headLogin, "comparison head login")}:${requireBranch(headBranch, "comparison head branch")}`;
+  return encodeURIComponent(`${apiCommit(baseCommit)}...${head}`).replaceAll(".", "%2E");
 }
 
 function apiRepositoryPath(value) {

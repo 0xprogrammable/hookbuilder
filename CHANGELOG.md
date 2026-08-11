@@ -8,8 +8,13 @@ All notable Builder changes are recorded here. Historical releases remain immuta
 
 - Preserve the exact two-paragraph Git commit message used by the confirmed draft-application transport instead of
   rejecting its line-feed separator before the GitHub request.
+- Encode the exact base-to-fork comparison as one safe GitHub API segment so an interrupted submission can verify and
+  resume its existing application branch without relaxing the endpoint traversal guard.
+- Retry only the transient 404 returned while GitHub propagates an already verified fork branch to draft creation,
+  with bounded attempts, exact branch and duplicate checks, and immediate failure for every other response.
 - Cover the current GitHub Git Database commit response shape and retain strict rejection of carriage returns,
-  invisible control characters, oversized messages, duplicate pull requests, approval, merge, deployment and launch.
+  invisible control characters, oversized messages, duplicate pull requests, ambiguous recovery branches, approval,
+  merge, deployment and launch.
 
 ### Preserved
 
