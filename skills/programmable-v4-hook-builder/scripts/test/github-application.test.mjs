@@ -99,6 +99,133 @@ test("an exact confirmation creates only a fork, branch commit, and draft PR", a
   assert.equal(transport.writeCalls.includes("merge"), false);
 });
 
+test("a transient draft-pull 404 is retried after the exact branch is verified", async () => {
+  const prepared = makePrepared();
+  const transport = new FakeTransport({ prepared, draftPullNotFoundAttempts: 1 });
+  const plan = await planGitHubApplication({ operation: "submit", prepared, transport });
+  const sleeps = [];
+  const result = await executeGitHubApplication({
+    operation: "submit",
+    prepared,
+    transport,
+    confirmationDigest: plan.confirmationDigest,
+    sleep: async (milliseconds) => sleeps.push(milliseconds)
+  });
+
+  assert.equal(result.status.status, "submitted");
+  assert.deepEqual(sleeps, [500]);
+  assert.equal(transport.writeCalls.filter((value) => value === "createCommit").length, 1);
+  assert.equal(transport.writeCalls.filter((value) => value === "createRef").length, 1);
+  assert.equal(transport.writeCalls.filter((value) => value === "createDraftPull").length, 2);
+});
+
+test("an ambiguous draft-pull 404 adopts the exact discovered PR without a duplicate POST", async () => {
+  const prepared = makePrepared();
+  const transport = new FakeTransport({
+    prepared,
+    draftPullNotFoundAttempts: 1,
+    draftPullNotFoundCreatesPullAtAttempt: 1
+  });
+  const plan = await planGitHubApplication({ operation: "submit", prepared, transport });
+  const sleeps = [];
+  const result = await executeGitHubApplication({
+    operation: "submit",
+    prepared,
+    transport,
+    confirmationDigest: plan.confirmationDigest,
+    sleep: async (milliseconds) => sleeps.push(milliseconds)
+  });
+
+  assert.equal(result.status.status, "submitted");
+  assert.deepEqual(sleeps, [500]);
+  assert.equal(transport.writeCalls.filter((value) => value === "createCommit").length, 1);
+  assert.equal(transport.writeCalls.filter((value) => value === "createDraftPull").length, 1);
+  assert.equal(transport.pull.number, 7);
+});
+
+test("authority drift after a draft-pull 404 blocks the retry POST", async () => {
+  const prepared = makePrepared();
+  const transport = new FakeTransport({ prepared, draftPullNotFoundAttempts: 1 });
+  const plan = await planGitHubApplication({ operation: "submit", prepared, transport });
+  await assert.rejects(() => executeGitHubApplication({
+    operation: "submit",
+    prepared,
+    transport,
+    confirmationDigest: plan.confirmationDigest,
+    sleep: async () => { transport.intakeState = "paused-all"; }
+  }), errorCode("INTAKE_STATE_CHANGED"));
+
+  assert.equal(transport.writeCalls.filter((value) => value === "createCommit").length, 1);
+  assert.equal(transport.writeCalls.filter((value) => value === "createDraftPull").length, 1);
+  assert.equal(transport.pull, null);
+});
+
+test("fork identity drift after a draft-pull 404 blocks every retry POST", async () => {
+  const prepared = makePrepared();
+  const transport = new FakeTransport({ prepared, draftPullNotFoundAttempts: 1 });
+  const plan = await planGitHubApplication({ operation: "submit", prepared, transport });
+  const sleeps = [];
+  await assert.rejects(() => executeGitHubApplication({
+    operation: "submit",
+    prepared,
+    transport,
+    confirmationDigest: plan.confirmationDigest,
+    sleep: async (milliseconds) => {
+      sleeps.push(milliseconds);
+      transport.forkRepositoryId = "405";
+    }
+  }), errorCode("FORK_CHANGED"));
+
+  assert.deepEqual(sleeps, [500]);
+  assert.equal(transport.writeCalls.filter((value) => value === "createCommit").length, 1);
+  assert.equal(transport.writeCalls.filter((value) => value === "createDraftPull").length, 1);
+  assert.equal(transport.pull, null);
+});
+
+test("a PR created behind the final 404 is recovered without an extra POST", async () => {
+  const prepared = makePrepared();
+  const transport = new FakeTransport({
+    prepared,
+    draftPullNotFoundAttempts: 20,
+    draftPullNotFoundCreatesPullAtAttempt: 10
+  });
+  const plan = await planGitHubApplication({ operation: "submit", prepared, transport });
+  const sleeps = [];
+  const result = await executeGitHubApplication({
+    operation: "submit",
+    prepared,
+    transport,
+    confirmationDigest: plan.confirmationDigest,
+    sleep: async (milliseconds) => sleeps.push(milliseconds)
+  });
+
+  assert.equal(result.status.status, "submitted");
+  assert.deepEqual(sleeps, Array(10).fill(500));
+  assert.equal(transport.writeCalls.filter((value) => value === "createCommit").length, 1);
+  assert.equal(transport.writeCalls.filter((value) => value === "createDraftPull").length, 10);
+  assert.equal(transport.pull.number, 7);
+});
+
+test("persistent draft-pull 404s stop at the bounded retry without duplicating Git history", async () => {
+  const prepared = makePrepared();
+  const transport = new FakeTransport({ prepared, draftPullNotFoundAttempts: 20 });
+  const plan = await planGitHubApplication({ operation: "submit", prepared, transport });
+  const sleeps = [];
+  await assert.rejects(() => executeGitHubApplication({
+    operation: "submit",
+    prepared,
+    transport,
+    confirmationDigest: plan.confirmationDigest,
+    sleep: async (milliseconds) => sleeps.push(milliseconds)
+  }), errorCode("PULL_REQUEST_CREATE_NOT_READY"));
+
+  assert.deepEqual(sleeps, Array(10).fill(500));
+  assert.equal(transport.writeCalls.filter((value) => value === "createCommit").length, 1);
+  assert.equal(transport.writeCalls.filter((value) => value === "createRef").length, 1);
+  assert.equal(transport.writeCalls.filter((value) => value === "createDraftPull").length, 10);
+  assert.equal(transport.pull, null);
+});
+
 test("a wrong or stale confirmation performs no writes", async () => {
   const prepared = makePrepared();
   const transport = new FakeTransport({ prepared });
@@ -343,21 +470,35 @@ test("a failed PR creation resumes from the exact branch without another commit"
   const prepared = makePrepared();
   const transport = new FakeTransport({ prepared, failCreatePullOnce: true });
   const firstPlan = await planGitHubApplication({ operation: "submit", prepared, transport });
+  let nonNotFoundSleeps = 0;
   await assert.rejects(
     () => executeGitHubApplication({
       operation: "submit",
       prepared,
       transport,
       confirmationDigest: firstPlan.confirmationDigest,
-      sleep: async () => {}
+      sleep: async () => { nonNotFoundSleeps += 1; }
     }),
     errorCode("GITHUB_REQUEST_FAILED")
   );
+  assert.equal(nonNotFoundSleeps, 0);
   assert.equal(transport.branchCommit, CREATED_COMMIT);
   const commitWrites = transport.writeCalls.filter((value) => value === "createCommit").length;
+  const writeCallsBeforeRecovery = transport.writeCalls.length;
+  let comparisonCalls = 0;
+  const exactComparison = transport.compareBranch.bind(transport);
+  transport.compareBranch = async (...args) => {
+    comparisonCalls += 1;
+    return exactComparison(...args);
+  };
 
   const recoveryPlan = await planGitHubApplication({ operation: "submit", prepared, transport });
+  const repeatedRecoveryPlan = await planGitHubApplication({ operation: "submit", prepared, transport });
   assert.deepEqual(recoveryPlan.externalWrites, ["open-draft-pull-request"]);
+  assert.equal(repeatedRecoveryPlan.confirmationDigest, recoveryPlan.confirmationDigest);
+  assert.deepEqual(repeatedRecoveryPlan.externalWrites, recoveryPlan.externalWrites);
+  assert.equal(transport.writeCalls.length, writeCallsBeforeRecovery);
+  assert.equal(comparisonCalls, 2);
   const result = await executeGitHubApplication({
     operation: "submit",
     prepared,
@@ -367,6 +508,20 @@ test("a failed PR creation resumes from the exact branch without another commit"
   });
   assert.equal(result.status.status, "submitted");
   assert.equal(transport.writeCalls.filter((value) => value === "createCommit").length, commitWrites);
+  assert.equal(transport.writeCalls.filter((value) => value === "createDraftPull").length, 2);
+
+  const appliedPlan = await planGitHubApplication({ operation: "submit", prepared, transport });
+  assert.deepEqual(appliedPlan.externalWrites, []);
+  const applied = await executeGitHubApplication({
+    operation: "submit",
+    prepared,
+    transport,
+    confirmationDigest: null,
+    sleep: async () => {}
+  });
+  assert.equal(applied.alreadyApplied, true);
+  assert.equal(transport.writeCalls.filter((value) => value === "createCommit").length, commitWrites);
+  assert.equal(transport.writeCalls.filter((value) => value === "createDraftPull").length, 2);
 });
 
 test("an unverified matching branch is rebuilt instead of opened as a pull request", async () => {
@@ -498,6 +653,95 @@ test("the gh command transport preserves the exact multiline application commit 
     parents: [CENTRAL_COMMIT],
     tree: FORK_TREE
   });
+});
+
+test("the gh command transport encodes the recovery comparison as one safe API segment", async () => {
+  let invocation = null;
+  const response = { ahead_by: 1, behind_by: 0, total_commits: 1 };
+  const transport = createGhTransport({
+    runner: async (value) => {
+      invocation = value;
+      return { status: 0, stdout: canonicalJson(response), stderr: "" };
+    }
+  });
+
+  assert.deepEqual(await transport.compareBranch({
+    centralRepository: "0xprogrammable/submit-launch",
+    baseCommit: CENTRAL_COMMIT,
+    headLogin: "builder",
+    headBranch: `programmable-builder/${APPLICATION_ID}`
+  }), response);
+  const endpoint = `repos/0xprogrammable/submit-launch/compare/${CENTRAL_COMMIT}%2E%2E%2Ebuilder%3Aprogrammable-builder%2F${APPLICATION_ID}?per_page=100`;
+  assert.ok(invocation.args.includes(endpoint));
+  assert.equal(endpoint.includes(".."), false);
+});
+
+test("the gh command transport exposes only draft-pull 404 as a bounded retry signal", async () => {
+  const requests = [];
+  const response = { number: 7 };
+  const transport = createGhTransport({
+    runner: async (value) => {
+      requests.push(value);
+      if (requests.length === 1) {
+        return { status: 1, stdout: "", stderr: "gh: Not Found (HTTP 404)" };
+      }
+      return { status: 0, stdout: canonicalJson(response), stderr: "" };
+    }
+  });
+  const input = {
+    title: `[Builder Beta] ${APPLICATION_ID}`,
+    body: "body",
+    head: `builder:programmable-builder/${APPLICATION_ID}`,
+    base: "main"
+  };
+
+  assert.equal(await transport.createDraftPull("0xprogrammable/submit-launch", input), null);
+  assert.deepEqual(await transport.createDraftPull("0xprogrammable/submit-launch", input), response);
+  assert.equal(requests.length, 2);
+
+  for (const stderr of [
+    "gh: Validation Failed (HTTP 422)",
+    "gh: resource Not Found upstream (HTTP 500)",
+    "gh: upstream reported HTTP 404; final request failed (HTTP 500)"
+  ]) {
+    let nonNotFoundCalls = 0;
+    const nonNotFound = createGhTransport({
+      runner: async () => {
+        nonNotFoundCalls += 1;
+        return { status: 1, stdout: "", stderr };
+      }
+    });
+    await assert.rejects(
+      () => nonNotFound.createDraftPull("0xprogrammable/submit-launch", input),
+      errorCode("GITHUB_REQUEST_FAILED")
+    );
+    assert.equal(nonNotFoundCalls, 1);
+  }
+});
+
+test("the gh recovery comparison still rejects branch traversal before any request", async (t) => {
+  for (const branch of [
+    "programmable-builder/../main",
+    "programmable-builder//main",
+    "programmable-builder/%2e%2e/main"
+  ]) {
+    await t.test(branch, async () => {
+      let calls = 0;
+      const transport = createGhTransport({
+        runner: async () => {
+          calls += 1;
+          return { status: 0, stdout: "{}", stderr: "" };
+        }
+      });
+      await assert.rejects(() => transport.compareBranch({
+        centralRepository: "0xprogrammable/submit-launch",
+        baseCommit: CENTRAL_COMMIT,
+        headLogin: "builder",
+        headBranch: branch
+      }), errorCode("GITHUB_OUTPUT_INVALID"));
+      assert.equal(calls, 0);
+    });
+  }
 });
 
 test("the gh command transport still rejects carriage returns in commit messages before any write", async () => {
@@ -707,7 +951,9 @@ class FakeTransport {
     sourcePush = true,
     sourceAdmin = false,
     intakeState = "open",
-    failCreatePullOnce = false
+    failCreatePullOnce = false,
+    draftPullNotFoundAttempts = 0,
+    draftPullNotFoundCreatesPullAtAttempt = null
   }) {
     this.prepared = normalizePreparedApplication(prepared);
     this.viewer = { id: viewerId, login: "builder", html_url: "https://github.com/builder" };
@@ -718,6 +964,7 @@ class FakeTransport {
     this.continuations = [];
     this.centralCommit = CENTRAL_COMMIT;
     this.forkExists = false;
+    this.forkRepositoryId = FORK_REPOSITORY_ID;
     this.branchCommit = null;
     this.commitFiles = new Map();
     this.pendingFiles = null;
@@ -727,6 +974,9 @@ class FakeTransport {
     this.checks = [];
     this.writeCalls = [];
     this.failCreatePullOnce = failCreatePullOnce;
+    this.draftPullNotFoundAttempts = draftPullNotFoundAttempts;
+    this.draftPullNotFoundCreatesPullAtAttempt = draftPullNotFoundCreatesPullAtAttempt;
+    this.draftPullCalls = 0;
   }
 
   async getViewer() {
@@ -763,7 +1013,7 @@ class FakeTransport {
       }
       return repository({
         slug: "builder/submit-launch",
-        id: FORK_REPOSITORY_ID,
+        id: this.forkRepositoryId,
         ownerId: VIEWER_ID,
         ownerLogin: "builder",
         fork: true,
@@ -920,6 +1170,14 @@ class FakeTransport {
 
   async createDraftPull(_repository, { title, body }) {
     this.writeCalls.push("createDraftPull");
+    this.draftPullCalls += 1;
+    if (this.draftPullNotFoundAttempts > 0) {
+      this.draftPullNotFoundAttempts -= 1;
+      if (this.draftPullNotFoundCreatesPullAtAttempt === this.draftPullCalls && this.pull === null) {
+        this.pull = this.makePull({ title, body });
+      }
+      return null;
+    }
     if (this.failCreatePullOnce) {
       this.failCreatePullOnce = false;
       throw new GitHubApplicationError("GITHUB_REQUEST_FAILED", "simulated pull failure");
