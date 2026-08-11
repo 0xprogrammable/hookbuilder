@@ -3772,8 +3772,8 @@ test("prototype authority roundtrip survives packaging and fails closed on every
           profileUrl: `https://github.com/${submission.builder.github}`
         }),
         centralBaseResolver: async ({ baseBranch, applicationId }) => ({
-          repositorySlug: "0xprogrammable/programmable-registry",
-          repositoryUrl: "https://github.com/0xprogrammable/programmable-registry",
+          repositorySlug: "0xprogrammable/submit-launch",
+          repositoryUrl: "https://github.com/0xprogrammable/submit-launch",
           baseBranch,
           baseCommit: "c".repeat(40),
           baseTree: "d".repeat(40),

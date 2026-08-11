@@ -2,7 +2,10 @@ import { TextDecoder } from "node:util";
 
 import { canonicalJson } from "./submission-core.mjs";
 import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
-import { isProgrammableRegistryActiveIntake } from "./registry-intake-contract.mjs";
+import {
+  SUBMIT_LAUNCH_INTAKE_SCHEMA_VERSION,
+  isSubmitLaunchIntakeStatusDocument
+} from "./registry-intake-contract.mjs";
 
 import {
   CENTRAL_BASE_BRANCH,
@@ -17,8 +20,6 @@ import {
 
 import {
   fail,
-  hasExactKeys,
-  isPlainObject,
   sha256Bytes
 } from "./github-application-primitives.mjs";
 
@@ -221,13 +222,7 @@ export function parseIntakeStatusBytes(bytes) {
   }
   if (
     source !== `${canonicalJson(document)}\n`
-    || !hasExactKeys(document, ["activeIntake", "continuingPullRequests", "schemaVersion"])
-    || document.schemaVersion !== 3
-    || !isPlainObject(document.activeIntake)
-    || !hasExactKeys(document.activeIntake, ["baseBranch", "directory", "repository", "state"])
-    || !isProgrammableRegistryActiveIntake(document.activeIntake)
-    || !Array.isArray(document.continuingPullRequests)
-    || document.continuingPullRequests.length > 32
+    || !isSubmitLaunchIntakeStatusDocument(document)
   ) {
     fail("INTAKE_STATUS_INVALID", "the trusted intake status is malformed or unsupported");
   }
@@ -237,7 +232,7 @@ export function parseIntakeStatusBytes(bytes) {
   } catch {
     fail("INTAKE_STATUS_INVALID", "a trusted intake continuation record is malformed");
   }
-  if (document.activeIntake.state !== "paused-new" && continuations.length !== 0) {
+  if (document.state !== "paused-new" && continuations.length !== 0) {
     fail("INTAKE_STATUS_INVALID", "trusted continuations may exist only while new application ids are paused");
   }
   for (let index = 1; index < continuations.length; index += 1) {
@@ -252,9 +247,8 @@ export function parseIntakeStatusBytes(bytes) {
     fail("INTAKE_STATUS_INVALID", "trusted intake continuations contain duplicate identities");
   }
   return Object.freeze({
-    schemaVersion: 3,
-    activeIntake: Object.freeze({ ...document.activeIntake }),
-    state: document.activeIntake.state,
+    schemaVersion: SUBMIT_LAUNCH_INTAKE_SCHEMA_VERSION,
+    state: document.state,
     sha256: sha256Bytes(bytes),
     continuingPullRequests: Object.freeze(continuations)
   });

@@ -3,9 +3,9 @@
   "name": "programmable-v4-builder",
   "version": "0.5.1",
   "displayName": "Programmable v4 Builder",
-  "description": "Design, build, review, or track Programmable hooks, tokens, apps, games, services, and standalone settlement projects.",
+  "description": "Design, build, review, and submit Programmable hooks, tokens, apps, games, services, and standalone settlement projects through Submit a Launch.",
   "shortDescription": "Build a reviewable Programmable project from one prompt",
-  "longDescription": "Loads one portable skill that compiles a plain-language idea into the smallest complete Programmable system, then designs, builds, checks, reviews, and prepares its exact source- and launch-wallet-bound GitHub application without limiting unfamiliar products to known templates.",
+  "longDescription": "Loads one portable skill that turns an idea or repository into the smallest complete Programmable system, checks its exact source and evidence, and prepares a draft-only application for 0xprogrammable/submit-launch without limiting unfamiliar products to known templates.",
   "developerName": "Programmable",
   "category": "Developer Tools",
   "capabilities": [
@@ -18,7 +18,7 @@
     "GitHub workflow"
   ],
   "defaultPrompt": [
-    "Use $programmable-v4-hook-builder to infer the mode and build my idea end to end; ask only for one material owner choice."
+    "Use $programmable-v4-hook-builder to build and check my project, then prepare it for Submit a Launch."
   ],
   "mcpServers": "./.mcp.json",
   "license": "MIT",

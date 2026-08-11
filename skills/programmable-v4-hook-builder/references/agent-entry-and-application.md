@@ -1,9 +1,10 @@
 # Agent entry and application contract
 
 This reference separates the active **Public Applicant Beta** from a later **Connected Submission service**. Builders
-keep source externally and add one review-only 1.1.0 JSON request to `0xprogrammable/hookbuilder` (ID `1320085947`). It
-declares a public launch wallet but needs no GitHub App credential and proves no wallet control, session, or signature.
-Connected-service contracts later in this file are inactive future designs.
+keep source externally and use the Skill to prepare one exact six-file application for
+`0xprogrammable/submit-launch` (immutable GitHub ID `1320171831`). The GitHub transport is draft-only, needs no GitHub
+App credential, and proves no approval, wallet control, signature, deployment, or launch. Connected-service contracts
+later in this file are inactive future designs.
 
 ## Contents
 
@@ -58,32 +59,34 @@ idea or existing project
   -> local package gate
   -> clean, pushed, anonymously reachable public GitHub revision
   -> exact public source repository ID, commit, and root tree
-  -> schema-valid Applicant request
-  -> pull request to 0xprogrammable/hookbuilder
+  -> generated six-file Applicant package
+  -> confirmed draft pull request to 0xprogrammable/submit-launch
   -> GitHub-native review
 ```
 
-The complete source stays in the builder repository. The Hookbuilder pull request adds or updates exactly one file:
+The complete source stays in the builder repository. `prepare-pr` generates exactly these six files under one
+application directory:
 
 ```text
-submissions/requests/<source-repository-id>-<hook-id>.json
+submissions/<application-id>/application.json
+submissions/<application-id>/PROPOSAL.md
+submissions/<application-id>/TEST_PLAN.md
+submissions/<application-id>/THREAT_MODEL.md
+submissions/<application-id>/compatibility-report.json
+submissions/<application-id>/evidence-index.json
 ```
 
-The request binds GitHub login; nonzero EIP-55 wallet; source URL, ID, commit and tree; versioned hook/template/model;
-14 v4 flags and mask; fee; and only `custom-graph@1.0.0` on chain `1`. In Hookbuilder, copy the root example and run:
+`prepare-pr` performs no GitHub write. `submit` and `update` first return a read-only plan; only the exact confirmed plan
+may create or update the authenticated builder's `submit-launch` fork, branch, and one draft pull request. The client
+binds the exact central commit/tree and reads `docs/builder/intake-status.json` as schema `2` before every write. A
+state or base change invalidates the plan.
 
-```bash
-npm run submission:check -- submissions/requests/<source-repository-id>-<hook-id>.json
-```
+Do not hand-create the pull request. Do not create a new Applicant PR in Hookbuilder. Hookbuilder #10, #11, #12, #14,
+#15, #18, #19, and #20 are the only legacy continuations. Maintainer automation must revalidate with trusted
+protected-base code and must never execute Applicant source with repository credentials.
 
-The beta does not use the historical `prepare-pr` command or candidate Application V3 `open-world submit` transport.
-Those commands retain old-version replay semantics and are not public Applicant targets. Maintainer automation must
-revalidate the request with trusted protected-base code and must never execute Applicant source with repository
-credentials. Contributor-head CI is convenience evidence, not intake authority.
-
-GitHub state is not security, approval, deployment, provider, or availability evidence. `launchWallet` is a declaration,
-not control proof or signing authority; the request performs no external write. The validator binds the exact path and
-Canonical JSON V2 UTF-8 bytes with no trailing newline as `applicationManifest`; root `submissions/README.md` owns details.
+GitHub state is not security, approval, deployment, provider, or availability evidence. The application binds exact
+public source and package evidence but grants no signing or launch authority.
 
 ## Default entry
 

@@ -56,6 +56,10 @@ import {
   requireCommit,
   requireSafeBranch
 } from "./cli-prepare-pr-values.mjs";
+import {
+  SUBMIT_LAUNCH_BASE_BRANCH,
+  SUBMIT_LAUNCH_REPOSITORY
+} from "./registry-intake-contract.mjs";
 
 export async function preparePullRequest({
   repositoryRoot: repositoryRootInput = null,
@@ -81,10 +85,10 @@ export async function preparePullRequest({
   centralTimeoutMs
 }) {
   const normalizedBase = requireSafeBranch(baseBranch, "base branch");
-  if (normalizedBase !== "main") {
+  if (normalizedBase !== SUBMIT_LAUNCH_BASE_BRANCH) {
     throw new CliFailure(
       "USAGE_ERROR",
-      "prepare-pr supports only 0xprogrammable/programmable-registry:main; omit baseBranch or set it to main",
+      `prepare-pr supports only ${SUBMIT_LAUNCH_REPOSITORY}:${SUBMIT_LAUNCH_BASE_BRANCH}; omit baseBranch or set it to ${SUBMIT_LAUNCH_BASE_BRANCH}`,
       { exitCode: 2 }
     );
   }

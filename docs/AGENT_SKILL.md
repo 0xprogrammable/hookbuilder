@@ -140,7 +140,7 @@ public-safe idea
   -> deterministic local validation
   -> exact source commit and root tree
   -> review-only Applicant request
-  -> pull request to 0xprogrammable/hookbuilder:main
+  -> draft pull request to 0xprogrammable/submit-launch:main
   -> independent exact-revision review
   -> separate launch-authority, wallet, finality and availability gates
 ```
@@ -280,26 +280,25 @@ Git objects from the exact pinned commit without following symlinks, running can
 loading filters or using the network. Resource limits can request a content-addressed split review; they cannot label
 the product unsafe.
 
-Application v3 remains unreleased candidate architecture and is not the public Applicant transport. Do not route a new
-Applicant through historical `prepare-pr` or the candidate `open-world submit` path. The public beta uses the root
-[`submissions/`](../submissions/README.md) contract and offline validator.
+Application v3 remains unreleased candidate architecture. Do not use it to claim a released review transport. The
+released public Applicant client uses `prepare-pr`, then the two-step `submit` or `update` flow, and targets only
+`0xprogrammable/submit-launch` under the canonical schema-v2 intake contract.
 
 ### 6. Submit, review and repair
 
-For the public beta, copy the root example to
-`submissions/requests/<source-repository-id>-<hook-id>.json`, bind the applicant's GitHub login and nonzero checksummed
-launch-wallet address, exact source commit and tree, versioned hook, template, model, permissions and fee, and the only
-live beta route `custom-graph@1.0.0` on Ethereum Mainnet chain `1`, then run:
+For the released public beta, use `prepare-pr` to materialize the exact six-file application outside the source
+repository. This step is read-only. `submit` and `update` first produce a read-only plan; only an exact confirmation
+after explicit owner authorization may create or update one draft pull request to
+[`0xprogrammable/submit-launch:main`](https://github.com/0xprogrammable/submit-launch).
 
-```bash
-npm run submission:check -- submissions/requests/<source-repository-id>-<hook-id>.json
-```
+The client binds repository ID `1320171831`, the observed central commit and tree, status schema `2`, and the exact
+source package. It fails closed when intake does not permit the application or the central state moves. Never hand-open
+the pull request and never submit a new Applicant request to Hookbuilder. Hookbuilder pull requests #10, #11, #12, #14,
+#15, #18, #19, and #20 are legacy continuations only.
 
-After local validation, an authorized owner may open one pull request to
-[`0xprogrammable/hookbuilder:main`](https://github.com/0xprogrammable/hookbuilder) with the Applicant template. The
-request stays review-only. The public launch-wallet declaration neither proves control nor authorizes a signature or
-transaction. It does not approve, register, deploy, sign, route, or launch. A changed source commit, tree, or canonical
-Applicant manifest is a new review target; any later authority or runtime claim needs separate evidence.
+The request stays review-only. It does not approve, register, deploy, sign, route, or launch. A changed source commit,
+tree, or canonical Applicant package is a new review target; any later authority or runtime claim needs separate
+evidence.
 
 ## Fee V2 invariant
 

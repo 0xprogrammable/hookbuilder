@@ -3,10 +3,10 @@
 Contributions are welcome when they make the Builder more accurate, composable, efficient, testable, or portable
 without weakening its evidence boundaries.
 
-Submitting a hook, template, or model for review is a different path. Follow the
-[Applicant beta guide](docs/PUBLIC_GITHUB_PR_BETA.md), add or update exactly one JSON request under
-`submissions/requests/`, and use the Applicant pull-request template. Do not mix Applicant data with a Builder code
-change.
+Submitting a new hook, project, or model for review is a different path. Use the Builder and follow the
+[Submit a Launch guide](docs/PUBLIC_GITHUB_PR_BETA.md); new applications go to `0xprogrammable/submit-launch`, never
+to this repository. Hookbuilder pull requests #10, #11, #12, #14, #15, #18, #19, and #20 may update only their frozen
+legacy Applicant records. Do not mix Applicant data with a Builder code change.
 
 ## Start with the owning layer
 
@@ -16,7 +16,7 @@ change.
 | Detailed protocol or platform knowledge | `skills/programmable-v4-hook-builder/references/` |
 | Context selection | `references/knowledge-routing.json` and router tests |
 | Reusable planning block | `assets/starter-catalog/` and catalog tests |
-| Applicant submission field | `submissions/schema/`, validator, example, tests and migration |
+| Legacy Applicant submission field | `submissions/schema/`, validator, example, tests and migration |
 | Deterministic tool | `scripts/` plus its test |
 | Agent behavior regression | `evals/` with a binary safety rubric when applicable |
 | Host metadata | `config/plugin.json`, then `npm run plugin:write` |

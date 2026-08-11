@@ -1,8 +1,8 @@
 # GitHub application v3
 
-> Candidate replay contract, not current intake. The only current public Applicant target is
-> `0xprogrammable/hookbuilder:main`, using the root `submissions/` schema, example, validator, and Applicant template.
-> Never use this chapter's `0xprogrammable/programmable-registry` transport for a new Applicant.
+> Candidate Application V3 contract, not the released package version. Both released and future Applicant transports
+> use the canonical `0xprogrammable/submit-launch:main` repository identity; never create a new Applicant PR in
+> Hookbuilder.
 
 Use this reference only for `submission.v2.json` and `public-pr-application-v3`. Do not route a v2 project through the
 historical v1 `prepare-pr` contract, six-file `application.json` package or maximum-eight-companion path.
@@ -183,7 +183,7 @@ candidate-code execution.
 ## External-write boundary
 
 Keep GitHub preparation and GitHub mutation separate. After trusted V3 intake is active, use only namespaced
-`cli.mjs open-world submit`, `update`, and `status`; top-level application commands remain historical V1. The first V3
+`cli.mjs open-world submit`, `update`, and `status`; top-level application commands remain the released V1 path. The first V3
 submit or update invocation must be a read-only plan
 that reports:
 
@@ -194,7 +194,8 @@ that reports:
 - one current confirmation digest.
 
 The fixed public target is
-[`0xprogrammable/programmable-registry:main`](https://github.com/0xprogrammable/programmable-registry). The confirmed
+[`0xprogrammable/submit-launch:main`](https://github.com/0xprogrammable/submit-launch), immutable GitHub repository ID
+`1320171831`. The confirmed
 client uses the builder's fork to create or update one draft application pull request there.
 
 Require explicit user authority for that exact digest before creating a fork, advancing a branch or opening/updating a

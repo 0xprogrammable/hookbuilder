@@ -22,7 +22,7 @@
     },
     {
       "id": "registry-source",
-      "repositoryUri": "https://github.com/0xprogrammable/programmable-registry",
+      "repositoryUri": "https://github.com/0xprogrammable/submit-launch",
       "numericRepositoryId": "1320171831",
       "revisionObjectId": "0000000000000000000000000000000000000000",
       "treeObjectId": "0000000000000000000000000000000000000000"
