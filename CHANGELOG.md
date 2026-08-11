@@ -2,6 +2,20 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.4.3 - 2026-08-11
+
+### Fixed
+
+- Preserve the exact two-paragraph Git commit message used by the confirmed draft-application transport instead of
+  rejecting its line-feed separator before the GitHub request.
+- Cover the current GitHub Git Database commit response shape and retain strict rejection of carriage returns,
+  invisible control characters, oversized messages, duplicate pull requests, approval, merge, deployment and launch.
+
+### Preserved
+
+- The explicit two-step external-write confirmation and draft-only Submit a Launch boundary.
+- Submission standard `1.5.0`, application schema `1.0.0-beta.1`, fee policy `1.1.0`, and every historical release.
+
 ## 0.4.2 - 2026-08-11
 
 ### Changed

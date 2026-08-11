@@ -82,7 +82,7 @@ structure plus builder-declared evidence, and `sandboxVerification.state` remain
 
 ### Mandatory Programmable fee
 
-Every new launch application uses Builder `v0.4.2`, submission standard `1.5.0`, fee policy `1.1.0`, and declares the
+Every new launch application uses Builder `v0.4.3`, submission standard `1.5.0`, fee policy `1.1.0`, and declares the
 root `programmableFee` policy:
 
 - `effective total = max(builder-selected total, 10 bps)`;

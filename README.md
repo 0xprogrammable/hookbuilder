@@ -12,7 +12,7 @@
   <a href="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-6f5b95"></a>
   <a href="https://agentskills.io/specification"><img alt="Agent Skills compatible" src="https://img.shields.io/badge/Agent%20Skills-compatible-e86eaf"></a>
-  <a href="CHANGELOG.md"><img alt="Builder version 0.4.2" src="https://img.shields.io/badge/builder-v0.4.2-5e8f7b"></a>
+  <a href="CHANGELOG.md"><img alt="Builder version 0.4.3" src="https://img.shields.io/badge/builder-v0.4.3-5e8f7b"></a>
 </p>
 
 Programmable v4 Builder is an evidence-first [Agent Skill](https://agentskills.io/specification) for open-ended Uniswap
@@ -37,7 +37,7 @@ For a reproducible Codex installation pinned to this release:
 
 ```bash
 gh skill install 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.4.2 \
+  programmable-v4-hook-builder@v0.4.3 \
   --agent codex \
   --scope user
 ```
