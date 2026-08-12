@@ -76,10 +76,14 @@ test("doctor defaults to the installed plugin root when the host cwd is not a Gi
     recursive: true,
     filter: (source) => !transientDirectories.has(path.basename(source))
   });
-  fs.copyFileSync(
-    path.resolve(skillRoot, "..", "..", ".codex-plugin", "plugin.json"),
-    path.join(pluginRoot, ".codex-plugin", "plugin.json")
-  );
+  const repositoryRoot = path.resolve(skillRoot, "..", "..");
+  const manifestCandidates = [
+    path.join(repositoryRoot, ".codex-plugin", "plugin.json"),
+    path.join(repositoryRoot, "plugins", "marketplace", "plugins", "programmable", ".codex-plugin", "plugin.json")
+  ];
+  const sourceManifest = manifestCandidates.find((candidate) => fs.existsSync(candidate));
+  assert.ok(sourceManifest, "the repository must expose a generated Codex plugin manifest");
+  fs.copyFileSync(sourceManifest, path.join(pluginRoot, ".codex-plugin", "plugin.json"));
 
   const result = childProcess.spawnSync(
     process.execPath,
