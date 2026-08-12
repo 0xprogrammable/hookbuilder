@@ -92,10 +92,20 @@ trustedHostTest("a manual candidate gate survives central projection as architec
   assert.equal(validated.compatibility.result, "architecture-review-required");
   assert.deepEqual(
     validated.compatibility.findings.map(({ code, path }) => ({ code, path })),
-    [{
-      code: "REQUIRED_REVIEW_GATE",
-      path: "$.requiredGates.candidate.human-economic-and-security-review"
-    }]
+    [
+      {
+        code: "PROGRAMMABLE_FEE_CONFORMANCE_EVIDENCE_MISSING",
+        path: "$.implementation.feeConformanceManifestPath"
+      },
+      {
+        code: "REQUIRED_REVIEW_GATE",
+        path: "$.requiredGates.candidate.custom-programmable-fee-review"
+      },
+      {
+        code: "REQUIRED_REVIEW_GATE",
+        path: "$.requiredGates.candidate.human-economic-and-security-review"
+      }
+    ]
   );
   assert.equal(validated.evidenceIndex.evidence[0].status, "blocked");
 });
