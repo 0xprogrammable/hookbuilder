@@ -32,11 +32,15 @@ test("repository check plan runs maintainability once and bounds every child sui
     "route-capabilities",
     "mcp-server",
     "portable-skill",
+    "eval-structure",
     "eval-e2e-harness",
     "maintainability",
     "repository-contract"
   ]);
   assert.equal(plan.filter(({ id }) => id === "maintainability").length, 1);
+  const evalStructure = plan.find(({ id }) => id === "eval-structure");
+  assert.deepEqual(evalStructure.args, ["scripts/evals/validate-evals.mjs"]);
+  assert.ok(plan.indexOf(evalStructure) < plan.findIndex(({ id }) => id === "eval-e2e-harness"));
   for (const check of plan) {
     assert.ok(Number.isSafeInteger(check.timeoutMs));
     assert.ok(check.timeoutMs > 0);

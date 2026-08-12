@@ -60,6 +60,12 @@ export function createRepositoryCheckPlan({
       timeoutMs: 16 * 60 * 1000
     },
     {
+      id: "eval-structure",
+      command: nodeExecutable,
+      args: ["scripts/evals/validate-evals.mjs"],
+      timeoutMs: 120_000
+    },
+    {
       id: "eval-e2e-harness",
       command: nodeExecutable,
       // The two expensive synchronous fixture groups live in separate files so
