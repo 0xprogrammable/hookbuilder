@@ -431,7 +431,7 @@ test("CI deterministically covers both Programmable fee reference kernels", () =
   assert.match(workflow, /^\s*CI_ROUTING_REF: \$\{\{ github\.event_name == 'pull_request' && github\.base_ref \|\| github\.ref_name \}\}$/mu);
   assert.doesNotMatch(workflow, /--ref "\$\{\{/u);
   assert.match(workflow, /Preserve exhaustive checks while a protected base predates routing outputs/u);
-  assert.match(workflow, /ROUTED_REPOSITORY_NODES='\[20,22\]'/u);
+  assert.match(workflow, /ROUTED_REPOSITORY_NODES='\[22,24\]'/u);
   assert.match(workflow, /ROUTED_REFERENCE_KERNEL_REQUIRED=true/u);
   assert.match(workflow, /ROUTED_CODEQL_REQUIRED=true/u);
   assert.match(workflow, /ROUTED_PLATFORM_LANE_REQUIRED=true/u);
