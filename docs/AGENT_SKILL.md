@@ -103,7 +103,7 @@ node scripts/verify-skill.mjs --installed
 The package shape and host behavior are separate claims. The local release rehearsal verifies clean placement for Codex,
 Claude Code and GitHub Copilot; it does not launch those hosts. Cursor placement and all ChatGPT upload/runtime behavior
 remain unverified for this candidate. Application V3 exact revision preparation supports macOS and Linux only and
-requires Node.js 20+, Git 2.49+ with `git backfill --sparse`, public GitHub reachability, and later authenticated `gh` for
+requires Node.js 22+, Git 2.49+ with `git backfill --sparse`, public GitHub reachability, and later authenticated `gh` for
 submission or update. Run `cli.mjs doctor` before repository work.
 
 See [`PORTABILITY_AND_LIFECYCLE.md`](PORTABILITY_AND_LIFECYCLE.md) for the truthful host/OS/offline matrix and copyable
