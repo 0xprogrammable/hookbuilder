@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "../..");
 const baselinePath = path.join(repositoryRoot, "config/maintainability-coverage-baseline.json");
-const minimumNodeVersion = Object.freeze({ major: 22, minor: 0, patch: 0 });
+const minimumNodeVersion = Object.freeze({ major: 24, minor: 0, patch: 0 });
 const maximumOutputBytes = 64 * 1024 * 1024;
 const testTimeoutMs = 120_000;
 const REQUIRED_TESTS = Object.freeze([
@@ -444,7 +444,7 @@ function assertSupportedNodeVersion(version) {
   const supported = major > minimumNodeVersion.major
     || (major === minimumNodeVersion.major && minor > minimumNodeVersion.minor)
     || (major === minimumNodeVersion.major && minor === minimumNodeVersion.minor && patch >= minimumNodeVersion.patch);
-  if (!supported) throw new Error("coverage gate requires Node.js 22 or newer for built-in test coverage");
+  if (!supported) throw new Error("coverage gate requires Node.js 24 or newer for built-in test coverage");
 }
 
 function assertNoArguments(args) {

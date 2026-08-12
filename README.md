@@ -16,7 +16,7 @@
   <a href="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-F8F0E9?labelColor=010103"></a>
   <a href="https://agentskills.io/specification"><img alt="Agent Skills compatible" src="https://img.shields.io/badge/Agent%20Skills-compatible-F8F0E9?labelColor=010103"></a>
-  <a href="CHANGELOG.md"><img alt="Current published release 0.4.3" src="https://img.shields.io/badge/published-v0.4.3-F8F0E9?labelColor=010103"></a>
+  <a href="CHANGELOG.md"><img alt="Package version 0.5.1" src="https://img.shields.io/badge/package-v0.5.1-F8F0E9?labelColor=010103"></a>
 </p>
 
 <p align="center">
@@ -29,9 +29,9 @@
 > [!IMPORTANT]
 > **Release status**
 >
-> `v0.4.3` is the latest published release. `main` contains the public `v0.5.1` development source. Its
-> integration on `main`, package version, or green CI does not make it a stable release. The Applicant beta on
-> `main` can prepare a review request; it does not approve, deploy, route, register, or launch a project.
+> Package version `v0.5.1` requires Node.js 24 or newer. Verify the public tag and GitHub release before treating it as
+> published. Package checks and public CI do not establish model behavior, an independent audit, project approval,
+> deployment, routing, registration, or launch authority.
 
 Programmable v4 Builder is an evidence-first [Agent Skill](https://agentskills.io/specification). It accepts a plain
 idea or an existing public repository. Hooks, tokens, apps, games, services, standalone settlement systems, and mixed
@@ -41,13 +41,13 @@ The Builder does not limit unfamiliar work to a fixed catalog. Starters and capa
 unknown ideas remain eligible for architecture review. Local checks stay separate from maintainer review, launch
 authority, deployment, provider support, and public availability.
 
-## Install the published release
+## Install the immutable release
 
-Preview the exact published Skill before installing it:
+After confirming that GitHub exposes the immutable `v0.5.1` release, preview that exact Skill before installing it:
 
 ```bash
 gh skill preview 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.4.3
+  programmable-v4-hook-builder@v0.5.1
 ```
 
 Install the same immutable release for Codex:
@@ -57,7 +57,7 @@ gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.4.3
+  --pin v0.5.1
 ```
 
 GitHub's `gh skill` commands are in preview. Clean package placement has been checked for Codex, Claude Code, and
@@ -195,7 +195,7 @@ with them. See [Architecture](docs/ARCHITECTURE.md) before changing package or h
 
 ## Verify from source
 
-Node.js 22 or newer is required. CI verifies both the minimum supported Node 22 line and the current Node 24 LTS line. The repository has no npm runtime or development dependencies.
+Node.js 24 or newer is required and CI verifies the Node 24 line. The repository has no npm runtime or development dependencies.
 
 ```bash
 npm test

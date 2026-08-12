@@ -106,21 +106,44 @@ the isolated execution mode. The local rehearsal command has no skip or focused 
 `PROGRAMMABLE_RELEASE_KERNEL_TIMEOUT_MS` may change only the per-command timeout (default 1,200,000; allowed 1,000 to
 3,600,000 milliseconds); it cannot weaken or omit a release check.
 
-After the exact candidate is committed, pushed and authorized for publication:
+After the exact candidate is committed, merged to protected `main`, verified by post-merge CI and authorized for
+publication, create one immutable GitHub release. Run the Skill publication validation without letting it push or
+create a mutable release:
 
 ```bash
 release_tag=v0.5.1
-gh skill publish --tag "$release_tag"
-gh release edit "$release_tag" --notes-file docs/releases/v0.5.1.md
-gh release upload "$release_tag" "$candidate_output"/artifacts/*
+gh skill publish --dry-run
+test "$(git rev-parse HEAD)" = "$(gh api repos/0xprogrammable/hookbuilder/commits/main --jq .sha)"
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+gh api --method PUT \
+  -H "Accept: application/vnd.github+json" \
+  repos/0xprogrammable/hookbuilder/immutable-releases
+test "$(gh api repos/0xprogrammable/hookbuilder/immutable-releases --jq .enabled)" = true
+
+git tag -a "$release_tag" HEAD -m "Programmable v4 Builder $release_tag"
+git push origin "refs/tags/$release_tag:refs/tags/$release_tag"
+
+gh release create "$release_tag" "$candidate_output"/artifacts/* \
+  --repo 0xprogrammable/hookbuilder \
+  --verify-tag \
+  --fail-on-no-commits \
+  --title "Programmable v4 Builder $release_tag" \
+  --notes-file docs/releases/v0.5.1.md \
+  --latest
+
+gh release verify "$release_tag" --repo 0xprogrammable/hookbuilder
+for asset in "$candidate_output"/artifacts/*; do
+  gh release verify-asset "$release_tag" "$asset" --repo 0xprogrammable/hookbuilder
+done
 ```
 
 The artifact generator refuses a dirty worktree, requires a complete release-eligible kernel evidence file for the exact
 commit/tree/skill tree and both exact lockfiles, and writes outside the repository. It produces a deterministic skill
 archive, file-level SHA-256 manifest, provenance-aware SPDX 2.3 SBOM, embedded kernel evidence, release-state receipt
-and `SHA256SUMS`. The publication command may add the `agent-skills` repository topic and create a GitHub release.
-Neither command proves that CI, marketplace discovery, a platform deployment or any project built with the skill is
-live; verify each state separately.
+and `SHA256SUMS`. GitHub release immutability applies to the newly published release and its uploaded artifacts; it
+does not retroactively change historical releases. Neither publication nor verification proves that CI, marketplace
+discovery, a platform deployment or any project built with the skill is live; verify each state separately.
 
 The manifest and release receipt bind both the complete repository tree and the exact portable skill subtree. This lets
 an installer or reviewer distinguish a repository-level documentation change from a change to installed skill bytes.

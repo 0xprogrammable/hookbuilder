@@ -49,7 +49,7 @@
       "modules": [
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-constants.mjs",
-          "sourceSha256": "sha256:3850eb323442c9518fcc68c0d8cc155df6c6db560ba174fb92ce691a7cc1dd2a"
+          "sourceSha256": "sha256:c8b399ca9a578fa2773986a8ebcd4bfad7755ee5247db412ddb5d939b642c453"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-core.mjs",

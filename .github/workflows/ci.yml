@@ -91,7 +91,7 @@ jobs:
             test -n "$ROUTED_CODEQL_REQUIRED"
             test -n "$ROUTED_PLATFORM_LANE_REQUIRED"
           else
-            ROUTED_REPOSITORY_NODES='[22,24]'
+            ROUTED_REPOSITORY_NODES='[24]'
             ROUTED_REFERENCE_KERNEL_MATRIX='{"include":[{"kernel":"v1","workdir":"skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v1","lockfile":"skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v1/package-lock.json"},{"kernel":"v2","workdir":"skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v2","lockfile":"skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v2/package-lock.json"}]}'
             ROUTED_REFERENCE_KERNEL_REQUIRED=true
             ROUTED_CODEQL_REQUIRED=true
@@ -362,20 +362,30 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
+      - name: Verify the one-time Node 24 transition on a legacy matrix lane
+        if: matrix.node != 24
+        run: |
+          grep -F '"node": ">=24"' package.json
+          grep -F 'repositoryNodes: [24]' scripts/ci/applicant-fast-lane-core.mjs
+          grep -F "ROUTED_REPOSITORY_NODES='[24]'" .github/workflows/ci.yml
       - name: Install root lockfile without lifecycle scripts
+        if: matrix.node == 24
         run: npm ci --ignore-scripts
       - name: Install Foundry
+        if: matrix.node == 24
         uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1
         with:
           version: v1.7.1
       - name: Preload the portable-test Solidity compiler
+        if: matrix.node == 24
         run: |
           mkdir -p -- "$RUNNER_TEMP/programmable-foundry-bootstrap"
           forge build --use 0.8.26 --root "$RUNNER_TEMP/programmable-foundry-bootstrap"
       - name: Run complete deterministic repository and maintainability gate
+        if: matrix.node == 24
         run: npm test
       - name: Validate Agent Skills publication shape
-        if: matrix.node == 22
+        if: matrix.node == 24
         run: gh skill publish --dry-run
 
   reference-kernel:

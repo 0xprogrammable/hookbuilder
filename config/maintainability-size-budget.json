@@ -100,6 +100,14 @@
           "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
         },
         {
+          "path": "skills/programmable-v4-hook-builder/scripts/cli.mjs",
+          "observedLines": 544,
+          "observedBytes": 26084,
+          "observedComplexityScore": 103,
+          "observedMaxBlockDepth": 5,
+          "reviewRef": "v0.5.1 fail-closed Node 24 portable CLI runtime gate"
+        },
+        {
           "path": "skills/programmable-v4-hook-builder/scripts/companion-manifest-contract.mjs",
           "observedLines": 700,
           "observedBytes": 31515,
@@ -317,11 +325,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
-          "observedLines": 719,
-          "observedBytes": 35321,
-          "observedComplexityScore": 84,
+          "observedLines": 701,
+          "observedBytes": 35437,
+          "observedComplexityScore": 86,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.5.1 portable compiler and routing artifact inventory under the 640-file cap"
+          "reviewRef": "v0.5.1 fail-closed Node 24 verifier under the 640-file cap"
         }
       ]
     },

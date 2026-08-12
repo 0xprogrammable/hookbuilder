@@ -20,7 +20,7 @@ records aggregate line/function/branch counts and retains both the reviewed grou
 floors. A matching module addition or omission, a facade-only rebaseline, or a source change therefore fails closed until
 the complete group is freshly measured and reviewed.
 
-This is not repository-wide coverage. The machine report says so explicitly. Node.js 22 or newer is required.
+This is not repository-wide coverage. The machine report says so explicitly. Node.js 24 or newer is required.
 
 ## Targeted mutation evidence
 

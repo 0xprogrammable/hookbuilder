@@ -16,11 +16,10 @@ launch authorization, deployment receipt, provider result or Uniswap endorsement
 
 ## Release status
 
-Open-world submission v2, Fee V2, layered security and public application v3 are a local development implementation in
-this repository. They are not a mission-defined release candidate and are not publicly active merely because their
-schemas and tools are checked in. Do not announce v3 applications as open until the generator, trusted Registry
-validator, status/update path and release gates all pass for one exact immutable commit. See
-[`OPEN_WORLD_V2_RELEASE_GATES.md`](OPEN_WORLD_V2_RELEASE_GATES.md).
+Open-world submission v2, Fee V2, layered security and public application v3 are packaged for the immutable `v0.5.1`
+release. A verified publication establishes exact package bytes and release artifacts only. It does not establish model behavior,
+an independent audit, Registry acceptance, launch authorization, deployment, routing, or public availability. See
+[`OPEN_WORLD_V2_RELEASE_GATES.md`](OPEN_WORLD_V2_RELEASE_GATES.md) for the still-separate evidence states.
 
 The exact-revision approval bridge and Website Custom Launcher are represented in the local target flow and remain
 pending production activation and externally verified integration. GitHub is intended to carry the application,
@@ -78,18 +77,17 @@ To preselect the skill while keeping setup interactive:
 gh skill install 0xprogrammable/hookbuilder programmable-v4-hook-builder
 ```
 
-For reproducible public work, preview and pin an immutable published tag. `v0.4.0` is the current public release and is
-the historical V1 workflow; it is not proof that the local V2 candidate has shipped:
+For reproducible public work, preview and pin the immutable current release:
 
 ```bash
 gh skill preview 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.4.0
+  programmable-v4-hook-builder@v0.5.1
 
 gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.4.0
+  --pin v0.5.1
 ```
 
 Replace `codex` with the supported host name when appropriate. User scope is the beginner default because it keeps the
@@ -102,8 +100,8 @@ node scripts/verify-skill.mjs --installed
 
 The package shape and host behavior are separate claims. The local release rehearsal verifies clean placement for Codex,
 Claude Code and GitHub Copilot; it does not launch those hosts. Cursor placement and all ChatGPT upload/runtime behavior
-remain unverified for this candidate. Application V3 exact revision preparation supports macOS and Linux only and
-requires Node.js 22+, Git 2.49+ with `git backfill --sparse`, public GitHub reachability, and later authenticated `gh` for
+remain unverified for this release. Application V3 exact revision preparation supports macOS and Linux only and
+requires Node.js 24+, Git 2.49+ with `git backfill --sparse`, public GitHub reachability, and later authenticated `gh` for
 submission or update. Run `cli.mjs doctor` before repository work.
 
 See [`PORTABILITY_AND_LIFECYCLE.md`](PORTABILITY_AND_LIFECYCLE.md) for the truthful host/OS/offline matrix and copyable

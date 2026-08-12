@@ -53,7 +53,7 @@ artifacts, while `unresolved` blocks completion. No route result grants approval
 
 | Check | Evidence state and scope | Public or independent evidence |
 | --- | --- | --- |
-| Complete deterministic repository gate | The gate and clean-tree rehearsal emit commit/tree/skill-tree-bound receipts; source or generated-artifact drift invalidates prior results | Public Node 22/24 CI pending for the same frozen revision |
+| Complete deterministic repository gate | The gate and clean-tree rehearsal emit commit/tree/skill-tree-bound receipts; source or generated-artifact drift invalidates prior results | Public Node 24 CI required for the same frozen revision |
 | Open-World V2 schemas, V4 semantics, security, composition, routing, and Project Compiler | Focused local suites exercise no-market absence, standard-v4/canonical-adapter contracts, exact Forge runner/source/signature binding and call/revert traces; static receipts remain unauthenticated and `NOT_PROVEN`, runtime traces remain `PARTIAL_EVIDENCE` | Independent adversarial validator, compiler, adapter, and protocol review pending |
 | Application V3 and multi-repository dependency/source closure | Local suites and transitive Contract Registry closure tests cover exact-byte carry-through | Trusted central-intake parity and a public large-repository canary pending |
 | Registry Acceptance V3 and Launch Bundle V2 | Local suites preserve exact trade manifests/results; every launch result remains unsigned and `NOT_AUTHORIZED` | Exact trusted-review substitution and authority-boundary review pending |
