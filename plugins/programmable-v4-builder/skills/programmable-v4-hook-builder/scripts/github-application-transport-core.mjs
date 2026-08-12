@@ -43,6 +43,12 @@ import {
   sanitizeMessage
 } from "./github-application-primitives.mjs";
 
+const DEFAULT_GET_REQUEST_BUDGET = 512;
+const MAX_GET_REQUEST_BUDGET = 1_024;
+const MINIMUM_POST_MUTATION_GET_RESERVE = 192;
+const DEFAULT_IMMUTABLE_CACHE_ENTRIES = 512;
+const MAX_IMMUTABLE_CACHE_BYTES = 96 * 1024 * 1024;
+
 export function isSafeGitHubApiEndpoint(endpoint) {
   if (
     typeof endpoint !== "string"
@@ -79,7 +85,8 @@ export function createGhTransport({
   runner = defaultCommandRunner,
   sleep = defaultSleep,
   now = Date.now,
-  getAttempts = DEFAULT_GET_ATTEMPTS
+  getAttempts = DEFAULT_GET_ATTEMPTS,
+  getRequestBudget = DEFAULT_GET_REQUEST_BUDGET
 } = {}) {
   if (typeof runner !== "function") throw new TypeError("runner must be a function");
   if (typeof sleep !== "function") throw new TypeError("sleep must be a function");
@@ -87,6 +94,45 @@ export function createGhTransport({
   if (!Number.isSafeInteger(getAttempts) || getAttempts < 1 || getAttempts > MAX_GET_ATTEMPTS) {
     throw new TypeError("getAttempts must be a bounded positive integer");
   }
+  if (
+    !Number.isSafeInteger(getRequestBudget)
+    || getRequestBudget < 1
+    || getRequestBudget > MAX_GET_REQUEST_BUDGET
+  ) {
+    throw new TypeError("getRequestBudget must be a bounded positive integer");
+  }
+  let getRequestsUsed = 0;
+  let mutationStarted = false;
+  let immutableCacheBytes = 0;
+  const immutableCache = new Map();
+  const immutableRequest = (key, load) => {
+    const cached = immutableCache.get(key);
+    if (cached !== undefined) return cached;
+    if (immutableCache.size >= DEFAULT_IMMUTABLE_CACHE_ENTRIES) {
+      fail("GITHUB_REQUEST_BUDGET_EXCEEDED", "the operation exceeds the bounded immutable GitHub read cache", {
+        details: githubReadBudgetDetails(getRequestsUsed, getRequestBudget)
+      });
+    }
+    const pending = Promise.resolve()
+      .then(load)
+      .then((value) => {
+        const byteLength = Buffer.byteLength(canonicalJson(value), "utf8");
+        if (immutableCacheBytes + byteLength > MAX_IMMUTABLE_CACHE_BYTES) {
+          immutableCache.delete(key);
+          fail("GITHUB_REQUEST_BUDGET_EXCEEDED", "the operation exceeds the bounded immutable GitHub response cache", {
+            details: githubReadBudgetDetails(getRequestsUsed, getRequestBudget)
+          });
+        }
+        immutableCacheBytes += byteLength;
+        return value;
+      })
+      .catch((error) => {
+        immutableCache.delete(key);
+        throw error;
+      });
+    immutableCache.set(key, pending);
+    return pending;
+  };
   const request = async ({
     method = "GET",
     endpoint,
@@ -118,6 +164,30 @@ export function createGhTransport({
     let totalBackoffMs = 0;
     const maximumAttempts = method === "GET" ? getAttempts : 1;
     for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+      if (method === "GET") {
+        if (getRequestsUsed >= getRequestBudget) {
+          fail("GITHUB_REQUEST_BUDGET_EXCEEDED", "the operation exceeds the bounded GitHub read-request budget", {
+            details: githubReadBudgetDetails(getRequestsUsed, getRequestBudget)
+          });
+        }
+        getRequestsUsed += 1;
+      } else if (!mutationStarted) {
+        const remainingRequests = getRequestBudget - getRequestsUsed;
+        // The write phase has fewer than 64 distinct live readbacks; reserve
+        // all three allowed physical attempts for each before the first write.
+        const postMutationReserve = MINIMUM_POST_MUTATION_GET_RESERVE;
+        if (remainingRequests < postMutationReserve) {
+          fail("GITHUB_REQUEST_BUDGET_EXCEEDED", "the operation cannot reserve enough bounded GitHub reads for post-write verification", {
+            details: {
+              ...githubReadBudgetDetails(getRequestsUsed, getRequestBudget),
+              postMutationReserve,
+              remainingRequests,
+              writePerformed: false
+            }
+          });
+        }
+        mutationStarted = true;
+      }
       const result = await runner({
         command: "gh",
         args,
@@ -145,7 +215,7 @@ export function createGhTransport({
           attempt,
           nowMs: now()
         });
-        if (failure.retryable && attempt < maximumAttempts) {
+        if (failure.retryable && !failure.rateLimited && attempt < maximumAttempts) {
           const remainingBudget = MAX_GET_BACKOFF_TOTAL_MS - totalBackoffMs;
           const delayMs = Math.min(failure.delayMs, MAX_GET_BACKOFF_MS, remainingBudget);
           if (delayMs >= 0 && failure.delayMs <= MAX_GET_BACKOFF_MS && remainingBudget >= failure.delayMs) {
@@ -200,14 +270,21 @@ export function createGhTransport({
       });
     },
     async getGitCommit(slug, commit) {
-      return request({ method: "GET", endpoint: `repos/${apiSlug(slug)}/git/commits/${apiCommit(commit)}` });
+      const repository = apiSlug(slug);
+      const objectId = apiCommit(commit);
+      return immutableRequest(`commit\0${repository}\0${objectId}`, () => request({
+        method: "GET",
+        endpoint: `repos/${repository}/git/commits/${objectId}`
+      }));
     },
     async getGitTree(slug, tree, { recursive = true } = {}) {
       if (typeof recursive !== "boolean") fail("INTERNAL_ERROR", "Git tree recursion flag is invalid");
-      return request({
+      const repository = apiSlug(slug);
+      const objectId = apiCommit(tree);
+      return immutableRequest(`tree\0${repository}\0${objectId}\0${recursive}`, () => request({
         method: "GET",
-        endpoint: `repos/${apiSlug(slug)}/git/trees/${apiCommit(tree)}${recursive ? "?recursive=1" : ""}`
-      });
+        endpoint: `repos/${repository}/git/trees/${objectId}${recursive ? "?recursive=1" : ""}`
+      }));
     },
     async getWorkflowRun(slug, runId) {
       return request({
@@ -223,11 +300,14 @@ export function createGhTransport({
       });
     },
     async getContent(slug, filePath, ref, { allowNotFound = false } = {}) {
-      return request({
+      const repository = apiSlug(slug);
+      const repositoryPath = apiRepositoryPath(filePath);
+      const revision = apiCommit(ref);
+      return immutableRequest(`content\0${repository}\0${revision}\0${repositoryPath}\0${allowNotFound}`, () => request({
         method: "GET",
-        endpoint: `repos/${apiSlug(slug)}/contents/${apiRepositoryPath(filePath)}?ref=${encodeURIComponent(apiCommit(ref))}`,
+        endpoint: `repos/${repository}/contents/${repositoryPath}?ref=${encodeURIComponent(revision)}`,
         allowNotFound
-      });
+      }));
     },
     async listPullsByHead({ centralRepository, baseBranch, head }) {
       return request({
@@ -437,6 +517,17 @@ export function createGhTransport({
       });
     }
   });
+}
+
+function githubReadBudgetDetails(requestsUsed, requestBudget) {
+  return {
+    status: "HOLD_SPLIT_REVIEW",
+    route: "INTEGRATION_PENDING",
+    ideaEligibility: "ELIGIBLE_FOR_REVIEW",
+    classification: "tooling-split-review",
+    requestsUsed,
+    requestBudget
+  };
 }
 
 function apiCompareSpec(baseCommit, headLogin, headBranch) {

@@ -1249,6 +1249,95 @@ test("the gh command transport rejects malicious or ambiguous output", async (t)
   });
 });
 
+test("the gh transport coalesces immutable reads while live reads stay fresh", async () => {
+  const endpoints = [];
+  const transport = createGhTransport({
+    getRequestBudget: 8,
+    runner: async ({ args }) => {
+      const endpoint = args.at(-1);
+      endpoints.push(endpoint);
+      return { status: 0, stdout: canonicalJson({ endpoint }), stderr: "" };
+    }
+  });
+  const commit = "1".repeat(40);
+  const tree = "2".repeat(40);
+  const contentPath = "src/index.mjs";
+
+  await Promise.all([
+    transport.getGitCommit("owner/repository", commit),
+    transport.getGitCommit("owner/repository", commit)
+  ]);
+  await transport.getGitTree("owner/repository", tree);
+  await transport.getGitTree("owner/repository", tree);
+  await transport.getContent("owner/repository", contentPath, commit);
+  await transport.getContent("owner/repository", contentPath, commit);
+  await transport.getRepository("owner/repository");
+  await transport.getRepository("owner/repository");
+
+  assert.equal(endpoints.filter((endpoint) => endpoint.includes("/git/commits/")).length, 1);
+  assert.equal(endpoints.filter((endpoint) => endpoint.includes("/git/trees/")).length, 1);
+  assert.equal(endpoints.filter((endpoint) => endpoint.includes("/contents/")).length, 1);
+  assert.equal(endpoints.filter((endpoint) => endpoint === "repos/owner/repository").length, 2);
+});
+
+test("the gh transport request budget counts physical retries and never caches failures", async () => {
+  let attempts = 0;
+  const retrying = createGhTransport({
+    getAttempts: 3,
+    getRequestBudget: 2,
+    sleep: async () => {},
+    runner: async () => {
+      attempts += 1;
+      return { status: 1, stdout: "", stderr: "HTTP 503 Service Unavailable" };
+    }
+  });
+  await assert.rejects(
+    () => retrying.getGitCommit("owner/repository", "1".repeat(40)),
+    (error) => error?.code === "GITHUB_REQUEST_BUDGET_EXCEEDED"
+      && error.details?.classification === "tooling-split-review"
+      && error.details?.requestsUsed === 2
+      && error.details?.requestBudget === 2
+  );
+  assert.equal(attempts, 2);
+
+  let calls = 0;
+  const recovering = createGhTransport({
+    getAttempts: 1,
+    runner: async () => {
+      calls += 1;
+      return calls === 1
+        ? { status: 1, stdout: "", stderr: "HTTP 500 Internal Server Error" }
+        : { status: 0, stdout: "{}", stderr: "" };
+    }
+  });
+  await assert.rejects(
+    () => recovering.getGitTree("owner/repository", "2".repeat(40)),
+    errorCode("GITHUB_GET_RETRY_EXHAUSTED")
+  );
+  assert.deepEqual(await recovering.getGitTree("owner/repository", "2".repeat(40)), {});
+  assert.equal(calls, 2);
+});
+
+test("the gh transport reserves post-write verification reads before the first mutation", async () => {
+  const invocations = [];
+  const transport = createGhTransport({
+    getAttempts: 1,
+    getRequestBudget: 191,
+    runner: async (invocation) => {
+      invocations.push(invocation);
+      return { status: 0, stdout: "{}", stderr: "" };
+    }
+  });
+
+  await assert.rejects(
+    () => transport.createFork("owner/repository"),
+    (error) => error?.code === "GITHUB_REQUEST_BUDGET_EXCEEDED"
+      && error.details?.postMutationReserve === 192
+      && error.details?.writePerformed === false
+  );
+  assert.deepEqual(invocations, []);
+});
+
 test("the gh command transport preserves the exact multiline application commit message", async () => {
   const message = `chore(builder): submit ${APPLICATION_ID} revision 1\n\nPackage: sha256:${"8".repeat(64)}`;
   let invocation = null;

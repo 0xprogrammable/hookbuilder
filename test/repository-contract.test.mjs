@@ -26,11 +26,13 @@ const expectedTopLevel = [
   "mcp", "package-lock.json", "package.json", "plugins", "scripts", "skills", "submissions", "test"
 ];
 const forbiddenTransientDirectories = new Set(["node_modules", "coverage", "broadcast", "cache", "out"]);
+const ignoredHostMetadata = new Set([".DS_Store"]);
 
 function walk(directory) {
   const rows = [];
   for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name))) {
     if (directory === repositoryRoot && entry.name === ".git") continue;
+    if (ignoredHostMetadata.has(entry.name)) continue;
     const absolutePath = path.join(directory, entry.name);
     const relativePath = path.relative(repositoryRoot, absolutePath).split(path.sep).join("/");
     const stat = fs.lstatSync(absolutePath);
@@ -65,7 +67,9 @@ test("repository containment accepts an in-root ..x name and rejects a real pare
 });
 
 test("repository has one closed top-level product structure and one generated skill mirror", () => {
-  const actual = fs.readdirSync(repositoryRoot).filter((name) => name !== ".git").sort();
+  const actual = fs.readdirSync(repositoryRoot)
+    .filter((name) => name !== ".git" && !ignoredHostMetadata.has(name))
+    .sort();
   assert.deepEqual(actual, [...expectedTopLevel].sort());
   const skillFiles = walk(repositoryRoot).filter(({ relativePath }) => relativePath.endsWith("/SKILL.md"));
   assert.deepEqual(skillFiles.map(({ relativePath }) => relativePath), [

@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import {
+  corpusFromValidatedE2EStructure,
   canonicalJson,
   loadHoldoutCorpus,
   revealHoldoutCase,
@@ -478,8 +479,11 @@ export function runE2EEvaluations({
   caseIds = [],
   tierIds = [],
   repetitions,
+  validatedStructure = null,
 }) {
-  const corpus = loadHoldoutCorpus({ repositoryRoot });
+  const corpus = validatedStructure === null
+    ? loadHoldoutCorpus({ repositoryRoot })
+    : corpusFromValidatedE2EStructure(validatedStructure);
   if (new Set(caseIds).size !== caseIds.length) throw new E2ERunError('CASE_DUPLICATE', 'selected holdout case ids must be unique');
   if (new Set(tierIds).size !== tierIds.length) throw new E2ERunError('TIER_DUPLICATE', 'selected tier ids must be unique');
   const selectedSealedCases = caseIds.length === 0 ? corpus.cases : caseIds.map((id) => {

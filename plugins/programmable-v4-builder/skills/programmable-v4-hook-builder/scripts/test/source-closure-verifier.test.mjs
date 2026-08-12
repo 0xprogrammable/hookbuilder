@@ -538,9 +538,34 @@ function createClosureFixture(t, {
   runGit(repositoryRoot, ["config", "user.email", "source-closure@example.invalid"]);
 
   const width = String(entryCount - 1).length;
+  const useCompactTree = entryCount > 1_000
+    && additionalEntries.length === 0
+    && Object.keys(unlistedFiles).length === 0
+    && gitlinkPath === null;
   const sourceBytes = new Map();
+  let compactBlobObjectId = null;
+  if (useCompactTree) {
+    const bytes = Buffer.from("source\n", "utf8");
+    compactBlobObjectId = runGitWithInput(repositoryRoot, ["hash-object", "-w", "--stdin"], bytes).trim();
+    const sourceTreeObjectId = runGitWithInput(
+      repositoryRoot,
+      ["mktree"],
+      Array.from({ length: entryCount }, (_, index) => {
+        const name = `file-${String(index).padStart(width, "0")}.txt`;
+        sourceBytes.set(`src/${name}`, bytes);
+        return `100644 blob ${compactBlobObjectId}\t${name}\n`;
+      }).join("")
+    ).trim();
+    const rootTreeObjectId = runGitWithInput(
+      repositoryRoot,
+      ["mktree"],
+      `040000 tree ${sourceTreeObjectId}\tsrc\n`
+    ).trim();
+    runGit(repositoryRoot, ["read-tree", rootTreeObjectId]);
+  }
   for (let index = 0; index < entryCount; index += 1) {
     const repositoryPath = `src/file-${String(index).padStart(width, "0")}.txt`;
+    if (useCompactTree) continue;
     const bytes = Buffer.from(`source-${index}\n`, "utf8");
     sourceBytes.set(repositoryPath, bytes);
     const absolutePath = path.join(repositoryRoot, ...repositoryPath.split("/"));
@@ -559,7 +584,7 @@ function createClosureFixture(t, {
       sourceBytes.set(entry.path, bytes);
     }
   }
-  runGit(repositoryRoot, ["add", "--", "."]);
+  if (!useCompactTree) runGit(repositoryRoot, ["add", "--", "."]);
   const sourceIndex = readIndex(repositoryRoot);
   const sourceEntries = [...sourceBytes.entries()]
     .sort(([left], [right]) => Buffer.compare(Buffer.from(left), Buffer.from(right)))
@@ -683,6 +708,14 @@ function runGit(repositoryRoot, argumentsList) {
   return childProcess.execFileSync("git", ["-C", repositoryRoot, ...argumentsList], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"]
+  });
+}
+
+function runGitWithInput(repositoryRoot, argumentsList, input) {
+  return childProcess.execFileSync("git", ["-C", repositoryRoot, ...argumentsList], {
+    encoding: "utf8",
+    input,
+    stdio: ["pipe", "pipe", "pipe"]
   });
 }
 

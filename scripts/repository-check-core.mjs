@@ -60,15 +60,12 @@ export function createRepositoryCheckPlan({
       timeoutMs: 16 * 60 * 1000
     },
     {
-      id: "eval-structure",
-      command: nodeExecutable,
-      args: ["scripts/evals/validate-evals.mjs"],
-      timeoutMs: 120_000
-    },
-    {
       id: "eval-e2e-harness",
       command: nodeExecutable,
-      args: ["--test", ...e2eTests],
+      // The two expensive synchronous fixture groups live in separate files so
+      // Node can overlap them at the process boundary. Keep the bound at two;
+      // broader file concurrency caused deadline failures through contention.
+      args: ["--test", "--test-concurrency=2", ...e2eTests],
       timeoutMs: 10 * 60 * 1000
     },
     {
@@ -122,6 +119,7 @@ export async function runBoundedRepositoryCheck(check, { cwd } = {}) {
     );
   }
   const details = {
+    durationMs: result.durationMs,
     id: effectiveCheck.id,
     timeoutMs: effectiveCheck.timeoutMs,
     stdout: result.stdout,
@@ -149,6 +147,7 @@ export async function runBoundedRepositoryCheck(check, { cwd } = {}) {
     );
   }
   return Object.freeze({
+    durationMs: result.durationMs,
     id: effectiveCheck.id,
     exitCode: result.status,
     timeoutMs: effectiveCheck.timeoutMs

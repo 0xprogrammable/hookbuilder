@@ -598,7 +598,7 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
   addIssue(issues, suiteProject?.name === `eval-suite-${suiteId}`, 'suite Nx project: wrong name');
   addIssue(issues, suiteProject?.targets?.eval?.cache === false, 'suite Nx project: model eval caching must be disabled');
 
-  const runnerText = fs.readFileSync(path.join(resolvedRoot, 'scripts/evals/run-model-evals.mjs'), 'utf8');
+  const runnerText = fs.readFileSync(path.join(resolvedRoot, 'scripts/evals/run-model-evals-core.mjs'), 'utf8');
   addIssue(
     issues,
     runnerText.includes("const EXPECTED_PROMPTFOO_VERSION = '0.121.11';"),

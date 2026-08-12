@@ -143,7 +143,7 @@ export function buildReport(submission, findingsInput, gates, mask, triggers, sc
       schemaSha256: isObject(schema) ? `sha256:${crypto.createHash("sha256").update(canonicalJson(schema)).digest("hex")}` : null,
       deploymentSnapshotSha256: fs.existsSync(deploymentSnapshotPath) ? hashFile(deploymentSnapshotPath) : null,
       officialDeploymentReferenceSha256: fs.existsSync(officialLaunchpadReferencePath) ? hashFile(officialLaunchpadReferencePath) : null,
-      policyBundleSha256: hashBundle(getNormativePolicyPaths())
+      policyBundleSha256: hashNormativePolicyBundle()
     },
     decision,
     decisionCompatibility: "LEGACY_COMPATIBILITY_ONLY",
@@ -223,11 +223,14 @@ function hashFile(target) {
   return `sha256:${crypto.createHash("sha256").update(fs.readFileSync(target)).digest("hex")}`;
 }
 
-function hashBundle(targets) {
+export function hashNormativePolicyBundle(
+  targets = getNormativePolicyPaths(),
+  { root = skillRoot } = {}
+) {
   if (targets.some((target) => !fs.existsSync(target))) return null;
   const hash = crypto.createHash("sha256");
   for (const target of targets) {
-    const relativePath = path.relative(skillRoot, target).split(path.sep).join("/");
+    const relativePath = path.relative(root, target).split(path.sep).join("/");
     hash.update(relativePath);
     hash.update("\0");
     const bytes = fs.readFileSync(target);

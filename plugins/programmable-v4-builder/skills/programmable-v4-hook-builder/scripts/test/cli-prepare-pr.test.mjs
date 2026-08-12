@@ -34,7 +34,6 @@ const builderUserId = "900719925474099312346";
 const API_ORIGIN = "https://api.github.com";
 const centralBaseCommit = "c".repeat(40);
 const centralBaseTree = "d".repeat(40);
-
 test("GitHub blob URL parsing requires the exact HTTPS origin and repository path", () => {
   const objectId = "a".repeat(40);
   const repositoryUrl = `${API_ORIGIN}/repos/example-builder/programmable-proposal`;

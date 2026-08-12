@@ -513,7 +513,10 @@ export function validateRevealedHoldoutCases({ corpus, cases }) {
   });
 }
 
+const validatedCorpusByStructure = new WeakMap();
+
 export function validateE2EStructure({ repositoryRoot }) {
+  const corpus = loadHoldoutCorpus({ repositoryRoot });
   const {
     manifest,
     manifestSha256,
@@ -521,8 +524,8 @@ export function validateE2EStructure({ repositoryRoot }) {
     holdoutCorpusSha256,
     combinedCorpusSha256,
     cases,
-  } = loadHoldoutCorpus({ repositoryRoot });
-  return {
+  } = corpus;
+  const structure = Object.freeze({
     status: 'E2E_ENVELOPES_VALID',
     publicResponseEvalCaseCount: manifest.devCaseCount,
     sealedRepositoryCaseEnvelopeCount: cases.length,
@@ -536,7 +539,18 @@ export function validateE2EStructure({ repositoryRoot }) {
     sealedRepositoryCorpusSha256: holdoutCorpusSha256,
     crossMethodInventorySha256: combinedCorpusSha256,
     modelExecution: 'not-run',
-  };
+  });
+  // The opaque structure object is a validated, in-memory snapshot. Keeping
+  // the snapshot private both avoids a second full corpus walk before a CLI
+  // run and prevents a check-then-read race against the holdout files.
+  validatedCorpusByStructure.set(structure, corpus);
+  return structure;
+}
+
+export function corpusFromValidatedE2EStructure(structure) {
+  const corpus = validatedCorpusByStructure.get(structure);
+  if (!corpus) throw new E2EStructureError(['validated E2E structure token is not recognized']);
+  return corpus;
 }
 
 export const E2E_STAGE_IDS = Object.freeze([...STAGE_IDS]);

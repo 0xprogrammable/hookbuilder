@@ -1,9 +1,147 @@
 import { createHash } from "node:crypto";
 import { TextDecoder } from "node:util";
-import { GitHubPublicSourceError } from "./github-public-source-core.mjs";
+import {
+  GITHUB_PUBLIC_SOURCE_CONTRACT_V1,
+  GitHubPublicSourceError
+} from "./github-public-source-core.mjs";
+import { safeRepositoryPath } from "./public-pr-application-v3-shared.mjs";
+import {
+  isCanonicalReviewTargetPath,
+  REVIEW_TARGET_CONTRACT_V1
+} from "./review-target-contract.mjs";
 
 const REGULAR_BLOB_MODES = new Set(["100644", "100755"]);
 const STRICT_UTF8 = new TextDecoder("utf-8", { fatal: true });
+const REQUEST_KEYS = new Set([
+  "repositoryUri",
+  "revisionObjectId",
+  "treeObjectId",
+  "paths",
+  "timeoutMs",
+  "maximumFileBytes",
+  "maximumTotalBytes"
+]);
+const LOWER_HEX_40 = /^[0-9a-f]{40}$/u;
+const GITHUB_OWNER = /^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$/u;
+const GITHUB_REPOSITORY = /^[a-z0-9._-]{1,100}$/u;
+
+export const GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1 = Object.freeze({
+  name: "GitHubPublicGitObjectResolverV1",
+  minimumGitVersion: "2.49.0",
+  maximumFiles: REVIEW_TARGET_CONTRACT_V1.maximumFiles,
+  maximumFileBytes: REVIEW_TARGET_CONTRACT_V1.maximumFileBytes,
+  maximumTotalBytes: REVIEW_TARGET_CONTRACT_V1.maximumTotalBytes,
+  maximumPathDepth: REVIEW_TARGET_CONTRACT_V1.maximumPathDepth,
+  maximumTemporaryRepositoryBytes: 67_108_864,
+  maximumTemporaryFileBytes: 67_108_864,
+  maximumAddressSpaceBytes: 536_870_912,
+  maximumCpuSeconds: 20,
+  minimumTimeoutMs: 1,
+  maximumTimeoutMs: GITHUB_PUBLIC_SOURCE_CONTRACT_V1.limits.maximumTimeoutMs
+});
+
+export const APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1 = Object.freeze({
+  name: "ApplicationV3GitHubExactObjectResolverV1",
+  minimumGitVersion: "2.49.0",
+  maximumFiles: 4_096,
+  maximumFileBytes: 4 * 1024 * 1024,
+  maximumTotalBytes: 64 * 1024 * 1024,
+  maximumPathBytes: 16 * 1024,
+  maximumTemporaryRepositoryBytes: 384 * 1024 * 1024,
+  maximumTemporaryFileBytes: 256 * 1024 * 1024,
+  maximumAddressSpaceBytes: 1024 * 1024 * 1024,
+  maximumCpuSeconds: 60,
+  minimumTimeoutMs: 1,
+  maximumTimeoutMs: 120_000
+});
+
+export function createExactObjectResolverProfiles({ runApplicationGit, runPublicGit }) {
+  return Object.freeze({
+    application: Object.freeze({
+      contract: APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1,
+      isCanonicalPath: isCanonicalApplicationV3RepositoryPath,
+      invalidPathMessage: "every path must satisfy the canonical Application V3 repository-path contract",
+      rejectGitLfsPointers: false,
+      maximumObjectMetadataOutputBytes: 512 * 1024,
+      maximumSparseSelectionBytes:
+        APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumFiles
+          * (2 * APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumPathBytes + 2),
+      maximumTreeCommandPathBytes: 256 * 1024,
+      maximumTreeOutputBytes: 1_048_576,
+      runGit: runApplicationGit
+    }),
+    reviewTarget: Object.freeze({
+      contract: GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1,
+      isCanonicalPath: isCanonicalReviewTargetPath,
+      invalidPathMessage: "every path must satisfy the canonical review-target path contract",
+      rejectGitLfsPointers: true,
+      maximumObjectMetadataOutputBytes: 65_536,
+      maximumSparseSelectionBytes:
+        REVIEW_TARGET_CONTRACT_V1.maximumFiles * (2 * REVIEW_TARGET_CONTRACT_V1.maximumPathBytes + 2),
+      maximumTreeCommandPathBytes: 1024 * 1024,
+      maximumTreeOutputBytes: 1_048_576,
+      runGit: runPublicGit
+    })
+  });
+}
+
+export function validateExactObjectRequest(input, profile) {
+  const { contract } = profile;
+  if (!isPlainObject(input)) invalidRequest("exact-object request must be an object");
+  const keys = Object.keys(input);
+  if (keys.length !== REQUEST_KEYS.size || keys.some((key) => !REQUEST_KEYS.has(key))) {
+    invalidRequest("exact-object request fields did not match the closed contract");
+  }
+
+  const repositoryUri = normalizeRepositoryUri(input.repositoryUri);
+  if (!LOWER_HEX_40.test(input.revisionObjectId ?? "")) {
+    invalidRequest("revisionObjectId must be a lowercase 40-hex Git object id");
+  }
+  if (!LOWER_HEX_40.test(input.treeObjectId ?? "")) {
+    invalidRequest("treeObjectId must be a lowercase 40-hex Git object id");
+  }
+  if (!Array.isArray(input.paths) || input.paths.length > contract.maximumFiles) {
+    invalidRequest("paths must be an array within the file-count limit");
+  }
+  const paths = [...input.paths];
+  if (paths.some((entry) => !profile.isCanonicalPath(entry))) invalidRequest(profile.invalidPathMessage);
+  if (new Set(paths).size !== paths.length) invalidRequest("paths must not contain duplicates");
+  paths.sort(compareUtf8);
+
+  const timeoutMs = boundedPositiveInteger(input.timeoutMs, contract.maximumTimeoutMs, "timeoutMs");
+  const maximumFileBytes = boundedPositiveInteger(input.maximumFileBytes, contract.maximumFileBytes, "maximumFileBytes");
+  const maximumTotalBytes = boundedPositiveInteger(input.maximumTotalBytes, contract.maximumTotalBytes, "maximumTotalBytes");
+  if (maximumFileBytes > maximumTotalBytes) invalidRequest("maximumFileBytes cannot exceed maximumTotalBytes");
+
+  return Object.freeze({
+    repositoryUri,
+    revisionObjectId: input.revisionObjectId,
+    treeObjectId: input.treeObjectId,
+    paths: Object.freeze(paths),
+    timeoutMs,
+    maximumFileBytes,
+    maximumTotalBytes
+  });
+}
+
+export function partitionCommandPaths(paths, maximumBytes) {
+  const batches = [];
+  let batch = [];
+  let batchBytes = 0;
+  for (const filePath of paths) {
+    const pathBytes = Buffer.byteLength(filePath, "utf8") + 1;
+    if (pathBytes > maximumBytes) invalidRequest("a repository path exceeded the bounded Git command input window");
+    if (batch.length > 0 && batchBytes + pathBytes > maximumBytes) {
+      batches.push(batch);
+      batch = [];
+      batchBytes = 0;
+    }
+    batch.push(filePath);
+    batchBytes += pathBytes;
+  }
+  if (batch.length > 0) batches.push(batch);
+  return batches;
+}
 
 export function parseGitVersion(output) {
   let source;
@@ -203,4 +341,64 @@ function protocolError(message) {
 }
 export function compareUtf8(left, right) {
   return Buffer.compare(Buffer.from(left, "utf8"), Buffer.from(right, "utf8"));
+}
+
+function normalizeRepositoryUri(value) {
+  if (typeof value !== "string" || /[\u0000-\u001f\u007f-\u009f]/u.test(value)) {
+    invalidRequest("repositoryUri must be a canonical public github.com URL");
+  }
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    invalidRequest("repositoryUri must be a canonical public github.com URL");
+  }
+  const segments = parsed.pathname.split("/").filter(Boolean);
+  if (
+    parsed.protocol !== "https:"
+    || parsed.hostname !== "github.com"
+    || parsed.port !== ""
+    || parsed.username !== ""
+    || parsed.password !== ""
+    || parsed.search !== ""
+    || parsed.hash !== ""
+    || segments.length !== 2
+    || !GITHUB_OWNER.test(segments[0])
+    || !GITHUB_REPOSITORY.test(segments[1])
+    || segments[1].endsWith(".git")
+    || value !== `https://github.com/${segments[0]}/${segments[1]}`
+  ) {
+    invalidRequest("repositoryUri must be a canonical lowercase https://github.com/owner/repository URL");
+  }
+  return value;
+}
+
+function isCanonicalApplicationV3RepositoryPath(value) {
+  return safeRepositoryPath(value)
+    && Buffer.byteLength(value, "utf8") <= APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumPathBytes
+    && !hasUnpairedSurrogate(value);
+}
+
+function boundedPositiveInteger(value, maximum, name) {
+  if (!Number.isInteger(value) || value < 1 || value > maximum) {
+    invalidRequest(`${name} must be a positive integer within the supported bound`);
+  }
+  return value;
+}
+
+function invalidRequest(message) {
+  throw new GitHubPublicSourceError("INVALID_REQUEST", message);
+}
+
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
+}
+
+function hasUnpairedSurrogate(value) {
+  for (const character of value) {
+    const codePoint = character.codePointAt(0);
+    if (codePoint >= 0xd800 && codePoint <= 0xdfff) return true;
+  }
+  return false;
 }

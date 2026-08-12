@@ -6,6 +6,8 @@ import path from "node:path";
 import test from "node:test";
 
 import {
+  APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1,
+  createApplicationV3GitHubExactObjectResolverV1,
   createAnonymousGitHubExactObjectResolverV1,
   GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1,
   runBoundedExactGitProcessV1
@@ -294,6 +296,173 @@ test("closed input and hard limits reject unsafe requests before invoking Git", 
   assert.equal(fake.calls.length, 0);
 });
 
+test("Application V3 uses an isolated 4,096-path, 4 MiB/file, 64 MiB total profile", async () => {
+  assert.equal(
+    createAnonymousGitHubExactObjectResolverV1({ runGit: async () => null }).name,
+    "resolveAnonymousGitHubExactObjectsV1"
+  );
+  assert.equal(
+    createApplicationV3GitHubExactObjectResolverV1({ runGit: async () => null }).name,
+    "resolveApplicationV3GitHubExactObjectsV1"
+  );
+  assert.deepEqual({
+    maximumFiles: GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.maximumFiles,
+    maximumFileBytes: GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.maximumFileBytes,
+    maximumTotalBytes: GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.maximumTotalBytes
+  }, {
+    maximumFiles: 512,
+    maximumFileBytes: 2_000_000,
+    maximumTotalBytes: 20_000_000
+  });
+  assert.deepEqual({
+    maximumFiles: APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumFiles,
+    maximumFileBytes: APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumFileBytes,
+    maximumTotalBytes: APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumTotalBytes
+  }, {
+    maximumFiles: 4_096,
+    maximumFileBytes: 4 * 1024 * 1024,
+    maximumTotalBytes: 64 * 1024 * 1024
+  });
+
+  const sharedBytes = Buffer.from("shared exact blob\n", "utf8");
+  const files = Array.from({ length: 4_096 }, (_, index) => [
+    `src/file-${String(index).padStart(4, "0")}.sol`,
+    { mode: "100644", bytes: sharedBytes }
+  ]);
+  const fixture = makeFixture({ files });
+  fixture.request.maximumFileBytes = APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumFileBytes;
+  fixture.request.maximumTotalBytes = APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumTotalBytes;
+  const fake = createFakeGit(fixture);
+  const resolver = createApplicationV3GitHubExactObjectResolverV1({ runGit: fake.runGit });
+
+  const result = await resolver(fixture.request);
+
+  assert.equal(result.records.size, 4_096);
+  assert.deepEqual(result.records.get("src/file-4095.sol").bytes, sharedBytes);
+  for (const call of fake.calls) {
+    assert.equal(
+      call.maximumFileSizeBytes,
+      APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumTemporaryFileBytes
+    );
+    assert.equal(
+      call.maximumAddressSpaceBytes,
+      APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumAddressSpaceBytes
+    );
+    assert.equal(
+      call.maximumCpuSeconds,
+      APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumCpuSeconds
+    );
+    assert.equal(
+      call.maximumTemporaryBytes,
+      APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumTemporaryRepositoryBytes
+    );
+  }
+});
+
+test("Application V3 rejects requests beyond its count, content, timeout, and path bounds before Git", async () => {
+  const fixture = makeFixture();
+  fixture.request.maximumFileBytes = APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumFileBytes;
+  fixture.request.maximumTotalBytes = APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumTotalBytes;
+  const fake = createFakeGit(fixture);
+  const resolver = createApplicationV3GitHubExactObjectResolverV1({ runGit: fake.runGit });
+  const deepApplicationPath = `${Array.from({ length: 25 }, () => "segment").join("/")}/${"x".repeat(1_100)}.sol`;
+
+  const acceptedFixture = makeFixture({
+    files: [[deepApplicationPath, { mode: "100644", bytes: Buffer.from("contract Deep {}\n") }]]
+  });
+  acceptedFixture.request.maximumFileBytes = APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumFileBytes;
+  acceptedFixture.request.maximumTotalBytes = APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumTotalBytes;
+  const acceptedFake = createFakeGit(acceptedFixture);
+  const acceptedResolver = createApplicationV3GitHubExactObjectResolverV1({ runGit: acceptedFake.runGit });
+  const accepted = await acceptedResolver(acceptedFixture.request);
+  assert.deepEqual([...accepted.records.keys()], [deepApplicationPath]);
+
+  const invalidRequests = [
+    { ...fixture.request, paths: Array.from({ length: 4_097 }, (_, index) => `src/file-${index}.sol`) },
+    {
+      ...fixture.request,
+      maximumFileBytes: APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumFileBytes + 1
+    },
+    {
+      ...fixture.request,
+      maximumTotalBytes: APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumTotalBytes + 1
+    },
+    {
+      ...fixture.request,
+      timeoutMs: APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumTimeoutMs + 1
+    },
+    {
+      ...fixture.request,
+      paths: ["x".repeat(APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumPathBytes + 1)]
+    },
+    { ...fixture.request, paths: ["src//Hook.sol"] },
+    { ...fixture.request, paths: ["src/.git/config"] },
+    { ...fixture.request, paths: ["src/\ud800.sol"] }
+  ];
+  for (const request of invalidRequests) {
+    await assertResolverError(resolver(request), "INVALID_REQUEST");
+  }
+  assert.equal(fake.calls.length, 0);
+});
+
+test("Application V3 enforces declared per-file and aggregate byte limits before blob reads", async () => {
+  const maximumBlob = Buffer.alloc(
+    APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumFileBytes,
+    0x61
+  );
+  const maximumBlobRecord = {
+    mode: "100644",
+    bytes: maximumBlob,
+    objectId: gitObjectId("blob", maximumBlob)
+  };
+  const exactLimitFixture = makeFixture({
+    files: Array.from({ length: 16 }, (_, index) => [
+      `src/exact-${index}.bin`,
+      maximumBlobRecord
+    ])
+  });
+  exactLimitFixture.request.maximumFileBytes = APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumFileBytes;
+  exactLimitFixture.request.maximumTotalBytes = APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumTotalBytes;
+  const exactLimitFake = createFakeGit(exactLimitFixture);
+  const exactLimitResult = await createApplicationV3GitHubExactObjectResolverV1({
+    runGit: exactLimitFake.runGit
+  })(exactLimitFixture.request);
+  assert.equal(exactLimitResult.records.size, 16);
+  assert.equal(exactLimitResult.records.get("src/exact-15.bin").bytes.length, 4 * 1024 * 1024);
+
+  const perFileFixture = makeFixture({
+    files: [["src/large.sol", {
+      mode: "100644",
+      bytes: Buffer.from("small"),
+      reportedSize: APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumFileBytes + 1
+    }]]
+  });
+  perFileFixture.request.maximumFileBytes = APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumFileBytes;
+  perFileFixture.request.maximumTotalBytes = APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumTotalBytes;
+  const perFileFake = createFakeGit(perFileFixture);
+  await assertResolverError(
+    createApplicationV3GitHubExactObjectResolverV1({ runGit: perFileFake.runGit })(perFileFixture.request),
+    "GITHUB_RESPONSE_TOO_LARGE"
+  );
+
+  const aggregateFiles = Array.from({ length: 17 }, (_, index) => [
+    `src/aggregate-${index}.sol`,
+    {
+      mode: "100644",
+      bytes: Buffer.from(`blob-${index}`),
+      reportedSize: APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumFileBytes
+    }
+  ]);
+  const aggregateFixture = makeFixture({ files: aggregateFiles });
+  aggregateFixture.request.maximumFileBytes = APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumFileBytes;
+  aggregateFixture.request.maximumTotalBytes = APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumTotalBytes;
+  const aggregateFake = createFakeGit(aggregateFixture);
+  await assertResolverError(
+    createApplicationV3GitHubExactObjectResolverV1({ runGit: aggregateFake.runGit })(aggregateFixture.request),
+    "GITHUB_RESPONSE_TOO_LARGE"
+  );
+});
+
 test("requires the minimum Git version and backfill capability without a per-blob fallback", async (t) => {
   const fixture = makeFixture();
   await t.test("old Git", async () => {
@@ -365,6 +534,24 @@ test("rejects Git LFS pointers after object-id verification", async () => {
   const resolver = createAnonymousGitHubExactObjectResolverV1({ runGit: fake.runGit });
 
   await assertResolverError(resolver(fixture.request), "GITHUB_DECLARED_PATH_NOT_FOUND", /Git LFS pointer/u);
+});
+
+test("Application V3 returns verified Git LFS pointer bytes for downstream typed routing", async () => {
+  const pointer = Buffer.from([
+    "version https://git-lfs.github.com/spec/v1",
+    `oid sha256:${"a".repeat(64)}`,
+    "size 12345",
+    ""
+  ].join("\n"));
+  const fixture = makeFixture({ files: [["src/asset.bin", { mode: "100644", bytes: pointer }]] });
+  fixture.request.maximumFileBytes = APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumFileBytes;
+  fixture.request.maximumTotalBytes = APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1.maximumTotalBytes;
+  const fake = createFakeGit(fixture);
+  const resolver = createApplicationV3GitHubExactObjectResolverV1({ runGit: fake.runGit });
+
+  const result = await resolver(fixture.request);
+
+  assert.deepEqual(result.records.get("src/asset.bin").bytes, pointer);
 });
 
 test("checks per-file and aggregate sizes before reading raw blob bodies", async () => {

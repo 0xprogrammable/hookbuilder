@@ -20,6 +20,7 @@ import { installOpenWorldSourceClosureVerification } from "./open-world-source-c
 import { installOpenWorldApplicationAssembly } from "./open-world-application-assembly.mjs";
 import { installOpenWorldMaterialization } from "./open-world-materialization.mjs";
 import { installOpenWorldReportingUtilities } from "./open-world-reporting-utilities.mjs";
+import { createApplicationV3GitHubExactObjectResolverV1 } from "./github-exact-object-resolver.mjs";
 
 const installers = Object.freeze([
   installOpenWorldLocalCommands,
@@ -46,8 +47,12 @@ const installers = Object.freeze([
   installOpenWorldReportingUtilities
 ]);
 
-export function createOpenWorldRuntime() {
+export function createOpenWorldRuntime({ exactObjectResolver = createApplicationV3GitHubExactObjectResolverV1() } = {}) {
+  if (typeof exactObjectResolver !== "function") {
+    throw new TypeError("exactObjectResolver must be a function");
+  }
   const runtime = Object.create(null);
-  for (const install of installers) install(runtime);
+  const dependencies = Object.freeze({ exactObjectResolver });
+  for (const install of installers) install(runtime, dependencies);
   return runtime;
 }

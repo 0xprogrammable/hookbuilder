@@ -81,7 +81,7 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-transport-core.mjs",
-          "sourceSha256": "sha256:7dde5214b53ed8fc6734c9f94feecff5421a9bbcd910a1b7005821a760e2351b"
+          "sourceSha256": "sha256:bf255d7ac5f68f8d3174d113f8c764772c5b70d35afbb10dd080c8e519f6a276"
         }
       ],
       "observed": {

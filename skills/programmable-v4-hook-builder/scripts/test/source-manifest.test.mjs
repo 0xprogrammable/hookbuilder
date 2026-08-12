@@ -23,7 +23,7 @@ const repositoryIdentity = Object.freeze({
   numericRepositoryId: "987654321"
 });
 
-test("generator deterministically closes more than 4096 committed blobs across fragments", (t) => {
+test("generator deterministically closes more than 4096 committed paths across fragments", (t) => {
   const repositoryRoot = createRepository(t, 4103);
   fs.mkdirSync(path.join(repositoryRoot, "review"));
   const argumentsValue = {
@@ -504,7 +504,7 @@ test("CLI reports SHA-256 Git object databases as integration pending without wr
 test("committed paths beyond legacy caps generate and verify until the explicit byte budget needs split review", async (t) => {
   const repositoryRoot = createRepository(t, 1);
   fs.mkdirSync(path.join(repositoryRoot, "review"));
-  const longRepositoryPath = replaceHeadWithDeepTree(repositoryRoot, 90);
+  const longRepositoryPath = replaceHeadWithDeepTree(repositoryRoot, 10);
   assert.ok(longRepositoryPath.length > 2048);
   const pathByteLength = Buffer.byteLength(longRepositoryPath, "utf8");
   const plan = generateSourceClosureManifestV1({
@@ -715,6 +715,10 @@ function createRepository(t, entryCount, {
   runGit(repositoryRoot, ["config", "user.name", "Source Manifest Test"]);
   runGit(repositoryRoot, ["config", "user.email", "source-manifest@example.invalid"]);
   runGit(repositoryRoot, ["config", "commit.gpgsign", "false"]);
+  if (entryCount > 1_000 && Object.keys(additionalFiles).length === 0 && executablePaths.length === 0) {
+    createCompactCommittedTree(repositoryRoot, entryCount);
+    return repositoryRoot;
+  }
   const width = String(entryCount - 1).length;
   for (let index = 0; index < entryCount; index += 1) {
     const filePath = path.join(repositoryRoot, "src", `file-${String(index).padStart(width, "0")}.txt`);
@@ -734,6 +738,35 @@ function createRepository(t, entryCount, {
   return repositoryRoot;
 }
 
+// Large-count tests need thousands of committed paths, not thousands of
+// physical checkout files. Reusing one blob keeps the Git boundary realistic
+// while avoiding filesystem setup and cleanup dominating the test.
+function createCompactCommittedTree(repositoryRoot, entryCount) {
+  const blobObjectId = runGitWithInput(
+    repositoryRoot,
+    ["hash-object", "-w", "--stdin"],
+    "committed-source\n"
+  ).trim();
+  const width = String(entryCount - 1).length;
+  const sourceTree = runGitWithInput(
+    repositoryRoot,
+    ["mktree"],
+    Array.from({ length: entryCount }, (_, index) => (
+      `100644 blob ${blobObjectId}\tfile-${String(index).padStart(width, "0")}.txt\n`
+    )).join("")
+  ).trim();
+  const rootTree = runGitWithInput(
+    repositoryRoot,
+    ["mktree"],
+    `040000 tree ${sourceTree}\tsrc\n`
+  ).trim();
+  const commitObjectId = runGit(repositoryRoot, [
+    "commit-tree", rootTree, "-m", "source snapshot"
+  ]).trim();
+  runGit(repositoryRoot, ["update-ref", "HEAD", commitObjectId]);
+  fs.mkdirSync(path.join(repositoryRoot, "src"));
+}
+
 function runGit(repositoryRoot, argumentsList, options = {}) {
   return childProcess.execFileSync("git", ["-C", repositoryRoot, ...argumentsList], {
     encoding: options.encoding ?? "utf8",
@@ -751,28 +784,27 @@ function readGitBlob(repositoryRoot, revisionPath) {
 
 function replaceHeadWithDeepTree(repositoryRoot, depth) {
   const originalCommit = runGit(repositoryRoot, ["rev-parse", "HEAD"]).trim();
-  const blobObjectId = runGitWithInput(repositoryRoot, ["hash-object", "-w", "--stdin"], "deep source\n").trim();
-  const leafName = "DeepSource.sol";
-  let treeObjectId = runGitWithInput(
-    repositoryRoot,
-    ["mktree"],
-    `100644 blob ${blobObjectId}\t${leafName}\n`
-  ).trim();
-  const segments = [];
-  for (let index = depth - 1; index >= 0; index -= 1) {
-    const segment = `segment-${String(index).padStart(4, "0")}-${"x".repeat(10)}`;
-    segments.unshift(segment);
-    treeObjectId = runGitWithInput(
-      repositoryRoot,
-      ["mktree"],
-      `040000 tree ${treeObjectId}\t${segment}\n`
-    ).trim();
-  }
-  const commitObjectId = runGit(repositoryRoot, [
-    "commit-tree", treeObjectId, "-p", originalCommit, "-m", "deep transport path"
-  ]).trim();
-  runGit(repositoryRoot, ["update-ref", "HEAD", commitObjectId, originalCommit]);
-  return `${segments.join("/")}/${leafName}`;
+  const segments = Array.from(
+    { length: depth },
+    (_, index) => `segment-${String(index).padStart(4, "0")}-${"x".repeat(220)}`
+  );
+  const repositoryPath = `${segments.join("/")}/DeepSource.sol`;
+  const message = "deep transport path";
+  const source = "deep source\n";
+  runGitWithInput(repositoryRoot, ["fast-import", "--quiet"], [
+    "commit refs/heads/main",
+    "author Source Manifest Test <source-manifest@example.invalid> 0 +0000",
+    "committer Source Manifest Test <source-manifest@example.invalid> 0 +0000",
+    `data ${Buffer.byteLength(message)}`,
+    message,
+    `from ${originalCommit}`,
+    `M 100644 inline ${repositoryPath}`,
+    `data ${Buffer.byteLength(source)}`,
+    source,
+    "done",
+    ""
+  ].join("\n"));
+  return repositoryPath;
 }
 
 function replaceHeadWithNonUtf8Tree(repositoryRoot) {

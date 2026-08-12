@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
+import nodeTest from "node:test";
 import { fileURLToPath } from "node:url";
 import zlib from "node:zlib";
 import {
@@ -18,7 +18,12 @@ import {
   generateSourceClosureManifestV1,
   materializeSourceClosureManifestV1
 } from "../source-manifest.mjs";
+import { runBoundedChildProcess } from "../bounded-child-process-core.mjs";
 import { buildExampleBaseline } from "../example-materializer-core.mjs";
+import { installOpenWorldGitHubTransportUtilities } from "../open-world-github-transport-utilities.mjs";
+import { installOpenWorldSourceClosureVerification } from "../open-world-source-closure-verification.mjs";
+import { MAX_GITHUB_SOURCE_CONTENT_REQUESTS } from "../open-world-shared.mjs";
+import { createOpenWorldRuntime } from "../open-world-runtime.mjs";
 import { canonicalJson } from "../submission-core.mjs";
 import { createApplicableOpenWorldV2PrototypeFixture } from "./open-world-v2-prototype-fixture.mjs";
 
@@ -30,10 +35,17 @@ const sourceTree = "d".repeat(40);
 const centralCommit = "1".repeat(40);
 const centralTree = "2".repeat(40);
 const TRADE_APPLICATION_RECORD_KINDS = new Set(["trade-capability-manifest", "trade-test-result"]);
+const CLI_TIMEOUT_MS = 30_000;
+const CLI_OUTPUT_BYTES = 16_000_000;
+const NATIVE_TEST_CONCURRENCY = 4;
+const registeredTests = [];
 
-test("validate-application checks the closed V3 package locally from a non-Git directory", (t) => {
+function test(name, callback) {
+  registeredTests.push({ callback, name });
+}
+test("validate-application checks the closed V3 package locally from a non-Git directory", async (t) => {
   const fixture = createTransportFixture(t);
-  const result = run(["open-world", "validate-application", fixture.packageRoot], fixture);
+  const result = await run(["open-world", "validate-application", fixture.packageRoot], fixture);
   assert.equal(result.status, 0, result.stdout || result.stderr);
   const payload = JSON.parse(result.stdout).result;
   assert.equal(payload.action, "validate-application");
@@ -58,7 +70,7 @@ test("validate-application checks the closed V3 package locally from a non-Git d
 test("validate-application optionally replays the complete exact local source closure", async (t) => {
   const fixture = createTransportFixture(t, { manifestSource: true });
   const sourceRoot = await attachLocalManifestSource(fixture);
-  const result = run([
+  const result = await run([
     "open-world", "validate-application", fixture.packageRoot,
     "--source-root", `primary=${sourceRoot}`
   ], fixture);
@@ -73,7 +85,7 @@ test("validate-application optionally replays the complete exact local source cl
   assert.deepEqual(allCalls(fixture), []);
 });
 
-test("V3 predecessor helper derives only byte-provable lineage fields", (t) => {
+test("V3 predecessor helper derives only byte-provable lineage fields", async (t) => {
   const fixture = createTransportFixture(t);
   const application = JSON.parse(fs.readFileSync(path.join(fixture.packageRoot, "application.v3.json"), "utf8"));
   const projection = projectFixturePackage(fixture.packageRoot, application);
@@ -98,7 +110,7 @@ test("V3 predecessor helper derives only byte-provable lineage fields", (t) => {
   );
 });
 
-test("test-only fake GitHub preload is byte-equivalent across a GET plan and confirmed mutation", (t) => {
+test("test-only fake GitHub preload is byte-equivalent across a GET plan and confirmed mutation", async (t) => {
   const fixture = createTransportFixture(t);
   const command = ["open-world", "submit", fixture.packageRoot];
   const receiptPath = path.join(fixture.root, "application-v3-mutation-receipt.json");
@@ -121,24 +133,24 @@ test("test-only fake GitHub preload is byte-equivalent across a GET plan and con
   });
 
   reset();
-  const executablePlanResult = run(command, fixture, { usePreload: false });
+  const executablePlanResult = await run(command, fixture, { usePreload: false });
   const executablePlan = capture(executablePlanResult);
   reset();
-  const preloadPlanResult = run(command, fixture);
+  const preloadPlanResult = await run(command, fixture);
   const preloadPlan = capture(preloadPlanResult);
   assert.equal(preloadPlanResult.status, 0, preloadPlanResult.stdout || preloadPlanResult.stderr);
   assert.deepEqual(preloadPlan, executablePlan);
   const confirmationDigest = JSON.parse(preloadPlanResult.stdout).result.confirmationDigest;
 
   reset();
-  const executableMutationResult = run(
+  const executableMutationResult = await run(
     [...command, "--confirm-external-write", confirmationDigest],
     fixture,
     { allowWrites: true, usePreload: false }
   );
   const executableMutation = capture(executableMutationResult);
   reset();
-  const preloadMutationResult = run(
+  const preloadMutationResult = await run(
     [...command, "--confirm-external-write", confirmationDigest],
     fixture,
     { allowWrites: true }
@@ -149,12 +161,18 @@ test("test-only fake GitHub preload is byte-equivalent across a GET plan and con
   const calls = allCalls(fixture);
   assert.ok(calls.some(({ method }) => method === "GET"));
   assert.ok(calls.some(({ method, body }) => method !== "GET" && body !== null));
+  const sourcePathCount = Object.keys(JSON.parse(fs.readFileSync(fixture.statePath, "utf8")).sourceContents).length;
+  assert.equal(
+    calls.filter(({ endpoint }) => endpoint.startsWith("repos/example-builder/legacy-open-world-example/contents/")).length,
+    sourcePathCount,
+    "confirmed execution must reuse SHA-pinned source bytes across all pre-write snapshots"
+  );
   assert.equal(fs.existsSync(receiptLockPath), false);
 });
 
-test("transport rejects a schema-valid proposal with unassessed security and no source report before any GitHub call", (t) => {
+test("transport rejects a schema-valid proposal with unassessed security and no source report before any GitHub call", async (t) => {
   const fixture = createTransportFixture(t, { unmaterializedProposal: true });
-  const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+  const result = await run(["open-world", "submit", fixture.packageRoot], fixture);
   assert.equal(result.status, 1, result.stdout || result.stderr);
   const error = JSON.parse(result.stdout).error;
   assert.equal(error.code, "APPLICATION_V3_MATERIALIZATION_INVALID");
@@ -162,7 +180,7 @@ test("transport rejects a schema-valid proposal with unassessed security and no 
   assert.deepEqual(allCalls(fixture), []);
 });
 
-test("transport rejects a prototype whose source-verification report is missing before any GitHub call", (t) => {
+test("transport rejects a prototype whose source-verification report is missing before any GitHub call", async (t) => {
   const fixture = createTransportFixture(t);
   const application = readFixtureApplication(fixture);
   const [binding] = application.source.verificationReports;
@@ -180,13 +198,13 @@ test("transport rejects a prototype whose source-verification report is missing 
   rewriteFixtureApplicationArtifact(fixture, application, "security-assessment", security);
   writeFixtureApplication(fixture, application);
 
-  const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+  const result = await run(["open-world", "submit", fixture.packageRoot], fixture);
   assert.equal(result.status, 1, result.stdout || result.stderr);
   assert.equal(JSON.parse(result.stdout).error.code, "APPLICATION_V3_MATERIALIZATION_INVALID");
   assert.deepEqual(allCalls(fixture), []);
 });
 
-test("transport rejects unassessed security in an otherwise bound prototype before any GitHub call", (t) => {
+test("transport rejects unassessed security in an otherwise bound prototype before any GitHub call", async (t) => {
   const fixture = createTransportFixture(t);
   const application = readFixtureApplication(fixture);
   const security = readFixtureArtifact(fixture, application.securityBindings.securityAssessmentPath);
@@ -200,7 +218,7 @@ test("transport rejects unassessed security in an otherwise bound prototype befo
   rewriteFixtureApplicationArtifact(fixture, application, "security-assessment", security);
   writeFixtureApplication(fixture, application);
 
-  const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+  const result = await run(["open-world", "submit", fixture.packageRoot], fixture);
   assert.equal(result.status, 1, result.stdout || result.stderr);
   const error = JSON.parse(result.stdout).error;
   assert.equal(error.code, "APPLICATION_V3_MATERIALIZATION_INVALID");
@@ -208,7 +226,7 @@ test("transport rejects unassessed security in an otherwise bound prototype befo
   assert.deepEqual(allCalls(fixture), []);
 });
 
-test("transport rejects a coherently rebound but non-VERIFIED source report before any GitHub call", (t) => {
+test("transport rejects a coherently rebound but non-VERIFIED source report before any GitHub call", async (t) => {
   const fixture = createTransportFixture(t);
   const application = readFixtureApplication(fixture);
   const [binding] = application.source.verificationReports;
@@ -230,7 +248,7 @@ test("transport rejects a coherently rebound but non-VERIFIED source report befo
   rewriteFixtureApplicationArtifact(fixture, application, "security-assessment", security);
   writeFixtureApplication(fixture, application);
 
-  const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+  const result = await run(["open-world", "submit", fixture.packageRoot], fixture);
   assert.equal(result.status, 1, result.stdout || result.stderr);
   const error = JSON.parse(result.stdout).error;
   assert.equal(error.code, "APPLICATION_V3_MATERIALIZATION_INVALID");
@@ -238,7 +256,7 @@ test("transport rejects a coherently rebound but non-VERIFIED source report befo
   assert.deepEqual(allCalls(fixture), []);
 });
 
-test("package privacy gate blocks common high-confidence credentials in Markdown and JSON without echo or GitHub calls", (t) => {
+test("package privacy gate blocks common high-confidence credentials in Markdown and JSON without echo or GitHub calls", async (t) => {
   const credentials = [
     ["sk", "_live_", "1234567890AbCdEfGhIjKlMn"].join(""),
     ["npm", "_", "1234567890abcdefghijklmnopqrstuv"].join(""),
@@ -252,15 +270,28 @@ test("package privacy gate blocks common high-confidence credentials in Markdown
   ];
   for (const [index, credential] of credentials.entries()) {
     for (const media of ["markdown", "json"]) {
-      const fixture = createTransportFixture(t);
-      const application = readFixtureApplication(fixture);
-      const kind = media === "markdown" ? "proposal" : "compatibility-report";
       const content = media === "markdown"
         ? `# Proposal\n\nCredential ${credential}\n`
         : `${canonicalJson({ credential, result: "architecture-review-required", schemaVersion: 3 })}\n`;
+      const scan = scanPublicPrApplicationV3ArtifactBytes({
+        bytes: Buffer.from(content, "utf8"),
+        path: media === "markdown" ? "PROPOSAL.md" : "compatibility-report.json",
+        mediaType: media === "markdown" ? "text/markdown" : "application/json"
+      });
+      assert.equal(scan.valid, false, `${index}:${media}`);
+      assert.equal(scan.code, "APPLICATION_PUBLIC_ARTIFACT_SENSITIVE_CANDIDATE");
+      assert.equal(JSON.stringify(scan).includes(credential), false);
+
+      // Keep one real CLI canary per parser. The scanner matrix above owns the
+      // credential variants; these prove submit ordering, redaction and the
+      // no-GitHub-call boundary without starting 18 identical CLI processes.
+      if (!((index === 0 && media === "markdown") || (index === 1 && media === "json"))) continue;
+      const fixture = createTransportFixture(t);
+      const application = readFixtureApplication(fixture);
+      const kind = media === "markdown" ? "proposal" : "compatibility-report";
       rewriteFixtureRawArtifact(fixture, application, kind, content);
       writeFixtureApplication(fixture, application);
-      const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+      const result = await run(["open-world", "submit", fixture.packageRoot], fixture);
       assert.equal(result.status, 1, `${index}:${media}: ${result.stdout || result.stderr}`);
       const error = JSON.parse(result.stdout).error;
       assert.equal(error.code, "APPLICATION_PUBLIC_ARTIFACT_SENSITIVE");
@@ -270,7 +301,7 @@ test("package privacy gate blocks common high-confidence credentials in Markdown
   }
 });
 
-test("package credential scanner keeps benign lookalikes safe and never lets a financial attestation mask a secret", () => {
+test("package credential scanner keeps benign lookalikes safe and never lets a financial attestation mask a secret", async () => {
   for (const benign of [
     "sk_live_short",
     "npm_documentation_example",
@@ -303,7 +334,7 @@ test("package credential scanner keeps benign lookalikes safe and never lets a f
   assert.equal(JSON.stringify(report).includes(secret), false);
 });
 
-test("package JSON privacy scan accepts its exact node boundary and returns a typed plus-one hold", () => {
+test("package JSON privacy scan accepts its exact node boundary and returns a typed plus-one hold", async () => {
   const scan = (length) => scanPublicPrApplicationV3ArtifactBytes({
     bytes: Buffer.from(`${canonicalJson(Array.from({ length }, () => null))}\n`, "utf8"),
     path: "evidence-index.json",
@@ -316,7 +347,7 @@ test("package JSON privacy scan accepts its exact node boundary and returns a ty
   assert.equal(plusOne.code, "APPLICATION_PUBLIC_TEXT_SCAN_LIMIT_EXCEEDED");
 });
 
-test("package JSON privacy scan rejects duplicate-key secret shadowing before inspecting parsed values", () => {
+test("package JSON privacy scan rejects duplicate-key secret shadowing before inspecting parsed values", async () => {
   const secret = `sk-proj-${"A".repeat(24)}`;
   for (const bytes of [
     Buffer.from('{"note":"safe","note":"safe"}', "utf8"),
@@ -335,7 +366,7 @@ test("package JSON privacy scan rejects duplicate-key secret shadowing before in
   }
 });
 
-test("transport canonical JSON preflight accepts depth 256 and returns a typed depth-257 hold before GitHub", (t) => {
+test("transport canonical JSON preflight accepts depth 256 and returns a typed depth-257 hold before GitHub", async (t) => {
   const nested = (depth) => {
     let value = "leaf";
     for (let index = 0; index < depth; index += 1) value = { next: value };
@@ -350,7 +381,7 @@ test("transport canonical JSON preflight accepts depth 256 and returns a typed d
     `${canonicalJson(nested(256))}\n`
   );
   writeFixtureApplication(exact, exactApplication);
-  const accepted = run(["open-world", "submit", exact.packageRoot], exact);
+  const accepted = await run(["open-world", "submit", exact.packageRoot], exact);
   assert.equal(accepted.status, 0, accepted.stdout || accepted.stderr);
   assert.deepEqual(mutatingCalls(exact), []);
 
@@ -363,7 +394,7 @@ test("transport canonical JSON preflight accepts depth 256 and returns a typed d
     `${canonicalJson(nested(257))}\n`
   );
   writeFixtureApplication(plusOne, plusOneApplication);
-  const held = run(["open-world", "submit", plusOne.packageRoot], plusOne);
+  const held = await run(["open-world", "submit", plusOne.packageRoot], plusOne);
   assert.equal(held.status, 1, held.stdout || held.stderr);
   const error = JSON.parse(held.stdout).error;
   assert.equal(error.code, "APPLICATION_INPUT_SPLIT_REVIEW_REQUIRED");
@@ -371,7 +402,7 @@ test("transport canonical JSON preflight accepts depth 256 and returns a typed d
   assert.deepEqual(allCalls(plusOne), []);
 });
 
-test("remote inline transport holds canonical, legacy, extended, CRLF, and malformed Git LFS pointer-like blobs", (t) => {
+test("remote inline transport holds canonical, legacy, extended, CRLF, and malformed Git LFS pointer-like blobs", async (t) => {
   const oid = "a".repeat(64);
   const variants = [
     `version https://git-lfs.github.com/spec/v1\noid sha256:${oid}\nsize 7\n`,
@@ -386,7 +417,7 @@ test("remote inline transport holds canonical, legacy, extended, CRLF, and malfo
     const [firstPath] = Object.keys(state.sourceContents).sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)));
     state.sourceContents[firstPath] = Buffer.from(pointer, "utf8").toString("base64");
     fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
-    const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+    const result = await run(["open-world", "submit", fixture.packageRoot], fixture);
     assert.equal(result.status, 1, result.stdout || result.stderr);
     const error = JSON.parse(result.stdout).error;
     assert.equal(error.code, "APPLICATION_GITHUB_TRANSPORT_INTEGRATION_PENDING");
@@ -395,9 +426,9 @@ test("remote inline transport holds canonical, legacy, extended, CRLF, and malfo
   }
 });
 
-test("manifest transport without local source roots is integration-pending before any GitHub call", (t) => {
+test("manifest transport without local source roots is integration-pending before any GitHub call", async (t) => {
   const fixture = createTransportFixture(t, { manifestSource: true });
-  const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+  const result = await run(["open-world", "submit", fixture.packageRoot], fixture);
   assert.equal(result.status, 1, result.stdout || result.stderr);
   const error = JSON.parse(result.stdout).error;
   assert.equal(error.code, "APPLICATION_GITHUB_TRANSPORT_INTEGRATION_PENDING");
@@ -405,9 +436,9 @@ test("manifest transport without local source roots is integration-pending befor
   assert.deepEqual(allCalls(fixture), []);
 });
 
-test("manifest status remains an independent remote read when local source replay is unavailable", (t) => {
+test("manifest status remains an independent remote read when local source replay is unavailable", async (t) => {
   const fixture = createTransportFixture(t, { mode: "status", manifestSource: true });
-  const result = run(["open-world", "status", fixture.packageRoot, "--pull-request", "7"], fixture);
+  const result = await run(["open-world", "status", fixture.packageRoot, "--pull-request", "7"], fixture);
   assert.equal(result.status, 0, result.stdout || result.stderr);
   const payload = JSON.parse(result.stdout).result;
   assert.equal(payload.action, "status");
@@ -420,7 +451,7 @@ test("manifest status remains an independent remote read when local source repla
   assert.ok(allCalls(fixture).every(({ method }) => method === "GET"));
 });
 
-test("transport binds every declared source CI run to the exact head SHA, workflow, and successful conclusion", (t) => {
+test("transport binds every declared source CI run to the exact head SHA, workflow, and successful conclusion", async (t) => {
   for (const [workflowRunMode, expectedCode] of [
     [null, null],
     ["wrong-head", "APPLICATION_SOURCE_CI_MISMATCH"],
@@ -432,7 +463,7 @@ test("transport binds every declared source CI run to the exact head SHA, workfl
     const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
     state.workflowRunMode = workflowRunMode;
     fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
-    const result = run(["open-world", "update", fixture.packageRoot, "--pull-request", "7"], fixture);
+    const result = await run(["open-world", "update", fixture.packageRoot, "--pull-request", "7"], fixture);
     if (expectedCode === null) {
       assert.equal(result.status, 0, result.stdout || result.stderr);
       const runEvidence = JSON.parse(result.stdout).result.sources[0].ciRuns;
@@ -454,41 +485,29 @@ test("transport binds every declared source CI run to the exact head SHA, workfl
   }
 });
 
-test("confirmed transport rereads both exact CI and intake state immediately before its first mutation", (t) => {
-  for (const raceMode of ["intake-pause-before-write", "source-ci-fail-before-write"]) {
-    const fixture = createTransportFixture(t, { mode: raceMode === "source-ci-fail-before-write" ? "update" : "submit" });
-    const command = raceMode === "source-ci-fail-before-write"
-      ? ["open-world", "update", fixture.packageRoot, "--pull-request", "7"]
-      : ["open-world", "submit", fixture.packageRoot];
-    const preview = run(command, fixture);
-    assert.equal(preview.status, 0, preview.stdout || preview.stderr);
-    const digest = JSON.parse(preview.stdout).result.confirmationDigest;
-    const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
-    if (raceMode === "source-ci-fail-before-write") {
-      state.workflowRunMode = "fail-on-second-read";
-      state.workflowRunReads = 0;
-    } else {
-      state.raceMode = raceMode;
-      state.intakeReads = 0;
-    }
-    fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
-    const result = run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
-    assert.equal(result.status, 1, `${raceMode}: ${result.stdout || result.stderr}`);
-    assert.equal(
-      JSON.parse(result.stdout).error.code,
-      raceMode === "source-ci-fail-before-write" ? "APPLICATION_SOURCE_CI_MISMATCH" : "INTAKE_PAUSED_ALL"
-    );
-    assert.deepEqual(mutatingCalls(fixture), []);
-    const receipt = JSON.parse(fs.readFileSync(path.join(fixture.root, "application-v3-mutation-receipt.json"), "utf8"));
-    assert.equal(receipt.state, "FAILED_BEFORE_MUTATION");
-    assert.deepEqual(receipt.mutations, []);
-  }
+test("confirmed transport rereads mutable CI state immediately before its first mutation", async (t) => {
+  const fixture = createTransportFixture(t, { mode: "update" });
+  const command = ["open-world", "update", fixture.packageRoot, "--pull-request", "7"];
+  const preview = await run(command, fixture);
+  assert.equal(preview.status, 0, preview.stdout || preview.stderr);
+  const digest = JSON.parse(preview.stdout).result.confirmationDigest;
+  const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+  state.workflowRunMode = "fail-on-second-read";
+  state.workflowRunReads = 0;
+  fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
+  const result = await run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
+  assert.equal(result.status, 1, result.stdout || result.stderr);
+  assert.equal(JSON.parse(result.stdout).error.code, "APPLICATION_SOURCE_CI_MISMATCH");
+  assert.deepEqual(mutatingCalls(fixture), []);
+  const receipt = JSON.parse(fs.readFileSync(path.join(fixture.root, "application-v3-mutation-receipt.json"), "utf8"));
+  assert.equal(receipt.state, "FAILED_BEFORE_MUTATION");
+  assert.deepEqual(receipt.mutations, []);
 });
 
 test("manifest transport locally replays exact reports and keeps locally matched LFS availability unverified", async (t) => {
   const fixture = createTransportFixture(t, { manifestSource: true });
   const sourceRoot = await attachLocalManifestSource(fixture, { lfsMode: "verified" });
-  const result = run([
+  const result = await run([
     "open-world", "submit", fixture.packageRoot,
     "--source-root", `primary=${sourceRoot}`
   ], fixture);
@@ -519,7 +538,7 @@ test("manifest transport keeps a pruned fragment object integration-pending inst
   assert.equal(fs.existsSync(fragmentObjectPath), true, fragmentObjectPath);
   fs.unlinkSync(fragmentObjectPath);
 
-  const held = run([
+  const held = await run([
     "open-world", "submit", fixture.packageRoot,
     "--source-root", `primary=${sourceRoot}`
   ], fixture);
@@ -541,7 +560,7 @@ test("manifest transport independently checks each named remote source binding a
   state.sourceContents[boundPath] = Buffer.from("tampered remote source bytes\n", "utf8").toString("base64");
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
 
-  const result = run([
+  const result = await run([
     "open-world", "submit", fixture.packageRoot,
     "--source-root", `primary=${sourceRoot}`
   ], fixture);
@@ -553,7 +572,7 @@ test("manifest transport independently checks each named remote source binding a
 test("manifest transport blocks an unresolved local LFS dependency before any GitHub call", async (t) => {
   const fixture = createTransportFixture(t, { manifestSource: true });
   const sourceRoot = await attachLocalManifestSource(fixture, { lfsMode: "unresolved" });
-  const result = run([
+  const result = await run([
     "open-world", "submit", fixture.packageRoot,
     "--source-root", `primary=${sourceRoot}`
   ], fixture);
@@ -562,7 +581,7 @@ test("manifest transport blocks an unresolved local LFS dependency before any Gi
   assert.deepEqual(allCalls(fixture), []);
 });
 
-test("remote inline aggregate byte budget accepts exactly 64 MiB and holds plus one before content fetch", (t) => {
+test("remote inline aggregate byte budget accepts exactly 64 MiB and holds plus one before content fetch", async (t) => {
   for (const delta of [0, 1]) {
     const fixture = createTransportFixture(t);
     const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
@@ -574,7 +593,7 @@ test("remote inline aggregate byte budget accepts exactly 64 MiB and holds plus 
     state.sourceTreeSizeOverrides[firstPath] = 64 * 1024 * 1024 - remainingBytes + delta;
     fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
 
-    const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+    const result = await run(["open-world", "submit", fixture.packageRoot], fixture);
     assert.equal(result.status, 1, result.stdout || result.stderr);
     const error = JSON.parse(result.stdout).error;
     const sourceContentCalls = allCalls(fixture).filter(({ endpoint }) => (
@@ -591,34 +610,137 @@ test("remote inline aggregate byte budget accepts exactly 64 MiB and holds plus 
   }
 });
 
-test("fresh inline tooling limits stay typed split-review holds across prepare and transport", (t) => {
-  const fixture = createTransportFixture(t, { mode: "update" });
-  const prepared = createInlineSplitReplayFixture(fixture);
-  const commands = [
-    [
-      "open-world", "prepare-revision", prepared.draftPath,
-      "--source-root", `primary=${prepared.sourceRoot}`,
-      "--output", path.join(prepared.outputParent, "split-review"),
-      "--repository-root", prepared.repositoryRoot,
-      "--dry-run"
-    ],
-    ["open-world", "submit", fixture.packageRoot, "--source-root", `primary=${prepared.sourceRoot}`],
-    ["open-world", "update", fixture.packageRoot, "--pull-request", "7", "--source-root", `primary=${prepared.sourceRoot}`],
-    ["open-world", "status", fixture.packageRoot, "--pull-request", "7", "--source-root", `primary=${prepared.sourceRoot}`]
-  ];
-  for (const command of commands) {
-    fs.writeFileSync(fixture.callLog, "");
-    const result = run(command, fixture);
-    assert.equal(result.status, 1, `${command[1]}: ${result.stdout || result.stderr}`);
-    const error = JSON.parse(result.stdout).error;
-    assert.equal(error.code, "APPLICATION_GITHUB_SPLIT_REVIEW_REQUIRED", command[1]);
-    assert.equal(error.details.status, "HOLD_SPLIT_REVIEW");
-    assert.equal(error.details.route, "INTEGRATION_PENDING");
-    assert.equal(error.details.ideaEligibility, "ELIGIBLE_FOR_REVIEW");
-    assert.equal(error.details.classification, "tooling-split-review");
-    assert.equal(error.details.writePerformed, false);
-    assert.deepEqual(allCalls(fixture), []);
-  }
+test("remote inline verification batches large exact Git source sets once without Contents requests", async () => {
+  const paths = Array.from({ length: MAX_GITHUB_SOURCE_CONTENT_REQUESTS + 1 }, (_unused, index) => (
+    `request-budget/${String(index).padStart(3, "0")}.mjs`
+  ));
+  const bytesByPath = new Map(paths.map((repositoryPath, index) => [
+    repositoryPath,
+    Buffer.from(`export default ${index};\n`, "utf8")
+  ]));
+  const tree = paths.map((repositoryPath) => {
+    const bytes = bytesByPath.get(repositoryPath);
+    return {
+      path: repositoryPath,
+      mode: "100644",
+      type: "blob",
+      sha: crypto.createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex"),
+      size: bytes.length
+    };
+  });
+  let exactBatches = 0;
+  let contentRequests = 0;
+  let workflowRunRequests = 0;
+  const runtime = createOpenWorldRuntime({
+    exactObjectResolver: async ({ paths: requestedPaths }) => {
+      exactBatches += 1;
+      return {
+        records: new Map(requestedPaths.map((repositoryPath) => {
+          const entry = tree.find(({ path: candidate }) => candidate === repositoryPath);
+          return [repositoryPath, { mode: entry.mode, objectId: entry.sha, bytes: bytesByPath.get(repositoryPath) }];
+        }))
+      };
+    }
+  });
+  const declaredRepository = {
+    id: "primary",
+    numericRepositoryId: "123",
+    repositoryUri: "https://github.com/example/source",
+    revisionObjectId: sourceCommit,
+    treeObjectId: sourceTree,
+    sourceClosureMode: "inline",
+    sourcePaths: paths,
+    githubActionsRunIds: ["987654321"]
+  };
+  const application = {
+    source: { verificationReports: [] },
+    reviewPackage: { records: [] },
+    policyBindings: {},
+    intentCapture: {}
+  };
+  const transport = {
+    async getGitTree() { return { sha: sourceTree, truncated: false, tree }; },
+    async getContent() { contentRequests += 1; assert.fail("large exact source sets must not use REST Contents"); },
+    async getWorkflowRun() {
+      workflowRunRequests += 1;
+      return {
+        id: "987654321",
+        workflow_id: "123456",
+        head_sha: sourceCommit,
+        status: "completed",
+        conclusion: "success",
+        path: ".github/workflows/ci.yml",
+        run_attempt: 1,
+        event: "push",
+        repository: { id: "123", full_name: "example/source" },
+        head_repository: { id: "123", full_name: "example/source" }
+      };
+    }
+  };
+  const input = {
+    application,
+    declaredRepository,
+    observedRepository: { id: "123", fullName: "example/source" },
+    transport
+  };
+
+  await runtime.verifyRemoteApplicationV3SourceBindings(input);
+  await runtime.verifyRemoteApplicationV3SourceBindings(input);
+  assert.equal(exactBatches, 1);
+  assert.equal(contentRequests, 0);
+  assert.equal(workflowRunRequests, 2, "mutable CI state must remain fresh across immutable batch reuse");
+});
+
+test("fresh inline tooling limits stay typed split-review holds without a filesystem stress fixture", async () => {
+  const runtime = {
+    compareUtf8: (left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)),
+    normalizeOpenWorldFailure: (error) => error,
+    rejectTraversalOrGitControl: () => {},
+    rejectUnsafePathInput: () => {},
+    runGitBytes: () => { assert.fail("the over-limit tree must not read blobs"); },
+    runGitText: () => { assert.fail("the over-limit tree must not inspect Git objects"); },
+    throwGitHubTransportIntegrationHold: () => { assert.fail("the over-limit tree is a split-review hold"); }
+  };
+  installOpenWorldSourceClosureVerification(runtime);
+  installOpenWorldGitHubTransportUtilities(runtime);
+  const repository = {
+    id: "primary",
+    revisionObjectId: "c".repeat(40),
+    treeObjectId: "d".repeat(40),
+    sourceClosureMode: "inline",
+    sourcePaths: ["src/main.mjs"]
+  };
+  const report = runtime.verifyLocalInlineSourceClosure({
+    repositoryRoot: "/unused",
+    repository,
+    requiredPaths: [],
+    rawIntegrity: {
+      commitObjectVerified: true,
+      revisionObjectId: repository.revisionObjectId,
+      treeObjectId: repository.treeObjectId,
+      entries: Array.from({ length: 4_097 }, (_, index) => ({
+        mode: "100644",
+        objectId: String(index).padStart(40, "0"),
+        path: `generated/source-${String(index).padStart(4, "0")}.txt`,
+        type: "blob"
+      }))
+    },
+    applicationRepositories: [],
+    verifiedRepositoryRefs: new Set()
+  });
+
+  assert.equal(report.status, "HOLD_SPLIT_REVIEW");
+  assert.equal(report.splitReviewRequired, true);
+  assert.equal(report.findings[0].code, "INLINE_SOURCE_SPLIT_REVIEW_REQUIRED");
+  assert.throws(
+    () => runtime.routeFreshSourceReplayToolingState(report, { repositoryRef: repository.id }),
+    (error) => error?.code === "APPLICATION_GITHUB_SPLIT_REVIEW_REQUIRED"
+      && error.details?.status === "HOLD_SPLIT_REVIEW"
+      && error.details?.route === "INTEGRATION_PENDING"
+      && error.details?.ideaEligibility === "ELIGIBLE_FOR_REVIEW"
+      && error.details?.classification === "tooling-split-review"
+      && error.details?.writePerformed === false
+  );
 });
 
 test("open-world prepare-revision derives a new root through only GET requests and writes it atomically after a full second snapshot", async (t) => {
@@ -631,7 +753,7 @@ test("open-world prepare-revision derives a new root through only GET requests a
     "--source-root", `primary=${prepared.sourceRoot}`,
     "--repository-root", prepared.repositoryRoot
   ];
-  const preview = run([...common, "--output", dryOutput, "--dry-run"], fixture);
+  const preview = await run([...common, "--output", dryOutput, "--dry-run"], fixture);
   assert.equal(preview.status, 0, `${preview.stdout || preview.stderr}\n${canonicalJson(allCalls(fixture))}`);
   const previewResult = JSON.parse(preview.stdout).result;
   assert.equal(previewResult.action, "prepare-revision");
@@ -646,7 +768,7 @@ test("open-world prepare-revision derives a new root through only GET requests a
 
   fs.writeFileSync(fixture.callLog, "");
   const writeOutput = path.join(prepared.outputParent, "written-root");
-  const written = run([...common, "--output", writeOutput, "--write"], fixture);
+  const written = await run([...common, "--output", writeOutput, "--write"], fixture);
   assert.equal(written.status, 0, written.stdout || written.stderr);
   const writtenResult = JSON.parse(written.stdout).result;
   assert.equal(writtenResult.writePerformed, true);
@@ -710,7 +832,7 @@ test("prepare-revision revalidates raced Git alternates after staging and before
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
 
   const output = path.join(racedObjectRoot, "forbidden-raced-output");
-  const result = run([
+  const result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${sourceRoot}`,
     "--output", output,
@@ -756,7 +878,7 @@ test("prepare-revision rejects output inside linked-worktree Git control and sha
   for (const [label, parent] of [["git-dir", gitDir], ["common-dir", commonDir], ["object-dir", objectDir]]) {
     fs.writeFileSync(fixture.callLog, "");
     const output = path.join(parent, `forbidden-${label}`);
-    const result = run([
+    const result = await run([
       "open-world", "prepare-revision", prepared.draftPath,
       "--source-root", `primary=${sourceRoot}`,
       "--output", output,
@@ -799,7 +921,7 @@ test("prepare-revision rejects dry-run output inside recursive external Git alte
 
   fs.writeFileSync(fixture.callLog, "");
   const output = path.join(alternateBObjects, "forbidden-alternate-output");
-  const result = run([
+  const result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${sourceRoot}`,
     "--output", output,
@@ -833,7 +955,7 @@ test("prepare-revision fails closed on malformed Git alternates before network o
 
   fs.writeFileSync(fixture.callLog, "");
   const output = path.join(fixture.root, "malformed-alternate-output");
-  const result = run([
+  const result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${sourceRoot}`,
     "--output", output,
@@ -866,7 +988,7 @@ test("prepare-revision bounds total Git alternate entries and unique lexical res
 
   writeAlternates(objectRoot, Array.from({ length: 257 }, () => alternateObjectRoot));
   let output = path.join(prepared.outputParent, "alternate-entry-budget");
-  let result = run([
+  let result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${sourceRoot}`,
     "--output", output,
@@ -887,7 +1009,7 @@ test("prepare-revision bounds total Git alternate entries and unique lexical res
   writeAlternates(objectRoot, aliasObjectRoots);
   fs.writeFileSync(fixture.callLog, "");
   output = path.join(prepared.outputParent, "alternate-attempt-budget");
-  result = run([
+  result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${sourceRoot}`,
     "--output", output,
@@ -927,7 +1049,7 @@ test("prepare-revision permits only discovered cycles at the Git alternate depth
   writeAlternates(stores[15], [path.join(controlAlias, ".git", "objects")]);
 
   let output = path.join(prepared.outputParent, "alternate-depth-cycle");
-  let result = run([
+  let result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${sourceRoot}`,
     "--output", output,
@@ -943,7 +1065,7 @@ test("prepare-revision permits only discovered cycles at the Git alternate depth
   writeAlternates(stores[15], [stores[16]]);
   fs.writeFileSync(fixture.callLog, "");
   output = path.join(prepared.outputParent, "alternate-depth-new-root");
-  result = run([
+  result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${sourceRoot}`,
     "--output", output,
@@ -961,7 +1083,7 @@ test("prepare-revision rejects an unused predecessor source mapping without writ
   const sourceRoot = await attachLocalManifestSource(fixture);
   const prepared = createPrepareRevisionDraftFiles(fixture, sourceRoot);
   const output = path.join(prepared.outputParent, "unused-predecessor-root");
-  const result = run([
+  const result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${sourceRoot}`,
     "--predecessor-source-root", `primary=${sourceRoot}`,
@@ -983,7 +1105,7 @@ test("prepare-revision accepts a manifest repository with more than 64 MiB of un
   state.sourceTreeTruncated = true;
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
   const prepared = createPrepareRevisionDraftFiles(fixture, sourceRoot);
-  const result = run([
+  const result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${sourceRoot}`,
     "--output", path.join(prepared.outputParent, "large-manifest-source"),
@@ -1006,7 +1128,7 @@ test("prepare-revision leaves a manifest-owned source-critical symlink to depend
   state.sourceTreeTruncated = true;
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
   const prepared = createPrepareRevisionDraftFiles(fixture, sourceRoot);
-  const result = run([
+  const result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${sourceRoot}`,
     "--output", path.join(prepared.outputParent, "symlink-manifest-source"),
@@ -1033,7 +1155,7 @@ test("prepare-revision rejects conflicting metadata for a locally proven path in
   };
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
   const prepared = createPrepareRevisionDraftFiles(fixture, sourceRoot);
-  const result = run([
+  const result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${sourceRoot}`,
     "--output", path.join(prepared.outputParent, "conflicting-tree-entry"),
@@ -1067,7 +1189,7 @@ test("prepare-revision derives a recheck successor from the highest exact Regist
   draft.source.primary.githubActionsRunIds = ["987654321"];
   fs.writeFileSync(prepared.draftPath, `${canonicalJson(draft)}\n`);
 
-  const result = run([
+  const result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${sourceRoot}`,
     "--output", path.join(prepared.outputParent, "registry-successor"),
@@ -1095,7 +1217,7 @@ test("prepare-revision migrates an exact V2 base and rejects noncanonical or sch
     fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
     fs.writeFileSync(fixture.callLog, "");
     const output = path.join(prepared.outputParent, `v2-${variant}`);
-    const result = run([
+    const result = await run([
       "open-world", "prepare-revision", prepared.draftPath,
       "--source-root", `primary=${sourceRoot}`,
       "--output", output,
@@ -1136,7 +1258,7 @@ test("prepare-revision replays a manifest predecessor at commit A from the curre
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
   const prepared = createPrepareRevisionDraftFiles(fixture, sourceRoot);
 
-  const result = run([
+  const result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${sourceRoot}`,
     "--output", path.join(prepared.outputParent, "source-update"),
@@ -1186,7 +1308,7 @@ test("prepare-revision advances from a pruned same-numeric root to the next comp
   state.sourceTreeTruncated = true;
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
   const prepared = createPrepareRevisionDraftFiles(fixture, firstRoot);
-  const result = run([
+  const result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${firstRoot}`,
     "--source-root", `${companion.id}=${secondRoot}`,
@@ -1241,7 +1363,7 @@ test("prepare-revision uses an explicit historical root for a manifest repositor
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
   const prepared = createPrepareRevisionDraftFiles(fixture, currentRoot);
 
-  const held = run([
+  const held = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${currentRoot}`,
     "--output", path.join(prepared.outputParent, "missing-predecessor-replay"),
@@ -1254,7 +1376,7 @@ test("prepare-revision uses an explicit historical root for a manifest repositor
   assert.ok(allCalls(fixture).every(({ method }) => method === "GET"));
   fs.writeFileSync(fixture.callLog, "");
 
-  const result = run([
+  const result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${currentRoot}`,
     "--predecessor-source-root", `primary=${predecessorRoot}`,
@@ -1308,7 +1430,7 @@ test("prepare-revision replays a removed inline repository in a mixed manifest p
   const prepared = createPrepareRevisionDraftFiles(fixture, primaryRoot);
 
   const heldOutput = path.join(prepared.outputParent, "mixed-missing-inline-root");
-  const held = run([
+  const held = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${primaryRoot}`,
     "--output", heldOutput,
@@ -1322,7 +1444,7 @@ test("prepare-revision replays a removed inline repository in a mixed manifest p
   fs.writeFileSync(fixture.callLog, "");
 
   const output = path.join(prepared.outputParent, "mixed-explicit-inline-root");
-  const result = run([
+  const result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${primaryRoot}`,
     "--predecessor-source-root", `${companion.id}=${inlineRoot}`,
@@ -1361,7 +1483,7 @@ test("prepare-revision holds only for missing historical manifest objects and ke
     const prepared = createPrepareRevisionDraftFiles(fixture, predecessorRoot);
     fs.unlinkSync(looseGitObjectPath(historicalRoot, objectIds[objectKind]));
 
-    const result = run([
+    const result = await run([
       "open-world", "prepare-revision", prepared.draftPath,
       "--source-root", `primary=${predecessorRoot}`,
       "--predecessor-source-root", `primary=${historicalRoot}`,
@@ -1406,7 +1528,7 @@ test("prepare-revision holds only for missing historical manifest objects and ke
     substitutedBytes
   ])));
 
-  const result = run([
+  const result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${predecessorRoot}`,
     "--predecessor-source-root", `primary=${historicalRoot}`,
@@ -1446,7 +1568,7 @@ test("prepare-revision selects one current revision-titled open draft and derive
   draft.source.primary.githubActionsRunIds = ["987654321"];
   fs.writeFileSync(prepared.draftPath, `${canonicalJson(draft)}\n`);
 
-  const result = run([
+  const result = await run([
     "open-world", "prepare-revision", prepared.draftPath,
     "--source-root", `primary=${sourceRoot}`,
     "--output", path.join(prepared.outputParent, "open-draft-update"),
@@ -1463,7 +1585,7 @@ test("prepare-revision selects one current revision-titled open draft and derive
   assert.deepEqual(mutatingCalls(fixture), []);
 });
 
-test("prepare-revision rejects manual lineage and malformed nested drafts before any GitHub request without leaking private input", (t) => {
+test("prepare-revision rejects manual lineage and malformed nested drafts before any GitHub request without leaking private input", async (t) => {
   for (const mutate of [
     (draft) => { draft.applicationRevision = "9"; },
     (draft) => { draft.lineage = { kind: "new", previous: null }; },
@@ -1476,7 +1598,7 @@ test("prepare-revision rejects manual lineage and malformed nested drafts before
     draft.intentCapture.originalIdeaDisplayExcerpt = sentinel;
     mutate(draft);
     fs.writeFileSync(prepared.draftPath, `${canonicalJson(draft)}\n`);
-    const result = run([
+    const result = await run([
       "open-world", "prepare-revision", prepared.draftPath,
       "--source-root", `primary=${prepared.sourceRoot}`,
       "--output", path.join(prepared.outputParent, "rejected"),
@@ -1489,7 +1611,7 @@ test("prepare-revision rejects manual lineage and malformed nested drafts before
   }
 });
 
-test("prepare-revision and submit reject duplicate JSON keys before network or privacy interpretation", (t) => {
+test("prepare-revision and submit reject duplicate JSON keys before network or privacy interpretation", async (t) => {
   for (const [label, mutate] of [
     ["same", (source) => source.replace('"applicationId":"legacy-open-world-example"', '"applicationId":"legacy-open-world-example","applicationId":"legacy-open-world-example"')],
     ["conflicting-secret", (source) => source.replace('"applicationId":"legacy-open-world-example"', `"applicationId":"sk-proj-${"A".repeat(24)}","applicationId":"legacy-open-world-example"`)],
@@ -1499,7 +1621,7 @@ test("prepare-revision and submit reject duplicate JSON keys before network or p
     const prepared = createPrepareRevisionDraftFiles(fixture, fixture.root);
     const original = fs.readFileSync(prepared.draftPath, "utf8");
     fs.writeFileSync(prepared.draftPath, mutate(original));
-    const result = run([
+    const result = await run([
       "open-world", "prepare-revision", prepared.draftPath,
       "--source-root", `primary=${fixture.root}`,
       "--output", path.join(prepared.outputParent, `duplicate-${label}`),
@@ -1519,16 +1641,16 @@ test("prepare-revision and submit reject duplicate JSON keys before network or p
     '"applicationId":"legacy-open-world-example"',
     '"applicationId":"legacy-open-world-example","applicationId":"legacy-open-world-example"'
   ));
-  const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+  const result = await run(["open-world", "submit", fixture.packageRoot], fixture);
   assert.equal(result.status, 1, result.stdout || result.stderr);
   assert.equal(JSON.parse(result.stdout).error.code, "APPLICATION_V3_PACKAGE_INVALID");
   assert.deepEqual(allCalls(fixture), []);
 });
 
-test("open-world submit emits a stable read-only GitHub plan and rejects a wrong digest before any write", (t) => {
+test("open-world submit emits a stable read-only GitHub plan and rejects a wrong digest before any write", async (t) => {
   const fixture = createTransportFixture(t);
   const command = ["open-world", "submit", fixture.packageRoot];
-  const first = run(command, fixture);
+  const first = await run(command, fixture);
   assert.equal(first.status, 0, first.stdout || first.stderr);
   assert.equal(first.stderr, "");
   const firstPayload = JSON.parse(first.stdout);
@@ -1553,12 +1675,12 @@ test("open-world submit emits a stable read-only GitHub plan and rejects a wrong
   assert.ok(firstPayload.result.package.files.every((record) => !Object.hasOwn(record, "content")));
   assert.deepEqual(mutatingCalls(fixture), []);
 
-  const second = run(command, fixture);
+  const second = await run(command, fixture);
   assert.equal(second.status, 0, second.stdout || second.stderr);
   assert.equal(JSON.parse(second.stdout).result.confirmationDigest, firstPayload.result.confirmationDigest);
   assert.deepEqual(mutatingCalls(fixture), []);
 
-  const rejected = run([
+  const rejected = await run([
     ...command,
     "--confirm-external-write",
     `sha256:${"0".repeat(64)}`
@@ -1570,13 +1692,13 @@ test("open-world submit emits a stable read-only GitHub plan and rejects a wrong
   assert.deepEqual(mutatingCalls(fixture), []);
 });
 
-test("open-world submit plan never prints package content but its digest binds every byte hash", (t) => {
+test("open-world submit plan never prints package content but its digest binds every byte hash", async (t) => {
   const firstSentinel = "unique-public-fixture-marker-alpha";
   const secondSentinel = "unique-public-fixture-marker-beta";
   const firstFixture = createTransportFixture(t, { sentinel: firstSentinel });
   const secondFixture = createTransportFixture(t, { sentinel: secondSentinel });
-  const first = run(["open-world", "submit", firstFixture.packageRoot], firstFixture);
-  const second = run(["open-world", "submit", secondFixture.packageRoot], secondFixture);
+  const first = await run(["open-world", "submit", firstFixture.packageRoot], firstFixture);
+  const second = await run(["open-world", "submit", secondFixture.packageRoot], secondFixture);
   assert.equal(first.status, 0, first.stdout || first.stderr);
   assert.equal(second.status, 0, second.stdout || second.stderr);
   assert.equal(first.stdout.includes(firstSentinel), false);
@@ -1590,19 +1712,19 @@ test("open-world submit plan never prints package content but its digest binds e
   assert.deepEqual(mutatingCalls(secondFixture), []);
 });
 
-test("open-world submit refuses an occupied immutable revision at the exact central base", (t) => {
+test("open-world submit refuses an occupied immutable revision at the exact central base", async (t) => {
   const fixture = createTransportFixture(t);
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   const targetPath = Object.keys(state.packageContents)[0];
   state.centralContents[targetPath] = state.packageContents[targetPath];
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
-  const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+  const result = await run(["open-world", "submit", fixture.packageRoot], fixture);
   assert.equal(result.status, 1, result.stdout || result.stderr);
   assert.equal(JSON.parse(result.stdout).error.code, "APPLICATION_REVISION_ALREADY_IN_BASE");
   assert.deepEqual(mutatingCalls(fixture), []);
 });
 
-test("central target absence treats only an exact 404 as absent", (t) => {
+test("central target absence treats only an exact 404 as absent", async (t) => {
   for (const [failure, expectedCode] of [
     ["403", "GITHUB_REQUEST_FAILED"],
     ["500", "GITHUB_GET_RETRY_EXHAUSTED"],
@@ -1612,21 +1734,21 @@ test("central target absence treats only an exact 404 as absent", (t) => {
     const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
     state.centralContentFailure = failure;
     fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
-    const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+    const result = await run(["open-world", "submit", fixture.packageRoot], fixture);
     assert.equal(result.status, 1, `${failure}: ${result.stdout || result.stderr}`);
     assert.equal(JSON.parse(result.stdout).error.code, expectedCode);
     assert.deepEqual(mutatingCalls(fixture), []);
   }
 });
 
-test("open-world submit performs only the digest-confirmed writes against a fake GitHub transport", (t) => {
+test("open-world submit performs only the digest-confirmed writes against a fake GitHub transport", async (t) => {
   const fixture = createTransportFixture(t);
   const command = ["open-world", "submit", fixture.packageRoot];
-  const preview = run(command, fixture);
+  const preview = await run(command, fixture);
   assert.equal(preview.status, 0, preview.stdout || preview.stderr);
   const confirmationDigest = JSON.parse(preview.stdout).result.confirmationDigest;
 
-  const confirmed = run([
+  const confirmed = await run([
     ...command,
     "--confirm-external-write",
     confirmationDigest
@@ -1668,7 +1790,7 @@ test("open-world submit performs only the digest-confirmed writes against a fake
   ]);
 });
 
-test("read-only receipt reconciliation never rewrites a receipt or retries an unknown object creation", (t) => {
+test("read-only receipt reconciliation never rewrites a receipt or retries an unknown object creation", async (t) => {
   const fixture = createTransportFixture(t);
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   state.forkRepository = {
@@ -1684,16 +1806,16 @@ test("read-only receipt reconciliation never rewrites a receipt or retries an un
   state.raceMode = "tree-response-loss";
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
   const command = ["open-world", "submit", fixture.packageRoot];
-  const preview = run(command, fixture);
+  const preview = await run(command, fixture);
   assert.equal(preview.status, 0, preview.stdout || preview.stderr);
   const digest = JSON.parse(preview.stdout).result.confirmationDigest;
-  const failed = run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
+  const failed = await run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
   assert.equal(failed.status, 1, failed.stdout || failed.stderr);
   const receiptPath = path.join(fixture.root, "application-v3-mutation-receipt.json");
   const before = fs.readFileSync(receiptPath);
   fs.writeFileSync(fixture.callLog, "");
 
-  const reconciled = run([
+  const reconciled = await run([
     ...command,
     "--mutation-receipt", receiptPath,
     "--resume"
@@ -1709,7 +1831,7 @@ test("read-only receipt reconciliation never rewrites a receipt or retries an un
   assert.ok(allCalls(fixture).every(({ method }) => method === "GET"));
 });
 
-test("GET-only resume diagnoses a dynamically orphaned lock without changing the receipt or lock", (t) => {
+test("GET-only resume diagnoses a dynamically orphaned lock without changing the receipt or lock", async (t) => {
   const fixture = createTransportFixture(t);
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   state.forkRepository = {
@@ -1725,10 +1847,10 @@ test("GET-only resume diagnoses a dynamically orphaned lock without changing the
   state.raceMode = "tree-response-loss";
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
   const command = ["open-world", "submit", fixture.packageRoot];
-  const preview = run(command, fixture);
+  const preview = await run(command, fixture);
   assert.equal(preview.status, 0, preview.stdout || preview.stderr);
   const digest = JSON.parse(preview.stdout).result.confirmationDigest;
-  const failed = run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
+  const failed = await run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
   assert.equal(failed.status, 1, failed.stdout || failed.stderr);
   const receiptPath = path.join(fixture.root, "application-v3-mutation-receipt.json");
   const lockPath = `${receiptPath}.lock`;
@@ -1755,7 +1877,7 @@ test("GET-only resume diagnoses a dynamically orphaned lock without changing the
   const lockBefore = stableSnapshot(lockPath);
   fs.writeFileSync(fixture.callLog, "");
 
-  const reconciled = run([
+  const reconciled = await run([
     ...command,
     "--mutation-receipt", receiptPath,
     "--resume",
@@ -1780,7 +1902,7 @@ test("GET-only resume diagnoses a dynamically orphaned lock without changing the
   assert.ok(allCalls(fixture).every(({ method }) => method === "GET"));
 });
 
-test("a wrong resume digest cannot persist reconciliation or alter the receipt", (t) => {
+test("a wrong resume digest cannot persist reconciliation or alter the receipt", async (t) => {
   const fixture = createTransportFixture(t);
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   state.forkRepository = {
@@ -1796,17 +1918,17 @@ test("a wrong resume digest cannot persist reconciliation or alter the receipt",
   state.raceMode = "tree-response-loss";
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
   const command = ["open-world", "submit", fixture.packageRoot];
-  const preview = run(command, fixture);
+  const preview = await run(command, fixture);
   assert.equal(preview.status, 0, preview.stdout || preview.stderr);
   const digest = JSON.parse(preview.stdout).result.confirmationDigest;
-  const failed = run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
+  const failed = await run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
   assert.equal(failed.status, 1, failed.stdout || failed.stderr);
   const receiptPath = path.join(fixture.root, "application-v3-mutation-receipt.json");
   const before = fs.readFileSync(receiptPath);
   const sequence = JSON.parse(before).sequence;
   fs.writeFileSync(fixture.callLog, "");
 
-  const rejected = run([
+  const rejected = await run([
     ...command,
     "--mutation-receipt", receiptPath,
     "--resume",
@@ -1820,10 +1942,10 @@ test("a wrong resume digest cannot persist reconciliation or alter the receipt",
   assert.equal(fs.existsSync(`${receiptPath}.lock`), false);
 });
 
-test("a pre-existing or stale receipt lock fails closed without deletion or GitHub mutation", (t) => {
+test("a pre-existing or stale receipt lock fails closed without deletion or GitHub mutation", async (t) => {
   const fixture = createTransportFixture(t);
   const command = ["open-world", "submit", fixture.packageRoot];
-  const preview = run(command, fixture);
+  const preview = await run(command, fixture);
   assert.equal(preview.status, 0, preview.stdout || preview.stderr);
   const digest = JSON.parse(preview.stdout).result.confirmationDigest;
   const receiptPath = path.join(fixture.root, "locked-receipt.json");
@@ -1832,7 +1954,7 @@ test("a pre-existing or stale receipt lock fails closed without deletion or GitH
   fs.writeFileSync(lockPath, staleBytes, { mode: 0o600 });
   fs.writeFileSync(fixture.callLog, "");
 
-  const result = run([
+  const result = await run([
     ...command,
     "--mutation-receipt", receiptPath,
     "--confirm-external-write", digest
@@ -1849,7 +1971,7 @@ test("a pre-existing or stale receipt lock fails closed without deletion or GitH
 test("concurrent confirmed processes have one exclusive receipt owner and one fail-closed loser", async (t) => {
   const fixture = createTransportFixture(t);
   const command = ["open-world", "submit", fixture.packageRoot];
-  const preview = run(command, fixture);
+  const preview = await run(command, fixture);
   assert.equal(preview.status, 0, preview.stdout || preview.stderr);
   const digest = JSON.parse(preview.stdout).result.confirmationDigest;
   const receiptPath = path.join(fixture.root, "concurrent-receipt.json");
@@ -1865,8 +1987,8 @@ test("concurrent confirmed processes have one exclusive receipt owner and one fa
   ];
 
   const outcomes = await Promise.all([
-    runAsync(confirmedArguments, fixture, { allowWrites: true }),
-    runAsync(confirmedArguments, fixture, { allowWrites: true })
+    run(confirmedArguments, fixture, { allowWrites: true }),
+    run(confirmedArguments, fixture, { allowWrites: true })
   ]);
   const successful = outcomes.filter(({ status }) => status === 0);
   const failed = outcomes.filter(({ status }) => status !== 0);
@@ -1879,16 +2001,16 @@ test("concurrent confirmed processes have one exclusive receipt owner and one fa
   assert.equal(mutatingCalls(fixture).length, 5);
 });
 
-test("resume reconciles a persisted branch response and continues without replaying prior mutations", (t) => {
+test("resume reconciles a persisted branch response and continues without replaying prior mutations", async (t) => {
   const fixture = createTransportFixture(t);
   const command = ["open-world", "submit", fixture.packageRoot];
-  const preview = run(command, fixture);
+  const preview = await run(command, fixture);
   assert.equal(preview.status, 0, preview.stdout || preview.stderr);
   const digest = JSON.parse(preview.stdout).result.confirmationDigest;
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   state.raceMode = "ref-readback-failure";
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
-  const interrupted = run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
+  const interrupted = await run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
   assert.equal(interrupted.status, 1, interrupted.stdout || interrupted.stderr);
   assert.equal(JSON.parse(interrupted.stdout).error.code, "PARTIAL_EXTERNAL_WRITE");
   const receiptPath = path.join(fixture.root, "application-v3-mutation-receipt.json");
@@ -1900,7 +2022,7 @@ test("resume reconciles a persisted branch response and continues without replay
   resumedState.raceMode = null;
   fs.writeFileSync(fixture.statePath, `${canonicalJson(resumedState)}\n`);
   fs.writeFileSync(fixture.callLog, "");
-  const resumed = run([
+  const resumed = await run([
     ...command,
     "--mutation-receipt", receiptPath,
     "--resume",
@@ -1916,7 +2038,7 @@ test("resume reconciles a persisted branch response and continues without replay
   assert.ok(completed.mutations.every(isConfirmedReceiptMutation));
 });
 
-test("confirmed submit fails partial-write closed when independent tree, commit, package, or final PR readback differs", (t) => {
+test("confirmed submit fails partial-write closed when independent tree, commit, package, or final PR readback differs", async (t) => {
   const cases = [
     ["created-tree-readback-tamper", "create-application-tree", "RESPONSE_RECEIVED_PENDING_READBACK"],
     ["created-tree-outside-scope-tamper", "create-application-tree", "RESPONSE_RECEIVED_PENDING_READBACK"],
@@ -1927,14 +2049,14 @@ test("confirmed submit fails partial-write closed when independent tree, commit,
   for (const [raceMode, lastAttempt, expectedOutcome] of cases) {
     const fixture = createTransportFixture(t);
     const command = ["open-world", "submit", fixture.packageRoot];
-    const preview = run(command, fixture);
+    const preview = await run(command, fixture);
     assert.equal(preview.status, 0, preview.stdout || preview.stderr);
     const digest = JSON.parse(preview.stdout).result.confirmationDigest;
     const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
     state.raceMode = raceMode;
     fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
 
-    const result = run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
+    const result = await run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
     assert.equal(result.status, 1, `${raceMode}: ${result.stdout || result.stderr}`);
     const error = JSON.parse(result.stdout).error;
     assert.equal(error.code, "PARTIAL_EXTERNAL_WRITE");
@@ -1946,17 +2068,17 @@ test("confirmed submit fails partial-write closed when independent tree, commit,
   }
 });
 
-test("confirmed submit reports a typed partial-write journal if the Registry base advances during fork creation", (t) => {
+test("confirmed submit reports a typed partial-write journal if the Registry base advances during fork creation", async (t) => {
   const fixture = createTransportFixture(t);
   const command = ["open-world", "submit", fixture.packageRoot];
-  const preview = run(command, fixture);
+  const preview = await run(command, fixture);
   assert.equal(preview.status, 0, preview.stdout || preview.stderr);
   const digest = JSON.parse(preview.stdout).result.confirmationDigest;
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   state.raceMode = "central-advance-on-fork";
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
 
-  const result = run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
+  const result = await run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
   assert.equal(result.status, 1, result.stdout || result.stderr);
   const error = JSON.parse(result.stdout).error;
   assert.equal(error.code, "PARTIAL_EXTERNAL_WRITE");
@@ -1972,17 +2094,17 @@ test("confirmed submit reports a typed partial-write journal if the Registry bas
   ]);
 });
 
-test("confirmed submit journals fork, tree, and commit if the branch races before ref creation", (t) => {
+test("confirmed submit journals fork, tree, and commit if the branch races before ref creation", async (t) => {
   const fixture = createTransportFixture(t);
   const command = ["open-world", "submit", fixture.packageRoot];
-  const preview = run(command, fixture);
+  const preview = await run(command, fixture);
   assert.equal(preview.status, 0, preview.stdout || preview.stderr);
   const digest = JSON.parse(preview.stdout).result.confirmationDigest;
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   state.raceMode = "branch-after-commit";
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
 
-  const result = run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
+  const result = await run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
   assert.equal(result.status, 1, result.stdout || result.stderr);
   const error = JSON.parse(result.stdout).error;
   assert.equal(error.code, "PARTIAL_EXTERNAL_WRITE");
@@ -2003,7 +2125,7 @@ test("confirmed submit journals fork, tree, and commit if the branch races befor
   ]);
 });
 
-test("persisted Git tree with a lost response is reported as outcome-unknown with exact read-only recovery", (t) => {
+test("persisted Git tree with a lost response is reported as outcome-unknown with exact read-only recovery", async (t) => {
   const fixture = createTransportFixture(t);
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   state.forkRepository = {
@@ -2019,11 +2141,11 @@ test("persisted Git tree with a lost response is reported as outcome-unknown wit
   state.raceMode = "tree-response-loss";
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
   const command = ["open-world", "submit", fixture.packageRoot];
-  const preview = run(command, fixture);
+  const preview = await run(command, fixture);
   assert.equal(preview.status, 0, preview.stdout || preview.stderr);
   const digest = JSON.parse(preview.stdout).result.confirmationDigest;
 
-  const result = run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
+  const result = await run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
   assert.equal(result.status, 1, result.stdout || result.stderr);
   const error = JSON.parse(result.stdout).error;
   assert.equal(error.code, "PARTIAL_EXTERNAL_WRITE");
@@ -2042,17 +2164,17 @@ test("persisted Git tree with a lost response is reported as outcome-unknown wit
   ]);
 });
 
-test("lost draft-PR response is reconciled by exact head and body without a duplicate POST", (t) => {
+test("lost draft-PR response is reconciled by exact head and body without a duplicate POST", async (t) => {
   const fixture = createTransportFixture(t);
   const command = ["open-world", "submit", fixture.packageRoot];
-  const preview = run(command, fixture);
+  const preview = await run(command, fixture);
   assert.equal(preview.status, 0, preview.stdout || preview.stderr);
   const digest = JSON.parse(preview.stdout).result.confirmationDigest;
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   state.raceMode = "pull-response-loss";
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
 
-  const result = run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
+  const result = await run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
   assert.equal(result.status, 0, result.stdout || result.stderr);
   const payload = JSON.parse(result.stdout).result;
   assert.equal(payload.pullRequestNumber, 7);
@@ -2064,17 +2186,17 @@ test("lost draft-PR response is reconciled by exact head and body without a dupl
   assert.equal(mutatingCalls(fixture).filter(({ endpoint }) => endpoint.endsWith("/pulls")).length, 1);
 });
 
-test("update rereads the exact open draft before ref mutation and stops on close", (t) => {
+test("update rereads the exact open draft before ref mutation and stops on close", async (t) => {
   const fixture = createTransportFixture(t, { mode: "update" });
   const command = ["open-world", "update", fixture.packageRoot, "--pull-request", "7"];
-  const preview = run(command, fixture);
+  const preview = await run(command, fixture);
   assert.equal(preview.status, 0, preview.stdout || preview.stderr);
   const digest = JSON.parse(preview.stdout).result.confirmationDigest;
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   state.raceMode = "update-pr-close-after-commit";
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
 
-  const result = run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
+  const result = await run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
   assert.equal(result.status, 1, result.stdout || result.stderr);
   const error = JSON.parse(result.stdout).error;
   assert.equal(error.code, "PARTIAL_EXTERNAL_WRITE");
@@ -2093,9 +2215,9 @@ test("update rereads the exact open draft before ref mutation and stops on close
   ]);
 });
 
-test("open-world update plans one immutable next revision without mutating GitHub", (t) => {
+test("open-world update plans one immutable next revision without mutating GitHub", async (t) => {
   const fixture = createTransportFixture(t, { mode: "update" });
-  const result = run([
+  const result = await run([
     "open-world",
     "update",
     fixture.packageRoot,
@@ -2119,9 +2241,9 @@ test("open-world update plans one immutable next revision without mutating GitHu
   assert.deepEqual(mutatingCalls(fixture), []);
 });
 
-test("open-world status verifies the exact immutable revision and remains GitHub-read-only", (t) => {
+test("open-world status verifies the exact immutable revision and remains GitHub-read-only", async (t) => {
   const fixture = createTransportFixture(t, { mode: "status" });
-  const result = run([
+  const result = await run([
     "open-world",
     "status",
     fixture.packageRoot,
@@ -2146,7 +2268,7 @@ test("open-world status verifies the exact immutable revision and remains GitHub
   assert.deepEqual(mutatingCalls(fixture), []);
 });
 
-test("open-world status returns typed Application V3 guidance for a Submission V2 package", () => {
+test("open-world status returns typed Application V3 guidance for a Submission V2 package", async () => {
   const packageRoot = path.join(skillRoot, "assets", "templates", "open-world-v2", "new-idea");
   const result = childProcess.spawnSync(process.execPath, [
     cli,
@@ -2173,14 +2295,14 @@ test("open-world status returns typed Application V3 guidance for a Submission V
   assert.equal(payload.error.details.writePerformed, false);
 });
 
-test("open-world status projects an exact closed and merged pull as review-record-merged", (t) => {
+test("open-world status projects an exact closed and merged pull as review-record-merged", async (t) => {
   const fixture = createTransportFixture(t, { mode: "status" });
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   state.pull.state = "closed";
   state.pull.draft = false;
   state.pull.merged_at = "2026-08-03T12:00:00Z";
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
-  const result = run([
+  const result = await run([
     "open-world",
     "status",
     fixture.packageRoot,
@@ -2195,14 +2317,14 @@ test("open-world status projects an exact closed and merged pull as review-recor
   assert.deepEqual(mutatingCalls(fixture), []);
 });
 
-test("open-world status reports remote byte tampering without writing or inventing approval", (t) => {
+test("open-world status reports remote byte tampering without writing or inventing approval", async (t) => {
   const fixture = createTransportFixture(t, { mode: "status" });
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   const applicationPath = Object.keys(state.contents).find((filePath) => filePath.endsWith("/application.v3.json"));
   state.contents[applicationPath] = Buffer.from("{}\n", "utf8").toString("base64");
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
 
-  const result = run([
+  const result = await run([
     "open-world",
     "status",
     fixture.packageRoot,
@@ -2218,7 +2340,7 @@ test("open-world status reports remote byte tampering without writing or inventi
   assert.deepEqual(mutatingCalls(fixture), []);
 });
 
-test("open-world status rejects modified or extra paths in an immutable revision", (t) => {
+test("open-world status rejects modified or extra paths in an immutable revision", async (t) => {
   for (const mutation of ["modified", "extra"]) {
     const fixture = createTransportFixture(t, { mode: "status" });
     const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
@@ -2230,7 +2352,7 @@ test("open-world status rejects modified or extra paths in an immutable revision
       state.pull.changed_files = state.pullFiles.length;
     }
     fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
-    const result = run([
+    const result = await run([
       "open-world",
       "status",
       fixture.packageRoot,
@@ -2243,7 +2365,7 @@ test("open-world status rejects modified or extra paths in an immutable revision
   }
 });
 
-test("open-world update requires the exact verified prior-history path set", (t) => {
+test("open-world update requires the exact verified prior-history path set", async (t) => {
   const fixture = createTransportFixture(t, { mode: "update" });
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   state.pullFiles.push({
@@ -2253,7 +2375,7 @@ test("open-world update requires the exact verified prior-history path set", (t)
   });
   state.pull.changed_files = state.pullFiles.length;
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
-  const result = run([
+  const result = await run([
     "open-world",
     "update",
     fixture.packageRoot,
@@ -2265,7 +2387,7 @@ test("open-world update requires the exact verified prior-history path set", (t)
   assert.deepEqual(mutatingCalls(fixture), []);
 });
 
-test("multi-revision V3-new history cannot detach from a full or orphaned V2 base namespace", (t) => {
+test("multi-revision V3-new history cannot detach from a full or orphaned V2 base namespace", async (t) => {
   for (const [command, mode] of [
     ["submit", "merged-prior-submit"],
     ["update", "update"],
@@ -2277,7 +2399,7 @@ test("multi-revision V3-new history cannot detach from a full or orphaned V2 bas
     const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
     state.centralContents[`submissions/${application.applicationId}/application.json`] = Buffer.from("{}\n", "utf8").toString("base64");
     fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
-    const result = run(command === "submit"
+    const result = await run(command === "submit"
       ? ["open-world", command, fixture.packageRoot]
       : ["open-world", command, fixture.packageRoot, "--pull-request", "7"], fixture);
     assert.equal(result.status, 1, `${command}: ${result.stdout || result.stderr}`);
@@ -2287,7 +2409,7 @@ test("multi-revision V3-new history cannot detach from a full or orphaned V2 bas
   }
 });
 
-test("every prior Application V3 lineage field is recomputed from the immutable predecessor", (t) => {
+test("every prior Application V3 lineage field is recomputed from the immutable predecessor", async (t) => {
   const mutations = new Map([
     ["applicationContract", "public-pr-application-v2"],
     ["applicationSchemaVersion", 4],
@@ -2312,7 +2434,7 @@ test("every prior Application V3 lineage field is recomputed from the immutable 
     const application = JSON.parse(fs.readFileSync(applicationPath, "utf8"));
     application.lineage.previous[field] = value;
     fs.writeFileSync(applicationPath, `${canonicalJson(application)}\n`);
-    const result = run([
+    const result = await run([
       "open-world",
       "update",
       fixture.packageRoot,
@@ -2340,7 +2462,7 @@ test("every prior Application V3 lineage field is recomputed from the immutable 
   }
 });
 
-test("update independently rejects a fake same-source lineage label and normative mutation", (t) => {
+test("update independently rejects a fake same-source lineage label and normative mutation", async (t) => {
   for (const mutation of ["source-update-label", "summary"]) {
     const fixture = createTransportFixture(t, { mode: "update" });
     const applicationPath = path.join(fixture.packageRoot, "application.v3.json");
@@ -2348,7 +2470,7 @@ test("update independently rejects a fake same-source lineage label and normativ
     if (mutation === "source-update-label") application.lineage.kind = "source-update";
     else application.summary = `${application.summary} Unauthorized same-source normative change.`;
     fs.writeFileSync(applicationPath, `${canonicalJson(application)}\n`);
-    const result = run([
+    const result = await run([
       "open-world", "update", fixture.packageRoot,
       "--pull-request", "7"
     ], fixture);
@@ -2362,9 +2484,9 @@ test("update independently rejects a fake same-source lineage label and normativ
   }
 });
 
-test("a new submit after a merged prior revision plans only the next immutable directory", (t) => {
+test("a new submit after a merged prior revision plans only the next immutable directory", async (t) => {
   const fixture = createTransportFixture(t, { mode: "merged-prior-submit" });
-  const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+  const result = await run(["open-world", "submit", fixture.packageRoot], fixture);
   assert.equal(result.status, 0, result.stdout || result.stderr);
   const payload = JSON.parse(result.stdout).result;
   assert.equal(payload.action, "submit-plan");
@@ -2374,9 +2496,9 @@ test("a new submit after a merged prior revision plans only the next immutable d
   assert.deepEqual(mutatingCalls(fixture), []);
 });
 
-test("merged prior history is excluded from the current diff and update routes to a new thread", (t) => {
+test("merged prior history is excluded from the current diff and update routes to a new thread", async (t) => {
   const fixture = createTransportFixture(t, { mode: "merged-prior" });
-  const status = run([
+  const status = await run([
     "open-world",
     "status",
     fixture.packageRoot,
@@ -2386,7 +2508,7 @@ test("merged prior history is excluded from the current diff and update routes t
   assert.equal(status.status, 0, status.stdout || status.stderr);
   assert.equal(JSON.parse(status.stdout).result.package.matchesRemote, true);
 
-  const update = run([
+  const update = await run([
     "open-world",
     "update",
     fixture.packageRoot,
@@ -2402,15 +2524,15 @@ test("merged prior history is excluded from the current diff and update routes t
   assert.deepEqual(mutatingCalls(fixture), []);
 });
 
-test("GitHub raw-content verification accepts 700000 bytes and holds 700001 without network", (t) => {
+test("GitHub raw-content verification accepts 700000 bytes and holds 700001 without network", async (t) => {
   const exact = createTransportFixture(t, { proposalByteLength: 700_000 });
-  const accepted = run(["open-world", "submit", exact.packageRoot], exact);
+  const accepted = await run(["open-world", "submit", exact.packageRoot], exact);
   assert.equal(accepted.status, 0, accepted.stdout || accepted.stderr);
   assert.ok(JSON.parse(accepted.stdout).result.package.files.some(({ byteLength }) => byteLength === 700_000));
   assert.deepEqual(mutatingCalls(exact), []);
 
   const over = createTransportFixture(t, { proposalByteLength: 700_001 });
-  const held = run(["open-world", "submit", over.packageRoot], over);
+  const held = await run(["open-world", "submit", over.packageRoot], over);
   assert.equal(held.status, 1, held.stdout || held.stderr);
   const error = JSON.parse(held.stdout).error;
   assert.equal(error.code, "APPLICATION_GITHUB_SPLIT_REVIEW_REQUIRED", held.stdout);
@@ -2420,16 +2542,16 @@ test("GitHub raw-content verification accepts 700000 bytes and holds 700001 with
   assert.equal(fs.existsSync(over.callLog), false);
 });
 
-test("Git tree request accepts exactly 1000000 bytes and holds 1000001 before network", (t) => {
+test("Git tree request accepts exactly 1000000 bytes and holds 1000001 before network", async (t) => {
   const exact = createTransportFixture(t, { treeRequestByteLength: 1_000_000 });
   assert.equal(measureFixtureTreeRequest(exact.packageRoot), 1_000_000);
-  const accepted = run(["open-world", "submit", exact.packageRoot], exact);
+  const accepted = await run(["open-world", "submit", exact.packageRoot], exact);
   assert.equal(accepted.status, 0, accepted.stdout || accepted.stderr);
   assert.deepEqual(mutatingCalls(exact), []);
 
   const over = createTransportFixture(t, { treeRequestByteLength: 1_000_001 });
   assert.equal(measureFixtureTreeRequest(over.packageRoot), 1_000_001);
-  const held = run(["open-world", "submit", over.packageRoot], over);
+  const held = await run(["open-world", "submit", over.packageRoot], over);
   assert.equal(held.status, 1, held.stdout || held.stderr);
   const error = JSON.parse(held.stdout).error;
   assert.equal(error.code, "APPLICATION_GITHUB_SPLIT_REVIEW_REQUIRED");
@@ -2439,7 +2561,7 @@ test("Git tree request accepts exactly 1000000 bytes and holds 1000001 before ne
   assert.equal(fs.existsSync(over.callLog), false);
 });
 
-test("pull inspection paginates from 100 through 101 and holds only above GitHub's 3000-file endpoint ceiling", (t) => {
+test("pull inspection paginates from 100 through 101 and holds only above GitHub's 3000-file endpoint ceiling", async (t) => {
   const exact = createTransportFixture(t, { mode: "status" });
   const exactState = JSON.parse(fs.readFileSync(exact.statePath, "utf8"));
   while (exactState.pullFiles.length < 100) {
@@ -2452,7 +2574,7 @@ test("pull inspection paginates from 100 through 101 and holds only above GitHub
   exactState.pullFiles.sort(comparePullFileNames);
   exactState.pull.changed_files = 100;
   fs.writeFileSync(exact.statePath, `${canonicalJson(exactState)}\n`);
-  const acceptedBoundary = run(["open-world", "status", exact.packageRoot, "--pull-request", "7"], exact);
+  const acceptedBoundary = await run(["open-world", "status", exact.packageRoot, "--pull-request", "7"], exact);
   assert.equal(acceptedBoundary.status, 1, acceptedBoundary.stdout || acceptedBoundary.stderr);
   assert.equal(JSON.parse(acceptedBoundary.stdout).error.code, "APPLICATION_PULL_REQUEST_PATHS_INVALID");
   assert.deepEqual(mutatingCalls(exact), []);
@@ -2469,7 +2591,7 @@ test("pull inspection paginates from 100 through 101 and holds only above GitHub
   paginatedState.pullFiles.sort(comparePullFileNames);
   paginatedState.pull.changed_files = 101;
   fs.writeFileSync(paginated.statePath, `${canonicalJson(paginatedState)}\n`);
-  const paginatedResult = run(["open-world", "status", paginated.packageRoot, "--pull-request", "7"], paginated);
+  const paginatedResult = await run(["open-world", "status", paginated.packageRoot, "--pull-request", "7"], paginated);
   assert.equal(paginatedResult.status, 1, paginatedResult.stdout || paginatedResult.stderr);
   assert.equal(JSON.parse(paginatedResult.stdout).error.code, "APPLICATION_PULL_REQUEST_PATHS_INVALID");
   assert.equal(allCalls(paginated).filter(({ endpoint }) => endpoint.includes("/pulls/7/files?")).length, 2);
@@ -2487,7 +2609,7 @@ test("pull inspection paginates from 100 through 101 and holds only above GitHub
   ceilingState.pullFiles.sort(comparePullFileNames);
   ceilingState.pull.changed_files = 3000;
   fs.writeFileSync(ceiling.statePath, `${canonicalJson(ceilingState)}\n`);
-  const ceilingResult = run(["open-world", "status", ceiling.packageRoot, "--pull-request", "7"], ceiling);
+  const ceilingResult = await run(["open-world", "status", ceiling.packageRoot, "--pull-request", "7"], ceiling);
   assert.equal(ceilingResult.status, 1, ceilingResult.stdout || ceilingResult.stderr);
   assert.equal(JSON.parse(ceilingResult.stdout).error.code, "APPLICATION_PULL_REQUEST_PATHS_INVALID");
   assert.equal(allCalls(ceiling).filter(({ endpoint }) => endpoint.includes("/pulls/7/files?")).length, 30);
@@ -2496,7 +2618,7 @@ test("pull inspection paginates from 100 through 101 and holds only above GitHub
   const overState = JSON.parse(fs.readFileSync(over.statePath, "utf8"));
   overState.pull.changed_files = 3001;
   fs.writeFileSync(over.statePath, `${canonicalJson(overState)}\n`);
-  const held = run(["open-world", "status", over.packageRoot, "--pull-request", "7"], over);
+  const held = await run(["open-world", "status", over.packageRoot, "--pull-request", "7"], over);
   assert.equal(held.status, 1, held.stdout || held.stderr);
   const error = JSON.parse(held.stdout).error;
   assert.equal(error.code, "APPLICATION_GITHUB_SPLIT_REVIEW_REQUIRED");
@@ -2505,7 +2627,7 @@ test("pull inspection paginates from 100 through 101 and holds only above GitHub
   assert.deepEqual(mutatingCalls(over), []);
 });
 
-test("pull-file pagination fails closed on short pages, duplicates, and aggregate metadata over-budget", (t) => {
+test("pull-file pagination fails closed on short pages, duplicates, and aggregate metadata over-budget", async (t) => {
   for (const paginationMode of ["short-first-page", "duplicate-second-page"]) {
     const fixture = createTransportFixture(t, { mode: "status" });
     const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
@@ -2520,7 +2642,7 @@ test("pull-file pagination fails closed on short pages, duplicates, and aggregat
     state.pull.changed_files = 101;
     state.paginationMode = paginationMode;
     fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
-    const result = run(["open-world", "status", fixture.packageRoot, "--pull-request", "7"], fixture);
+    const result = await run(["open-world", "status", fixture.packageRoot, "--pull-request", "7"], fixture);
     assert.equal(result.status, 1, `${paginationMode}: ${result.stdout || result.stderr}`);
     assert.equal(JSON.parse(result.stdout).error.code, "GITHUB_PULL_FILES_CHANGED");
     assert.deepEqual(mutatingCalls(fixture), []);
@@ -2535,7 +2657,7 @@ test("pull-file pagination fails closed on short pages, duplicates, and aggregat
   }));
   metadataState.pull.changed_files = metadataState.pullFiles.length;
   fs.writeFileSync(metadata.statePath, `${canonicalJson(metadataState)}\n`);
-  const held = run(["open-world", "status", metadata.packageRoot, "--pull-request", "7"], metadata);
+  const held = await run(["open-world", "status", metadata.packageRoot, "--pull-request", "7"], metadata);
   assert.equal(held.status, 1, held.stdout || held.stderr);
   const error = JSON.parse(held.stdout).error;
   assert.equal(error.code, "APPLICATION_GITHUB_SPLIT_REVIEW_REQUIRED", `${held.stdout}\n${canonicalJson(allCalls(metadata).slice(-3))}`);
@@ -2544,7 +2666,7 @@ test("pull-file pagination fails closed on short pages, duplicates, and aggregat
   assert.deepEqual(mutatingCalls(metadata), []);
 });
 
-test("pull-file pagination accepts unsorted GitHub pages but rejects exact head drift", (t) => {
+test("pull-file pagination accepts unsorted GitHub pages but rejects exact head drift", async (t) => {
   const unsorted = createTransportFixture(t, { mode: "status" });
   const unsortedState = JSON.parse(fs.readFileSync(unsorted.statePath, "utf8"));
   while (unsortedState.pullFiles.length < 101) {
@@ -2558,7 +2680,7 @@ test("pull-file pagination accepts unsorted GitHub pages but rejects exact head 
   unsortedState.pull.changed_files = 101;
   unsortedState.paginationMode = "reverse-each-page";
   fs.writeFileSync(unsorted.statePath, `${canonicalJson(unsortedState)}\n`);
-  const accepted = run(["open-world", "status", unsorted.packageRoot, "--pull-request", "7"], unsorted);
+  const accepted = await run(["open-world", "status", unsorted.packageRoot, "--pull-request", "7"], unsorted);
   assert.equal(accepted.status, 1, accepted.stdout || accepted.stderr);
   assert.equal(JSON.parse(accepted.stdout).error.code, "APPLICATION_PULL_REQUEST_PATHS_INVALID");
 
@@ -2566,7 +2688,7 @@ test("pull-file pagination accepts unsorted GitHub pages but rejects exact head 
   const driftState = JSON.parse(fs.readFileSync(drift.statePath, "utf8"));
   driftState.paginationMode = "head-drift-after-first-page";
   fs.writeFileSync(drift.statePath, `${canonicalJson(driftState)}\n`);
-  const rejected = run(["open-world", "status", drift.packageRoot, "--pull-request", "7"], drift);
+  const rejected = await run(["open-world", "status", drift.packageRoot, "--pull-request", "7"], drift);
   assert.equal(rejected.status, 1, rejected.stdout || rejected.stderr);
   assert.equal(JSON.parse(rejected.stdout).error.code, "GITHUB_PULL_REQUEST_CHANGED");
   assert.deepEqual(mutatingCalls(drift), []);
@@ -2587,7 +2709,7 @@ test("shared V2/V3 GitHub path transport accepts the former 1024-character bound
   assert.equal(observed.length, 2);
 });
 
-test("GitHub GET transport retries are bounded, Retry-After aware, typed, and never applied to mutations", async (t) => {
+test("GitHub GET transport retries are bounded, rate limits stop immediately, and mutations never retry", async (t) => {
   await t.test("transient reads retry with bounded exponential backoff", async () => {
     let attempts = 0;
     const waits = [];
@@ -2605,7 +2727,7 @@ test("GitHub GET transport retries are bounded, Retry-After aware, typed, and ne
     assert.deepEqual(waits, [100, 200]);
   });
 
-  await t.test("Retry-After is honored inside the closed wait budget", async () => {
+  await t.test("Retry-After is reported without spending another rate-limited request", async () => {
     let attempts = 0;
     const waits = [];
     const transport = createGhTransport({
@@ -2622,9 +2744,14 @@ test("GitHub GET transport retries are bounded, Retry-After aware, typed, and ne
       sleep: async (milliseconds) => { waits.push(milliseconds); },
       now: () => 0
     });
-    await transport.getViewer();
-    assert.equal(attempts, 2);
-    assert.deepEqual(waits, [1_000]);
+    await assert.rejects(
+      () => transport.getViewer(),
+      (error) => error?.code === "GITHUB_RATE_LIMITED"
+        && error.details?.attempts === 1
+        && error.details?.retryAfterSeconds === 1
+    );
+    assert.equal(attempts, 1);
+    assert.deepEqual(waits, []);
   });
 
   await t.test("an oversized rate-limit wait fails typed without sleeping or retrying", async () => {
@@ -2930,42 +3057,6 @@ function attachPrepareRevisionInlineSource(fixture) {
   return createPrepareRevisionDraftFiles(fixture, sourceRoot);
 }
 
-function createInlineSplitReplayFixture(fixture) {
-  const sourceRoot = path.join(fixture.root, "inline-split-source");
-  fs.mkdirSync(sourceRoot);
-  runLocalGit(sourceRoot, ["init", "--quiet", "--initial-branch=main"]);
-  runLocalGit(sourceRoot, ["config", "user.name", "Inline Split Fixture"]);
-  runLocalGit(sourceRoot, ["config", "user.email", "inline-split@example.invalid"]);
-  const application = readFixtureApplication(fixture);
-  const sourcePaths = new Set(application.source.primary.sourcePaths);
-  for (let index = 0; sourcePaths.size < 4_096; index += 1) {
-    sourcePaths.add(`generated/source-${String(index).padStart(4, "0")}.txt`);
-  }
-  application.source.primary.sourcePaths = [...sourcePaths]
-    .sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)));
-  for (const repositoryPath of application.source.primary.sourcePaths) {
-    const absolutePath = path.join(sourceRoot, ...repositoryPath.split("/"));
-    fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
-    fs.writeFileSync(absolutePath, fixtureSourceContent(application, repositoryPath));
-  }
-  fs.writeFileSync(path.join(sourceRoot, "generated", "unlisted-4097.txt"), "forces bounded inline split review\n");
-  runLocalGit(sourceRoot, ["add", "--", "."]);
-  runLocalGit(sourceRoot, ["commit", "--quiet", "-m", "bounded inline split fixture"]);
-  application.source.primary.revisionObjectId = runLocalGit(sourceRoot, ["rev-parse", "HEAD"]).trim();
-  application.source.primary.treeObjectId = runLocalGit(sourceRoot, ["rev-parse", "HEAD^{tree}"]).trim();
-  writeApplicationPackage(fixture.packageRoot, application);
-  const updatedApplication = readFixtureApplication(fixture);
-  const projection = projectFixturePackage(fixture.packageRoot, updatedApplication);
-  const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
-  state.sourceCommit = updatedApplication.source.primary.revisionObjectId;
-  state.sourceTree = updatedApplication.source.primary.treeObjectId;
-  state.sourceContents = readLocalGitTreeBlobs(sourceRoot, state.sourceCommit);
-  state.sourceTreeSizeOverrides = {};
-  state.packageContents = projection.contents;
-  fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
-  return createPrepareRevisionDraftFiles(fixture, sourceRoot);
-}
-
 function createPrepareRevisionDraftFiles(fixture, sourceRoot) {
   const updatedApplication = readFixtureApplication(fixture);
   const inputRoot = path.join(fixture.root, "prepare-input");
@@ -3129,17 +3220,25 @@ async function attachLocalManifestSource(fixture, {
   if (lfsMode === "verified") {
     fs.writeFileSync(path.join(sourceRoot, ...lfsPath.split("/")), lfsPayload);
   }
+  const sourceContents = readLocalGitTreeBlobs(sourceRoot, primary.revisionObjectId, {
+    excludePaths: largeUnboundSource ? largeUnboundPaths : []
+  });
+  const sourceBlob = (repositoryPath) => {
+    const encoded = sourceContents[repositoryPath];
+    assert.equal(typeof encoded, "string", repositoryPath);
+    return Buffer.from(encoded, "base64");
+  };
 
   for (const record of application.reviewPackage.records.filter((candidate) => (
     candidate.source === "source-repository" && candidate.repositoryRef === primary.id
   ))) {
-    const bytes = readLocalGitBlob(sourceRoot, primary.revisionObjectId, record.path);
+    const bytes = sourceBlob(record.path);
     record.byteLength = bytes.length;
     record.sha256 = sha256(bytes);
   }
   for (const record of application.reviewPackage.records.filter(({ kind }) => TRADE_APPLICATION_RECORD_KINDS.has(kind))) {
     const originPath = path.posix.join(packageDirectory, record.path);
-    const bytes = readLocalGitBlob(sourceRoot, primary.revisionObjectId, originPath);
+    const bytes = sourceBlob(originPath);
     record.byteLength = bytes.length;
     record.sha256 = sha256(bytes);
   }
@@ -3149,15 +3248,11 @@ async function attachLocalManifestSource(fixture, {
     [application.policyBindings.feePolicyInstanceRepositoryRef, application.policyBindings.feePolicyInstancePath, "feePolicyInstanceSha256"]
   ]) {
     if (repositoryRef === primary.id && typeof repositoryPath === "string") {
-      application.policyBindings[hashKey] = sha256(readLocalGitBlob(sourceRoot, primary.revisionObjectId, repositoryPath));
+      application.policyBindings[hashKey] = sha256(sourceBlob(repositoryPath));
     }
   }
   if (application.intentCapture.ideaSourceRepositoryRef === primary.id) {
-    application.intentCapture.ideaSourceSha256 = sha256(readLocalGitBlob(
-      sourceRoot,
-      primary.revisionObjectId,
-      application.intentCapture.ideaSourcePath
-    ));
+    application.intentCapture.ideaSourceSha256 = sha256(sourceBlob(application.intentCapture.ideaSourcePath));
   }
 
   const requiredPaths = [...sourceClosureRequiredPaths];
@@ -3238,9 +3333,7 @@ async function attachLocalManifestSource(fixture, {
   const projection = projectFixturePackage(fixture.packageRoot, application);
   state.sourceCommit = primary.revisionObjectId;
   state.sourceTree = primary.treeObjectId;
-  state.sourceContents = readLocalGitTreeBlobs(sourceRoot, primary.revisionObjectId, {
-    excludePaths: largeUnboundSource ? largeUnboundPaths : []
-  });
+  state.sourceContents = sourceContents;
   state.sourceTreeSizeOverrides = {};
   state.packageContents = projection.contents;
   state.branch = deriveFixtureReviewBranch(application, projection.packageSha256);
@@ -3680,17 +3773,44 @@ function readLocalGitTreeBlobs(repositoryRoot, revisionObjectId, { excludePaths 
   );
   const contents = {};
   const excluded = new Set(excludePaths);
+  const blobs = [];
   for (const record of output.toString("utf8").split("\0").filter(Boolean)) {
     const match = /^(\d{6}) ([a-z]+) ([0-9a-f]{40})\t(.+)$/u.exec(record);
     assert.ok(match, record);
     if (match[2] !== "blob") continue;
     if (excluded.has(match[4])) continue;
-    const bytes = childProcess.execFileSync(
-      "git",
-      ["-C", repositoryRoot, "cat-file", "blob", match[3]],
-      { encoding: null, stdio: ["ignore", "pipe", "pipe"] }
-    );
-    contents[match[4]] = bytes.toString("base64");
+    blobs.push({ objectId: match[3], repositoryPath: match[4] });
+  }
+  const objectIds = [...new Set(blobs.map(({ objectId }) => objectId))];
+  if (objectIds.length === 0) return contents;
+  const batch = childProcess.execFileSync(
+    "git",
+    ["-C", repositoryRoot, "cat-file", "--batch"],
+    {
+      encoding: null,
+      input: `${objectIds.join("\n")}\n`,
+      maxBuffer: 80 * 1024 * 1024,
+      stdio: ["pipe", "pipe", "pipe"]
+    }
+  );
+  const bytesByObjectId = new Map();
+  let cursor = 0;
+  for (const objectId of objectIds) {
+    const headerEnd = batch.indexOf(0x0a, cursor);
+    assert.ok(headerEnd >= cursor, objectId);
+    const header = batch.subarray(cursor, headerEnd).toString("ascii");
+    const match = /^([0-9a-f]{40}) blob (0|[1-9][0-9]*)$/u.exec(header);
+    assert.equal(match?.[1], objectId, header);
+    const size = Number(match[2]);
+    const bodyStart = headerEnd + 1;
+    const bodyEnd = bodyStart + size;
+    assert.equal(batch[bodyEnd], 0x0a, objectId);
+    bytesByObjectId.set(objectId, batch.subarray(bodyStart, bodyEnd));
+    cursor = bodyEnd + 1;
+  }
+  assert.equal(cursor, batch.length);
+  for (const { objectId, repositoryPath } of blobs) {
+    contents[repositoryPath] = bytesByObjectId.get(objectId).toString("base64");
   }
   return contents;
 }
@@ -4945,57 +5065,19 @@ function fixtureCliEnvironment(fixture, { allowWrites, usePreload }) {
   return environment;
 }
 
-function run(argumentsList, fixture, { allowWrites = false, usePreload = true } = {}) {
+async function run(argumentsList, fixture, { allowWrites = false, usePreload = true } = {}) {
   const args = allowWrites
     && argumentsList.includes("--confirm-external-write")
     && !argumentsList.includes("--mutation-receipt")
     ? [...argumentsList, "--mutation-receipt", path.join(fixture.root, "application-v3-mutation-receipt.json")]
     : argumentsList;
-  return childProcess.spawnSync(process.execPath, [cli, ...args], {
+  return await runBoundedChildProcess({
+    args: [cli, ...args],
+    command: process.execPath,
     cwd: fixture.root,
-    encoding: "utf8",
-    shell: false,
     env: fixtureCliEnvironment(fixture, { allowWrites, usePreload }),
-    timeout: 30_000,
-    maxBuffer: 16_000_000
-  });
-}
-
-function runAsync(argumentsList, fixture, { allowWrites = false, usePreload = true } = {}) {
-  const args = allowWrites
-    && argumentsList.includes("--confirm-external-write")
-    && !argumentsList.includes("--mutation-receipt")
-    ? [...argumentsList, "--mutation-receipt", path.join(fixture.root, "application-v3-mutation-receipt.json")]
-    : argumentsList;
-  return new Promise((resolve, reject) => {
-    const child = childProcess.spawn(process.execPath, [cli, ...args], {
-      cwd: fixture.root,
-      shell: false,
-      env: fixtureCliEnvironment(fixture, { allowWrites, usePreload }),
-      stdio: ["ignore", "pipe", "pipe"]
-    });
-    let stdout = "";
-    let stderr = "";
-    let settled = false;
-    const finish = (callback) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      callback();
-    };
-    const timer = setTimeout(() => {
-      child.kill("SIGKILL");
-      finish(() => reject(new Error("async CLI timed out")));
-    }, 30_000);
-    child.stdout.setEncoding("utf8");
-    child.stderr.setEncoding("utf8");
-    child.stdout.on("data", (chunk) => { stdout += chunk; });
-    child.stderr.on("data", (chunk) => { stderr += chunk; });
-    child.on("error", (error) => finish(() => reject(error)));
-    child.on("close", (code, signal) => finish(() => {
-      if (signal !== null) reject(new Error(`async CLI ended with ${signal}`));
-      else resolve({ status: code, stdout, stderr });
-    }));
+    maximumOutputBytes: CLI_OUTPUT_BYTES,
+    timeoutMs: CLI_TIMEOUT_MS
   });
 }
 
@@ -5023,3 +5105,7 @@ function comparePullFileNames(left, right) {
 function sha256(bytes) {
   return `sha256:${crypto.createHash("sha256").update(bytes).digest("hex")}`;
 }
+
+nodeTest("open-world GitHub transport", { concurrency: NATIVE_TEST_CONCURRENCY }, async (t) => {
+  await Promise.all(registeredTests.map(({ callback, name }) => t.test(name, callback)));
+});

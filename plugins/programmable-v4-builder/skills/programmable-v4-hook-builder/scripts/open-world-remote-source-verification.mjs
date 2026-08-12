@@ -2,7 +2,7 @@ import { CliFailure, FULL_GIT_OBJECT_PATTERN, MAX_GITHUB_PACKAGE_FILES, MAX_GITH
 
 const TRADE_APPLICATION_RECORD_KINDS = new Set(["trade-capability-manifest", "trade-test-result"]);
 
-export function installOpenWorldRemoteSourceVerification(runtime) {
+export function installOpenWorldRemoteSourceVerification(runtime, { exactObjectResolver }) {
   const assertSafeApplicationPackagePath = (...args) => runtime.assertSafeApplicationPackagePath(...args);
   const compareUtf8 = (...args) => runtime.compareUtf8(...args);
   const decodeGitHubContent = (...args) => runtime.decodeGitHubContent(...args);
@@ -11,6 +11,53 @@ export function installOpenWorldRemoteSourceVerification(runtime) {
   const safeSourceRepositoryPath = (...args) => runtime.safeSourceRepositoryPath(...args);
   const throwGitHubSplitReviewHold = (...args) => runtime.throwGitHubSplitReviewHold(...args);
   const throwGitHubTransportIntegrationHold = (...args) => runtime.throwGitHubTransportIntegrationHold(...args);
+  const exactObjectCache = new Map();
+
+  const resolveExactObjects = async ({ declaredRepository, observedRepository, paths }) => {
+    const sortedPaths = [...paths].sort(compareUtf8);
+    const key = canonicalJson({
+      numericRepositoryId: observedRepository.id,
+      revisionObjectId: declaredRepository.revisionObjectId,
+      treeObjectId: declaredRepository.treeObjectId,
+      paths: sortedPaths
+    });
+    let pending = exactObjectCache.get(key);
+    if (pending === undefined) {
+      pending = Promise.resolve().then(() => exactObjectResolver({
+        repositoryUri: `https://github.com/${observedRepository.fullName.toLowerCase()}`,
+        revisionObjectId: declaredRepository.revisionObjectId,
+        treeObjectId: declaredRepository.treeObjectId,
+        paths: sortedPaths,
+        timeoutMs: MAX_GITHUB_SOURCE_VERIFY_MS,
+        maximumFileBytes: MAX_SOURCE_BYTES,
+        maximumTotalBytes: MAX_ROOT_MANIFEST_BYTES
+      })).then((result) => {
+        const records = result instanceof Map ? result : result?.records;
+        if (!(records instanceof Map) || records.size !== sortedPaths.length) {
+          throw new CliFailure("APPLICATION_SOURCE_BINDING_MISMATCH", "the exact Git source batch returned an incomplete path set", { exitCode: 1 });
+        }
+        return records;
+      }).catch((error) => {
+        exactObjectCache.delete(key);
+        if (error instanceof CliFailure) throw error;
+        if (error?.code === "GITHUB_RESPONSE_TOO_LARGE") {
+          throwGitHubSplitReviewHold("the exact Git source batch exceeded its bounded content or process-resource window");
+        }
+        if (new Set([
+          "GITHUB_COMMIT_MISMATCH",
+          "GITHUB_TREE_MISMATCH",
+          "GITHUB_TREE_NOT_REACHABLE",
+          "GITHUB_DECLARED_PATH_NOT_FOUND",
+          "GITHUB_PROTOCOL_ERROR"
+        ]).has(error?.code)) {
+          throw new CliFailure("APPLICATION_SOURCE_BINDING_MISMATCH", "the exact Git source batch did not match the REST-verified commit, tree, paths, modes, and blob identities", { exitCode: 1 });
+        }
+        throwGitHubTransportIntegrationHold("the bounded exact Git source batch is unavailable; retry with Git 2.49 or newer and sparse backfill support");
+      });
+      exactObjectCache.set(key, pending);
+    }
+    return pending;
+  };
 
   async function verifyRemoteApplicationV3SourceBindings({
     application,
@@ -219,6 +266,15 @@ export function installOpenWorldRemoteSourceVerification(runtime) {
     if (bindings.size > MAX_GITHUB_PACKAGE_FILES) {
       throwGitHubSplitReviewHold("the exact source-evidence record set exceeds the bounded authenticated GitHub inspection window");
     }
+    const plannedContentRequests = declaredRepository.sourceClosureMode === "inline"
+      ? leafEntries.length
+      : bindings.size;
+    const exactBatchPaths = declaredRepository.sourceClosureMode === "inline"
+      ? [...leafEntries].map(({ path: repositoryPath }) => repositoryPath)
+      : [...bindings.keys()];
+    const exactBatchRecords = plannedContentRequests > MAX_GITHUB_SOURCE_CONTENT_REQUESTS
+      ? await resolveExactObjects({ declaredRepository, observedRepository, paths: exactBatchPaths })
+      : null;
     const fetchedBlobs = new Map();
     const fetchedPaths = new Set();
     let fetchedBytes = 0;
@@ -232,20 +288,37 @@ export function installOpenWorldRemoteSourceVerification(runtime) {
       if (Date.now() >= deadlineAt) {
         throwGitHubSplitReviewHold("the exact remote source verification exceeded its bounded wall-time window; retry with manifest transport or a reviewed split");
       }
-      contentRequests += 1;
-      if (contentRequests > MAX_GITHUB_SOURCE_CONTENT_REQUESTS) {
-        throwGitHubSplitReviewHold("the exact remote source verification exceeds the bounded authenticated request window; use manifest transport");
+      let bytes;
+      if (exactBatchRecords === null) {
+        contentRequests += 1;
+        if (contentRequests > MAX_GITHUB_SOURCE_CONTENT_REQUESTS) {
+          throwGitHubSplitReviewHold("the exact remote source verification exceeds the bounded authenticated request window; use manifest transport");
+        }
+        const value = await transport.getContent(
+          observedRepository.fullName,
+          treeEntry.path,
+          declaredRepository.revisionObjectId,
+          { allowNotFound: true }
+        );
+        if (value === null) {
+          throw new CliFailure("APPLICATION_SOURCE_BINDING_MISMATCH", "an exact source tree blob is missing at the pinned commit", { exitCode: 1 });
+        }
+        bytes = decodeGitHubContent(value, treeEntry.path);
+        if (value.sha !== treeEntry.sha) {
+          throw new CliFailure("APPLICATION_SOURCE_BINDING_MISMATCH", "GitHub source content does not match the exact recursive-tree blob object", { exitCode: 1 });
+        }
+      } else {
+        const record = exactBatchRecords.get(treeEntry.path);
+        if (
+          !record
+          || record.mode !== treeEntry.mode
+          || record.objectId !== treeEntry.sha
+          || !(record.bytes instanceof Uint8Array)
+        ) {
+          throw new CliFailure("APPLICATION_SOURCE_BINDING_MISMATCH", "the exact Git source batch differs from the REST-verified path, mode, or blob identity", { exitCode: 1 });
+        }
+        bytes = Buffer.from(record.bytes);
       }
-      const value = await transport.getContent(
-        observedRepository.fullName,
-        treeEntry.path,
-        declaredRepository.revisionObjectId,
-        { allowNotFound: true }
-      );
-      if (value === null) {
-        throw new CliFailure("APPLICATION_SOURCE_BINDING_MISMATCH", "an exact source tree blob is missing at the pinned commit", { exitCode: 1 });
-      }
-      const bytes = decodeGitHubContent(value, treeEntry.path);
       if (Date.now() >= deadlineAt) {
         throwGitHubSplitReviewHold("the exact remote source verification exceeded its bounded wall-time window; retry with manifest transport or a reviewed split");
       }
@@ -256,8 +329,7 @@ export function installOpenWorldRemoteSourceVerification(runtime) {
       fetchedBytes = nextFetchedBytes;
       const blobObjectId = gitBlobObjectId(bytes);
       if (
-        value.sha !== treeEntry.sha
-        || blobObjectId !== treeEntry.sha
+        blobObjectId !== treeEntry.sha
         || (treeEntry.size !== null && treeEntry.size !== bytes.length)
       ) {
         throw new CliFailure("APPLICATION_SOURCE_BINDING_MISMATCH", "GitHub source content does not match the exact recursive-tree blob object", { exitCode: 1 });

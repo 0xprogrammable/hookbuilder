@@ -70,12 +70,14 @@ export function projectCommandExecutorIdentity() {
 }
 export function inspectCleanProjectSource(repositoryRoot) {
   const root = fs.realpathSync(repositoryRoot);
-  const topLevel = git(root, ["rev-parse", "--show-toplevel"]);
-  if (!topLevel.ok || fs.realpathSync(topLevel.output) !== root) {
+  const identity = requiredGit(root, ["rev-parse", "--show-toplevel", "HEAD", "HEAD^{tree}"], "PROJECT_SOURCE_IDENTITY_UNAVAILABLE").split("\n");
+  if (!all(identity.length === 3, identity.slice(1).every((value) => /^[0-9a-f]{40}$/u.test(value)))) {
+    throw executionError("PROJECT_SOURCE_IDENTITY_INVALID", "repository source identity must contain one root, commit, and tree");
+  }
+  const [topLevel, headCommit, tree] = identity;
+  if (fs.realpathSync(topLevel) !== root) {
     throw executionError("PROJECT_SOURCE_ROOT_INVALID", "repository root must be the exact Git worktree root");
   }
-  const headCommit = requiredGit(root, ["rev-parse", "HEAD"], "PROJECT_SOURCE_HEAD_UNAVAILABLE");
-  const tree = requiredGit(root, ["rev-parse", "HEAD^{tree}"], "PROJECT_SOURCE_TREE_UNAVAILABLE");
   const status = requiredGit(root, ["status", "--porcelain=v1", "--untracked-files=all"], "PROJECT_SOURCE_STATUS_UNAVAILABLE");
   if (status !== "") throw executionError("PROJECT_SOURCE_DIRTY", "project command execution requires a clean Git worktree", { porcelain: status.split("\n").slice(0, 32) });
   const branch = git(root, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
@@ -538,9 +540,11 @@ function verifyBoundArtifacts(root, artifacts) {
     if (any(stat.size !== artifact.byteLength, sha256Bytes(fs.readFileSync(resolved)) !== artifact.sha256)) {
       throw executionError("PROJECT_ARTIFACT_DRIFT", `artifact ${artifact.id} does not match its plan binding`);
     }
-    const tracked = git(root, ["ls-files", "--error-unmatch", "--", artifact.path]);
-    if (!tracked.ok) throw executionError("PROJECT_ARTIFACT_UNTRACKED", `artifact ${artifact.id} is not bound to the source commit`);
   }
+  const result = git(root, ["--literal-pathspecs", "ls-files", "-z", "--", ...artifacts.map(({ path: artifactPath }) => artifactPath)]);
+  const tracked = new Set(coalesce(result.output, "").split("\0").filter(Boolean));
+  const untracked = artifacts.find(({ path: artifactPath }) => !tracked.has(artifactPath));
+  if (untracked) throw executionError("PROJECT_ARTIFACT_UNTRACKED", `artifact ${untracked.id} is not bound to the source commit`);
 }
 
 function assertNewEvidencePath(root, repositoryPath) {

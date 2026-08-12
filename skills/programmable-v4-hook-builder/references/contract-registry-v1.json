@@ -24,7 +24,7 @@
         "mode": "schema-engine",
         "moduleByteLength": 10385,
         "moduleSha256": "sha256:8e27bc37fd7a14aa31ca10a664c6f493a2db13b8b5819852886c2dbc0d71c28d",
-        "closureSha256": "sha256:9eec3423650eed0d1227993c620a14ee9d252388d8bb00bc20853dc5e56dc46c"
+        "closureSha256": "sha256:ff8ed954da988461ed13c3c5cc344bbd55e2f1b9143a992f2a435f550a04860b"
       }
     },
     {
@@ -43,7 +43,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 39291,
         "moduleSha256": "sha256:37f352f46d23237931100b2819d41ac4c8155802bb959eaac079133d34f876af",
-        "closureSha256": "sha256:b761375c9164982d156869483bff2fbd190453a003b579432f923cdbae0109b7"
+        "closureSha256": "sha256:73f19267a0b81ba1dfc7fd926b1d705024e3619152eeb19467e7ecdf8a9e84fc"
       }
     },
     {
@@ -62,7 +62,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 957,
         "moduleSha256": "sha256:000d36cc3e90d1e199a7d0d2715a09fc23f598028bca708ac6321a8e2fac1cae",
-        "closureSha256": "sha256:6f3b77f15b8b07c906a74b928cac1e372958c1d91aab8cb30b031664a968aed1"
+        "closureSha256": "sha256:5fdef8bcea1c0c374f24a210c2e26edca868f4430faf3c64269b4b123b215b15"
       }
     },
     {
@@ -100,7 +100,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 50000,
         "moduleSha256": "sha256:1eb93a907bbace84faa6db797d3c273fb89d0676ee82404074d292053c316814",
-        "closureSha256": "sha256:66cbc7bcea23c267a1b17147a8d410755e09df1d3eca6a3768d2d30cace606b6"
+        "closureSha256": "sha256:5bd2bcb18e1114da3c0c8aabe4f78046484bc3ed90a945bd39807d63bb4fe82c"
       }
     },
     {
@@ -119,7 +119,7 @@
         "mode": "direct",
         "moduleByteLength": 31515,
         "moduleSha256": "sha256:c52a4e05be1c11795c2f28b8c91f5bbebc308cd94b985293e28f50c3fdedd7fe",
-        "closureSha256": "sha256:161cf7fa170b9fb45c7101a125fda08a222842a3f8a771c880af927bee821cb3"
+        "closureSha256": "sha256:fb8c168026664e61c101d4fe997ef3fe4f70493d26922c0a1d459952eb2ed2cf"
       }
     },
     {
@@ -157,7 +157,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 14033,
         "moduleSha256": "sha256:b9bf11e1247a579a7b59b8ca7181e5632e9133359ef908419c93131a51ced9f6",
-        "closureSha256": "sha256:121dbfcfb21220a992e599e9bfe7f53e2704e29679b62dc345823b6720a0786d"
+        "closureSha256": "sha256:b58c6990123e50059054cdf20dcce80a7f27d899df90238ce0e6c9b4ca1e7073"
       }
     },
     {
@@ -252,7 +252,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 957,
         "moduleSha256": "sha256:000d36cc3e90d1e199a7d0d2715a09fc23f598028bca708ac6321a8e2fac1cae",
-        "closureSha256": "sha256:6f3b77f15b8b07c906a74b928cac1e372958c1d91aab8cb30b031664a968aed1"
+        "closureSha256": "sha256:5fdef8bcea1c0c374f24a210c2e26edca868f4430faf3c64269b4b123b215b15"
       }
     },
     {
@@ -271,7 +271,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 957,
         "moduleSha256": "sha256:000d36cc3e90d1e199a7d0d2715a09fc23f598028bca708ac6321a8e2fac1cae",
-        "closureSha256": "sha256:6f3b77f15b8b07c906a74b928cac1e372958c1d91aab8cb30b031664a968aed1"
+        "closureSha256": "sha256:5fdef8bcea1c0c374f24a210c2e26edca868f4430faf3c64269b4b123b215b15"
       }
     },
     {
@@ -290,7 +290,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 957,
         "moduleSha256": "sha256:000d36cc3e90d1e199a7d0d2715a09fc23f598028bca708ac6321a8e2fac1cae",
-        "closureSha256": "sha256:6f3b77f15b8b07c906a74b928cac1e372958c1d91aab8cb30b031664a968aed1"
+        "closureSha256": "sha256:5fdef8bcea1c0c374f24a210c2e26edca868f4430faf3c64269b4b123b215b15"
       }
     },
     {
@@ -328,7 +328,7 @@
         "mode": "builder",
         "moduleByteLength": 381,
         "moduleSha256": "sha256:89996d6a1286be4852ad9bb177d449b45d8b90ca78e62d2cf1203090bd6f59c0",
-        "closureSha256": "sha256:a25b504a0ba9072bb8603e59dcce1674ead64b3b8d6431496bfb0658bdac0c60"
+        "closureSha256": "sha256:6cd34dfc613851655e8c8345a176c7a3e6229c117eeedde28a0a69e03f3a3f59"
       }
     },
     {
@@ -347,7 +347,7 @@
         "mode": "direct",
         "moduleByteLength": 14033,
         "moduleSha256": "sha256:b9bf11e1247a579a7b59b8ca7181e5632e9133359ef908419c93131a51ced9f6",
-        "closureSha256": "sha256:121dbfcfb21220a992e599e9bfe7f53e2704e29679b62dc345823b6720a0786d"
+        "closureSha256": "sha256:b58c6990123e50059054cdf20dcce80a7f27d899df90238ce0e6c9b4ca1e7073"
       }
     },
     {
@@ -366,7 +366,7 @@
         "mode": "direct",
         "moduleByteLength": 381,
         "moduleSha256": "sha256:89996d6a1286be4852ad9bb177d449b45d8b90ca78e62d2cf1203090bd6f59c0",
-        "closureSha256": "sha256:a25b504a0ba9072bb8603e59dcce1674ead64b3b8d6431496bfb0658bdac0c60"
+        "closureSha256": "sha256:6cd34dfc613851655e8c8345a176c7a3e6229c117eeedde28a0a69e03f3a3f59"
       }
     },
     {
@@ -385,7 +385,7 @@
         "mode": "direct",
         "moduleByteLength": 14033,
         "moduleSha256": "sha256:b9bf11e1247a579a7b59b8ca7181e5632e9133359ef908419c93131a51ced9f6",
-        "closureSha256": "sha256:121dbfcfb21220a992e599e9bfe7f53e2704e29679b62dc345823b6720a0786d"
+        "closureSha256": "sha256:b58c6990123e50059054cdf20dcce80a7f27d899df90238ce0e6c9b4ca1e7073"
       }
     },
     {
@@ -404,7 +404,7 @@
         "mode": "direct",
         "moduleByteLength": 30207,
         "moduleSha256": "sha256:b36525f8883e7e5d4cb2d4707ca86303c651eda413315b82367e73f844fd67d5",
-        "closureSha256": "sha256:3d0dc59ee471d25a3b700f2ab3539443ca223b208d1f5a58115cad94ecdfcc03"
+        "closureSha256": "sha256:0d4477fecaf09c470fd52ec945aee07c8a9fcd248de5655cb5f60655d9cb1695"
       }
     },
     {
@@ -423,7 +423,7 @@
         "mode": "direct",
         "moduleByteLength": 30207,
         "moduleSha256": "sha256:b36525f8883e7e5d4cb2d4707ca86303c651eda413315b82367e73f844fd67d5",
-        "closureSha256": "sha256:3d0dc59ee471d25a3b700f2ab3539443ca223b208d1f5a58115cad94ecdfcc03"
+        "closureSha256": "sha256:0d4477fecaf09c470fd52ec945aee07c8a9fcd248de5655cb5f60655d9cb1695"
       }
     },
     {
@@ -442,7 +442,7 @@
         "mode": "schema-engine",
         "moduleByteLength": 10385,
         "moduleSha256": "sha256:8e27bc37fd7a14aa31ca10a664c6f493a2db13b8b5819852886c2dbc0d71c28d",
-        "closureSha256": "sha256:9eec3423650eed0d1227993c620a14ee9d252388d8bb00bc20853dc5e56dc46c"
+        "closureSha256": "sha256:ff8ed954da988461ed13c3c5cc344bbd55e2f1b9143a992f2a435f550a04860b"
       }
     },
     {
@@ -461,7 +461,7 @@
         "mode": "schema-engine",
         "moduleByteLength": 10385,
         "moduleSha256": "sha256:8e27bc37fd7a14aa31ca10a664c6f493a2db13b8b5819852886c2dbc0d71c28d",
-        "closureSha256": "sha256:9eec3423650eed0d1227993c620a14ee9d252388d8bb00bc20853dc5e56dc46c"
+        "closureSha256": "sha256:ff8ed954da988461ed13c3c5cc344bbd55e2f1b9143a992f2a435f550a04860b"
       }
     },
     {
@@ -518,7 +518,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 39291,
         "moduleSha256": "sha256:37f352f46d23237931100b2819d41ac4c8155802bb959eaac079133d34f876af",
-        "closureSha256": "sha256:b761375c9164982d156869483bff2fbd190453a003b579432f923cdbae0109b7"
+        "closureSha256": "sha256:73f19267a0b81ba1dfc7fd926b1d705024e3619152eeb19467e7ecdf8a9e84fc"
       }
     },
     {
@@ -537,7 +537,7 @@
         "mode": "direct",
         "moduleByteLength": 40000,
         "moduleSha256": "sha256:4ecff39f351ad4f05cc66580ad8638cd78844e2837929f408f1cc2d7f58b3eec",
-        "closureSha256": "sha256:bc36c6ed0ef90b9d90599b182182dd80b001aef1d5540ecc8e8c90fe57ae259c"
+        "closureSha256": "sha256:7cb4f1efb491950d63a81056c6b585b0b098a2149e2068a5eb1c0744fe0eba84"
       }
     },
     {
@@ -556,7 +556,7 @@
         "mode": "direct",
         "moduleByteLength": 39291,
         "moduleSha256": "sha256:37f352f46d23237931100b2819d41ac4c8155802bb959eaac079133d34f876af",
-        "closureSha256": "sha256:b761375c9164982d156869483bff2fbd190453a003b579432f923cdbae0109b7"
+        "closureSha256": "sha256:73f19267a0b81ba1dfc7fd926b1d705024e3619152eeb19467e7ecdf8a9e84fc"
       }
     },
     {
@@ -575,7 +575,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 49961,
         "moduleSha256": "sha256:d558095f3516c378296b40619b9ceae622472b98ab82fd49a99467508916564a",
-        "closureSha256": "sha256:a5c19d5aca869bee8922a8c66e339278b3e968f74e0913134962df7bb152a730"
+        "closureSha256": "sha256:ff0eee1d68a1cb2b1bc7819b7e4685934b8ede5ddd19c44b3ff0f315d789531d"
       }
     },
     {
@@ -594,7 +594,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 50000,
         "moduleSha256": "sha256:1eb93a907bbace84faa6db797d3c273fb89d0676ee82404074d292053c316814",
-        "closureSha256": "sha256:66cbc7bcea23c267a1b17147a8d410755e09df1d3eca6a3768d2d30cace606b6"
+        "closureSha256": "sha256:5bd2bcb18e1114da3c0c8aabe4f78046484bc3ed90a945bd39807d63bb4fe82c"
       }
     },
     {
@@ -613,7 +613,7 @@
         "mode": "direct",
         "moduleByteLength": 1018,
         "moduleSha256": "sha256:a4b2b2f4b3d3d12fb30d0b4cb6e3dff594c0fa45c1c9a222b623782555c02224",
-        "closureSha256": "sha256:f7fdc33eb4705584447395b336bbe52e068e32f85b28a0c86759e245602a6734"
+        "closureSha256": "sha256:5e795c3b0d296caffab51a0d8420045ede3decd71d22bdefb3c71213268ec024"
       }
     },
     {
@@ -632,7 +632,7 @@
         "mode": "direct",
         "moduleByteLength": 1070,
         "moduleSha256": "sha256:c4561640a691f3cf383ad5b5dd04d58bd9a809e93a3a462e36e8cfe564f5d6c4",
-        "closureSha256": "sha256:103694d58c1482b6ef2cf2fd5e285db835733f988d45765e6b8739f1eb3ab5f6"
+        "closureSha256": "sha256:8e49d433ec226d29218e8c3a180398f2d58e8e4fe2fe92a9fb41b97ac150e042"
       }
     },
     {
@@ -651,7 +651,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 14033,
         "moduleSha256": "sha256:b9bf11e1247a579a7b59b8ca7181e5632e9133359ef908419c93131a51ced9f6",
-        "closureSha256": "sha256:121dbfcfb21220a992e599e9bfe7f53e2704e29679b62dc345823b6720a0786d"
+        "closureSha256": "sha256:b58c6990123e50059054cdf20dcce80a7f27d899df90238ce0e6c9b4ca1e7073"
       }
     },
     {
@@ -670,7 +670,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 50000,
         "moduleSha256": "sha256:1eb93a907bbace84faa6db797d3c273fb89d0676ee82404074d292053c316814",
-        "closureSha256": "sha256:66cbc7bcea23c267a1b17147a8d410755e09df1d3eca6a3768d2d30cace606b6"
+        "closureSha256": "sha256:5bd2bcb18e1114da3c0c8aabe4f78046484bc3ed90a945bd39807d63bb4fe82c"
       }
     },
     {
@@ -765,7 +765,7 @@
         "mode": "direct",
         "moduleByteLength": 1018,
         "moduleSha256": "sha256:a4b2b2f4b3d3d12fb30d0b4cb6e3dff594c0fa45c1c9a222b623782555c02224",
-        "closureSha256": "sha256:f7fdc33eb4705584447395b336bbe52e068e32f85b28a0c86759e245602a6734"
+        "closureSha256": "sha256:5e795c3b0d296caffab51a0d8420045ede3decd71d22bdefb3c71213268ec024"
       }
     },
     {
@@ -784,7 +784,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 957,
         "moduleSha256": "sha256:000d36cc3e90d1e199a7d0d2715a09fc23f598028bca708ac6321a8e2fac1cae",
-        "closureSha256": "sha256:6f3b77f15b8b07c906a74b928cac1e372958c1d91aab8cb30b031664a968aed1"
+        "closureSha256": "sha256:5fdef8bcea1c0c374f24a210c2e26edca868f4430faf3c64269b4b123b215b15"
       }
     },
     {
@@ -803,7 +803,7 @@
         "mode": "direct",
         "moduleByteLength": 10385,
         "moduleSha256": "sha256:8e27bc37fd7a14aa31ca10a664c6f493a2db13b8b5819852886c2dbc0d71c28d",
-        "closureSha256": "sha256:9eec3423650eed0d1227993c620a14ee9d252388d8bb00bc20853dc5e56dc46c"
+        "closureSha256": "sha256:ff8ed954da988461ed13c3c5cc344bbd55e2f1b9143a992f2a435f550a04860b"
       }
     },
     {
@@ -860,7 +860,7 @@
         "mode": "direct",
         "moduleByteLength": 40000,
         "moduleSha256": "sha256:4ecff39f351ad4f05cc66580ad8638cd78844e2837929f408f1cc2d7f58b3eec",
-        "closureSha256": "sha256:bc36c6ed0ef90b9d90599b182182dd80b001aef1d5540ecc8e8c90fe57ae259c"
+        "closureSha256": "sha256:7cb4f1efb491950d63a81056c6b585b0b098a2149e2068a5eb1c0744fe0eba84"
       }
     },
     {
@@ -898,7 +898,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 29109,
         "moduleSha256": "sha256:f7e65be2235f2c3895d724b375bef0d3186ee338d6e7faa3735cf07e8d2812d7",
-        "closureSha256": "sha256:98d98e516b267f1d079e005d90fceebb2aa3328932e2ec96c6312ec70089377a"
+        "closureSha256": "sha256:80fb2b821132b5a5445cb09ba99b0ffb3e5f02296b5f0f2079b57c1d38071ca0"
       }
     },
     {
@@ -917,7 +917,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 29109,
         "moduleSha256": "sha256:f7e65be2235f2c3895d724b375bef0d3186ee338d6e7faa3735cf07e8d2812d7",
-        "closureSha256": "sha256:98d98e516b267f1d079e005d90fceebb2aa3328932e2ec96c6312ec70089377a"
+        "closureSha256": "sha256:80fb2b821132b5a5445cb09ba99b0ffb3e5f02296b5f0f2079b57c1d38071ca0"
       }
     }
   ],
@@ -926,7 +926,7 @@
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/companion-manifest-contract.mjs",
       "moduleCount": 72,
-      "totalByteLength": 914794,
+      "totalByteLength": 914862,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -1486,8 +1486,8 @@
         },
         {
           "path": "scripts/submission-report-core.mjs",
-          "byteLength": 16673,
-          "sha256": "sha256:5e10472609cb80874b9c2549b752d4bdff94be8d52d56381dd2ab3f9759b9080",
+          "byteLength": 16741,
+          "sha256": "sha256:f196ac36c04926bd60c5b103ff13adc223ad9ad5bc341dbf4dc5b2c35c7c03cb",
           "localImports": [
             "scripts/normative-policy-core.mjs",
             "scripts/settlement-policy-core.mjs",
@@ -1607,7 +1607,7 @@
           ]
         }
       ],
-      "closureSha256": "sha256:161cf7fa170b9fb45c7101a125fda08a222842a3f8a771c880af927bee821cb3"
+      "closureSha256": "sha256:fb8c168026664e61c101d4fe997ef3fe4f70493d26922c0a1d459952eb2ed2cf"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -1799,7 +1799,7 @@
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/github-application-core.mjs",
       "moduleCount": 72,
-      "totalByteLength": 886574,
+      "totalByteLength": 890338,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -1912,8 +1912,8 @@
         },
         {
           "path": "scripts/github-application-transport-core.mjs",
-          "byteLength": 24690,
-          "sha256": "sha256:7dde5214b53ed8fc6734c9f94feecff5421a9bbcd910a1b7005821a760e2351b",
+          "byteLength": 28386,
+          "sha256": "sha256:bf255d7ac5f68f8d3174d113f8c764772c5b70d35afbb10dd080c8e519f6a276",
           "localImports": [
             "scripts/github-application-constants.mjs",
             "scripts/github-application-primitives.mjs",
@@ -2373,8 +2373,8 @@
         },
         {
           "path": "scripts/submission-report-core.mjs",
-          "byteLength": 16673,
-          "sha256": "sha256:5e10472609cb80874b9c2549b752d4bdff94be8d52d56381dd2ab3f9759b9080",
+          "byteLength": 16741,
+          "sha256": "sha256:f196ac36c04926bd60c5b103ff13adc223ad9ad5bc341dbf4dc5b2c35c7c03cb",
           "localImports": [
             "scripts/normative-policy-core.mjs",
             "scripts/settlement-policy-core.mjs",
@@ -2494,7 +2494,7 @@
           ]
         }
       ],
-      "closureSha256": "sha256:103694d58c1482b6ef2cf2fd5e285db835733f988d45765e6b8739f1eb3ab5f6"
+      "closureSha256": "sha256:8e49d433ec226d29218e8c3a180398f2d58e8e4fe2fe92a9fb41b97ac150e042"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -2604,7 +2604,7 @@
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/launch-bundle-core.mjs",
       "moduleCount": 58,
-      "totalByteLength": 763258,
+      "totalByteLength": 763326,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -3019,8 +3019,8 @@
         },
         {
           "path": "scripts/submission-report-core.mjs",
-          "byteLength": 16673,
-          "sha256": "sha256:5e10472609cb80874b9c2549b752d4bdff94be8d52d56381dd2ab3f9759b9080",
+          "byteLength": 16741,
+          "sha256": "sha256:f196ac36c04926bd60c5b103ff13adc223ad9ad5bc341dbf4dc5b2c35c7c03cb",
           "localImports": [
             "scripts/normative-policy-core.mjs",
             "scripts/settlement-policy-core.mjs",
@@ -3140,13 +3140,13 @@
           ]
         }
       ],
-      "closureSha256": "sha256:a25b504a0ba9072bb8603e59dcce1674ead64b3b8d6431496bfb0658bdac0c60"
+      "closureSha256": "sha256:6cd34dfc613851655e8c8345a176c7a3e6229c117eeedde28a0a69e03f3a3f59"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/launch-bundle-v2-core.mjs",
       "moduleCount": 126,
-      "totalByteLength": 1848280,
+      "totalByteLength": 1848348,
       "modules": [
         {
           "path": "scripts/application-dependency-core.mjs",
@@ -4228,8 +4228,8 @@
         },
         {
           "path": "scripts/submission-report-core.mjs",
-          "byteLength": 16673,
-          "sha256": "sha256:5e10472609cb80874b9c2549b752d4bdff94be8d52d56381dd2ab3f9759b9080",
+          "byteLength": 16741,
+          "sha256": "sha256:f196ac36c04926bd60c5b103ff13adc223ad9ad5bc341dbf4dc5b2c35c7c03cb",
           "localImports": [
             "scripts/normative-policy-core.mjs",
             "scripts/settlement-policy-core.mjs",
@@ -4383,13 +4383,13 @@
           ]
         }
       ],
-      "closureSha256": "sha256:121dbfcfb21220a992e599e9bfe7f53e2704e29679b62dc345823b6720a0786d"
+      "closureSha256": "sha256:b58c6990123e50059054cdf20dcce80a7f27d899df90238ce0e6c9b4ca1e7073"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/launch-plan-graph-core.mjs",
       "moduleCount": 54,
-      "totalByteLength": 708097,
+      "totalByteLength": 708165,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -4771,8 +4771,8 @@
         },
         {
           "path": "scripts/submission-report-core.mjs",
-          "byteLength": 16673,
-          "sha256": "sha256:5e10472609cb80874b9c2549b752d4bdff94be8d52d56381dd2ab3f9759b9080",
+          "byteLength": 16741,
+          "sha256": "sha256:f196ac36c04926bd60c5b103ff13adc223ad9ad5bc341dbf4dc5b2c35c7c03cb",
           "localImports": [
             "scripts/normative-policy-core.mjs",
             "scripts/settlement-policy-core.mjs",
@@ -4892,7 +4892,7 @@
           ]
         }
       ],
-      "closureSha256": "sha256:3d0dc59ee471d25a3b700f2ab3539443ca223b208d1f5a58115cad94ecdfcc03"
+      "closureSha256": "sha256:0d4477fecaf09c470fd52ec945aee07c8a9fcd248de5655cb5f60655d9cb1695"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -5006,7 +5006,7 @@
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/open-world-v2-core.mjs",
       "moduleCount": 91,
-      "totalByteLength": 1319326,
+      "totalByteLength": 1319394,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -5710,8 +5710,8 @@
         },
         {
           "path": "scripts/submission-report-core.mjs",
-          "byteLength": 16673,
-          "sha256": "sha256:5e10472609cb80874b9c2549b752d4bdff94be8d52d56381dd2ab3f9759b9080",
+          "byteLength": 16741,
+          "sha256": "sha256:f196ac36c04926bd60c5b103ff13adc223ad9ad5bc341dbf4dc5b2c35c7c03cb",
           "localImports": [
             "scripts/normative-policy-core.mjs",
             "scripts/settlement-policy-core.mjs",
@@ -5865,13 +5865,13 @@
           ]
         }
       ],
-      "closureSha256": "sha256:6f3b77f15b8b07c906a74b928cac1e372958c1d91aab8cb30b031664a968aed1"
+      "closureSha256": "sha256:5fdef8bcea1c0c374f24a210c2e26edca868f4430faf3c64269b4b123b215b15"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/project-contracts-core.mjs",
       "moduleCount": 54,
-      "totalByteLength": 717181,
+      "totalByteLength": 717249,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -6253,8 +6253,8 @@
         },
         {
           "path": "scripts/submission-report-core.mjs",
-          "byteLength": 16673,
-          "sha256": "sha256:5e10472609cb80874b9c2549b752d4bdff94be8d52d56381dd2ab3f9759b9080",
+          "byteLength": 16741,
+          "sha256": "sha256:f196ac36c04926bd60c5b103ff13adc223ad9ad5bc341dbf4dc5b2c35c7c03cb",
           "localImports": [
             "scripts/normative-policy-core.mjs",
             "scripts/settlement-policy-core.mjs",
@@ -6374,13 +6374,13 @@
           ]
         }
       ],
-      "closureSha256": "sha256:b761375c9164982d156869483bff2fbd190453a003b579432f923cdbae0109b7"
+      "closureSha256": "sha256:73f19267a0b81ba1dfc7fd926b1d705024e3619152eeb19467e7ecdf8a9e84fc"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/project-state-core.mjs",
       "moduleCount": 93,
-      "totalByteLength": 1408578,
+      "totalByteLength": 1408646,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -7107,8 +7107,8 @@
         },
         {
           "path": "scripts/submission-report-core.mjs",
-          "byteLength": 16673,
-          "sha256": "sha256:5e10472609cb80874b9c2549b752d4bdff94be8d52d56381dd2ab3f9759b9080",
+          "byteLength": 16741,
+          "sha256": "sha256:f196ac36c04926bd60c5b103ff13adc223ad9ad5bc341dbf4dc5b2c35c7c03cb",
           "localImports": [
             "scripts/normative-policy-core.mjs",
             "scripts/settlement-policy-core.mjs",
@@ -7262,13 +7262,13 @@
           ]
         }
       ],
-      "closureSha256": "sha256:a5c19d5aca869bee8922a8c66e339278b3e968f74e0913134962df7bb152a730"
+      "closureSha256": "sha256:ff0eee1d68a1cb2b1bc7819b7e4685934b8ede5ddd19c44b3ff0f315d789531d"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/public-pr-application-v3-core.mjs",
       "moduleCount": 104,
-      "totalByteLength": 1553370,
+      "totalByteLength": 1553438,
       "modules": [
         {
           "path": "scripts/application-dependency-core.mjs",
@@ -8102,8 +8102,8 @@
         },
         {
           "path": "scripts/submission-report-core.mjs",
-          "byteLength": 16673,
-          "sha256": "sha256:5e10472609cb80874b9c2549b752d4bdff94be8d52d56381dd2ab3f9759b9080",
+          "byteLength": 16741,
+          "sha256": "sha256:f196ac36c04926bd60c5b103ff13adc223ad9ad5bc341dbf4dc5b2c35c7c03cb",
           "localImports": [
             "scripts/normative-policy-core.mjs",
             "scripts/settlement-policy-core.mjs",
@@ -8257,13 +8257,13 @@
           ]
         }
       ],
-      "closureSha256": "sha256:f7fdc33eb4705584447395b336bbe52e068e32f85b28a0c86759e245602a6734"
+      "closureSha256": "sha256:5e795c3b0d296caffab51a0d8420045ede3decd71d22bdefb3c71213268ec024"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/repository-completion-core.mjs",
       "moduleCount": 65,
-      "totalByteLength": 1019668,
+      "totalByteLength": 1020111,
       "modules": [
         {
           "path": "scripts/bounded-child-process-core.mjs",
@@ -8357,8 +8357,8 @@
         },
         {
           "path": "scripts/project-command-executor-core.mjs",
-          "byteLength": 46798,
-          "sha256": "sha256:1fe0664d58d0261577cd23df9fb22b10619d09ecb20dc86a50d08bf372ec506c",
+          "byteLength": 47173,
+          "sha256": "sha256:a971270275d80788d162e29280bea606e9557de9a32c556f1e4fbaab66a10388",
           "localImports": [
             "scripts/bounded-child-process-core.mjs",
             "scripts/canonical-json-core.mjs",
@@ -8715,8 +8715,8 @@
         },
         {
           "path": "scripts/submission-report-core.mjs",
-          "byteLength": 16673,
-          "sha256": "sha256:5e10472609cb80874b9c2549b752d4bdff94be8d52d56381dd2ab3f9759b9080",
+          "byteLength": 16741,
+          "sha256": "sha256:f196ac36c04926bd60c5b103ff13adc223ad9ad5bc341dbf4dc5b2c35c7c03cb",
           "localImports": [
             "scripts/normative-policy-core.mjs",
             "scripts/settlement-policy-core.mjs",
@@ -8870,7 +8870,7 @@
           ]
         }
       ],
-      "closureSha256": "sha256:66cbc7bcea23c267a1b17147a8d410755e09df1d3eca6a3768d2d30cace606b6"
+      "closureSha256": "sha256:5bd2bcb18e1114da3c0c8aabe4f78046484bc3ed90a945bd39807d63bb4fe82c"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -8984,7 +8984,7 @@
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/submission-core.mjs",
       "moduleCount": 53,
-      "totalByteLength": 677890,
+      "totalByteLength": 677958,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -9357,8 +9357,8 @@
         },
         {
           "path": "scripts/submission-report-core.mjs",
-          "byteLength": 16673,
-          "sha256": "sha256:5e10472609cb80874b9c2549b752d4bdff94be8d52d56381dd2ab3f9759b9080",
+          "byteLength": 16741,
+          "sha256": "sha256:f196ac36c04926bd60c5b103ff13adc223ad9ad5bc341dbf4dc5b2c35c7c03cb",
           "localImports": [
             "scripts/normative-policy-core.mjs",
             "scripts/settlement-policy-core.mjs",
@@ -9478,13 +9478,13 @@
           ]
         }
       ],
-      "closureSha256": "sha256:9eec3423650eed0d1227993c620a14ee9d252388d8bb00bc20853dc5e56dc46c"
+      "closureSha256": "sha256:ff8ed954da988461ed13c3c5cc344bbd55e2f1b9143a992f2a435f550a04860b"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/trade-capability-manifest-core.mjs",
       "moduleCount": 60,
-      "totalByteLength": 861906,
+      "totalByteLength": 861974,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -9886,8 +9886,8 @@
         },
         {
           "path": "scripts/submission-report-core.mjs",
-          "byteLength": 16673,
-          "sha256": "sha256:5e10472609cb80874b9c2549b752d4bdff94be8d52d56381dd2ab3f9759b9080",
+          "byteLength": 16741,
+          "sha256": "sha256:f196ac36c04926bd60c5b103ff13adc223ad9ad5bc341dbf4dc5b2c35c7c03cb",
           "localImports": [
             "scripts/normative-policy-core.mjs",
             "scripts/settlement-policy-core.mjs",
@@ -10041,7 +10041,7 @@
           ]
         }
       ],
-      "closureSha256": "sha256:bc36c6ed0ef90b9d90599b182182dd80b001aef1d5540ecc8e8c90fe57ae259c"
+      "closureSha256": "sha256:7cb4f1efb491950d63a81056c6b585b0b098a2149e2068a5eb1c0744fe0eba84"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -10062,7 +10062,7 @@
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/v4-deployment-evidence-core.mjs",
       "moduleCount": 56,
-      "totalByteLength": 766136,
+      "totalByteLength": 766204,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -10441,8 +10441,8 @@
         },
         {
           "path": "scripts/submission-report-core.mjs",
-          "byteLength": 16673,
-          "sha256": "sha256:5e10472609cb80874b9c2549b752d4bdff94be8d52d56381dd2ab3f9759b9080",
+          "byteLength": 16741,
+          "sha256": "sha256:f196ac36c04926bd60c5b103ff13adc223ad9ad5bc341dbf4dc5b2c35c7c03cb",
           "localImports": [
             "scripts/normative-policy-core.mjs",
             "scripts/settlement-policy-core.mjs",
@@ -10582,7 +10582,7 @@
           ]
         }
       ],
-      "closureSha256": "sha256:98d98e516b267f1d079e005d90fceebb2aa3328932e2ec96c6312ec70089377a"
+      "closureSha256": "sha256:80fb2b821132b5a5445cb09ba99b0ffb3e5f02296b5f0f2079b57c1d38071ca0"
     }
   ],
   "inventory": {
@@ -10596,8 +10596,8 @@
     "validatorClosureModuleBindingCount": 1010,
     "validatorClosureDistinctModuleCount": 171,
     "schemaPathsSha256": "sha256:610762ddd56550d2852596417842b753d32d5ed509433439435fd492aa3110ab",
-    "validatorBindingsSha256": "sha256:0e9af48e96ddbedf7e0b8abf02df77486628e4f7e5e9e63dfd42d61da1ffe26c",
-    "validatorClosuresSha256": "sha256:c716e5d77eef3c539fd80e1f42da0d32808b2bd48be6c9d420a38bedb9cf4bda"
+    "validatorBindingsSha256": "sha256:9b778dbc4dac185024eaa89c2e6f833b16ced7e0c3c12f3cfdd8a75b39a70d98",
+    "validatorClosuresSha256": "sha256:867f171419df05397f1d2db76c2b3ade9c111c84ab38b16137d33bbf87448172"
   },
-  "registrySha256": "sha256:8190c71ef973732d2629bd8908bc1850b8e54203a02a6c02d667913496159220"
+  "registrySha256": "sha256:493924f7070f2fab7fcea55e2fc61c1f15b2fb5ac1cd40b19eed941e2ff84e99"
 }

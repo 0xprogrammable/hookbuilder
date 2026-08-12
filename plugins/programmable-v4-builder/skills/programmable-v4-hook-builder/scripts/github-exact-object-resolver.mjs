@@ -3,10 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 
-import {
-  GITHUB_PUBLIC_SOURCE_CONTRACT_V1,
-  GitHubPublicSourceError
-} from "./github-public-source-core.mjs";
+import { GitHubPublicSourceError } from "./github-public-source-core.mjs";
 import {
   GitCommandExecutionError,
   measureDirectoryBytes,
@@ -14,59 +11,45 @@ import {
 } from "./github-exact-object-process-core.mjs";
 import {
   buildResultRecords,
+  APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1,
   compareNumericVersion,
   compareUtf8,
+  createExactObjectResolverProfiles,
   enforceContentLimits,
   escapeSparsePattern,
+  GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1,
   parseBatchCheck,
   parseBatchObjects,
   parseGitVersion,
   parseTreeRecords,
+  partitionCommandPaths,
   uniqueObjectIds,
+  validateExactObjectRequest,
   verifyGitObjectId
 } from "./github-exact-object-protocol-core.mjs";
-import {
-  isCanonicalReviewTargetPath,
-  isGitLfsPointer,
-  REVIEW_TARGET_CONTRACT_V1
-} from "./review-target-contract.mjs";
+import { isGitLfsPointer } from "./review-target-contract.mjs";
 
-export const GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1 = Object.freeze({
-  name: "GitHubPublicGitObjectResolverV1",
-  minimumGitVersion: "2.49.0",
-  maximumFiles: REVIEW_TARGET_CONTRACT_V1.maximumFiles,
-  maximumFileBytes: REVIEW_TARGET_CONTRACT_V1.maximumFileBytes,
-  maximumTotalBytes: REVIEW_TARGET_CONTRACT_V1.maximumTotalBytes,
-  maximumPathDepth: REVIEW_TARGET_CONTRACT_V1.maximumPathDepth,
-  maximumTemporaryRepositoryBytes: 67_108_864,
-  maximumTemporaryFileBytes: 67_108_864,
-  maximumAddressSpaceBytes: 536_870_912,
-  maximumCpuSeconds: 20,
-  minimumTimeoutMs: 1,
-  maximumTimeoutMs: GITHUB_PUBLIC_SOURCE_CONTRACT_V1.limits.maximumTimeoutMs
-});
+export {
+  APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1,
+  GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1
+} from "./github-exact-object-protocol-core.mjs";
 
 export async function runBoundedExactGitProcessV1(options) {
   return runBoundedExactGitProcess(options, GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1);
 }
 
-const REQUEST_KEYS = new Set([
-  "repositoryUri",
-  "revisionObjectId",
-  "treeObjectId",
-  "paths",
-  "timeoutMs",
-  "maximumFileBytes",
-  "maximumTotalBytes"
-]);
-const LOWER_HEX_40 = /^[0-9a-f]{40}$/u;
-const GITHUB_OWNER = /^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$/u;
-const GITHUB_REPOSITORY = /^[a-z0-9._-]{1,100}$/u;
+async function runBoundedApplicationV3ExactGitProcessV1(options) {
+  return runBoundedExactGitProcess(options, APPLICATION_V3_GITHUB_EXACT_OBJECT_RESOLVER_V1);
+}
+
 const TEMPORARY_PREFIX = "programmable-github-objects-";
 const SMALL_COMMAND_OUTPUT_BYTES = 65_536;
 const COMMIT_OUTPUT_BYTES = 1_048_576;
-const TREE_LIST_OUTPUT_BYTES = 1_048_576;
 const BATCH_PROTOCOL_OVERHEAD_BYTES = 1_048_576;
+const RESOLVER_PROFILES = createExactObjectResolverProfiles({
+  runApplicationGit: runBoundedApplicationV3ExactGitProcessV1,
+  runPublicGit: runBoundedExactGitProcessV1
+});
 const SAFE_GIT_CONFIG = Object.freeze([
   "-c", "credential.helper=",
   "-c", "credential.interactive=never",
@@ -103,21 +86,37 @@ const SAFE_GIT_CONFIG = Object.freeze([
  * untrusted data.
  */
 export function createAnonymousGitHubExactObjectResolverV1(options = {}) {
+  const resolve = createGitHubExactObjectResolver(options, RESOLVER_PROFILES.reviewTarget);
+  return async function resolveAnonymousGitHubExactObjectsV1(input) {
+    return resolve(input);
+  };
+}
+
+export function createApplicationV3GitHubExactObjectResolverV1(options = {}) {
+  const resolve = createGitHubExactObjectResolver(options, RESOLVER_PROFILES.application);
+  return async function resolveApplicationV3GitHubExactObjectsV1(input) {
+    return resolve(input);
+  };
+}
+
+function createGitHubExactObjectResolver(options, profile) {
   assertFactoryOptions(options);
-  const runGit = options.runGit ?? runBoundedExactGitProcessV1;
+  const runGit = options.runGit ?? profile.runGit;
   const gitExecutable = options.gitExecutable ?? "git";
   const temporaryDirectoryRoot = path.resolve(options.temporaryDirectoryRoot ?? os.tmpdir());
   const platform = options.platform ?? process.platform;
 
-  return async function resolveAnonymousGitHubExactObjectsV1(input) {
-    const request = validateRequest(input);
+  return async function resolveGitHubExactObjects(input) {
+    const request = validateExactObjectRequest(input, profile);
     if (platform !== "darwin" && platform !== "linux") {
       throw toolingBlocked("this resolver supports macOS and Linux only");
     }
 
     const state = {
+      contract: profile.contract,
       deadline: performance.now() + request.timeoutMs,
       gitExecutable,
+      profile,
       runGit
     };
     let temporaryDirectory = null;
@@ -136,7 +135,7 @@ export function createAnonymousGitHubExactObjectResolverV1(options = {}) {
       }
 
       const treeRecords = await resolveTreeRecords(state, gitDirectory, request.treeObjectId, request.paths);
-      await writeSparseSelection(gitDirectory, request.paths);
+      await writeSparseSelection(gitDirectory, request.paths, profile);
       await backfillSparseBlobs(state, gitDirectory);
       const objectSizes = await readObjectSizes(state, gitDirectory, treeRecords);
       enforceContentLimits(request, treeRecords, objectSizes);
@@ -144,7 +143,8 @@ export function createAnonymousGitHubExactObjectResolverV1(options = {}) {
         state,
         gitDirectory,
         treeRecords,
-        request.maximumTotalBytes
+        request.maximumTotalBytes,
+        profile.rejectGitLfsPointers
       );
       return { records: buildResultRecords(treeRecords, objectSizes, objectBytes) };
     } catch (error) {
@@ -164,106 +164,20 @@ export function createAnonymousGitHubExactObjectResolverV1(options = {}) {
   };
 }
 
-function validateRequest(input) {
-  if (!isPlainObject(input)) invalidRequest("exact-object request must be an object");
-  const keys = Object.keys(input);
-  if (keys.length !== REQUEST_KEYS.size || keys.some((key) => !REQUEST_KEYS.has(key))) {
-    invalidRequest("exact-object request fields did not match the closed contract");
-  }
-
-  const repositoryUri = normalizeRepositoryUri(input.repositoryUri);
-  if (!LOWER_HEX_40.test(input.revisionObjectId ?? "")) {
-    invalidRequest("revisionObjectId must be a lowercase 40-hex Git object id");
-  }
-  if (!LOWER_HEX_40.test(input.treeObjectId ?? "")) {
-    invalidRequest("treeObjectId must be a lowercase 40-hex Git object id");
-  }
-  if (!Array.isArray(input.paths) || input.paths.length > GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.maximumFiles) {
-    invalidRequest("paths must be an array within the file-count limit");
-  }
-  const paths = [...input.paths];
-  if (paths.some((entry) => !isCanonicalReviewTargetPath(entry))) {
-    invalidRequest("every path must satisfy the canonical review-target path contract");
-  }
-  if (new Set(paths).size !== paths.length) {
-    invalidRequest("paths must not contain duplicates");
-  }
-  paths.sort(compareUtf8);
-
-  const timeoutMs = boundedPositiveInteger(
-    input.timeoutMs,
-    GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.maximumTimeoutMs,
-    "timeoutMs"
-  );
-  const maximumFileBytes = boundedPositiveInteger(
-    input.maximumFileBytes,
-    GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.maximumFileBytes,
-    "maximumFileBytes"
-  );
-  const maximumTotalBytes = boundedPositiveInteger(
-    input.maximumTotalBytes,
-    GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.maximumTotalBytes,
-    "maximumTotalBytes"
-  );
-  if (maximumFileBytes > maximumTotalBytes) {
-    invalidRequest("maximumFileBytes cannot exceed maximumTotalBytes");
-  }
-
-  return Object.freeze({
-    repositoryUri,
-    revisionObjectId: input.revisionObjectId,
-    treeObjectId: input.treeObjectId,
-    paths: Object.freeze(paths),
-    timeoutMs,
-    maximumFileBytes,
-    maximumTotalBytes
-  });
-}
-
-function normalizeRepositoryUri(value) {
-  if (typeof value !== "string" || /[\u0000-\u001f\u007f-\u009f]/u.test(value)) {
-    invalidRequest("repositoryUri must be a canonical public github.com URL");
-  }
-  let parsed;
-  try {
-    parsed = new URL(value);
-  } catch {
-    invalidRequest("repositoryUri must be a canonical public github.com URL");
-  }
-  const segments = parsed.pathname.split("/").filter(Boolean);
-  if (
-    parsed.protocol !== "https:"
-    || parsed.hostname !== "github.com"
-    || parsed.port !== ""
-    || parsed.username !== ""
-    || parsed.password !== ""
-    || parsed.search !== ""
-    || parsed.hash !== ""
-    || segments.length !== 2
-    || !GITHUB_OWNER.test(segments[0])
-    || !GITHUB_REPOSITORY.test(segments[1])
-    || segments[1].endsWith(".git")
-    || value !== `https://github.com/${segments[0]}/${segments[1]}`
-  ) {
-    invalidRequest("repositoryUri must be a canonical lowercase https://github.com/owner/repository URL");
-  }
-  return value;
-}
-
 async function requireBackfillCapability(state) {
   const versionResult = await invokeGit(state, ["--version"], {
     maximumOutputBytes: SMALL_COMMAND_OUTPUT_BYTES,
     phase: "capability"
   });
   if (versionResult.status !== 0) {
-    throw toolingBlocked(`Git ${GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.minimumGitVersion} or newer is required`);
+    throw toolingBlocked(`Git ${state.contract.minimumGitVersion} or newer is required`);
   }
   const version = parseGitVersion(versionResult.stdout);
   if (
     version === null
-    || compareNumericVersion(version, GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.minimumGitVersion) < 0
+    || compareNumericVersion(version, state.contract.minimumGitVersion) < 0
   ) {
-    throw toolingBlocked(`Git ${GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.minimumGitVersion} or newer is required`);
+    throw toolingBlocked(`Git ${state.contract.minimumGitVersion} or newer is required`);
   }
   const result = await invokeGit(state, ["backfill", "-h"], {
     acceptedStatuses: null,
@@ -396,24 +310,42 @@ async function validateCommitAndTree(state, gitDirectory, revisionObjectId, tree
 }
 
 async function resolveTreeRecords(state, gitDirectory, treeObjectId, requestedPaths) {
-  const result = await invokeRepositoryGit(state, gitDirectory, [
-    "ls-tree",
-    "-z",
-    "--full-tree",
-    treeObjectId,
-    "--",
-    ...requestedPaths
-  ], {
-    maximumOutputBytes: TREE_LIST_OUTPUT_BYTES,
-    phase: "tree-paths",
-    disableLazyFetch: true
-  });
-  requireSuccess(result, "cannot resolve declared paths in the exact root tree");
-  return parseTreeRecords(result.stdout, requestedPaths);
+  const records = new Map();
+  for (const pathBatch of partitionCommandPaths(
+    requestedPaths,
+    state.profile.maximumTreeCommandPathBytes
+  )) {
+    const result = await invokeRepositoryGit(state, gitDirectory, [
+      "ls-tree",
+      "-z",
+      "--full-tree",
+      treeObjectId,
+      "--",
+      ...pathBatch
+    ], {
+      maximumOutputBytes: state.profile.maximumTreeOutputBytes,
+      phase: "tree-paths",
+      disableLazyFetch: true
+    });
+    requireSuccess(result, "cannot resolve declared paths in the exact root tree");
+    for (const [filePath, record] of parseTreeRecords(result.stdout, pathBatch)) {
+      records.set(filePath, record);
+    }
+  }
+  return new Map([...records].sort(([left], [right]) => compareUtf8(left, right)));
 }
 
-async function writeSparseSelection(gitDirectory, paths) {
+async function writeSparseSelection(gitDirectory, paths, profile = null) {
   const contents = `${paths.map((entry) => `/${escapeSparsePattern(entry)}`).join("\n")}\n`;
+  if (
+    profile !== null
+    && Buffer.byteLength(contents, "utf8") > profile.maximumSparseSelectionBytes
+  ) {
+    throw new GitHubPublicSourceError(
+      "GITHUB_RESPONSE_TOO_LARGE",
+      "The literal sparse object selection exceeded its bounded byte limit"
+    );
+  }
   try {
     await fs.promises.writeFile(path.join(gitDirectory, "info", "sparse-checkout"), contents, {
       encoding: "utf8",
@@ -450,7 +382,7 @@ async function readObjectSizes(state, gitDirectory, treeRecords) {
     "--batch-check=%(objectname) %(objecttype) %(objectsize)"
   ], {
     input: Buffer.from(`${objectIds.join("\n")}\n`, "ascii"),
-    maximumOutputBytes: SMALL_COMMAND_OUTPUT_BYTES,
+    maximumOutputBytes: state.profile.maximumObjectMetadataOutputBytes,
     phase: "blob-sizes",
     disableLazyFetch: true
   });
@@ -458,7 +390,13 @@ async function readObjectSizes(state, gitDirectory, treeRecords) {
   return parseBatchCheck(result.stdout, objectIds);
 }
 
-async function readBlobObjects(state, gitDirectory, treeRecords, maximumTotalBytes) {
+async function readBlobObjects(
+  state,
+  gitDirectory,
+  treeRecords,
+  maximumTotalBytes,
+  rejectGitLfsPointers
+) {
   const objectIds = uniqueObjectIds(treeRecords);
   const result = await invokeRepositoryGit(state, gitDirectory, ["cat-file", "--batch"], {
     input: Buffer.from(`${objectIds.join("\n")}\n`, "ascii"),
@@ -473,7 +411,7 @@ async function readBlobObjects(state, gitDirectory, treeRecords, maximumTotalByt
       throw new GitHubPublicSourceError("GITHUB_PROTOCOL_ERROR", "a declared Git object was not a blob");
     }
     verifyGitObjectId("blob", object.bytes, objectId, "GITHUB_PROTOCOL_ERROR");
-    if (isGitLfsPointer(object.bytes)) {
+    if (rejectGitLfsPointers && isGitLfsPointer(object.bytes)) {
       throw new GitHubPublicSourceError(
         "GITHUB_DECLARED_PATH_NOT_FOUND",
         "A declared source path is a Git LFS pointer, not source bytes"
@@ -505,10 +443,10 @@ async function invokeGit(state, args, options) {
       timeoutMs: remainingMs,
       maximumOutputBytes: options.maximumOutputBytes,
       monitoredDirectory: options.monitoredDirectory ?? null,
-      maximumTemporaryBytes: GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.maximumTemporaryRepositoryBytes,
-      maximumFileSizeBytes: GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.maximumTemporaryFileBytes,
-      maximumAddressSpaceBytes: GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.maximumAddressSpaceBytes,
-      maximumCpuSeconds: GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.maximumCpuSeconds
+      maximumTemporaryBytes: state.contract.maximumTemporaryRepositoryBytes,
+      maximumFileSizeBytes: state.contract.maximumTemporaryFileBytes,
+      maximumAddressSpaceBytes: state.contract.maximumAddressSpaceBytes,
+      maximumCpuSeconds: state.contract.maximumCpuSeconds
     });
   } catch (error) {
     throw toolingBlocked(`cannot execute git during ${options.phase}`, error);
@@ -543,7 +481,7 @@ async function invokeGit(state, args, options) {
     } catch (error) {
       throw toolingBlocked(`cannot measure temporary Git storage during ${options.phase}`, error);
     }
-    if (temporaryBytes > GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.maximumTemporaryRepositoryBytes) {
+    if (temporaryBytes > state.contract.maximumTemporaryRepositoryBytes) {
       throw new GitHubPublicSourceError(
         "GITHUB_RESPONSE_TOO_LARGE",
         "Git temporary object storage exceeded its byte limit"
@@ -611,17 +549,6 @@ function toolingBlocked(detail, cause = undefined) {
   );
 }
 
-
-function invalidRequest(message) {
-  throw new GitHubPublicSourceError("INVALID_REQUEST", message);
-}
-
-function boundedPositiveInteger(value, maximum, name) {
-  if (!Number.isInteger(value) || value < 1 || value > maximum) {
-    invalidRequest(`${name} must be a positive integer within the supported bound`);
-  }
-  return value;
-}
 
 function assertFactoryOptions(options) {
   if (!isPlainObject(options)) throw new TypeError("resolver factory options must be an object");

@@ -6,6 +6,7 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { normativePolicyInventory } from "../submission-core.mjs";
+import { hashNormativePolicyBundle } from "../submission-report-core.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "..", "..");
@@ -34,12 +35,13 @@ test("normative manifest binds every policy, template, enforcement file and blin
     assert.ok(policyPaths.includes("scripts/launch-plan-graph.mjs"));
     assert.ok(policyPaths.includes("scripts/test/launch-plan-graph.test.mjs"));
     const firstHash = validate(copiedSkill).toolchain.policyBundleSha256;
+    assert.equal(policyHash(copiedSkill), firstHash, "direct policy hashing must match the CLI report");
 
     for (const policyPath of policyPaths) {
       const target = path.join(copiedSkill, policyPath);
       const sourceBytes = fs.readFileSync(target);
       fs.writeFileSync(target, Buffer.concat([sourceBytes, Buffer.from("\n")]));
-      const secondHash = validate(copiedSkill).toolchain.policyBundleSha256;
+      const secondHash = policyHash(copiedSkill);
       assert.match(secondHash, /^sha256:[a-f0-9]{64}$/);
       assert.notEqual(secondHash, firstHash, policyPath);
       fs.writeFileSync(target, sourceBytes);
@@ -62,6 +64,7 @@ test("policy bundle normalizes only exact gh installer changes", () => {
     const canonicalFields = new Map(canonicalDocument[1].split("\n").map((line) => line.split(/: (.*)/su).slice(0, 2)));
     const body = canonicalDocument[2];
     const canonicalHash = validate(copiedSkill).toolchain.policyBundleSha256;
+    assert.equal(policyHash(copiedSkill), canonicalHash, "direct policy hashing must match the CLI report");
     const remoteFrontmatter = [
       "---",
       `description: ${canonicalFields.get("description")}`,
@@ -87,7 +90,7 @@ test("policy bundle normalizes only exact gh installer changes", () => {
 
     const hashSource = (source) => {
       fs.writeFileSync(skillPath, source);
-      return validate(copiedSkill).toolchain.policyBundleSha256;
+      return policyHash(copiedSkill);
     };
 
     assert.equal(hashSource(`${remoteFrontmatter}\n${body}`), canonicalHash, "remote gh install removes the separator blank line");
@@ -141,4 +144,9 @@ function validate(copiedSkill) {
 
   assert.equal(result.status, 0, result.stderr);
   return JSON.parse(result.stdout);
+}
+
+function policyHash(copiedSkill) {
+  const targets = normativePolicyInventory().map((relativePath) => path.join(copiedSkill, relativePath));
+  return hashNormativePolicyBundle(targets, { root: copiedSkill });
 }
