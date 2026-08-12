@@ -62,7 +62,7 @@ export const RELEASE_KERNEL_CHECKS = Object.freeze([
 ]);
 
 export const RELEASE_TOOL_VERSIONS = Object.freeze([
-  Object.freeze({ id: "node", command: Object.freeze(["node", "--version"]), policy: "node-major-at-least-22" }),
+  Object.freeze({ id: "node", command: Object.freeze(["node", "--version"]), policy: "node-major-at-least-24" }),
   Object.freeze({ id: "npm", command: Object.freeze(["npm", "--version"]), policy: "recorded" }),
   Object.freeze({ id: "forge", command: Object.freeze(["forge", "--version"]), policy: "exact-forge-1.7.1" }),
   Object.freeze({ id: "slither", command: Object.freeze(["slither", "--version"]), policy: "exact-slither-0.11.5" })
@@ -84,7 +84,7 @@ export function toolVersionAccepted(toolId, version) {
   if (typeof version !== "string" || version.length === 0) return false;
   if (toolId === "node") {
     const match = version.match(/^v([0-9]+)(?:\.|$)/u);
-    return match !== null && Number(match[1]) >= 22;
+    return match !== null && Number(match[1]) >= 24;
   }
   if (toolId === "forge") return /^forge Version: 1\.7\.1(?:\n|$)/u.test(version);
   if (toolId === "slither") return version.trim() === "0.11.5";

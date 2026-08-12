@@ -2,7 +2,7 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
-## 0.5.1 - Unreleased development scope
+## 0.5.1 - 2026-08-13
 
 ### Added
 
@@ -22,6 +22,8 @@ All notable Builder changes are recorded here. Historical releases remain immuta
 
 ### Changed
 
+- Raised the repository, portable Skill, generated plugin, Doctor, CI, and Submit a Launch application-check contract
+  to a single Node.js 24 runtime line.
 - New public Applicant requests target `0xprogrammable/submit-launch`; Hookbuilder pull requests #10, #11, #12, #14,
   #15, #18, #19, and #20 remain legacy continuations only. Neither path requests a Registry or Router write.
 - Source-assessed prototypes without source-derived semantic coverage now require independent review instead of passing

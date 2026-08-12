@@ -127,7 +127,7 @@ test("version and plugin identities agree across canonical and generated package
   assert.equal(packageDocument.name, "@programmable/v4-builder-repository");
   assert.equal(packageDocument.private, true);
   assert.equal(packageDocument.license, "MIT");
-  assert.equal(packageDocument.engines.node, ">=22");
+  assert.equal(packageDocument.engines.node, ">=24");
   assert.equal(packageDocument.packageManager, "npm@11.16.0");
   assert.equal(packageDocument.repository.url, "git+https://github.com/0xprogrammable/hookbuilder.git");
   assert.equal(packageDocument.bugs.url, "https://github.com/0xprogrammable/hookbuilder/issues");
@@ -431,7 +431,7 @@ test("CI deterministically covers both Programmable fee reference kernels", () =
   assert.match(workflow, /^\s*CI_ROUTING_REF: \$\{\{ github\.event_name == 'pull_request' && github\.base_ref \|\| github\.ref_name \}\}$/mu);
   assert.doesNotMatch(workflow, /--ref "\$\{\{/u);
   assert.match(workflow, /Preserve exhaustive checks while a protected base predates routing outputs/u);
-  assert.match(workflow, /ROUTED_REPOSITORY_NODES='\[22,24\]'/u);
+  assert.match(workflow, /ROUTED_REPOSITORY_NODES='\[24\]'/u);
   assert.match(workflow, /ROUTED_REFERENCE_KERNEL_REQUIRED=true/u);
   assert.match(workflow, /ROUTED_CODEQL_REQUIRED=true/u);
   assert.match(workflow, /ROUTED_PLATFORM_LANE_REQUIRED=true/u);
@@ -448,6 +448,12 @@ test("CI deterministically covers both Programmable fee reference kernels", () =
   assert.match(repositoryJob, /^\s*name: Repository and skill \/ Node \$\{\{ matrix\.node \}\}$/mu);
   assert.match(repositoryJob, /^\s*if: \$\{\{ needs\.plan\.outputs\.platform_lane_required == 'true' \}\}$/mu);
   assert.match(repositoryJob, /^\s*node: \$\{\{ fromJSON\(needs\.plan\.outputs\.repository_nodes\) \}\}$/mu);
+  assert.match(repositoryJob, /name: Verify the one-time Node 24 transition on a legacy matrix lane/u);
+  assert.match(repositoryJob, /^\s*if: matrix\.node != 24$/mu);
+  assert.ok(repositoryJob.includes(`grep -F '"node": ">=24"' package.json`));
+  assert.ok(repositoryJob.includes(`grep -F 'repositoryNodes: [24]' scripts/ci/applicant-fast-lane-core.mjs`));
+  assert.ok(repositoryJob.includes(`grep -F "ROUTED_REPOSITORY_NODES='[24]'" .github/workflows/ci.yml`));
+  assert.equal((repositoryJob.match(/^\s*if: matrix\.node == 24$/gmu) ?? []).length, 5);
   const foundryInstall = repositoryJob.indexOf("Install Foundry");
   const compilerPreload = repositoryJob.indexOf("Preload the portable-test Solidity compiler");
   const repositoryGate = repositoryJob.indexOf("run: npm test");

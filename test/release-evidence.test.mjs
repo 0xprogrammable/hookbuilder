@@ -101,9 +101,15 @@ test("release evidence validator accepts only a complete clean V1 and V2 campaig
   wrongForge.tools.find(({ id }) => id === "forge").version = "forge Version: 1.7.2";
   assert.throws(() => validateReleaseKernelEvidence(wrongForge, expected), /forge version evidence did not pass/u);
 
-  const endOfLifeNode = structuredClone(evidence);
-  endOfLifeNode.tools.find(({ id }) => id === "node").version = "v20.19.5";
-  assert.throws(() => validateReleaseKernelEvidence(endOfLifeNode, expected), /node version evidence did not pass/u);
+  for (const unsupportedVersion of ["v20.19.5", "v22.23.1", "v23.11.1"]) {
+    const unsupportedNode = structuredClone(evidence);
+    unsupportedNode.tools.find(({ id }) => id === "node").version = unsupportedVersion;
+    assert.throws(
+      () => validateReleaseKernelEvidence(unsupportedNode, expected),
+      /node version evidence did not pass/u,
+      unsupportedVersion
+    );
+  }
 });
 
 test("release SPDX aggregates both lockfiles with explicit kernel provenance", () => {
