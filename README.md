@@ -16,7 +16,7 @@
   <a href="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-F8F0E9?labelColor=010103"></a>
   <a href="https://agentskills.io/specification"><img alt="Agent Skills compatible" src="https://img.shields.io/badge/Agent%20Skills-compatible-F8F0E9?labelColor=010103"></a>
-  <a href="CHANGELOG.md"><img alt="Current published release 0.4.2" src="https://img.shields.io/badge/published-v0.4.2-F8F0E9?labelColor=010103"></a>
+  <a href="CHANGELOG.md"><img alt="Current published release 0.4.3" src="https://img.shields.io/badge/published-v0.4.3-F8F0E9?labelColor=010103"></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 > [!IMPORTANT]
 > **Release status**
 >
-> `v0.4.2` is the latest published release. `main` contains the public `v0.5.1` development source. Its
+> `v0.4.3` is the latest published release. `main` contains the public `v0.5.1` development source. Its
 > integration on `main`, package version, or green CI does not make it a stable release. The Applicant beta on
 > `main` can prepare a review request; it does not approve, deploy, route, register, or launch a project.
 
@@ -47,7 +47,7 @@ Preview the exact published Skill before installing it:
 
 ```bash
 gh skill preview 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.4.2
+  programmable-v4-hook-builder@v0.4.3
 ```
 
 Install the same immutable release for Codex:
@@ -57,7 +57,7 @@ gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.4.2
+  --pin v0.4.3
 ```
 
 GitHub's `gh skill` commands are in preview. Clean package placement has been checked for Codex, Claude Code, and
