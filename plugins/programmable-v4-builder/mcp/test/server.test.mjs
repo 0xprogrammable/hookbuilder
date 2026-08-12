@@ -374,7 +374,9 @@ test("bounded MCP execution terminates its process group and descendants disappe
       argumentsList: ["-e", source, pidPath],
       cwd: temporary,
       environment: { PATH: process.env.PATH },
-      timeoutMs: 100
+      // Give a contended CI runner enough time to start the fixture and persist
+      // the descendant identity before exercising bounded process-group cleanup.
+      timeoutMs: 2_000
     }),
     (error) => error?.code === "COMMAND_TIMEOUT"
   );
