@@ -56,7 +56,7 @@ jobs:
       - name: Use pinned Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 24
       - name: Classify changed immutable inputs once
         id: plan
         env:
@@ -91,7 +91,7 @@ jobs:
             test -n "$ROUTED_CODEQL_REQUIRED"
             test -n "$ROUTED_PLATFORM_LANE_REQUIRED"
           else
-            ROUTED_REPOSITORY_NODES='[20,22]'
+            ROUTED_REPOSITORY_NODES='[22,24]'
             ROUTED_REFERENCE_KERNEL_MATRIX='{"include":[{"kernel":"v1","workdir":"skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v1","lockfile":"skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v1/package-lock.json"},{"kernel":"v2","workdir":"skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v2","lockfile":"skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v2/package-lock.json"}]}'
             ROUTED_REFERENCE_KERNEL_REQUIRED=true
             ROUTED_CODEQL_REQUIRED=true
@@ -143,7 +143,7 @@ jobs:
       - name: Use pinned Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 24
       - name: Download exact compatibility result
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
@@ -212,7 +212,7 @@ jobs:
       - name: Use pinned Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 24
       - name: Materialize protected control plane
         env:
           TRUSTED_REVISION: ${{ needs.plan.outputs.trusted_revision }}
@@ -278,7 +278,7 @@ jobs:
       - name: Use pinned Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 24
       - name: Download acceptance-bound route compatibility result
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
@@ -327,7 +327,7 @@ jobs:
       - name: Use pinned Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 24
       - name: Aggregate applicant-only work behind one stable context
         run: >-
           node scripts/ci/assert-fast-lane-gate.mjs
@@ -409,7 +409,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: ${{ matrix.lockfile }}
       - name: Install exact Solidity packages without lifecycle scripts
@@ -565,7 +565,7 @@ jobs:
       - name: Use pinned Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 24
       - name: Aggregate immutable platform/profile work behind one stable context
         run: >-
           node scripts/ci/assert-fast-lane-gate.mjs

@@ -197,7 +197,7 @@ test("platform CI routing is narrow for documentation and fail-closed for execut
     mode: "platform",
     paths: ["README.md", "docs/ARCHITECTURE.md"]
   });
-  assert.deepEqual(documentation.repositoryNodes, [22]);
+  assert.deepEqual(documentation.repositoryNodes, [24]);
   assert.deepEqual(documentation.referenceKernels, []);
   assert.equal(documentation.codeqlRequired, false);
   assert.equal(documentation.fullNodeCompatibility, false);
@@ -209,7 +209,7 @@ test("platform CI routing is narrow for documentation and fail-closed for execut
     mode: "platform",
     paths: ["scripts/verify-repository.mjs"]
   });
-  assert.deepEqual(executable.repositoryNodes, [20, 22]);
+  assert.deepEqual(executable.repositoryNodes, [22, 24]);
   assert.deepEqual(executable.referenceKernels, ["v1", "v2"]);
   assert.equal(executable.codeqlRequired, true);
   assert.equal(executable.fullNodeCompatibility, true);
@@ -221,7 +221,7 @@ test("platform CI routing is narrow for documentation and fail-closed for execut
     mode: "platform",
     paths: ["new-domain/value.bin"]
   });
-  assert.deepEqual(unknown.repositoryNodes, [20, 22]);
+  assert.deepEqual(unknown.repositoryNodes, [22, 24]);
   assert.deepEqual(unknown.referenceKernels, []);
   assert.equal(unknown.codeqlRequired, true);
   assert.equal(unknown.fullNodeCompatibility, true);
@@ -237,7 +237,7 @@ test("platform CI routing selects only relevant kernels on pull requests", () =>
       "skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v1/src/ProgrammableVolumeFeeHook.sol"
     ]
   });
-  assert.deepEqual(v1.repositoryNodes, [20, 22]);
+  assert.deepEqual(v1.repositoryNodes, [22, 24]);
   assert.deepEqual(v1.referenceKernels, ["v1"]);
   assert.equal(v1.codeqlRequired, true);
 
@@ -273,7 +273,7 @@ test("platform CI routing selects only relevant kernels on pull requests", () =>
     mode: "platform",
     paths: [".github/CODEOWNERS"]
   });
-  assert.deepEqual(codeowners.repositoryNodes, [20, 22]);
+  assert.deepEqual(codeowners.repositoryNodes, [22, 24]);
   assert.equal(codeowners.codeqlRequired, true);
 });
 
@@ -289,7 +289,7 @@ test("protected and release CI routing retains the exhaustive compatibility lane
       mode: "platform",
       paths: ["README.md"]
     });
-    assert.deepEqual(routing.repositoryNodes, [20, 22], `${input.event}:${input.ref}`);
+    assert.deepEqual(routing.repositoryNodes, [22, 24], `${input.event}:${input.ref}`);
     assert.deepEqual(routing.referenceKernels, ["v1", "v2"], `${input.event}:${input.ref}`);
     assert.equal(routing.codeqlRequired, true, `${input.event}:${input.ref}`);
     assert.equal(routing.fullNodeCompatibility, true, `${input.event}:${input.ref}`);
@@ -318,7 +318,7 @@ test("Applicant-only release and protected-branch runs retain every platform con
       paths: [requestPath]
     });
     assert.equal(routing.platformLaneRequired, true, `${input.event}:${input.ref}`);
-    assert.deepEqual(routing.repositoryNodes, [20, 22], `${input.event}:${input.ref}`);
+    assert.deepEqual(routing.repositoryNodes, [22, 24], `${input.event}:${input.ref}`);
     assert.deepEqual(routing.referenceKernels, ["v1", "v2"], `${input.event}:${input.ref}`);
     assert.equal(routing.codeqlRequired, true, `${input.event}:${input.ref}`);
   }
@@ -332,7 +332,7 @@ test("CI routing excludes applicant request data and rejects non-canonical input
     paths: [requestPath, "submissions/requests/README.md"]
   });
   assert.deepEqual(mixed.platformPaths, ["submissions/requests/README.md"]);
-  assert.deepEqual(mixed.repositoryNodes, [22]);
+  assert.deepEqual(mixed.repositoryNodes, [24]);
   assert.equal(mixed.codeqlRequired, false);
   assert.equal(mixed.platformLaneRequired, true);
 
