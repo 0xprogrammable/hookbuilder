@@ -26,20 +26,22 @@ const expectedTopLevel = [
   "mcp", "package-lock.json", "package.json", "plugins", "scripts", "skills", "submissions", "test"
 ];
 const forbiddenTransientDirectories = new Set(["node_modules", "coverage", "broadcast", "cache", "out"]);
+const ignoredHostMetadata = new Set([".DS_Store"]);
 
-function walk(directory) {
+function walk(directory, rootDirectory = repositoryRoot) {
   const rows = [];
   for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name))) {
-    if (directory === repositoryRoot && entry.name === ".git") continue;
+    if (ignoredHostMetadata.has(entry.name)) continue;
+    if (directory === rootDirectory && entry.name === ".git") continue;
     const absolutePath = path.join(directory, entry.name);
-    const relativePath = path.relative(repositoryRoot, absolutePath).split(path.sep).join("/");
+    const relativePath = path.relative(rootDirectory, absolutePath).split(path.sep).join("/");
     const stat = fs.lstatSync(absolutePath);
     rows.push({ absolutePath, relativePath, stat });
     if (
       stat.isDirectory()
       && !stat.isSymbolicLink()
       && !forbiddenTransientDirectories.has(entry.name)
-    ) rows.push(...walk(absolutePath));
+    ) rows.push(...walk(absolutePath, rootDirectory));
   }
   return rows;
 }
@@ -61,6 +63,20 @@ test("repository containment accepts an in-root ..x name and rejects a real pare
   assert.throws(
     () => assertInsideRepository(repository, outsideFile),
     /path resolves outside repository/u
+  );
+});
+
+test("repository shape ignores gitignored macOS metadata at every depth", (t) => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-repository-shape-"));
+  t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(fixtureRoot, "nested"), { recursive: true });
+  fs.writeFileSync(path.join(fixtureRoot, ".DS_Store"), "host metadata\n");
+  fs.writeFileSync(path.join(fixtureRoot, "nested", ".DS_Store"), "host metadata\n");
+  fs.writeFileSync(path.join(fixtureRoot, "nested", "kept.txt"), "repository content\n");
+
+  assert.deepEqual(
+    walk(fixtureRoot, fixtureRoot).map(({ relativePath }) => relativePath),
+    ["nested", "nested/kept.txt"]
   );
 });
 
