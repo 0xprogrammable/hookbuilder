@@ -101,7 +101,7 @@ const gitWorktreeStatus = repositoryRoot === null
 const gitWorktreeAvailable = gitWorktreeStatus === "available";
 const githubCli = checks.find(({ name }) => name === "gh");
 const publicBetaBlockers = [
-  ...(nodeSupported ? [] : ["NODE_20_OR_NEWER_REQUIRED"]),
+  ...(nodeSupported ? [] : ["NODE_22_OR_NEWER_REQUIRED"]),
   ...(applicationV3PlatformSupported ? [] : ["APPLICATION_V3_PLATFORM_UNSUPPORTED"]),
   ...(exactObjectGit.status === "ready" ? [] : ["EXACT_OBJECT_GIT_TOOLING_REQUIRED"]),
   ...(githubCli?.available === true ? [] : ["GITHUB_CLI_REQUIRED"]),
