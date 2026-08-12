@@ -34,13 +34,13 @@ ChatGPT are not part of that rehearsal.
 
 | Capability | Node.js | Git | `gh` | Network | macOS | Linux | Windows |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Intent, routing, templates | 20+ | No | No | No | Locally exercised | CI target; current candidate receipt pending | Not exercised |
-| Local package validation | 20+ | Only for repository-bound checks | No | No | Locally exercised | CI target on Node 20/22; current candidate receipt pending | Not exercised |
-| Bundled Registry snapshot | 20+ | No | No | No | Locally exercised | Declared compatible; current candidate receipt pending | Not exercised |
-| Live Registry discovery | 20+ | No | No | Yes | Locally exercised only where explicitly run | Declared compatible; current candidate receipt pending | Not exercised |
-| Application V3 exact revision | 20+ | 2.49+ with `git backfill --sparse` | No | Yes | Declared supported when doctor gates pass | Declared supported when doctor gates pass | Unsupported; fails closed |
-| GitHub status | 20+ | Depends on selected status path | Usually yes | Yes | Declared supported when doctor gates pass | Declared supported when doctor gates pass | Not supported for exact-revision flow |
-| GitHub submit/update | 20+ | 2.49+ with `git backfill --sparse` | Authenticated | Yes | Declared supported after explicit authorization | Declared supported after explicit authorization | Unsupported for exact-revision flow |
+| Intent, routing, templates | 22+ | No | No | No | Locally exercised | CI target; current candidate receipt pending | Not exercised |
+| Local package validation | 22+ | Only for repository-bound checks | No | No | Locally exercised | CI target on Node 22/24; current candidate receipt pending | Not exercised |
+| Bundled Registry snapshot | 22+ | No | No | No | Locally exercised | Declared compatible; current candidate receipt pending | Not exercised |
+| Live Registry discovery | 22+ | No | No | Yes | Locally exercised only where explicitly run | Declared compatible; current candidate receipt pending | Not exercised |
+| Application V3 exact revision | 22+ | 2.49+ with `git backfill --sparse` | No | Yes | Declared supported when doctor gates pass | Declared supported when doctor gates pass | Unsupported; fails closed |
+| GitHub status | 22+ | Depends on selected status path | Usually yes | Yes | Declared supported when doctor gates pass | Declared supported when doctor gates pass | Not supported for exact-revision flow |
+| GitHub submit/update | 22+ | 2.49+ with `git backfill --sparse` | Authenticated | Yes | Declared supported after explicit authorization | Declared supported after explicit authorization | Unsupported for exact-revision flow |
 
 Without `--repository-root`, `doctor` resolves the canonical installed plugin root when the Codex wrapper is present and
 otherwise the canonical installed Skill root. A non-Git plugin cache remains a valid package context: Git-worktree-only
@@ -49,7 +49,7 @@ Application V3 work. The report includes the current platform, Node major, exact
 capability boundary, and separate Application V3 preparation/submission readiness. A positive doctor result is local
 capability evidence only; it proves no authentication, public reachability, acceptance, deployment, or provider support.
 
-The repository config targets Ubuntu on Node 20 and 22, but configured CI is not a receipt for this unpublished
+The repository config targets Ubuntu on Node 22 and 24, but configured CI is not a receipt for this unpublished
 candidate commit. Windows has neither a configured CI job nor a host receipt; do not advertise Windows support.
 
 ## Install a pinned Agent Skill

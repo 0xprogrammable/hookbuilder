@@ -195,7 +195,7 @@ with them. See [Architecture](docs/ARCHITECTURE.md) before changing package or h
 
 ## Verify from source
 
-Node.js 20 or newer is required. The repository has no npm runtime or development dependencies.
+Node.js 22 or newer is required. CI verifies both the minimum supported Node 22 line and the current Node 24 LTS line. The repository has no npm runtime or development dependencies.
 
 ```bash
 npm test

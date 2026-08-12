@@ -127,7 +127,7 @@ test("version and plugin identities agree across canonical and generated package
   assert.equal(packageDocument.name, "@programmable/v4-builder-repository");
   assert.equal(packageDocument.private, true);
   assert.equal(packageDocument.license, "MIT");
-  assert.equal(packageDocument.engines.node, ">=20");
+  assert.equal(packageDocument.engines.node, ">=22");
   assert.equal(packageDocument.packageManager, "npm@11.16.0");
   assert.equal(packageDocument.repository.url, "git+https://github.com/0xprogrammable/hookbuilder.git");
   assert.equal(packageDocument.bugs.url, "https://github.com/0xprogrammable/hookbuilder/issues");
