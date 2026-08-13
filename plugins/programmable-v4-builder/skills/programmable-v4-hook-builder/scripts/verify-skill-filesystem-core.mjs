@@ -75,6 +75,13 @@ export function isInside(parent, child) {
     || (result !== ".." && !result.startsWith(`..${path.sep}`) && !path.isAbsolute(result));
 }
 
+export function writeDiagnostics(messages, { write = (payload, callback) => process.stderr.write(payload, callback) } = {}) {
+  const payload = [...new Set(messages)].sort().map((message) => `- ${message}\n`).join("");
+  return new Promise((resolve, reject) => {
+    write(payload, (error) => error ? reject(error) : resolve());
+  });
+}
+
 function lstatOrNull(target) {
   try {
     return fs.lstatSync(target);

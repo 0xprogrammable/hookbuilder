@@ -10,6 +10,7 @@ import {
   createDeterministicTestBatches,
   runDeterministicTestBatches
 } from "../verify-skill-execution-core.mjs";
+import { writeDiagnostics } from "../verify-skill-filesystem-core.mjs";
 import { validateInstalledProvenance } from "../verify-skill-provenance-core.mjs";
 import { markdownHeadingAnchors, parseCanonicalYamlMapping } from "../verify-skill-yaml-core.mjs";
 
@@ -59,6 +60,28 @@ test("Markdown anchors remove complete nested HTML-like tags without exposing a 
     [...markdownHeadingAnchors("# Safe <scr<script>ipt> heading\n# Two <em>words</em>\n# Comparison 2 < 3")],
     ["safe-heading", "two-words", "comparison-2-3"]
   );
+});
+
+test("diagnostics await one complete deterministic payload", async () => {
+  const diagnostics = Array.from({ length: 512 }, (_, index) => `diagnostic-${String(index).padStart(4, "0")}-${"x".repeat(192)}`);
+  const expected = diagnostics.map((message) => `- ${message}\n`).join("");
+  let callback;
+  let observed;
+  let settled = false;
+  const pending = writeDiagnostics(diagnostics, {
+    write(payload, done) {
+      observed = payload;
+      callback = done;
+    }
+  });
+  pending.then(() => { settled = true; });
+
+  assert.ok(Buffer.byteLength(expected) > 64 * 1024);
+  assert.equal(observed, expected);
+  assert.equal(settled, false);
+  callback();
+  await pending;
+  assert.equal(settled, true);
 });
 
 test("source verification partitions every portable test exactly once with bounded fanout", () => {
@@ -458,12 +481,54 @@ test("portable verifier deletion-guards its exact required inventory in one boun
 
     assert.equal(result.error, undefined);
     assert.notEqual(result.status, 0, result.stdout);
+    const emittedMissingDiagnostics = result.stderr
+      .split("\n")
+      .filter((line) => line.startsWith("- missing "));
+    assert.deepEqual(
+      emittedMissingDiagnostics,
+      requiredPaths.map((requiredPath) => `- missing ${requiredPath}`).sort()
+    );
     for (const requiredPath of requiredPaths) {
       assert.match(
         result.stderr,
         new RegExp(`(?:^|\\n)- missing ${escapeRegExp(requiredPath)}(?:\\n|$)`, "u")
       );
     }
+  } finally {
+    fs.rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});
+
+test("portable verifier drain-preserves a complete diagnostic payload larger than a pipe buffer", () => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-static-skill-stderr-"));
+  const candidateRoot = path.join(fixtureRoot, "programmable-v4-hook-builder");
+  const testRoot = path.join(candidateRoot, "scripts", "test");
+  const extraTests = Array.from(
+    { length: 320 },
+    (_, index) => `stderr-${String(index).padStart(4, "0")}-${"x".repeat(180)}.test.mjs`
+  );
+
+  try {
+    fs.cpSync(skillRoot, candidateRoot, { recursive: true });
+    for (const testFile of extraTests) fs.writeFileSync(path.join(testRoot, testFile), "");
+
+    const result = runUntrustedVerifier(candidateRoot);
+    const undeclared = extraTests.map((testFile) => `scripts/test/${testFile}`).sort();
+    const lines = result.stderr.split("\n");
+    const inventoryPrefix = "- portable test inventory must exactly match declared required tests; missing files: none; undeclared tests: ";
+    const inventorySuffix = "; duplicate declarations: none";
+
+    assert.equal(result.status, 1, result.stdout);
+    assert.ok(Buffer.byteLength(result.stderr, "utf8") > 64 * 1024);
+    assert.deepEqual(lines.slice(0, -1).sort(), lines.slice(0, -1));
+    assert.equal(lines.length, 3);
+    assert.equal(lines[0], `- portable package has ${646 + extraTests.length} files; keep it at or below 646`);
+    assert.ok(lines[1].startsWith(inventoryPrefix));
+    assert.ok(lines[1].endsWith(inventorySuffix));
+    assert.deepEqual(
+      lines[1].slice(inventoryPrefix.length, -inventorySuffix.length).split(", "),
+      undeclared
+    );
   } finally {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
   }
