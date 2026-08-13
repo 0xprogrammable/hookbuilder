@@ -105,6 +105,15 @@ function relative(repositoryRoot, target) {
 }
 
 export function validateOpenWorldPackage({ packageRoot, fragmentLimits } = {}) {
+  return validateOpenWorldPackageFromDiskWith({ packageRoot, fragmentLimits }, validateOpenWorldV2Package);
+}
+
+/** Explicit frozen Fee V2 replay/migration disk validator. */
+export function validateLegacyFeeV2OpenWorldPackage({ packageRoot, fragmentLimits } = {}) {
+  return validateOpenWorldPackageFromDiskWith({ packageRoot, fragmentLimits }, validateLegacyFeeV2OpenWorldV2Package);
+}
+
+function validateOpenWorldPackageFromDiskWith({ packageRoot, fragmentLimits }, validateSubmissionPackage) {
   return validateOpenWorldPackageFromDisk({
     packageRoot,
     fragmentLimits,
@@ -113,12 +122,21 @@ export function validateOpenWorldPackage({ packageRoot, fragmentLimits } = {}) {
     optionalSupportingArtifacts: OPEN_WORLD_V2_OPTIONAL_SUPPORTING_ARTIFACTS,
     submissionFile: OPEN_WORLD_V2_SUBMISSION_FILE,
     reviewPackageIoLimits: OPEN_WORLD_V2_REVIEW_PACKAGE_IO_LIMITS,
-    validateSubmissionPackage: validateOpenWorldV2Package
+    validateSubmissionPackage
   });
 }
 
 export function validateOpenWorldV2Package(options = {}) {
-  const context = createOpenWorldV2ValidationRuntime(options);
+  return validateOpenWorldV2PackageWithProfile(options, "current-central-policy-consumer");
+}
+
+/** Explicit frozen Fee V2 replay/migration validator. Never use for current/default builds. */
+export function validateLegacyFeeV2OpenWorldV2Package(options = {}) {
+  return validateOpenWorldV2PackageWithProfile(options, "frozen-legacy-fee-v2");
+}
+
+function validateOpenWorldV2PackageWithProfile(options, validationProfile) {
+  const context = createOpenWorldV2ValidationRuntime({ ...options, validationProfile });
   const earlyReport = validateOpenWorldV2Intake(context);
   if (earlyReport !== null) return earlyReport;
   validateOpenWorldV2Intent(context);

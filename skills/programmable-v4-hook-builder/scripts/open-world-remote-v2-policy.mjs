@@ -1,4 +1,4 @@
-import { CliFailure, MAX_APPLICATION_V3_JSON_NODES, MAX_OUTPUT_FILE_BYTES, OPEN_WORLD_V2_ARTIFACTS, OPEN_WORLD_V2_OPTIONAL_SUPPORTING_ARTIFACTS, OPEN_WORLD_V2_SUPPORTING_ARTIFACTS, SHA256_PATTERN, deriveOpenWorldV2FeeApplicability, isRepositorySchemaBinding, path, strictUtf8, validateOpenWorldV2Package } from "./open-world-shared.mjs";
+import { CliFailure, MAX_APPLICATION_V3_JSON_NODES, MAX_OUTPUT_FILE_BYTES, OPEN_WORLD_V2_ARTIFACTS, OPEN_WORLD_V2_OPTIONAL_SUPPORTING_ARTIFACTS, OPEN_WORLD_V2_SUPPORTING_ARTIFACTS, SHA256_PATTERN, deriveOpenWorldV2FeeApplicability, isRepositorySchemaBinding, path, strictUtf8, validateLegacyFeeV2OpenWorldV2Package } from "./open-world-shared.mjs";
 
 const TRADE_APPLICATION_RECORD_KINDS = new Set(["trade-capability-manifest", "trade-test-result"]);
 
@@ -171,7 +171,7 @@ export function installOpenWorldRemoteV2Policy(runtime) {
         boundArtifacts.push({ kind: "extension-schema", repositoryPath, snapshot });
       }
     }
-    const report = validateOpenWorldV2Package({
+    const report = validateLegacyFeeV2OpenWorldV2Package({
       submission,
       submissionBytes: submissionSnapshot.bytes,
       records,

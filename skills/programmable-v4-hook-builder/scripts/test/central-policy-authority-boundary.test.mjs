@@ -5,8 +5,13 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  OPEN_WORLD_V2_ARTIFACTS,
+  OPEN_WORLD_V2_SUBMISSION_FILE,
+  OPEN_WORLD_V2_SUPPORTING_ARTIFACTS,
   createLegacyFeeV2DraftPackage,
-  createOpenWorldDraftPackage
+  createOpenWorldDraftPackage,
+  validateLegacyFeeV2OpenWorldV2Package,
+  validateOpenWorldV2Package
 } from "../open-world-v2-core.mjs";
 import {
   composeTemplate,
@@ -62,14 +67,15 @@ test("explicit frozen Fee V2 replay remains byte-compatible and opt-in", () => {
   assert.equal(legacy.materializationAllowed, true, JSON.stringify(legacy.report));
   assert.equal(aggregatePackageFiles(legacy.files), LEGACY_FEE_V2_DRAFT_AGGREGATE_SHA256);
 
+  const files = new Map(legacy.files.map(({ path: filePath, content }) => [filePath, Buffer.from(content, "utf8")]));
+  const submissionBytes = files.get(OPEN_WORLD_V2_SUBMISSION_FILE);
+  const submission = JSON.parse(submissionBytes);
+  const records = Object.fromEntries(Object.entries(OPEN_WORLD_V2_ARTIFACTS).map(([key, spec]) => [key, { value: JSON.parse(files.get(spec.file)), bytes: files.get(spec.file) }]));
+  const supportingRecords = Object.fromEntries(["feePolicySchema", "securityAssessmentSchema", "securityAssessment"].map((key) => { const spec = OPEN_WORLD_V2_SUPPORTING_ARTIFACTS[key]; return [key, { value: JSON.parse(files.get(spec.file)), bytes: files.get(spec.file) }]; }));
+  const currentReport = validateOpenWorldV2Package({ submission, submissionBytes, records, supportingRecords });
+  assert.ok(currentReport.findings.some(({ code }) => code === "FROZEN_LEGACY_FEE_V2_ENTRYPOINT_REQUIRED"));
+  assert.equal(validateLegacyFeeV2OpenWorldV2Package({ submission, submissionBytes, records, supportingRecords }).valid, true);
+
   const catalog = loadTemplateCatalog({ skillRoot });
-  const selected = composeTemplate({
-    catalog,
-    starterId: "blank-custom",
-    packIds: ["programmable-volume-fee"]
-  });
-  assert.equal(selected.selection.requestedPackIds.includes("programmable-volume-fee"), true);
-  assert.equal(selected.feePolicy.kind, "legacy-fee-v2-implementation-contract");
-  const codeLegos = JSON.parse(new Map(renderTemplateFiles(selected, { catalog })).get("programmable-code-legos.json"));
-  assert.equal(codeLegos.feePolicy.kind, "legacy-fee-v2-implementation-contract");
+  assert.throws(() => composeTemplate({ catalog, starterId: "blank-custom", packIds: ["programmable-volume-fee"] }), ({ code }) => code === "FROZEN_LEGACY_FEE_V2_PROFILE_REQUIRED");
 });

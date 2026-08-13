@@ -21,10 +21,12 @@ Review the preview, then repeat with `--write` only when an unconfirmed proposal
 Autopilot build use the productive `project materialize` command after the architecture and implementation inputs are
 ready. Perform no network or GitHub action.
 
-For the one bundled tradable profile, require a natural idea that independently names a Uniswap v4 hook, fees on
-executed gross quote volume and buy/sell rates immutable after registration. Preview this command without `--write`;
-never add missing intent merely to satisfy the profile. The portable release rejects `--write` because productive
-tradable materialization requires candidate dependency and test execution, and no trusted sandbox authority is bundled:
+The one bundled tradable profile is frozen legacy compatibility, not a current platform requirement. Require a natural
+idea that independently names a Uniswap v4 hook, fees on executed gross quote volume, buy/sell rates immutable after
+registration, policy `programmable-volume-fee-v2@2.0.0`, its inclusive 10 bps Programmable platform share, and claimant
+`0x4957f49620AFf3Adbbe8195a4f633E49cc93376c`. Preview this command without `--write`; never add or infer missing intent.
+The portable release rejects `--write` because productive tradable materialization requires candidate dependency and
+test execution, and no trusted sandbox authority is bundled:
 
 ```bash
 node "$SKILL_ROOT/scripts/cli.mjs" project materialize --idea-file "$IDEA_FILE" --application-id "$APPLICATION_ID" --classification tradable --market-ref "$MARKET_REF" --reference-profile programmable-volume-fee-v2 --output "$NEW_REPOSITORY"
@@ -35,9 +37,11 @@ graphs in `product-graph.v1.json`, the required three-role `architecture-candida
 `repository-plan.v1.json`. Process schemas through the project compiler; inspect only a failing section. Preserve
 unresolved facts and owner/external blockers instead of inventing them.
 
-Classify the ProjectSpec routing entry as `tradable`, `no-market`, or `unresolved`. Every selected tradable market gets
-one content-addressed `trade-capability.v1.json` and distinct quote/execution commands; `no-market` gets neither. An
-unresolved market blocks completion rather than inheriting a route.
+Classify the ProjectSpec routing entry as `tradable`, `no-market`, or `unresolved`. Every selected tradable market needs
+content-addressed, policy-neutral route and quote/execution evidence; `no-market` gets neither. The bundled
+`trade-capability.v1.json` carries the frozen Fee V2 projection and is emitted only by the exact intent-bound legacy
+profile. Other tradable materialization stays unresolved until a policy-neutral successor exists rather than inheriting
+that compatibility contract.
 
 Validate the hash-bound phase without executing its planned commands:
 
@@ -185,11 +189,12 @@ Never execute candidate hooks, filters, submodules, or build scripts during clos
 or verifier budgets to an exact split-review/tooling hold without rejecting the idea.
 
 After source freeze, derive source-assessed security and verification reports against the already-existing commit; do
-not create a Git self-reference. Rerun revision preparation and application generation after any source, closure,
-evidence, dependency, or recheck change. Read [github-application-v3.md](github-application-v3.md) only now. Do not write
-to GitHub without exact authority, and never treat a PR, merge, label, or Builder verdict as canonical acceptance.
-Without a public GitHub numeric repository id, URI, commit and tree, emit only a validated local transport plan marked
-`NOT_SUBMITTED`; do not call it a canonical Application V3.
+not create a Git self-reference. Current Applicant handoff uses only the protected top-level Submit Launch client and
+its exact central policy binding. Read [github-application-v3.md](github-application-v3.md) and rerun V3 generation only
+for an explicitly identified frozen Fee V2/Application V3 replay. Do not write to GitHub without exact authority, and
+never treat a PR, merge, label, or Builder verdict as canonical acceptance. Without a public GitHub numeric repository
+id, URI, commit, and tree, emit only a validated local transport plan marked `NOT_SUBMITTED`; never manufacture an
+Application V3 package for current work.
 
 ## 6. Run release-only E2E evidence
 

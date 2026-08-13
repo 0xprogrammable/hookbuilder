@@ -70,21 +70,22 @@ maker template.
 
 | Product idea | Likely composition |
 | --- | --- |
-| Ordinary token launch | fixed-supply token + standard Programmable fee hook + launch/custody modules |
-| Dynamic tax launch | custom-token starter + transfer-tax accumulator + standard or integrated pool fee hook |
+| Ordinary token launch | fixed-supply token + launch/custody modules |
+| Dynamic tax launch | custom-token starter + transfer-tax accumulator + optional integrated pool accounting selected by the product |
 | Auto-liquidity token | token accumulator + bounded swap/add-liquidity state machine + custody/exit module |
-| Three.js PvP rewards | browser game + authenticated outcome service + claim contract + canonical fee hook |
-| Maps quest | map/location client + evidence or attestation service + bounded claim contract + canonical fee hook |
-| Wallet transaction quest | chain-event indexer + anti-replay eligibility + bounded claim contract + canonical fee hook |
-| Yielding pool inventory | rehypothecation/ERC-4626 module + recall buffer + loss policy + canonical fee accounting |
-| Wrapped-asset pool | conversion base + rate/rounding and exit policy + canonical fee accounting |
+| Three.js PvP rewards | browser game + authenticated outcome service + claim contract |
+| Maps quest | map/location client + evidence or attestation service + bounded claim contract |
+| Wallet transaction quest | chain-event indexer + anti-replay eligibility + bounded claim contract |
+| Yielding pool inventory | rehypothecation/ERC-4626 module + recall buffer + loss policy + selected accounting model |
+| Wrapped-asset pool | conversion base + rate/rounding and exit policy + selected accounting model |
 | External-liquidity pool | adapter registry + exact protocol adapters + quote/execution parity + failure isolation |
 | Active liquidity market | custom accounting/curve + vault inventory + dedicated quoter + liveness and MEV controls |
 | Position automation | PositionManager client + subscriber/keeper + safe explicit liquidity actions + user exit |
 
 Apps, games, maps, services, tokens, hooks, and contracts are project surfaces, not mutually exclusive launch types.
 Compose the surfaces and capabilities needed by the idea. Templates accelerate repeated review questions; they never
-define everything that may be built.
+define everything that may be built. Add a Programmable-specific fee asset only when preserved intent or an applicable
+current central-policy Rule ID selects it; none of the examples above creates that requirement.
 
 ## Composition red flags
 

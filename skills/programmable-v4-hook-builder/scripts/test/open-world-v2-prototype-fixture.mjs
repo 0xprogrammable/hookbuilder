@@ -8,7 +8,7 @@ import {
   architectureSnapshotSha256,
   createLegacyFeeV2DraftPackage,
   sha256Bytes,
-  validateOpenWorldV2Package
+  validateLegacyFeeV2OpenWorldV2Package as validateOpenWorldV2Package
 } from "../open-world-v2-core.mjs";
 import { canonicalFeeConformanceReceiptBytesV1 } from "../fee-conformance-receipt-v1-core.mjs";
 import { canonicalJson } from "../submission-core.mjs";

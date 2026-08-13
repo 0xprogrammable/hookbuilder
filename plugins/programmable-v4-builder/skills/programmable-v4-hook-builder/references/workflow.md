@@ -20,10 +20,10 @@ platform-integration handoff. It does not accept, deploy, publish, list, or acti
 | Submit | The local package is complete | PR-ready handoff without opening or publishing it |
 | Handoff | A maintainer acceptance record binds an exact prototype | Product surface specification and independent gate ledger |
 
-Do not skip Explore or Preflight because the user asks for code immediately. During Explore, choose the smallest route:
-official Liquidity Launchpad components plus a project-specific implementation of the standard Programmable fee-hook
-profile when no other callback behavior is needed, or one custom hook that integrates both the fee policy and the confirmed mechanism. Exact source, tests, and maintainer review are required. A no-hook,
-router-only, LP-fee-only, or transfer-tax-only proposal remains open for architecture work but is not launch-ready.
+Do not skip Explore or Preflight because the user asks for code immediately. During Explore, choose the smallest route
+that preserves product intent and applicable current central-policy Rule IDs. Use a no-hook route when neither product
+intent nor an applicable Rule ID needs hook behavior; when a hook is selected, prefer one coherent standard-profile or
+custom implementation with exact source and tests. This local guide does not determine launch readiness.
 Do not enter Handoff because a PR was merged, tests passed, or a maintainer expressed interest. Require the exact
 acceptance record.
 
@@ -69,11 +69,13 @@ Design-card confirmation confirms product intent only.
 
 ```bash
 MODEL_ID="example-hook"
-node "$SKILL_ROOT/scripts/scaffold-submission.mjs" \
-  "$MODEL_ID" \
-  --repository-root "$REPOSITORY_ROOT" \
-  --name "<Model name>" \
-  --template-plan "$REPOSITORY_ROOT/path/to/programmable-template.json"
+node "$SKILL_ROOT/scripts/cli.mjs" project materialize \
+  --idea-file "$IDEA_FILE" \
+  --application-id "$MODEL_ID" \
+  --classification no-market \
+  --source-contract "$SOURCE_CONTRACT" \
+  --test-source "$TEST_SOURCE" \
+  --output "$NEW_REPOSITORY"
 
 node "$SKILL_ROOT/scripts/cli.mjs" check \
   "$REPOSITORY_ROOT/submissions/$MODEL_ID/submission.json" \
@@ -84,9 +86,8 @@ node "$SKILL_ROOT/scripts/cli.mjs" check \
 Use this repository-aware command for the complete preflight. Running `validate-submission.mjs` without a repository
 root checks only the structured document and cannot prove source, import, package, companion, or build closure.
 
-Omit `--template-plan` for explicit `manual`/`null` template provenance. When supplied, it must be the unchanged
-materialized `programmable-template.json`; the scaffold reconstructs it against the bundled catalog, preserves exact
-selected capability ids, and copies only owner-selected tags into public local discovery metadata.
+The old `scaffold` command and `submission.json` contract are frozen legacy V1 compatibility. They are not a current
+central-policy build path and reject current catalog plans. Use `project materialize` for current builds.
 Before any catalog-changing release, retain the prior hash-verified catalog definitions in an append-only snapshot
 registry so existing applications can be reconstructed automatically. Without that snapshot, a non-current digest is
 preserved as historical/unverified and routed to review rather than rejected or presented as current.
@@ -159,7 +160,8 @@ Keep model-owned source, tests, specifications, documents, and evidence isolated
 
 1. Interfaces and immutable configuration
 2. Permission declaration, callback authentication, and exact canonical PoolKey binding
-3. Mandatory Programmable fee accounting, immutable ownership, claims, and settlement
+3. Any fee accounting, ownership, claims, and settlement selected by preserved product intent or an applicable current
+   central-policy Rule ID
 4. External integrations and failure isolation
 5. Events and indexer reconstruction
 6. Launcher, custody, claims, and exits

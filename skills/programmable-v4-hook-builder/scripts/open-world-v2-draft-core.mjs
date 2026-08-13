@@ -17,7 +17,7 @@ import {
   bundledSchemas,
   slugPattern
 } from "./open-world-v2-contracts.mjs";
-import { validateOpenWorldV2Package } from "./open-world-v2-validation-core.mjs";
+import { validateLegacyFeeV2OpenWorldV2Package, validateOpenWorldV2Package } from "./open-world-v2-validation-core.mjs";
 import { canonicalJsonSha256V2 } from "./canonical-json-core.mjs";
 import { hashV4PoolKey, keccak256Hex } from "./evm-encoding-core.mjs";
 import { FEE_BEHAVIOR_ASSERTIONS_V1, canonicalFeeConformanceVectorSetBytesV1, createFeeConformanceVectorSetV1, createFeeMathVectorV1, feeConformanceVectorSetSha256V1, projectFeeConformanceVectorCoverageV1 } from "./fee-conformance-vector-set-v1-core.mjs";
@@ -288,7 +288,7 @@ function createDraftPackage({ applicationId, publicIdeaText, sourceRef = null } 
     securityAssessmentSchema: { value: bundledSchemas.securityAssessmentSchema, bytes: Buffer.from(securitySchemaFile.content, "utf8") },
     securityAssessment: { value: securityAssessment, bytes: Buffer.from(securityFile.content, "utf8") }
   };
-  const report = validateOpenWorldV2Package({
+  const report = (legacyFeeV2 ? validateLegacyFeeV2OpenWorldV2Package : validateOpenWorldV2Package)({
     submission,
     submissionBytes: Buffer.from(submissionFile.content, "utf8"),
     records,

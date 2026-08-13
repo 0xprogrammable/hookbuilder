@@ -1,8 +1,6 @@
 import {
   MAX_CUSTOM_LABEL_BYTES,
   MAX_CUSTOM_LABEL_CODE_POINTS,
-  PROGRAMMABLE_FEE_OWNER,
-  PROGRAMMABLE_PLATFORM_SHARE_BPS,
   assertExactKeys,
   assertId,
   assertLocalTag,
@@ -213,6 +211,9 @@ export function composeTemplate({
   for (const packId of [...selected]) visit(packId);
 
   const selectedPackIds = [...selected].sort(compareUtf8);
+  if (selectedPackIds.includes("programmable-volume-fee")) {
+    fail("FROZEN_LEGACY_FEE_V2_PROFILE_REQUIRED", "The generic template catalog cannot select branded Fee V2 platform economics. Use the exact intent-bound frozen legacy project profile for replay or migration; generic project fee behavior remains available as a custom capability.", { starterId, policyId: "programmable-volume-fee-v2", policyVersion: "2.0.0", eligibilityEffect: "none", automaticAdverseDecision: false });
+  }
   requireExactChainlinkProduct({ selectedPackIds, requestedCapabilityIds });
   if (["ordinary-launch", "custom-token-standard-fee-hook"].includes(starter.id) && selected.has("custom-hook-behavior")) {
     fail(
@@ -350,9 +351,6 @@ export function composeTemplate({
     packs: selectedPackIds.map((id) => structuredClone(catalog.byId.get(id))),
     ...(directCapabilityLegos === null ? {} : { directCapabilityLegos }),
     implementationLegos,
-    ...(selectedPackIds.includes("programmable-volume-fee") ? {
-      feePolicy: buildImplementationFeePolicy()
-    } : {}),
     customCapabilities: normalizedCustomCapabilities,
     machineCapabilities: {
       semantics: "internal-planning-and-review-only",
@@ -666,20 +664,6 @@ export function buildImplementationLegoSelection({
       "programmable.implementation-lego-selection.v1",
       canonicalJson(preimage)
     )
-  };
-}
-
-export function buildImplementationFeePolicy() {
-  return {
-    schemaVersion: "1.0.0",
-    kind: "legacy-fee-v2-implementation-contract",
-    platformFeeOwner: PROGRAMMABLE_FEE_OWNER,
-    platformShareBps: PROGRAMMABLE_PLATFORM_SHARE_BPS,
-    effectiveTotalFeeFloorBps: PROGRAMMABLE_PLATFORM_SHARE_BPS,
-    selectedTotalFeeZeroOutcome: "effective-total-fee-is-10-bps-for-each-applicable-canonical-scope",
-    canonicalScopeStatus: "declaration-required",
-    feeConformanceStatus: "unresolved-until-scope-specific-code-and-tests",
-    maturityConfersFeeConformance: false
   };
 }
 

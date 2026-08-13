@@ -3,7 +3,7 @@
   "kind": "programmable-starter-catalog",
   "implementationLegos": {
     "path": "implementation-legos/manifest.json",
-    "sha256": "5e046fcabe3d91408fe4a7f562a0a599d5ad352798aa8249cf357fd49f4fbea7"
+    "sha256": "28f63a0cfecaea957ba68fa77455aa9144e374c80092bae950dffc12580da5b4"
   },
   "policy": {
     "selectionSemantics": "accelerator-only",
@@ -122,7 +122,7 @@
       "id": "custom-token-standard-fee-hook",
       "kind": "starter",
       "path": "starters/custom-token-standard-fee-hook.json",
-      "sha256": "c1c21cf0ee826529a6a6a277b3ba5aeafab2ec469fbe1fe387bf482b56c4ab1b"
+      "sha256": "1f31359d1edd4039c643c01135cf38ab62c8c6853286678b7a3d711a609d4e5b"
     },
     {
       "id": "dynamic-lp-fee",

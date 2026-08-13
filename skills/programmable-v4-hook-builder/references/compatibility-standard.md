@@ -2,6 +2,10 @@
 
 Version: `1.6.0`
 
+> Frozen historical V1.6 compatibility contract. Load only for exact legacy replay. Its platform fee, chain,
+> prototype, and launch rules are not current admission authority; current requirements come only from applicable Rule
+> IDs in exact protected Submit Launch policy bytes.
+
 This standard defines the information and structural checks required before a Programmable prototype begins. It does
 not approve a model, certify security or predict support from Uniswap routing or third-party indexers.
 

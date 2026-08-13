@@ -61,6 +61,22 @@ test("committed contract registry exactly matches its source, schemas, and valid
     committed.contracts.find(({ contractId }) => contractId === "launch-admission-decision-v1")?.lifecycle,
     "frozen"
   );
+  const lifecycleByContract = new Map(committed.contracts.map(({ contractId, lifecycle }) => [contractId, lifecycle]));
+  for (const contractId of [
+    "fee-policy-v2",
+    "launch-bundle-input-v1",
+    "launch-bundle-input-v2",
+    "launch-bundle-output-v1",
+    "launch-bundle-output-v2",
+    "programmable-trade-execution-v1",
+    "public-pr-application-v2",
+    "public-pr-application-v3",
+    "submission-v1-6",
+    "trade-capability-manifest-v1"
+  ]) assert.equal(lifecycleByContract.get(contractId), "frozen", contractId);
+  for (const contractId of ["application-api-v1", "submission-v2"]) {
+    assert.equal(lifecycleByContract.get(contractId), "active", contractId);
+  }
 });
 
 test("every registry binding matches exact file bytes and a callable module export", async () => {

@@ -25,6 +25,8 @@ import {
   createOpenWorldDraftPackage,
   deriveOpenWorldV2FeeApplicability,
   isRepositorySchemaBinding,
+  validateLegacyFeeV2OpenWorldPackage,
+  validateLegacyFeeV2OpenWorldV2Package,
   validateOpenWorldPackage,
   validateOpenWorldV2Package
 } from "./open-world-v2-core.mjs";
@@ -93,6 +95,8 @@ export {
   createOpenWorldDraftPackage,
   deriveOpenWorldV2FeeApplicability,
   isRepositorySchemaBinding,
+  validateLegacyFeeV2OpenWorldPackage,
+  validateLegacyFeeV2OpenWorldV2Package,
   validateOpenWorldPackage,
   validateOpenWorldV2Package,
   deriveDependencyAwareSecurityAssessment,

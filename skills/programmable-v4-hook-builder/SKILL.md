@@ -48,7 +48,10 @@ clean source-bound materializing plan; it never imports or executes candidate co
 node "$SKILL_ROOT/scripts/cli.mjs" project materialize --idea-file "$IDEA_FILE" --application-id "$APPLICATION_ID" --classification no-market --source-contract "$SOURCE_CONTRACT" --test-source "$TEST_SOURCE" --output "$NEW_REPOSITORY"
 ```
 
-Use the closed tradable profile only when the natural idea itself requests a Uniswap v4 hook, buy/sell rates immutable after registration and fees on executed gross quote volume; never add intent. Only dry-run it: productive tradable `--write` fails closed before output because it would require candidate execution.
+`programmable-volume-fee-v2` is frozen legacy compatibility. Use it only when exact natural intent names the v4 hook,
+gross-quote-volume fees, immutable registered rates, policy `programmable-volume-fee-v2@2.0.0`, its inclusive 10 bps
+Programmable share, and claimant `0x4957f49620AFf3Adbbe8195a4f633E49cc93376c`. Never infer or add them. Dry-run only;
+tradable `--write` fails before candidate execution.
 
 ```bash
 node "$SKILL_ROOT/scripts/cli.mjs" project materialize --idea-file "$IDEA_FILE" --application-id "$APPLICATION_ID" --classification tradable --market-ref "$MARKET_REF" --reference-profile programmable-volume-fee-v2 --output "$NEW_REPOSITORY"
@@ -73,10 +76,10 @@ Only `PROJECT_PREFLIGHT_VALID` for those exact bytes completes Autopilot. `CLEAR
   derived hashes, checkpoints, inventories or applicability projections.
 - For v4 start with all 14 permissions disabled. Prove PoolManager identity, isolation, hookData, deltas, settlement,
   router parity and deploy preimage. Default-disable `beforeSwapReturnDelta`; if used, prove backing, bounds, NoOp and adversarial behavior.
-- Classify trade capability as `tradable`, `no-market`, or `unresolved`. For canonical v4 classify all four
-  direction/exactness quadrants. Prove supported and pre-effects rejection for unsupported ones. Emit no route for
-  `no-market`; per market bind PoolKey, router/quoter, Permit2, hookData, limits, fees and tests in a schema-valid
-  `NOT_APPROVED` manifest.
+- Classify trade as `tradable`, `no-market`, or `unresolved`; for canonical v4 cover all four direction/exactness
+  quadrants and prove support or pre-effects rejection. No-market emits no route. Bind PoolKey, router/quoter, Permit2,
+  hookData, limits, generic fees and tests. Bundled V1 is frozen Fee V2 compatibility for the exact intent-bound legacy
+  profile only; all other tradable materialization stays unresolved until a policy-neutral successor exists.
 - Escalate novel, value-bearing or ambiguous slices. Mark unavailable provider gates `EXTERNAL_BLOCKED`.
 - For Programmable admission, resolve the exact protected Submit Launch policy and schema bytes. Local approval,
   alignment, fee, template, and security prose is engineering guidance only and cannot add a launch requirement.

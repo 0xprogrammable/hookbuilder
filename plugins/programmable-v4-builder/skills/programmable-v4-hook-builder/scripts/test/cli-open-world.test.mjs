@@ -59,6 +59,7 @@ test("host-neutral CLI exposes open-world, V2 launch checking, and historical ap
   assert.match(openWorldHelp.stdout, /submit\/update write only after exact digest confirmation/u);
   assert.match(openWorldHelp.stdout, /^  init\b/mu);
   assert.match(openWorldHelp.stdout, /^  validate\b/mu);
+  assert.match(openWorldHelp.stdout, /^  validate-legacy-fee-v2\b/mu);
   assert.match(openWorldHelp.stdout, /^  validate-application\b/mu);
   assert.match(openWorldHelp.stdout, /^  migrate\b/mu);
   assert.match(openWorldHelp.stdout, /^  source-manifest\b/mu);
@@ -74,7 +75,7 @@ test("host-neutral CLI exposes open-world, V2 launch checking, and historical ap
   assert.doesNotMatch(initHelp.stdout, /--idea(?: | <|$)/u);
   assert.match(initHelp.stdout, /preview by default/u);
   assert.match(initHelp.stdout, /unconfirmed proposal/u);
-  assert.match(initHelp.stdout, /scoped fee instance comes only after architecture/u);
+  assert.match(initHelp.stdout, /legacy fee package requires explicit preserved intent or an applicable current central Rule ID/u);
 
   const migrateHelp = run(["open-world", "migrate", "--help"]);
   assert.equal(migrateHelp.status, 0, migrateHelp.stderr);
@@ -540,9 +541,19 @@ test("migration is a hash-only dry-run by default and writes one new package onl
   assert.deepEqual(fs.readdirSync(absoluteOutput).sort(), expectedMigrationFiles);
   const beforeRefusal = snapshotDirectory(absoluteOutput);
 
-  const validated = run([
+  const currentRejected = run([
     "open-world",
     "validate",
+    output,
+    "--repository-root",
+    fixture.repository
+  ], fixture.repository);
+  assert.notEqual(currentRejected.status, 0, currentRejected.stdout || currentRejected.stderr);
+  assert.equal(JSON.parse(currentRejected.stdout).error.code, "OPEN_WORLD_PACKAGE_INVALID");
+
+  const validated = run([
+    "open-world",
+    "validate-legacy-fee-v2",
     output,
     "--repository-root",
     fixture.repository

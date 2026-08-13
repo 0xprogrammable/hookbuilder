@@ -77,8 +77,9 @@ activated by the real architecture.
 - Where ERC-6909 claims exist, holder, all-id operator, and per-id allowance are explicit claim-disposal capabilities.
   A delegated `burn(from, ...)` consumes `from`'s claim but credits the external caller's PoolManager delta; authority,
   revocation, liability ownership, and redemption must match that consequence.
-- Where an applicable fee scope exists, only `0x4957f49620AFf3Adbbe8195a4f633E49cc93376c` can claim its Programmable
-  liability to itself or a per-claim destination; builder, project, admin, rescue, sweep and stored-recipient paths fail.
+- Where preserved intent or an applicable current central Rule ID explicitly selects frozen Fee V2 and that package
+  derives an applicable scope, only `0x4957f49620AFf3Adbbe8195a4f633E49cc93376c` can claim its Programmable liability
+  to itself or a per-claim destination; builder, project, admin, rescue, sweep and stored-recipient paths fail.
 
 ### Accounting
 

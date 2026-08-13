@@ -25,9 +25,18 @@
     },
     {
       "id": "candidate-application-v3-transport",
-      "reason": "Retained only for exact candidate Application V3 work; it must never route a public Applicant away from Submit a Launch.",
+      "reason": "Retained only for exact frozen legacy Application V3/Fee V2 replay; it is not current admission and must never route a public Applicant away from Submit a Launch.",
       "references": [
-        "github-application-v3.md"
+        "github-application-v3.md",
+        "public-pr-application-v3.schema.json"
+      ]
+    },
+    {
+      "id": "legacy-fee-v2-launch-bundle",
+      "reason": "Load only to replay the frozen Fee V2 launch-bundle contract after an exact legacy acceptance record; it is not a current Submit or Handoff route and cannot create a current platform rule.",
+      "references": [
+        "launch-bundle-input-v2.schema.json",
+        "launch-bundle-output-v2.schema.json"
       ]
     }
   ],
@@ -338,10 +347,6 @@
           "trigger": "Load when exact public GitHub source resolution fails or needs manual diagnosis."
         },
         {
-          "reference": "public-pr-application-v3.schema.json",
-          "trigger": "Load only the failing section when creating or repairing application.v3.json."
-        },
-        {
           "reference": "source-closure-manifest-v1.schema.json",
           "trigger": "Load only when a large or multi-repository source closure must be represented or diagnosed."
         },
@@ -377,14 +382,6 @@
         {
           "reference": "agent-entry-and-application.md",
           "trigger": "Load when emitting or diagnosing the exact Submit a Launch Applicant review handoff."
-        },
-        {
-          "reference": "launch-bundle-input-v2.schema.json",
-          "trigger": "Load only after canonical Registry acceptance when preparing the exact offline launch-authorization candidate inputs."
-        },
-        {
-          "reference": "launch-bundle-output-v2.schema.json",
-          "trigger": "Load when validating or consuming the exact unsigned Builder launch-bundle candidate output."
         },
         {
           "reference": "approval-criteria.md",

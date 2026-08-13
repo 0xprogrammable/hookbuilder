@@ -21,8 +21,8 @@ import {
   sha256Bytes,
   sha256Utf8,
   utf8ByteLength,
-  validateOpenWorldPackage,
-  validateOpenWorldV2Package
+  validateLegacyFeeV2OpenWorldPackage as validateOpenWorldPackage,
+  validateLegacyFeeV2OpenWorldV2Package as validateOpenWorldV2Package
 } from "../open-world-v2-core.mjs";
 import { canonicalFeeConformanceReceiptBytesV1 } from "../fee-conformance-receipt-v1-core.mjs";
 import { createFeeConformanceFixtureV1 } from "./fee-conformance-v1-fixture.mjs";

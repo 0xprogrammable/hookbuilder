@@ -2,8 +2,8 @@
   "schemaVersion": "1.0.0",
   "kind": "programmable-implementation-lego",
   "id": "async-batch-fee-adapter",
-  "label": "Async and batch fee adapter",
-  "summary": "Scope-cumulative fee-liability accounting with fill replay protection across asynchronous batches whose settlement is designed separately.",
+  "label": "Frozen legacy async and batch Fee V2 adapter",
+  "summary": "Archived Fee V2 reference code with branded platform economics. It has no current catalog trigger and cannot be materialized by a generic capability or pack.",
   "maturity": "experimental",
   "maturityMeaning": "Hash-bound reference scaffold only; project-specific implementation and evidence are required before prototype readiness.",
   "feeApplicability": "canonical-scope-conformance-unresolved",
@@ -13,14 +13,8 @@
   "reviewRoute": "architecture-review-required",
   "activatesFor": {
     "starterIds": [],
-    "packIds": [
-      "async-swap",
-      "continuous-clearing-auction"
-    ],
-    "capabilityIds": [
-      "async-swap",
-      "continuous-clearing-auction"
-    ]
+    "packIds": [],
+    "capabilityIds": []
   },
   "requiresLegos": [],
   "projectSurfaces": [

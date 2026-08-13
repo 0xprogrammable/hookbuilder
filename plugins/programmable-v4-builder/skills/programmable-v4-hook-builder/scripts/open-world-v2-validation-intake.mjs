@@ -162,6 +162,8 @@ export function validateOpenWorldV2Intake(context) {
     securityAssessmentSchema: OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.securityAssessmentSchema
   };
   const legacyFeeSelected = submission.programmableFee !== undefined;
+  const legacyCompatibilityProfile = context.validationProfile === "frozen-legacy-fee-v2";
+  if (legacyFeeSelected && !legacyCompatibilityProfile) add("blocker", "FROZEN_LEGACY_FEE_V2_ENTRYPOINT_REQUIRED", "$.programmableFee", "The current central-policy consumer never treats a caller-authored programmableFee field as selection proof. Frozen Fee V2 replay or migration requires the explicitly named legacy validator entrypoint.");
   if (legacyFeeSelected) {
     supportingSpecs.feePolicySchema = OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.feePolicySchema;
     if (submission.supportingPackage?.feePolicy !== null && submission.supportingPackage?.feePolicy !== undefined) supportingSpecs.feePolicy = OPEN_WORLD_V2_OPTIONAL_SUPPORTING_ARTIFACTS.feePolicy;
@@ -263,6 +265,7 @@ export function validateOpenWorldV2Intake(context) {
   const declaredTradeCapabilityMarkets = Array.isArray(submission.tradeCapability?.markets)
     ? submission.tradeCapability.markets
     : [];
+  if (!legacyCompatibilityProfile && declaredTradeCapabilityMarkets.some(({ manifest }) => manifest?.schemaId === OPEN_WORLD_V2_TRADE_CAPABILITY_ARTIFACT.schemaId)) add("blocker", "FROZEN_LEGACY_TRADE_MANIFEST_ENTRYPOINT_REQUIRED", "$.tradeCapability.markets", "Trade-capability manifest v1 carries a branded Fee V2 projection and is accepted only by the explicitly named frozen legacy validator. Current generic fee behavior remains project intent and must use a policy-neutral evidence contract.");
   const suppliedTradeCapabilityRecords = supportingRecords.tradeCapabilities === undefined
     ? []
     : Array.isArray(supportingRecords.tradeCapabilities)

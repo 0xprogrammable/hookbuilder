@@ -1,6 +1,5 @@
 import {
   buildDirectCapabilityLegos,
-  buildImplementationFeePolicy,
   buildImplementationLegoSelection
 } from "./template-catalog-composition.mjs";
 import {
@@ -81,32 +80,23 @@ export function validateRenderableImplementationLegos(plan, catalog) {
     fail("IMPLEMENTATION_LEGO_SELECTION_INVALID", "Implementation Lego selection, source receipts or digest are stale or tampered.");
   }
   const legacyFeeV2Selected = plan?.selection?.selectedPackIds?.includes("programmable-volume-fee") === true;
-  if (legacyFeeV2Selected && canonicalJson(plan.feePolicy) !== canonicalJson(buildImplementationFeePolicy())) {
-    fail("IMPLEMENTATION_LEGO_FEE_POLICY_INVALID", "An explicitly selected frozen Fee V2 implementation contract is missing or has been weakened.");
+  if (legacyFeeV2Selected) {
+    fail("FROZEN_LEGACY_FEE_V2_PROFILE_REQUIRED", "The generic template renderer cannot materialize branded Fee V2 platform economics. Use the exact intent-bound frozen legacy project profile for replay or migration.");
   }
-  if (!legacyFeeV2Selected && plan.feePolicy !== undefined) {
+  if (plan.feePolicy !== undefined) {
     fail("IMPLEMENTATION_LEGO_FEE_POLICY_UNSELECTED", "A local Fee V2 implementation contract cannot be materialized without explicit pack selection.");
   }
 }
 
 export function renderImplementationLegos(plan) {
+  if (plan?.feePolicy !== undefined || plan?.selection?.selectedPackIds?.includes("programmable-volume-fee") === true) {
+    fail("FROZEN_LEGACY_FEE_V2_PROFILE_REQUIRED", "The generic template renderer cannot materialize branded Fee V2 platform economics. Use the exact intent-bound frozen legacy project profile for replay or migration.");
+  }
   return lines([
     "# Implementation Legos",
     "",
     "> These hash-bound files are composable accelerators, not an allowlist, audit, deployment receipt, production-readiness claim or provider promise.",
     "",
-    ...(plan.feePolicy === undefined ? [] : [
-      "## Explicit legacy Fee V2 implementation contract",
-      "",
-      "> This optional implementation asset was selected by preserved project intent. It is not a current launch requirement or local admission rule.",
-      "",
-      `- Immutable legacy platform fee owner: \`${plan.feePolicy.platformFeeOwner}\``,
-      `- Legacy platform share for each explicitly selected Fee V2 execution scope: \`${plan.feePolicy.platformShareBps} bps\``,
-      `- Legacy effective total-fee floor: \`${plan.feePolicy.effectiveTotalFeeFloorBps} bps\``,
-      `- Current implementation conformance state: \`${plan.feePolicy.feeConformanceStatus}\``,
-      "- Standard-AMM, zero-AMM, async/batched and custom-reviewed settlement profiles each need their exact gross-volume basis, collection, custody and claim evidence when this legacy implementation is selected.",
-      ""
-    ]),
     "## Selected reusable source",
     "",
     ...(plan.implementationLegos.entries.length === 0

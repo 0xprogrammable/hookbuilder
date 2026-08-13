@@ -91,8 +91,8 @@ test("source verification partitions every portable test exactly once with bound
     .filter((name) => name.endsWith(".test.mjs"))
     .sort();
   const batches = createDeterministicTestBatches(testFiles);
-  assert.equal(testFiles.length, 81);
-  assert.deepEqual(batches.map((batch) => batch.length), [41, 40]);
+  assert.equal(testFiles.length, 83);
+  assert.deepEqual(batches.map((batch) => batch.length), [42, 41]);
   assert.deepEqual(batches[0], testFiles.filter((_, index) => index % 2 === 0));
   assert.deepEqual(batches[1], testFiles.filter((_, index) => index % 2 === 1));
   assert.deepEqual([...batches.flat()].sort(), testFiles);
@@ -450,7 +450,7 @@ test("portable verifier declares every direct test exactly once", () => {
     .sort()
     .map((name) => `scripts/test/${name}`);
 
-  assert.equal(portableTestPaths.length, 81);
+  assert.equal(portableTestPaths.length, 83);
   assert.equal(new Set(portableTestPaths).size, portableTestPaths.length);
   assert.deepEqual([...portableTestPaths].sort(), discovered);
 });
@@ -462,9 +462,9 @@ test("portable verifier deletion-guards its exact required inventory in one boun
     .update(`${requiredPaths.join("\n")}\n`)
     .digest("hex");
 
-  assert.equal(requiredPaths.length, 397);
+  assert.equal(requiredPaths.length, 398);
   assert.equal(new Set(requiredPaths).size, requiredPaths.length);
-  assert.equal(inventorySha256, "67d2ca5f31e3858a84ee8a97056958f6c614114b4f5d89ae83ee04d0c2c917af");
+  assert.equal(inventorySha256, "6ad44840c345da70ef837a44b90ecc8b9b484048ea210d8a1ac2f5067403353f");
   for (const requiredPath of requiredPaths) {
     const entry = fs.lstatSync(path.join(skillRoot, requiredPath));
     assert.ok(entry.isFile(), `${requiredPath} must be a regular file`);

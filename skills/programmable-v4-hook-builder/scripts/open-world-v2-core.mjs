@@ -16,4 +16,4 @@ export {
   architectureSnapshot, architectureSnapshotSha256
 } from "./open-world-v2-contracts.mjs";
 export { createLegacyFeeV2DraftPackage, createOpenWorldDraftPackage } from "./open-world-v2-draft-core.mjs";
-export { validateOpenWorldPackage, validateOpenWorldV2Package } from "./open-world-v2-validation-core.mjs";
+export { validateLegacyFeeV2OpenWorldPackage, validateLegacyFeeV2OpenWorldV2Package, validateOpenWorldPackage, validateOpenWorldV2Package } from "./open-world-v2-validation-core.mjs";

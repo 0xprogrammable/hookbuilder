@@ -1632,8 +1632,8 @@ test("policy drift after package construction blocks before local materializatio
   const outputParent = path.join(outputRoot, "submissions");
   const outputDirectory = path.join(outputParent, "ready-model");
   fs.mkdirSync(outputParent);
-  let checks = 0;
   let writes = 0;
+  fixture.centralRefCommits = [centralBaseCommit, centralBaseCommit, "f".repeat(40)];
   try {
     await rejectsCode(
       () => preparePullRequest({
@@ -1642,21 +1642,14 @@ test("policy drift after package construction blocks before local materializatio
         outputDirectory,
         fetchImplementation: publicFetch(fixture),
         sleepImplementation: async () => {},
-        centralBaseStabilityChecker: async () => {
-          checks += 1;
-          if (checks === 2) {
-            throw new CliFailure("POLICY_DRIFT", "protected policy changed after package construction");
-          }
-          return true;
-        },
         outputMaterializer: async () => {
           writes += 1;
           throw new Error("must not materialize after policy drift");
         }
       }),
-      "POLICY_DRIFT"
+      "CENTRAL_BASE_MOVED"
     );
-    assert.equal(checks, 2);
+    assert.equal(fixture.centralRefReads, 3);
     assert.equal(writes, 0);
     assert.equal(fs.existsSync(outputDirectory), false);
     assert.deepEqual(fs.readdirSync(outputParent), []);
@@ -1668,19 +1661,45 @@ test("policy drift after package construction blocks before local materializatio
 
 test("prepare-pr rejects a worktree mutation during the final central-base check", async () => {
   const fixture = createReadyRepository();
+  let centralRefReads = 0;
+  const fetchImplementation = async (url) => {
+    if (url === `${API_ORIGIN}/repos/0xprogrammable/submit-launch/git/ref/heads/main`) {
+      centralRefReads += 1;
+      if (centralRefReads === 2) fs.appendFileSync(path.join(fixture.packageRoot, "PROPOSAL.md"), "mutated during central check\n");
+    }
+    return githubResponse(fixture, url);
+  };
   try {
     await rejectsCode(
       () => preparePullRequest({
         repositoryRoot: fixture.repository,
         packageInput: fixture.packageRoot,
-        fetchImplementation: publicFetch(fixture),
-        sleepImplementation: async () => {},
-        centralBaseStabilityChecker: async () => {
-          fs.appendFileSync(path.join(fixture.packageRoot, "PROPOSAL.md"), "mutated during central check\n");
-        }
+        fetchImplementation,
+        sleepImplementation: async () => {}
       }),
       "GIT_STATE_CHANGED"
     );
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("prepare-pr ignores caller attempts to replace protected central policy authority", async () => {
+  const fixture = createReadyRepository();
+  let maliciousResolverCalls = 0;
+  let maliciousCheckerCalls = 0;
+  try {
+    const result = await preparePullRequest({
+      repositoryRoot: fixture.repository,
+      packageInput: fixture.packageRoot,
+      fetchImplementation: publicFetch(fixture),
+      sleepImplementation: async () => {},
+      centralBaseResolver: async () => { maliciousResolverCalls += 1; throw new Error("caller resolver must be ignored"); },
+      centralBaseStabilityChecker: async () => { maliciousCheckerCalls += 1; return true; }
+    });
+    assert.equal(result.centralPullRequestTarget.baseCommit, centralBaseCommit);
+    assert.equal(maliciousResolverCalls, 0);
+    assert.equal(maliciousCheckerCalls, 0);
   } finally {
     fixture.cleanup();
   }

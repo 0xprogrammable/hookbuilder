@@ -36,16 +36,17 @@ later in this file are inactive future designs.
 ## Product boundary
 
 Programmable does not provide a separate chat interface. The builder uses Codex, Claude Code, Hermes, GitHub Copilot,
-or another capable coding agent. The Programmable skill supplies the workflow, rules, schemas, validators, and current
-platform context that the agent needs.
+or another capable coding agent. The skill supplies the workflow, universal engineering knowledge, local build schemas,
+validators, and a strict client for exact protected central-policy bytes.
 
 The skill is the technical engine. In the current beta, the website may provide discovery and installation entry
 points, while GitHub hosts the public source and application review thread. A later Connected Submission service may
 add human identity binding, service-backed application status, review results, and an approved launch handoff.
 
-The skill must make the declared project reviewable, whether it uses a launch-ready fee hook, a proposal-only no-hook path,
-or additional app, game, service, keeper, or indexer surfaces. It must never promise that generated code is perfect,
-safe, audited, accepted, deployed, or available.
+The skill must make the declared project reviewable whether it uses a product-selected hook, a no-hook path, or
+additional app, game, service, keeper, or indexer surfaces. Only applicable current central-policy Rule IDs determine
+Programmable requirements. The skill must never promise that generated code is perfect, safe, audited, accepted,
+deployed, or available.
 
 ## Current Public Applicant Beta
 
@@ -134,24 +135,26 @@ Keep stable and mutable knowledge separate.
 The installed package owns:
 
 - The idea, preflight, prototype, repair, review, and submission workflow
-- Programmable compatibility and security policy
-- Uniswap v4 implementation and evidence requirements
-- Submission schemas and templates
+- Universal Uniswap v4 and EVM implementation/security knowledge
+- Local build schemas and templates that are not Programmable admission authority
 - Deterministic validators and package hashing
-- Required tests, threat model, value-flow, routing, and lifecycle evidence
+- Engineering tests, threat-model, value-flow, routing, and lifecycle guidance
 - Human authorization boundaries
 - Application and release-state semantics
 
+The installed package does not own mutable Programmable launch requirements. Exact protected Submit Launch policy and
+schema bytes own applicable Rule IDs, evidence, severity, outcomes, and any platform-specific fee requirement.
+
 ### Platform-owned current knowledge
 
-A versioned, machine-readable Programmable manifest owns:
+A versioned, machine-readable Programmable manifest may own mutable discovery and deployment facts such as:
 
 - Canonical website, documentation, GitHub, security contact, and X URLs
 - Supported chain ids and official deployment sources
 - Current token, factory, launcher, hook, router, and registry addresses
 - Current launch models and their availability states
-- Current disclosed platform fee policy and immutable application limits
-- Current policy version, schema version, minimum supported skill version, and manifest expiry
+- Current policy locator/version metadata, minimum supported skill version, and manifest expiry; the protected central
+  policy bytes, not this manifest or local prose, own rule meaning
 - Application, claim, status, and launch-handoff endpoint versions after the Connected Submission service is activated
 
 The agent must not rely on an installed snapshot when a current manifest is required. Validate the manifest origin,

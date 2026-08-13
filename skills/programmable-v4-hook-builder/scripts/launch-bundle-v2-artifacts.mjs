@@ -6,7 +6,7 @@ import {
   FEE_POLICY_V2_VERSION,
   validateFeePolicyV2
 } from "./fee-policy-v2-core.mjs";
-import { deriveOpenWorldV2FeeApplicability, validateOpenWorldV2Package } from "./open-world-v2-core.mjs";
+import { deriveOpenWorldV2FeeApplicability, validateLegacyFeeV2OpenWorldV2Package } from "./open-world-v2-core.mjs";
 import { TRADE_CAPABILITY_MANIFEST_V1_SCHEMA_ID } from "./trade-capability-manifest-core.mjs";
 import { validatePublicPrApplicationV3, verifyBoundSourceClosureManifestV1 } from "./public-pr-application-v3-core.mjs";
 import {
@@ -380,7 +380,7 @@ export function analyzeAuthoritativeContracts({
     submissionRecord?.sourceRef ?? null,
     artifactState.evidenceIndex
   );
-  const openWorldReport = validateOpenWorldV2Package({
+  const openWorldReport = validateLegacyFeeV2OpenWorldV2Package({
     submission,
     submissionBytes: submissionRecord?.content === null || submissionRecord?.content === undefined
       ? undefined

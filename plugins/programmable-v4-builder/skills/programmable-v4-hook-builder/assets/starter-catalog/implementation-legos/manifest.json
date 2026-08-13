@@ -11,7 +11,7 @@
     {
       "id": "async-batch-fee-adapter",
       "path": "definitions/async-batch-fee-adapter.json",
-      "sha256": "c07f1750562f1b7c1f354e1089b54c268ff241f912612820015b38b6159c6e4d"
+      "sha256": "dec3453887811ed640dedea50b67592df166750fc0479f9bbbbf2c93b6c3890f"
     },
     {
       "id": "contract-custom-curve",
@@ -61,7 +61,7 @@
     {
       "id": "zero-amm-fee-adapter",
       "path": "definitions/zero-amm-fee-adapter.json",
-      "sha256": "625d6d10b33c234744a2bc01981ff82bf1163bb4d1d467dcb50e8803e8b2e8f4"
+      "sha256": "e680fd6c95572fdbc14bb6990c3884b117bc40ef119ea43f03a85ab3cdb7d11c"
     }
   ]
 }

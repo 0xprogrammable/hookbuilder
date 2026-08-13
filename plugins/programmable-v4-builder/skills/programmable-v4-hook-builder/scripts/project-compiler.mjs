@@ -64,7 +64,7 @@ const cli = parseCliOrExit({
     { name: "--application-id", key: "applicationId", type: "value", valueName: "slug", description: "Application identity for materialize." },
     { name: "--classification", key: "classification", type: "value", valueName: "no-market|tradable", description: "Explicit trade classification for materialize." },
     { name: "--market-ref", key: "marketRef", type: "value", valueName: "slug", description: "Exact selected market identity for tradable materialize." },
-    { name: "--reference-profile", key: "referenceProfile", type: "value", valueName: "profile-id", description: "Exact bundled profile requested by tradable materialize." },
+    { name: "--reference-profile", key: "referenceProfile", type: "value", valueName: "profile-id", description: "Exact frozen legacy compatibility profile requested by preserved tradable intent." },
     { name: "--source-contract", key: "sourceContract", type: "value", valueName: "mjs-file", description: "Idea-specific local source module for materialize." },
     { name: "--test-source", key: "testSource", type: "value", valueName: "test-mjs-file", description: "Real node:test source for materialize." },
     { name: "--output", key: "output", type: "value", valueName: "new-directory", description: "New repository directory for materialize." },

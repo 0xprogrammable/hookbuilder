@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-// Reviewed v0.6.0 growth: central-policy consumer, focused test/support, and three non-normative parity snapshots.
+// Reviewed v0.7.0 growth: central-policy consumer, focused test/support, and three non-normative parity snapshots.
 export const MAX_PORTABLE_FILES = 670;
 
 export function createPortableFilesystem(skillRoot) {

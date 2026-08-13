@@ -13,7 +13,7 @@ import { PROJECT_COMMAND_MAXIMUM_OUTPUT_BYTES, PROJECT_TRADE_COMMAND_MAXIMUM_OUT
   createProjectCommandReceipt, executeProjectCommands, projectCommandEnvironmentSha256,
   projectCommandMaximumOutputBytes, resolveProjectCommandCwd, resolveProjectCommandTool, sha256Bytes } from "../project-command-executor-core.mjs";
 import { compileProjectBundle, preflightProjectOutput, validateProjectOutput } from "../project-compiler-core.mjs";
-import { TRADABLE_REFERENCE_PROFILE_ID, bindTradableReferenceIntent } from "../project-tradable-authoring-core.mjs";
+import { TRADABLE_LEGACY_POLICY_INTENT_CLAUSE, TRADABLE_REFERENCE_PROFILE_ID, bindTradableReferenceIntent } from "../project-tradable-authoring-core.mjs";
 import {
   ARCHITECTURE_ROLES,
   PRODUCT_GRAPH_NAMES,
@@ -54,7 +54,7 @@ export {
   createProjectCommandReceipt, executeProjectCommands, projectCommandEnvironmentSha256,
   projectCommandMaximumOutputBytes, sha256Bytes,
   compileProjectBundle, preflightProjectOutput, validateProjectOutput,
-  TRADABLE_REFERENCE_PROFILE_ID, bindTradableReferenceIntent,
+  TRADABLE_LEGACY_POLICY_INTENT_CLAUSE, TRADABLE_REFERENCE_PROFILE_ID, bindTradableReferenceIntent,
   ARCHITECTURE_ROLES, PRODUCT_GRAPH_NAMES, PROJECT_SPEC_FACETS, projectArtifactSha256,
   validateArchitectureCandidates, validateProductGraph, validateProjectSpec,
   bindLocalReleaseHandoffV1, createNoMarketProjectAuthoring, renderGitHubSubmissionHandoffV1,

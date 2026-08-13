@@ -1,7 +1,8 @@
-# V1 output specification
+# Frozen V1 output specification
 
-This is the released six-file `prepare-pr` output contract. New public review drafts use
-`0xprogrammable/submit-launch:main`; Application V3 remains a separate candidate contract.
+This is the byte-compatible legacy six-file `prepare-pr` output contract. Its local platform rules exist only for
+frozen replay and do not define current Programmable admission. Current consumers resolve exact protected policy and
+schema bytes from `0xprogrammable/submit-launch:main`; Application V3 remains a separate candidate contract.
 
 Produce only the artifacts required at the current stage. Use explicit unknowns instead of placeholder claims.
 
@@ -13,7 +14,7 @@ Idea brief
 ├── why Uniswap v4 is used and whether a standard-profile implementation is sufficient or custom behavior must be integrated
 ├── design card
 │   ├── pool and trade behavior
-│   ├── creator choices and fixed platform rules
+│   ├── creator choices and applicable current central-policy Rule IDs
 │   ├── value recipients and exits
 │   ├── authorities and dependencies
 │   ├── failure behavior
@@ -180,11 +181,11 @@ Capability-triggered evidence is additive:
   fork, fuzz, and invariant results.
 - A custom hook additionally requires callback authentication, permission-mask, CREATE2, PoolKey, delta, settlement,
   and lifecycle evidence for the callbacks it actually enables.
-- Every launch-ready prototype requires exact source and tests for a project-specific standard-profile hook or its single integrated custom
-  hook. A no-hook, router-only, LP-fee-only, or transfer-tax-only package remains proposal-eligible but changes-required.
+- Hook source and tests are required only when preserved product intent or an applicable current central-policy Rule ID
+  selects a hook. A local no-hook, router-only, LP-fee-only, or transfer-tax-only label cannot determine admission.
 - A token-mechanics profile requires its own exact token source and dependency closure plus the declared transfer-tax,
   actual-received, authority, automatic-liquidity, custody, exit and provider-limit scenarios whether the canonical
-  pool uses the standard fee hook or remains a no-hook proposal. A model-specific no-hook route cannot reuse official
+  pool uses a product-selected hook or remains a no-hook proposal. A model-specific no-hook route cannot reuse official
   Launchpad evidence or turn local provider canaries into routing, indexing, scanner or listing approval.
 - An app or game requires the relevant build, interaction, state, wallet/signing, accessibility, responsive, browser,
   and failure tests for its declared behavior; unused categories are not fabricated.
@@ -300,8 +301,8 @@ not-applicable reasons for omitted capability families:
 - Chain-specific protocol records and runtime expectations
 - Exact router generation and registry package versions when the project uses them
 - Hook permission mask when a custom hook is used
-- Mandatory Programmable fee policy, exact canonical PoolKey and quote asset, selected/effective/platform/project rates,
-  immutable owner-only claim configuration, liability namespace, events, source, tests, and hook mechanism binding
+- Any fee policy selected by preserved product intent or an applicable current central-policy Rule ID, including its
+  exact PoolKey, quote asset, rates, ownership, liability namespace, events, source, tests, and mechanism binding
 - Constructor arguments and deployment/runtime bindings for each deployed contract; CREATE2 deployer, salt, initcode
   hash, and expected hook address only when the selected hook path requires them
 

@@ -52,7 +52,7 @@ const commandSpecs = new Map([
       repositoryOption(),
       { name: "--name", key: "modelName", type: "value", valueName: "display-name", description: "Set the model display name." },
       { name: "--destination", key: "destination", type: "value", valueName: "path", description: "Create below this repository directory." },
-      { name: "--template-plan", key: "templatePlan", type: "value", valueName: "programmable-template.json", description: "Bind one exact materialized starter and capability selection into the new submission." }
+      { name: "--template-plan", key: "templatePlan", type: "value", valueName: "programmable-template.json", description: "Reserved historical input; frozen legacy V1 scaffold rejects current catalog plans." }
     ],
     positionals: { min: 1, max: 1, names: ["model-id"] }
   }],
@@ -479,7 +479,7 @@ function startHelp() {
     "",
     "Create one deterministic planning directory from a starter and capability packs.",
     "--target names the new directory itself; its parent must already exist.",
-    "Keep the plan inside the project repository when it will later be passed to cli.mjs scaffold.",
+    "Use the plan for architecture review; frozen legacy V1 scaffold does not accept current catalog plans.",
     "Dependencies and mandatory packs are included automatically.",
     "Chainlink requires --chainlink-product with one exact product; --pack chainlink-provider is intentionally incomplete.",
     "Known --capability selections are exact Legos and never expand sibling capabilities from a pack.",

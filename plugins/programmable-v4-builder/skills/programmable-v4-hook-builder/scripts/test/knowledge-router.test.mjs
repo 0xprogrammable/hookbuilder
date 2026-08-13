@@ -48,7 +48,7 @@ test("Autopilot starts from the compact compiler with the productive completion 
   assert.doesNotMatch(skill, /context --mode explore --capability owner-defined-capability/u);
   assert.match(skill, /project materialize --idea-file "\$IDEA_FILE" --application-id "\$APPLICATION_ID" --classification no-market --source-contract "\$SOURCE_CONTRACT" --test-source "\$TEST_SOURCE" --output "\$NEW_REPOSITORY"/u);
   assert.match(coldContext, /project materialize --idea-file "\$IDEA_FILE" --application-id "\$APPLICATION_ID" --classification tradable --market-ref "\$MARKET_REF" --reference-profile programmable-volume-fee-v2 --output "\$NEW_REPOSITORY"/u);
-  assert.match(coldContext, /natural idea itself requests a Uniswap v4 hook, buy\/sell rates immutable after registration and fees on executed gross quote volume/u);
+  assert.match(coldContext, /exact natural intent names the v4 hook,[\s\S]*gross-quote-volume fees,[\s\S]*policy `programmable-volume-fee-v2@2\.0\.0`, its inclusive 10 bps[\s\S]*claimant `0x4957f49620AFf3Adbbe8195a4f633E49cc93376c`/u);
   assert.match(coldContext, /Save the exact received public prompt bytes unchanged as `\$IDEA_FILE`; never rewrite\/extract them\. Bind those same bytes exactly as ProjectSpec and Submission IdeaSource/u);
   assert.doesNotMatch(coldContext, /(?:independent audit findings?|known findings?|expected solutions?|finding [1-4])/iu);
   assert.doesNotMatch(coldContext, /(?:Reference fee kernel|ProgrammableVolumeFeeHookV2\.sol|known exploit|audit report)/iu);
@@ -163,8 +163,11 @@ test("every installed Markdown reference is routed, linked, or explicitly archiv
     "compatibility-standard.md",
     "github-application-journey.md",
     "github-application-v3.md",
+    "launch-bundle-input-v2.schema.json",
+    "launch-bundle-output-v2.schema.json",
     "output-contract.md",
     "programmable-fee-policy.md",
+    "public-pr-application-v3.schema.json",
     "standard-fee-kernel.md",
     "submission-workflow.md",
     "workflow.md"
@@ -184,7 +187,7 @@ test("every installed Markdown reference is routed, linked, or explicitly archiv
   );
 });
 
-test("explore defers the full fee policy until canonical or fee-bearing scope is confirmed", () => {
+test("explore never infers the optional frozen fee policy from a local capability label", () => {
   const pureService = planKnowledge({
     mode: "explore",
     capabilities: ["owner-defined-service-flow"],
@@ -201,7 +204,9 @@ test("explore defers the full fee policy until canonical or fee-bearing scope is
     const confirmed = planKnowledge({ mode: "explore", capabilities: [capability], skillRoot });
     const feePolicy = deferred(confirmed, "references/programmable-fee-policy-v2.md");
     assert.ok(feePolicy, capability);
-    assert.equal(feePolicy.reasons.includes(`capability:${capability}`), true, capability);
+    assert.equal(Object.hasOwn(feePolicy, "reasons"), false, capability);
+    assert.match(feePolicy.trigger, /preserved project intent or an applicable current central-policy Rule ID/u);
+    assert.equal(paths(confirmed).includes("references/programmable-fee-policy-v2.md"), false, capability);
   }
 });
 

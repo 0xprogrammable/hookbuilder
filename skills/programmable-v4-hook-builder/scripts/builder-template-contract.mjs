@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import { inspectPublicMetadataText } from "./metadata-core.mjs";
 import {
   buildDirectCapabilityLegos,
-  buildImplementationFeePolicy,
   buildImplementationLegoSelection,
   composeTemplate,
   loadTemplateCatalog
@@ -348,10 +347,10 @@ function validateImplementationLegoPlan({
     invalid("template plan implementation Legos are stale, incomplete or digest-invalid");
   }
   const legacyFeeV2Selected = selectedPackIds.includes("programmable-volume-fee");
-  if (legacyFeeV2Selected && canonicalJson(feePolicy) !== canonicalJson(buildImplementationFeePolicy())) {
-    invalid("explicitly selected legacy Fee V2 implementation contract is missing or has been weakened");
+  if (legacyFeeV2Selected) {
+    invalid("generic catalog template plans cannot select branded Fee V2 platform economics; frozen replay requires the exact intent-bound legacy project profile");
   }
-  if (!legacyFeeV2Selected && feePolicy !== undefined) {
+  if (feePolicy !== undefined) {
     invalid("template plan materializes an unselected local Fee V2 implementation contract");
   }
 }

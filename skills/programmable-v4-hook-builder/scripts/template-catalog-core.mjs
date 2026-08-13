@@ -11,7 +11,6 @@ export {
 } from "./template-catalog-loader.mjs";
 export {
   buildDirectCapabilityLegos,
-  buildImplementationFeePolicy,
   buildImplementationLegoSelection,
   composeTemplate,
   parseCustomCapability,

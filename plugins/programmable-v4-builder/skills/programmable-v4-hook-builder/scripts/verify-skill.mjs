@@ -189,7 +189,6 @@ const required = [
   "assets/examples/unsafe-hidden-curve.json",
   "assets/templates/submission.example.json",
   "assets/templates/open-world-v2/new-idea/architecture-decisions.v1.json",
-  "assets/templates/open-world-v2/new-idea/fee-policy-v2.schema.json",
   "assets/templates/open-world-v2/new-idea/idea-source.v1.json",
   "assets/templates/open-world-v2/new-idea/intent-contract.v1.json",
   "assets/templates/open-world-v2/new-idea/intent-fidelity.v1.json",

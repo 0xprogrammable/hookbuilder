@@ -3770,21 +3770,7 @@ test("prototype authority roundtrip survives packaging and fails closed on every
           githubUserId: "900719925474099312348",
           githubLogin: submission.builder.github,
           profileUrl: `https://github.com/${submission.builder.github}`
-        }),
-        centralBaseResolver: async ({ baseBranch, applicationId }) => ({
-          repositorySlug: "0xprogrammable/submit-launch",
-          repositoryUrl: "https://github.com/0xprogrammable/submit-launch",
-          baseBranch,
-          baseCommit: "c".repeat(40),
-          baseTree: "d".repeat(40),
-          applicationDirectory: `submissions/${applicationId}`,
-          applicationPath: `submissions/${applicationId}/application.json`,
-          existingApplication: false,
-          priorApplicationRevision: null,
-          priorApplication: null,
-          priorCentralPackage: null
-        }),
-        centralBaseStabilityChecker: async () => true
+        })
       }),
       (error) => error instanceof CliFailure && error.code === "WORKTREE_NOT_HEAD"
     );

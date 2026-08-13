@@ -138,7 +138,7 @@
       "contractId": "fee-policy-v2",
       "schemaPath": "references/fee-policy-v2.schema.json",
       "schemaId": "urn:programmable:fee-policy-v2:1.0.0",
-      "lifecycle": "active",
+      "lifecycle": "frozen",
       "payloadDigestProfile": "contract-defined",
       "validator": {
         "modulePath": "scripts/fee-policy-v2-contract.mjs",
@@ -210,7 +210,7 @@
       "contractId": "launch-bundle-input-v1",
       "schemaPath": "references/launch-bundle-input-v1.schema.json",
       "schemaId": "urn:programmable:launch-bundle-input:1.0.0",
-      "lifecycle": "active",
+      "lifecycle": "frozen",
       "payloadDigestProfile": "contract-defined",
       "validator": {
         "modulePath": "scripts/launch-bundle-core.mjs",
@@ -222,7 +222,7 @@
       "contractId": "launch-bundle-input-v2",
       "schemaPath": "references/launch-bundle-input-v2.schema.json",
       "schemaId": "urn:programmable:launch-bundle-input-v2:2.0.0",
-      "lifecycle": "active",
+      "lifecycle": "frozen",
       "payloadDigestProfile": "contract-defined",
       "validator": {
         "modulePath": "scripts/launch-bundle-v2-core.mjs",
@@ -234,7 +234,7 @@
       "contractId": "launch-bundle-output-v1",
       "schemaPath": "references/launch-bundle-output-v1.schema.json",
       "schemaId": "urn:programmable:launch-bundle-output:1.0.0",
-      "lifecycle": "active",
+      "lifecycle": "frozen",
       "payloadDigestProfile": "contract-defined",
       "validator": {
         "modulePath": "scripts/launch-bundle-core.mjs",
@@ -246,7 +246,7 @@
       "contractId": "launch-bundle-output-v2",
       "schemaPath": "references/launch-bundle-output-v2.schema.json",
       "schemaId": "urn:programmable:launch-bundle-output-v2:2.0.0",
-      "lifecycle": "active",
+      "lifecycle": "frozen",
       "payloadDigestProfile": "contract-defined",
       "validator": {
         "modulePath": "scripts/launch-bundle-v2-core.mjs",
@@ -342,7 +342,7 @@
       "contractId": "programmable-trade-execution-v1",
       "schemaPath": "references/programmable-trade-execution-v1.schema.json",
       "schemaId": "urn:programmable:trade-execution:1.0.0",
-      "lifecycle": "active",
+      "lifecycle": "frozen",
       "payloadDigestProfile": "contract-defined",
       "validator": {
         "modulePath": "scripts/trade-capability-manifest-core.mjs",
@@ -402,7 +402,7 @@
       "contractId": "public-pr-application-v3",
       "schemaPath": "references/public-pr-application-v3.schema.json",
       "schemaId": "https://programmable.money/schemas/public-pr-application-v3.json",
-      "lifecycle": "active",
+      "lifecycle": "frozen",
       "payloadDigestProfile": "contract-defined",
       "validator": {
         "modulePath": "scripts/public-pr-application-v3-core.mjs",
@@ -414,7 +414,7 @@
       "contractId": "public-pr-application-v2",
       "schemaPath": "references/public-pr-application.schema.json",
       "schemaId": "https://programmable.money/schemas/public-pr-application-v2.json",
-      "lifecycle": "active",
+      "lifecycle": "frozen",
       "payloadDigestProfile": "contract-defined",
       "validator": {
         "modulePath": "scripts/github-application-core.mjs",
@@ -522,7 +522,7 @@
       "contractId": "submission-v1-6",
       "schemaPath": "references/submission.schema.json",
       "schemaId": "urn:programmable:v4-hook-submission:1.6.0",
-      "lifecycle": "active",
+      "lifecycle": "frozen",
       "payloadDigestProfile": "contract-defined",
       "validator": {
         "modulePath": "scripts/submission-core.mjs",
@@ -558,7 +558,7 @@
       "contractId": "trade-capability-manifest-v1",
       "schemaPath": "references/trade-capability-manifest-v1.schema.json",
       "schemaId": "urn:programmable:trade-capability-manifest:1.0.0",
-      "lifecycle": "active",
+      "lifecycle": "frozen",
       "payloadDigestProfile": "contract-defined",
       "validator": {
         "modulePath": "scripts/trade-capability-manifest-core.mjs",
