@@ -6,6 +6,8 @@ import test from 'node:test';
 
 import {
   canonicalJson,
+  corpusFromValidatedE2EStructure,
+  E2EStructureError,
   loadHoldoutCorpus,
   sha256,
   validateE2EStructure,
@@ -59,6 +61,53 @@ test('keyless validation reports envelope hashes and distinct response/repositor
     crossMethodInventorySha256: 'cc320a4ba6ecb1d269c1821ad94b6d315d8c3bf712256cc032abea479c7b6a8c',
     modelExecution: 'not-run',
   });
+});
+
+test('validated corpus tokens reject foreign roots and preserve immutable nested state', () => {
+  const structure = validateE2EStructure({ repositoryRoot: REPOSITORY_ROOT });
+  const corpus = corpusFromValidatedE2EStructure({ structure, repositoryRoot: REPOSITORY_ROOT });
+  const foreignRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'programmable-e2e-foreign-root-'));
+  try {
+    assert.throws(
+      () => runE2EEvaluations({
+        repositoryRoot: foreignRoot,
+        adapterCommand: null,
+        judgeCommand: null,
+        modelIds: {},
+        judgeModelId: '',
+        repetitions: 3,
+        validatedStructure: structure,
+      }),
+      (error) => error instanceof E2EStructureError
+        && error.issues.includes('validated E2E structure token belongs to a different repositoryRoot'),
+    );
+  } finally {
+    fs.rmSync(foreignRoot, { recursive: true, force: true });
+  }
+
+  const originalCiphertext = corpus.cases[0].payloadEnvelope.ciphertext;
+  const originalTierThreshold = corpus.manifest.tierProfiles[0].standardMinimumPassBps;
+  assert.throws(() => { corpus.manifest.minimumRepetitions = 1; }, TypeError);
+  assert.throws(() => { corpus.cases[0].payloadEnvelope.ciphertext = 'mutated'; }, TypeError);
+  assert.throws(() => { corpus.manifest.tierProfiles[0].standardMinimumPassBps = 0; }, TypeError);
+  assert.throws(() => { structure.tierProfiles[0] = 'mutated'; }, TypeError);
+  assert.equal(corpus.manifest.minimumRepetitions, 3);
+  assert.equal(corpus.cases[0].payloadEnvelope.ciphertext, originalCiphertext);
+  assert.equal(corpus.manifest.tierProfiles[0].standardMinimumPassBps, originalTierThreshold);
+  assert.deepEqual(structure.tierProfiles, ['frontier', 'mid', 'small']);
+
+  assert.throws(
+    () => runE2EEvaluations({
+      repositoryRoot: REPOSITORY_ROOT,
+      adapterCommand: null,
+      judgeCommand: null,
+      modelIds: {},
+      judgeModelId: '',
+      repetitions: 1,
+      validatedStructure: structure,
+    }),
+    (error) => error?.code === 'REPETITIONS_INVALID' && error.message === 'repetitions must be 3-10',
+  );
 });
 
 test('local fixture receives only skill and idea, executes real distinct stages, but is explicitly non-blind', () => {
