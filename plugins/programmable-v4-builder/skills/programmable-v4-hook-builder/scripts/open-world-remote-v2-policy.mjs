@@ -97,6 +97,7 @@ export function installOpenWorldRemoteV2Policy(runtime) {
     const supportingRecords = {};
     for (const [key, spec] of Object.entries(OPEN_WORLD_V2_SUPPORTING_ARTIFACTS)) {
       const binding = submission?.supportingPackage?.[key];
+      if (key === "feePolicySchema" && binding === undefined) continue;
       if (key === "securityAssessment" && binding === null) continue;
       const record = readBinding(binding, spec.artifactType);
       supportingRecords[key] = { value: record.value, bytes: record.snapshot.bytes };

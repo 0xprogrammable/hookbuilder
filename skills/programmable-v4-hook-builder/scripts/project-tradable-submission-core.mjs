@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { canonicalJsonV2 } from "./canonical-json-core.mjs";
-import { OPEN_WORLD_V2_ARTIFACTS, OPEN_WORLD_V2_OPTIONAL_SUPPORTING_ARTIFACTS, OPEN_WORLD_V2_SUBMISSION_FILE, OPEN_WORLD_V2_SUPPORTING_ARTIFACTS, PROGRAMMABLE_FEE_V2, architectureSnapshotSha256, createOpenWorldDraftPackage, sha256Bytes, validateOpenWorldV2Package } from "./open-world-v2-core.mjs";
+import { OPEN_WORLD_V2_ARTIFACTS, OPEN_WORLD_V2_OPTIONAL_SUPPORTING_ARTIFACTS, OPEN_WORLD_V2_SUBMISSION_FILE, OPEN_WORLD_V2_SUPPORTING_ARTIFACTS, PROGRAMMABLE_FEE_V2, architectureSnapshotSha256, createLegacyFeeV2DraftPackage, sha256Bytes, validateOpenWorldV2Package } from "./open-world-v2-core.mjs";
 
 const hookSource = "src/ProgrammableVolumeFeeHookV2.sol", factorySource = "src/ProgrammableVolumeFeeHookFactoryV2.sol", runnerTest = "test/ProgrammableTradeEvidenceRunnerV1.t.sol", forkTest = "test/ProgrammableVolumeFeeHookV2MainnetForkCanary.t.sol", intentBindingPath = "submission/intent/reference-profile-intent-binding.v1.json";
 export const TRADABLE_REFERENCE_PROFILE_ID = "programmable-volume-fee-v2";
@@ -28,7 +28,7 @@ export function bindTradableReferenceIntent(ideaText, profileId) {
 }
 
 export function authorTradableSubmission({ applicationId, ideaText, marketRef, tradeEvidence, intentProfileBinding }) {
-  const draft = createOpenWorldDraftPackage({ applicationId, publicIdeaText: ideaText });
+  const draft = createLegacyFeeV2DraftPackage({ applicationId, publicIdeaText: ideaText });
   if (draft.materializationAllowed !== true) throw new Error("Open World tradable draft failed.");
   const values = Object.fromEntries(draft.files.map(({ path: filePath, content }) => [filePath, JSON.parse(content)])), submission = values[OPEN_WORLD_V2_SUBMISSION_FILE];
   const records = Object.fromEntries(Object.entries(OPEN_WORLD_V2_ARTIFACTS).map(([key, spec]) => [key, record(values[spec.file])])), profileSchema = localProfileSchema(applicationId), profilePath = "schemas/local-profile.schema.json", profileBytes = bytes(profileSchema), profile = { kind: "repository", schemaId: profileSchema.$id, path: profilePath, sha256: sha256Bytes(profileBytes), byteLength: profileBytes.length }, builtin = (schemaId) => ({ kind: "builtin", schemaId, path: null, sha256: null, byteLength: null });

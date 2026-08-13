@@ -431,6 +431,14 @@ export async function preparePullRequest({
     headFiles: finalHeadSnapshot.files
   });
 
+  await centralBaseStabilityChecker({
+    observation: centralBase,
+    fetchImplementation,
+    sleepImplementation,
+    attempts: centralAttempts,
+    timeoutMs: centralTimeoutMs
+  });
+
   const document = buildPullRequestDocument({
     repositoryRoot,
     packageRoot,

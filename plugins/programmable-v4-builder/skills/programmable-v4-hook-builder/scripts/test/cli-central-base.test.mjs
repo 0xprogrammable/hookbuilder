@@ -9,6 +9,11 @@ import {
 import { CENTRAL_APPLICATION_FILES } from "../cli-central-package.mjs";
 import { CliFailure } from "../cli-runtime.mjs";
 import { canonicalJson } from "../submission-core.mjs";
+import {
+  digest as policyDigest,
+  makeSubmitLaunchPolicyFixture,
+  treeEntry as policyTreeEntry
+} from "./submit-launch-policy-fixture.mjs";
 
 const baseCommit = "a".repeat(40);
 const baseTree = "b".repeat(40);
@@ -32,13 +37,18 @@ test("resolves a first revision from the fixed central ref and immutable tree wi
   assert.equal(observed.existingApplication, false);
   assert.equal(observed.priorApplication, null);
   assert.equal(observed.priorCentralPackage, null);
+  assert.equal(observed.policyBinding.profileId, "workflow-canary");
+  assert.equal(observed.policyBinding.baseCommit, baseCommit);
+  assert.equal(observed.policyBinding.baseTree, baseTree);
+  assert.equal(observed.policySchemaBinding.path, "policy/schemas/launch-policy.v1.schema.json");
+  assert.equal(observed.policySchemaBinding.sha256, policyDigest(fixture.policyFixture.schemaBytes));
   assert.equal(deriveApplicationRevision({
     applicationId: "example-app",
     priorApplication: null,
     nextBuilder: builderIdentity,
     nextSource: makeSource()
   }), 1);
-  assert.equal(fixture.calls.length, 3);
+  assert.equal(fixture.calls.length, 8);
   for (const { options } of fixture.calls) {
     assert.equal(options.method, "GET");
     assert.equal(options.redirect, "error");
@@ -252,6 +262,75 @@ test("detects a central base ref move before materialization", async () => {
   );
 });
 
+test("stable central rechecks use the immutable branch commit as the policy proof", async () => {
+  const fixture = createCentralFetch();
+  const observed = await resolveCentralApplicationBase({
+    baseBranch: "main",
+    applicationId: "example-app",
+    fetchImplementation: fixture.fetch,
+    sleepImplementation: async () => {}
+  });
+  const callsBeforeRecheck = fixture.calls.length;
+  assert.equal(await assertCentralBaseUnchanged({
+    observation: observed,
+    fetchImplementation: fixture.fetch,
+    sleepImplementation: async () => {}
+  }), true);
+  assert.equal(fixture.calls.length - callsBeforeRecheck, 2);
+  assert.match(fixture.calls.at(-2).url, /\/repos\/0xprogrammable\/submit-launch$/u);
+  assert.match(fixture.calls.at(-1).url, /\/git\/ref\/heads\/main$/u);
+});
+
+test("rejects a replaced Submit Launch slug before binding policy bytes", async () => {
+  const fixture = createCentralFetch({ repositoryId: "999" });
+  await rejectsCode(
+    () => resolveCentralApplicationBase({
+      baseBranch: "main",
+      applicationId: "example-app",
+      fetchImplementation: fixture.fetch,
+      sleepImplementation: async () => {}
+    }),
+    "CENTRAL_REPOSITORY_MISMATCH"
+  );
+  assert.equal(fixture.calls.length, 1);
+});
+
+test("reports policy drift when protected main moves to different policy bytes", async () => {
+  const fixture = createCentralFetch({ refCommits: [baseCommit, movedCommit], movedPolicy: true });
+  const observed = await resolveCentralApplicationBase({
+    baseBranch: "main",
+    applicationId: "example-app",
+    fetchImplementation: fixture.fetch,
+    sleepImplementation: async () => {}
+  });
+  await rejectsCode(
+    () => assertCentralBaseUnchanged({
+      observation: observed,
+      fetchImplementation: fixture.fetch,
+      sleepImplementation: async () => {}
+    }),
+    "POLICY_DRIFT"
+  );
+});
+
+test("reports policy drift when moved protected main removes the policy path", async () => {
+  const fixture = createCentralFetch({ refCommits: [baseCommit, movedCommit], missingMovedPolicy: true });
+  const observed = await resolveCentralApplicationBase({
+    baseBranch: "main",
+    applicationId: "example-app",
+    fetchImplementation: fixture.fetch,
+    sleepImplementation: async () => {}
+  });
+  await rejectsCode(
+    () => assertCentralBaseUnchanged({
+      observation: observed,
+      fetchImplementation: fixture.fetch,
+      sleepImplementation: async () => {}
+    }),
+    "POLICY_DRIFT"
+  );
+});
+
 test("rejects unsafe central branch input before network access", async () => {
   let fetches = 0;
   await rejectsCode(
@@ -351,17 +430,43 @@ function makeRepository({
   };
 }
 
-function createCentralFetch({ files = null, refCommits = [baseCommit] } = {}) {
+function createCentralFetch({
+  files = null,
+  refCommits = [baseCommit],
+  movedPolicy = false,
+  missingMovedPolicy = false,
+  repositoryId = "1320171831"
+} = {}) {
   const calls = [];
   let refReads = 0;
   const submissionsTree = "7".repeat(40);
   const applicationTree = "8".repeat(40);
+  const policyFixture = makeSubmitLaunchPolicyFixture({ baseTree });
+  const movedTree = "6".repeat(40);
+  const movedPolicyFixture = movedPolicy
+    ? makeSubmitLaunchPolicyFixture({
+      baseTree: movedTree,
+      policyTree: "5".repeat(40),
+      schemasTree: policyFixture.schemasTree,
+      policyVersion: "1.1.0"
+    })
+    : policyFixture;
   const blobs = files === null
     ? new Map()
     : new Map([...files].map(([name, bytes]) => [name, { bytes, sha: gitBlobDigest(bytes) }]));
   const fetch = async (url, options) => {
     calls.push({ url, options });
     const prefix = "https://api.github.com/repos/0xprogrammable/submit-launch";
+    if (url === prefix) {
+      return response(200, {
+        id: Number(repositoryId),
+        private: false,
+        visibility: "public",
+        full_name: "0xprogrammable/submit-launch",
+        default_branch: "main",
+        html_url: "https://github.com/0xprogrammable/submit-launch"
+      });
+    }
     if (url === `${prefix}/git/ref/heads/main`) {
       const commit = refCommits[Math.min(refReads, refCommits.length - 1)];
       refReads += 1;
@@ -373,11 +478,50 @@ function createCentralFetch({ files = null, refCommits = [baseCommit] } = {}) {
     if (url === `${prefix}/git/commits/${baseCommit}`) {
       return response(200, { sha: baseCommit, tree: { sha: baseTree } });
     }
+    if (url === `${prefix}/git/commits/${movedCommit}`) {
+      return response(200, { sha: movedCommit, tree: { sha: movedTree } });
+    }
     if (url === `${prefix}/git/trees/${baseTree}`) {
       return response(200, {
         sha: baseTree,
         truncated: false,
-        tree: files === null ? [] : [treeEntry("submissions", "040000", "tree", submissionsTree)]
+        tree: [
+          policyTreeEntry("policy", "040000", "tree", policyFixture.policyTree),
+          ...(files === null ? [] : [treeEntry("submissions", "040000", "tree", submissionsTree)])
+        ]
+      });
+    }
+    if (url === `${prefix}/git/trees/${policyFixture.policyTree}`) {
+      return response(200, {
+        sha: policyFixture.policyTree,
+        truncated: false,
+        tree: structuredClone(policyFixture.trees.get(policyFixture.policyTree))
+      });
+    }
+    if (url === `${prefix}/git/trees/${policyFixture.schemasTree}`) {
+      return response(200, {
+        sha: policyFixture.schemasTree,
+        truncated: false,
+        tree: structuredClone(policyFixture.trees.get(policyFixture.schemasTree))
+      });
+    }
+    if (url === `${prefix}/git/trees/${movedTree}`) {
+      return response(200, {
+        sha: movedTree,
+        truncated: false,
+        tree: missingMovedPolicy
+          ? []
+          : [policyTreeEntry("policy", "040000", "tree", movedPolicyFixture.policyTree)]
+      });
+    }
+    if (
+      movedPolicyFixture.policyTree !== policyFixture.policyTree
+      && url === `${prefix}/git/trees/${movedPolicyFixture.policyTree}`
+    ) {
+      return response(200, {
+        sha: movedPolicyFixture.policyTree,
+        truncated: false,
+        tree: structuredClone(movedPolicyFixture.trees.get(movedPolicyFixture.policyTree))
       });
     }
     if (url === `${prefix}/git/trees/${submissionsTree}`) {
@@ -399,9 +543,19 @@ function createCentralFetch({ files = null, refCommits = [baseCommit] } = {}) {
         return response(200, { sha, encoding: "base64", content: bytes.toString("base64") });
       }
     }
+    for (const [sha, bytes] of policyFixture.blobs) {
+      if (url === `${prefix}/git/blobs/${sha}`) {
+        return response(200, { sha, encoding: "base64", content: bytes.toString("base64") });
+      }
+    }
+    for (const [sha, bytes] of movedPolicyFixture.blobs) {
+      if (url === `${prefix}/git/blobs/${sha}`) {
+        return response(200, { sha, encoding: "base64", content: bytes.toString("base64") });
+      }
+    }
     throw new Error(`unexpected central URL: ${url}`);
   };
-  return { calls, fetch };
+  return { calls, fetch, policyFixture };
 }
 
 function treeEntry(path, mode, type, sha) {

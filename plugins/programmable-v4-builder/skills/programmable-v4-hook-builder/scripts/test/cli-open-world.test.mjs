@@ -25,7 +25,6 @@ const expectedMigrationFiles = [
 ];
 const expectedDraftFiles = [
   "architecture-decisions.v1.json",
-  "fee-policy-v2.schema.json",
   "idea-source.v1.json",
   "intent-contract.v1.json",
   "intent-fidelity.v1.json",
@@ -243,8 +242,9 @@ test("init captures exact public-safe UTF-8 by hash, previews by default, writes
   });
   assert.deepEqual(security.layers.intent.evidenceRefs, []);
   const submission = JSON.parse(fs.readFileSync(path.join(absoluteOutput, "submission.v2.json"), "utf8"));
-  assert.equal(submission.supportingPackage.feePolicy, null);
-  assert.equal(submission.supportingPackage.feePolicySchema.path, "fee-policy-v2.schema.json");
+  assert.equal(Object.hasOwn(submission.supportingPackage, "feePolicy"), false);
+  assert.equal(Object.hasOwn(submission.supportingPackage, "feePolicySchema"), false);
+  assert.equal(Object.hasOwn(submission, "programmableFee"), false);
   assert.equal(submission.supportingPackage.securityAssessmentSchema.path, "security-assessment-v1.schema.json");
 
   const validated = run([
@@ -275,7 +275,8 @@ test("init captures exact public-safe UTF-8 by hash, previews by default, writes
   assert.equal(prototypeCheck.status, 1, prototypeCheck.stdout || prototypeCheck.stderr);
   const prototypePayload = JSON.parse(prototypeCheck.stdout);
   assert.equal(prototypePayload.error.code, "OPEN_WORLD_PACKAGE_INVALID");
-  assert.ok(prototypePayload.error.details.report.findings.some(({ code }) => code === "PROTOTYPE_FEE_POLICY_INSTANCE_MISSING"));
+  assert.ok(prototypePayload.error.details.report.findings.some(({ code }) => code === "PROTOTYPE_INTENT_CONFIRMATION_MISSING"));
+  assert.equal(prototypePayload.error.details.report.findings.some(({ code }) => code.startsWith("PROGRAMMABLE_FEE_") || code === "PROTOTYPE_FEE_POLICY_INSTANCE_MISSING"), false);
 
   const beforeRefusal = snapshotDirectory(absoluteOutput);
   const refused = run([

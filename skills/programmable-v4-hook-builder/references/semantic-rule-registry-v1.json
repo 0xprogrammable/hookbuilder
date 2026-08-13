@@ -418,7 +418,7 @@
       "findingCodes": [
         "PROGRAMMABLE_FEE_EFFECTIVE_RATE_INVALID"
       ],
-      "trigger": "A canonical-pool swap selects project buy or sell rates and the mandatory platform split is derived.",
+      "trigger": "Frozen legacy Submission V1 schema urn:programmable:v4-hook-submission:1.6.0 explicitly carries its historical platform-fee contract.",
       "severity": "blocker",
       "tests": {
         "positive": [

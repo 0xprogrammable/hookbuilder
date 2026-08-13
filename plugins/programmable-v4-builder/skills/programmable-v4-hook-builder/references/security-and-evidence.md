@@ -3,11 +3,11 @@
 This workflow scales evidence to the project's actual surfaces and capability risk. It is not an audit substitute and
 does not require a hook, pool, token or Fee V2 instance where none exists.
 
-For launch-admission evidence, also load [builder-reviewer-alignment.md](builder-reviewer-alignment.md),
+For Programmable admission, first resolve the exact central policy and schema described in
+[builder-reviewer-alignment.md](builder-reviewer-alignment.md). This file,
 [execution-gates-and-attestation.md](execution-gates-and-attestation.md), and
-[submission-regressions.md](submission-regressions.md). They define property symmetry, truthful tool outcomes,
-independence, attestation limits, and invalidation without pretending the current deterministic validator enforces
-every prose gate.
+[submission-regressions.md](submission-regressions.md) remain non-normative engineering guidance for evidence quality,
+independence, attestation limits, and invalidation. Only current central Rule IDs create Programmable requirements.
 
 ## 1. Freeze the review target
 
@@ -26,10 +26,10 @@ Then record surface-specific data only when present:
 - for an onchain dependency: chain, address, interface, runtime, trusted deployment record and deployment-feed revision;
 - for a v4 hook: PoolManager/PoolKey, permission mask, constructor, CREATE2 inputs, expected address/runtime and router/SDK
   generation;
-- for an applicable Programmable fee scope: project applicability, canonical scope/quote asset, collection profile,
-  inclusive split, immutable owner, claim/liability namespace, value flow, events, tests and rounding; and
-- for an exact zero-scope `not-applicable` project: the complete graph proof and null fee instance/conformance/review
-  bindings, never fabricated hook or pool data.
+- when preserved intent or an applicable current central-policy Rule ID selects a fee/accounting design: its exact scope,
+  quote asset, collection profile, split, authority, claims/liabilities, value flow, events, tests, and rounding; and
+- for the optional frozen Fee V2 package only: its own applicability and null-instance semantics, never fabricated from
+  a graph or local capability label.
 
 Any change to these values creates a new review target. Never carry a result across a changed target silently.
 
@@ -100,8 +100,8 @@ activated by the real architecture.
   owner-selected controller; they compose with LP fees before any independent hook, project, token, or router charges.
 - Where a canonical v4 swap scope exposes direction/exactness modes, test those modes. Require all four quadrants only
   when all four are exposed.
-- Where Fee V2 is applicable, successful executions accrue exactly once from executed gross quote volume at the
-  inclusive 10 bps floor, with per-scope liability/remainders and no cross-scope netting.
+- Where intent or an applicable current central-policy Rule ID selects Fee V2, successful executions satisfy that frozen
+  kernel's executed-gross-volume, inclusive-floor, liability/remainder, and scope-isolation properties.
 
 ### Configuration
 
@@ -109,10 +109,9 @@ activated by the real architecture.
 - Dependencies, runtime identities, beneficiaries, bounds and custody match the exact compatibility/configuration lock.
 - For a v4 hook, registered PoolKey, fee mode, tick spacing, hook, asset ordering and permission bits match; CREATE2
   address and permissions are reproducible from exact creation code.
-- Fee applicability is derived as `unresolved`, `applicable` or `not-applicable`. An applicable scope integrates one
-  non-bypassable Fee V2 collection path into its actual settlement architecture; a not-applicable graph binds no fake
-  instance. Router fees, LP fees, transfer taxes, donations, app payments or unrelated pools cannot substitute for an
-  applicable scope.
+- Only an explicitly selected frozen Fee V2 package derives its own `unresolved`, `applicable`, or `not-applicable`
+  state. A general project graph creates no such requirement. For any selected fee/accounting design, test the actual
+  settlement architecture and reject unrelated mechanisms as substitutes for that declared design.
 - Quadrant-dependent before/after collection and same-pool callback-skip tests apply only to a v4 hook profile exposing
   those paths. Async or non-hook profiles prove their own anti-bypass settlement surface.
 
@@ -275,9 +274,8 @@ maximum, input-first protocol-fee then LP-fee-on-remainder composition and round
 per-currency accrual, partial/full collection and recipient. Collection of the currently synced ERC-20 must revert and
 must not disturb the later settlement measurement.
 
-First derive fee applicability from the complete graph. `unresolved` grants no exemption. `not-applicable` requires zero
-canonical scopes and null instance/conformance/review bindings. For each `applicable` Programmable scope, test selected
-totals of zero, below 10 bps, exactly 10 bps and above 10 bps, including
+Only when preserved intent or an applicable current central-policy Rule ID selects the frozen Fee V2 package, derive
+its applicability under that package and test selected totals of zero, below 10 bps, exactly 10 bps and above 10 bps, including
 `3% -> 0.1% Programmable + 2.9% project`, never `3.1%`. Test every actually exposed execution mode against executed
 gross quote volume, quote denomination, rounding/dust, canonical-scope admission, external-market isolation, no
 cross-scope netting and event-to-liability reconciliation. Prove the immutable owner can claim to itself or a per-claim

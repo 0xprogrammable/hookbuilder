@@ -47,7 +47,7 @@ const commandSpecs = new Map([
   }],
   ["scaffold", {
     usage: "cli.mjs scaffold <model-id> [--name <display-name>] [--destination <path>] [--template-plan <programmable-template.json>] [--repository-root <path>]",
-    summary: "Create one isolated proposal package through the canonical scaffolder.",
+    summary: "Create a frozen legacy V1 package.",
     options: [
       repositoryOption(),
       { name: "--name", key: "modelName", type: "value", valueName: "display-name", description: "Set the model display name." },
@@ -73,7 +73,7 @@ const commandSpecs = new Map([
   }],
   ["package", {
     usage: "cli.mjs package <submission-directory> [--require-intake-ready | --require-ready] [--repository-root <path>]",
-    summary: "Validate the released V1 package; never execute project code.",
+    summary: "Validate frozen V1 bytes; never execute project code.",
     options: [
       repositoryOption(),
       { name: "--require-intake-ready", key: "requireIntakeReady", type: "boolean", description: "Fail unless static package intake is READY." },
@@ -92,7 +92,7 @@ const commandSpecs = new Map([
   }],
   ["prepare-pr", {
     usage: "cli.mjs prepare-pr <submission-directory> [--base main] [--companion-manifest <path>]... [--output-dir <path>] [--replace-existing | --replace-draft] [--repository-root <path>]",
-    summary: "Prepare Submit a Launch PR metadata without a GitHub write.",
+    summary: "Prepare frozen V1 transport metadata without a GitHub write.",
     options: [
       repositoryOption(),
       { name: "--base", key: "baseBranch", type: "value", valueName: "main", description: `Fixed target: ${launchTarget.slug}:${launchTarget.defaultBranch}.` },

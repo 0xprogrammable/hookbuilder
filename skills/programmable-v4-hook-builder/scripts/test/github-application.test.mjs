@@ -20,6 +20,10 @@ import {
   writeLocalReceipt
 } from "../github-application-core.mjs";
 import { canonicalJson } from "../submission-core.mjs";
+import {
+  digest as policyDigest,
+  makeSubmitLaunchPolicyFixture
+} from "./submit-launch-policy-fixture.mjs";
 
 const SOURCE_COMMIT = "1".repeat(40);
 const SOURCE_TREE = "2".repeat(40);
@@ -36,6 +40,11 @@ const COMPANION_REPOSITORY_ID = "203";
 const CENTRAL_REPOSITORY_ID = "1320171831";
 const FORK_REPOSITORY_ID = "404";
 const APPLICATION_ID = "example-hook";
+const POLICY_FIXTURE = makeSubmitLaunchPolicyFixture({
+  baseTree: CENTRAL_TREE,
+  policyTree: "c".repeat(40),
+  schemasTree: "d".repeat(40)
+});
 
 test("the prepared six-file package is closed, hash-bound, and path-bound", () => {
   const prepared = normalizePreparedApplication(makePrepared());
@@ -46,6 +55,9 @@ test("the prepared six-file package is closed, hash-bound, and path-bound", () =
     CENTRAL_APPLICATION_FILES
   );
   assert.match(prepared.package.digest, /^sha256:[0-9a-f]{64}$/u);
+  assert.equal(prepared.central.policyBinding.profileId, "workflow-canary");
+  assert.equal(prepared.central.policySchemaBinding.sha256, policyDigest(POLICY_FIXTURE.schemaBytes));
+  assert.equal(prepared.central.policyRole, "current-workflow-canary-drift-anchor-not-legacy-v2-evaluation");
 
   const changedHash = structuredClone(makePrepared());
   changedHash.centralPackage.files[1].content += "tampered\n";
@@ -68,6 +80,13 @@ test("the prepared six-file package is closed, hash-bound, and path-bound", () =
   );
   assert.throws(
     () => normalizePreparedApplication(misleadingBody),
+    errorCode("PREPARED_RESULT_INVALID")
+  );
+
+  const mixedBinding = structuredClone(makePrepared());
+  mixedBinding.centralPullRequestTarget.policyBinding.schemaSha256 = policyDigest(POLICY_FIXTURE.schemaBytes);
+  assert.throws(
+    () => normalizePreparedApplication(mixedBinding),
     errorCode("PREPARED_RESULT_INVALID")
   );
 });
@@ -633,6 +652,24 @@ test("a central-main race invalidates the confirmed plan before any write", asyn
   assert.equal(transport.writeCalls.length, 0);
 });
 
+test("a central policy race reports policy drift before any remote write", async () => {
+  const prepared = makePrepared();
+  const transport = new FakeTransport({ prepared });
+  const plan = await planGitHubApplication({ operation: "submit", prepared, transport });
+  transport.setPolicyDrift();
+  await assert.rejects(
+    () => executeGitHubApplication({
+      operation: "submit",
+      prepared,
+      transport,
+      confirmationDigest: plan.confirmationDigest,
+      sleep: async () => {}
+    }),
+    errorCode("POLICY_DRIFT")
+  );
+  assert.equal(transport.writeCalls.length, 0);
+});
+
 test("the active gh account must match the immutable prepared builder id", async () => {
   const prepared = makePrepared();
   const transport = new FakeTransport({ prepared, viewerId: "999" });
@@ -877,6 +914,45 @@ test("update fast-forwards the existing draft and refreshes its metadata without
   assert.equal(transport.writeCalls.filter((value) => value === "createRef").length, 0);
   assert.equal(transport.writeCalls.filter((value) => value === "updateRef").length, 1);
   assert.equal(transport.writeCalls.filter((value) => value === "createDraftPull").length, 0);
+});
+
+test("policy drift immediately before pull metadata update blocks that remote write", async () => {
+  const prepared = makePrepared();
+  const transport = new FakeTransport({ prepared });
+  transport.seedExactPull();
+  const oldFiles = new Map(transport.commitFiles.get(CREATED_COMMIT));
+  oldFiles.set(`submissions/${APPLICATION_ID}/PROPOSAL.md`, "# Proposal\n\nSuperseded bytes.\n");
+  transport.commitFiles.set(CREATED_COMMIT, oldFiles);
+  transport.pull.body = "superseded public body";
+  const plan = await planGitHubApplication({
+    operation: "update",
+    prepared,
+    transport,
+    pullRequestNumber: transport.pull.number
+  });
+  const getPull = transport.getPull.bind(transport);
+  let drifted = false;
+  transport.getPull = async (...args) => {
+    const pull = await getPull(...args);
+    if (!drifted && transport.writeCalls.includes("updateRef")) {
+      drifted = true;
+      transport.setPolicyDrift();
+    }
+    return pull;
+  };
+  await assert.rejects(
+    () => executeGitHubApplication({
+      operation: "update",
+      prepared,
+      transport,
+      confirmationDigest: plan.confirmationDigest,
+      pullRequestNumber: transport.pull.number,
+      sleep: async () => {}
+    }),
+    errorCode("POLICY_DRIFT")
+  );
+  assert.equal(drifted, true);
+  assert.equal(transport.writeCalls.filter((value) => value === "updatePull").length, 0);
 });
 
 test("persistent 404s after updateRef never repeat the ref write or update PR metadata", async () => {
@@ -1583,6 +1659,31 @@ function makePrepared({ priorRevision = null, companions = [], githubActionsRunI
       baseBranch: "main",
       baseCommit: CENTRAL_COMMIT,
       baseTree: CENTRAL_TREE,
+      policyBinding: {
+        schemaVersion: "programmable.launch-policy-binding.v1",
+        repository: "0xprogrammable/submit-launch",
+        numericRepositoryId: CENTRAL_REPOSITORY_ID,
+        baseCommit: CENTRAL_COMMIT,
+        baseTree: CENTRAL_TREE,
+        path: "policy/launch-policy.v1.json",
+        gitBlobOid: POLICY_FIXTURE.policyBlob,
+        policyId: "programmable-central-launch-policy",
+        policyVersion: "1.0.0",
+        profileId: "workflow-canary",
+        sha256: policyDigest(POLICY_FIXTURE.policyBytes)
+      },
+      policySchemaBinding: {
+        schemaVersion: "programmable.submit-launch-policy-schema-binding.v1",
+        repository: "0xprogrammable/submit-launch",
+        numericRepositoryId: CENTRAL_REPOSITORY_ID,
+        baseCommit: CENTRAL_COMMIT,
+        baseTree: CENTRAL_TREE,
+        path: "policy/schemas/launch-policy.v1.schema.json",
+        gitBlobOid: POLICY_FIXTURE.schemaBlob,
+        schemaId: "https://programmable.money/schemas/launch-policy.v1.schema.json",
+        sha256: policyDigest(POLICY_FIXTURE.schemaBytes)
+      },
+      policyRole: "current-workflow-canary-drift-anchor-not-legacy-v2-evaluation",
       applicationDirectory: `submissions/${APPLICATION_ID}`,
       applicationPath: `submissions/${APPLICATION_ID}/application.json`,
       priorApplicationRevision: priorRevision,
@@ -1665,6 +1766,8 @@ class FakeTransport {
     this.intakeState = intakeState;
     this.continuations = [];
     this.centralCommit = CENTRAL_COMMIT;
+    this.centralTree = CENTRAL_TREE;
+    this.policyFixture = POLICY_FIXTURE;
     this.forkExists = false;
     this.forkRepositoryId = FORK_REPOSITORY_ID;
     this.branchCommit = null;
@@ -1742,8 +1845,8 @@ class FakeTransport {
     if (slug === "builder/project" && commit === SOURCE_COMMIT) {
       return { sha: SOURCE_COMMIT, tree: { sha: SOURCE_TREE } };
     }
-    if (slug === "0xprogrammable/submit-launch" && commit === CENTRAL_COMMIT) {
-      return { sha: CENTRAL_COMMIT, tree: { sha: CENTRAL_TREE } };
+    if (slug === "0xprogrammable/submit-launch" && commit === this.centralCommit) {
+      return { sha: this.centralCommit, tree: { sha: this.centralTree } };
     }
     const companion = this.prepared.companions.find((record) => (
       record.repositorySlug === slug && record.commit === commit
@@ -1782,7 +1885,32 @@ class FakeTransport {
     throw new GitHubApplicationError("GITHUB_REQUEST_FAILED", "ref missing");
   }
 
+  async getGitTree(slug, tree) {
+    if (slug !== "0xprogrammable/submit-launch") {
+      throw new GitHubApplicationError("GITHUB_REQUEST_FAILED", "tree missing");
+    }
+    const entries = this.policyFixture.trees.get(tree);
+    if (entries === undefined) {
+      throw new GitHubApplicationError("GITHUB_REQUEST_FAILED", "tree missing");
+    }
+    return { sha: tree, truncated: false, tree: structuredClone(entries) };
+  }
+
   async getContent(slug, filePath, ref, { allowNotFound = false } = {}) {
+    if (
+      slug === "0xprogrammable/submit-launch"
+      && filePath === "policy/launch-policy.v1.json"
+      && ref === this.centralCommit
+    ) {
+      return contentResponse(filePath, this.policyFixture.policyBytes.toString("utf8"));
+    }
+    if (
+      slug === "0xprogrammable/submit-launch"
+      && filePath === "policy/schemas/launch-policy.v1.schema.json"
+      && ref === this.centralCommit
+    ) {
+      return contentResponse(filePath, this.policyFixture.schemaBytes.toString("utf8"));
+    }
     if (slug === "0xprogrammable/submit-launch" && filePath === "docs/builder/intake-status.json") {
       const content = `${canonicalJson({
         continuingPullRequests: this.continuations,
@@ -1933,6 +2061,17 @@ class FakeTransport {
     return { number: this.pull.number };
   }
 
+  setPolicyDrift() {
+    this.centralCommit = "9".repeat(40);
+    this.centralTree = "8".repeat(40);
+    this.policyFixture = makeSubmitLaunchPolicyFixture({
+      baseTree: this.centralTree,
+      policyTree: "e".repeat(40),
+      schemasTree: POLICY_FIXTURE.schemasTree,
+      policyVersion: "1.1.0"
+    });
+  }
+
   seedExactPull() {
     this.forkExists = true;
     this.branchCommit = CREATED_COMMIT;
@@ -1988,7 +2127,7 @@ function contentResponse(filePath, content) {
     encoding: "base64",
     content: bytes.toString("base64"),
     size: bytes.length,
-    sha: "a".repeat(40)
+    sha: crypto.createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex")
   };
 }
 

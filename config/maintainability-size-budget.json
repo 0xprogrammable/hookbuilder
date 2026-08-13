@@ -76,12 +76,28 @@
           "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
         },
         {
+          "path": "skills/programmable-v4-hook-builder/scripts/builder-template-contract.mjs",
+          "observedLines": 562,
+          "observedBytes": 24685,
+          "observedComplexityScore": 100,
+          "observedMaxBlockDepth": 4,
+          "reviewRef": "v0.6.0 explicit legacy Fee V2 template selection boundary review"
+        },
+        {
           "path": "skills/programmable-v4-hook-builder/scripts/check-upstream-drift.mjs",
           "observedLines": 747,
           "observedBytes": 30714,
           "observedComplexityScore": 212,
           "observedMaxBlockDepth": 4,
           "reviewRef": "v0.5.1 scheduled read-only drift and GitHub token origin isolation"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/cli-central-base.mjs",
+          "observedLines": 827,
+          "observedBytes": 32840,
+          "observedComplexityScore": 204,
+          "observedMaxBlockDepth": 6,
+          "reviewRef": "v0.6.0 exact central policy binding and write-adjacent drift review"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/cli-github-source.mjs",
@@ -221,11 +237,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/open-world-v2-core.mjs",
-          "observedLines": 30,
-          "observedBytes": 957,
+          "observedLines": 19,
+          "observedBytes": 970,
           "observedComplexityScore": 1,
           "observedMaxBlockDepth": 1,
-          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+          "reviewRef": "v0.6.0 explicit frozen Fee V2 constructor export review"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/open-world.mjs",
@@ -301,11 +317,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/submission-core.mjs",
-          "observedLines": 265,
-          "observedBytes": 10385,
-          "observedComplexityScore": 24,
+          "observedLines": 268,
+          "observedBytes": 10526,
+          "observedComplexityScore": 25,
           "observedMaxBlockDepth": 4,
-          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+          "reviewRef": "v0.6.0 frozen Submission V1 fee-authority quarantine review"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/template-catalog-core.mjs",
@@ -344,7 +360,7 @@
     "path": "skills/programmable-v4-hook-builder",
     "observedFiles": 640,
     "observedBytes": 9619846,
-    "maxFiles": 662,
+    "maxFiles": 670,
     "maxBytes": 12000000
   }
 }

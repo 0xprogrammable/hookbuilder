@@ -57,6 +57,10 @@ test("committed contract registry exactly matches its source, schemas, and valid
     .map((name) => `references/${name}`)
     .sort(compareUtf8);
   assert.deepEqual(schemaPaths, discoveredSchemaPaths);
+  assert.equal(
+    committed.contracts.find(({ contractId }) => contractId === "launch-admission-decision-v1")?.lifecycle,
+    "frozen"
+  );
 });
 
 test("every registry binding matches exact file bytes and a callable module export", async () => {

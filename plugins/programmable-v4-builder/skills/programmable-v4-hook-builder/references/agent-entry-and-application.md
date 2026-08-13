@@ -655,10 +655,14 @@ semantics.
 
 ## Agent command contract
 
-For the current beta, the host-neutral entry point implements `context`, `templates`, `discover`, `start`, `profile`,
+The host-neutral entry point implements `context`, `templates`, `discover`, `start`, `profile`,
 `doctor`, `scaffold`, `check`, `fee`, `package`, `companion`, `prepare-pr`, `submit`, `status`, `update`, `version`,
 `update-check`, `migrate`, and `plan-release`. Their installed `scripts/cli.mjs --help` and per-command `--help` output
 are authoritative for flags.
+
+`scaffold`, V1 `fee`, `package`, and the six-file `prepare-pr` path are frozen legacy compatibility commands. Their
+local Fee V1/V2 contracts do not define current Programmable requirements. Current builds resolve the protected central
+policy and select only applicable Rule IDs.
 
 The following names describe later Connected Submission service capabilities. They are not current CLI commands:
 

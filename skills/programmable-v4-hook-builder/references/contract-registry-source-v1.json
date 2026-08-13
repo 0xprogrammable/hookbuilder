@@ -198,7 +198,7 @@
       "contractId": "launch-admission-decision-v1",
       "schemaPath": "references/launch-admission-decision-v1.schema.json",
       "schemaId": "urn:programmable:launch-admission-decision:1.0.0",
-      "lifecycle": "active",
+      "lifecycle": "frozen",
       "payloadDigestProfile": "contract-defined",
       "validator": {
         "modulePath": "scripts/typed-launch-contracts-v1-core.mjs",

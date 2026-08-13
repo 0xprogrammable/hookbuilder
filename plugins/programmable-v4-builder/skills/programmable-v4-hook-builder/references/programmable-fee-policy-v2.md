@@ -1,5 +1,10 @@
 # Programmable volume fee policy v2
 
+> Optional legacy implementation kernel. This document is non-normative and cannot determine current Programmable
+> eligibility, applicability, fees, evidence, outcomes, or launch authority. Load or instantiate it only when the
+> preserved project intent or an applicable current Rule ID from exact protected Submit Launch policy bytes selects this
+> exact kernel. Otherwise it is not applicable and must not be projected into the project.
+
 Policy id: `programmable-volume-fee-v2`
 Policy version: `2.0.0`
 Policy hash preimage: `programmable-volume-fee-v2@2.0.0`
@@ -13,10 +18,10 @@ because its collection architecture is new. It remains eligible for architecture
 tests and any deployment evidence establish the exact scoped conformance claims they can support and accountable review
 records the remaining assumptions, findings and residual risk. None of those artifacts proves general safety.
 
-## Applicability preflight
+## Historical kernel applicability model
 
-Do not load or instantiate the full policy for every open-world idea. First derive the project state from its complete
-execution graph:
+The following model belongs only to an explicitly selected legacy Fee V2 package. It is not a current central-policy
+rule and cannot infer applicability from a canonical pool or product graph alone:
 
 - `unresolved` while any unknown surface could still be Programmable-canonical. This is a review state, not an exemption
   or launch path;
@@ -26,9 +31,9 @@ execution graph:
   project with exclusively external/non-launchable markets. It binds no `fee-policy.v2.json`, conformance receipt or fee
   review record.
 
-Applicability is derived, not builder-selected. A canonical path cannot be relabeled external to evade the policy. A
-trusted Registry may accept an exact `not-applicable` application, but Launch V2 remains `NOT_AUTHORIZED` because there
-is no canonical Programmable execution scope; an unrelated fee artifact cannot manufacture one.
+Inside that explicit legacy package, applicability is derived according to its frozen contract rather than selected by
+the builder. Outside that package, do not create `feeApplicability`, fee instances, fee evidence, or an adverse result
+unless preserved intent or an applicable current central-policy Rule ID requires them.
 
 ## Fixed invariant
 

@@ -24,9 +24,9 @@ Use the versioned contracts and exact filenames:
 | Intent-to-code/evidence trace | `intent-fidelity.v1.json` |
 | Open project graph | `submission.v2.json` |
 | Trade capability, once per selected tradable market | `trade-capability.v1.json` |
-| Fee contract | `fee-policy-v2.schema.json` |
-| Fee applicability | Application V3 `policyBindings.feeApplicability` derived from Submission V2 |
-| Scoped fee instance, only when applicable | `fee-policy.v2.json` |
+| Optional legacy Fee V2 contract, only when selected by intent or an applicable current central Rule ID | `fee-policy-v2.schema.json` |
+| Optional legacy Fee V2 applicability, under that exact frozen package only | Application V3 `policyBindings.feeApplicability` |
+| Optional scoped Fee V2 instance, under that exact frozen package only | `fee-policy.v2.json` |
 | Security contract | `security-assessment-v1.schema.json` |
 | Source proposal security state | null/pending or unassessed `security-assessment.v1.json` |
 | Derived source-assessed evidence | `security-assessment.v1.json`, central application package |
@@ -34,11 +34,11 @@ Use the versioned contracts and exact filenames:
 | GitHub application | `application.v3.json` |
 | Canonical acceptance | nullable Registry-controlled record; null before acceptance |
 
-Do not substitute schema bytes for a project instance or evidence artifact. Derive applicability from the exact source
-graph: a proposal uses `unresolved` with null instance fields; a canonical-scope prototype uses `applicable` with a real
-instance; an exact zero-scope prototype uses `not-applicable` with null instance fields and no fee conformance artifact.
-Content-bind every referenced artifact by owning repository, path, SHA-256 and byte length; bind repository evidence to
-exact GitHub numeric id, commit and tree.
+Do not substitute schema bytes for a project instance or evidence artifact. Do not derive a local fee requirement merely
+from the source graph. Only when intent or an applicable current central Rule ID selects the frozen Fee V2 package may
+that package derive `unresolved`, `applicable`, or `not-applicable` and require its instance fields. Otherwise emit no
+Fee V2 artifacts. Content-bind every referenced artifact by owning repository, path, SHA-256 and byte length; bind
+repository evidence to exact GitHub numeric id, commit and tree.
 
 Trade output follows the same fail-closed rule. A selected market has one manifest bound to its ProjectSpec entry,
 product-graph market node, source revision, exact PoolKey and either the standard v4 route or canonical Programmable
@@ -51,10 +51,10 @@ pending or unassessed. Freeze source first, then derive source-assessed security
 the central application package with `repositoryRef: null`. Keep commit/tree in the outer application repository
 binding rather than inside the root manifest blob.
 
-Encode every V2 EVM `chainId` as a canonical positive `uint256` decimal string (`"1"`, not a JSON number). Keep the
-immutable fee owner and independent platform-admin wallet as separate authorities; neither role inherits the other's
-claim or launch power. A proposal market may preserve `executionClass: unknown`, but that state grants no fee exemption
-and must resolve from bound source coverage before prototype or launch review.
+Encode every V2 EVM `chainId` as a canonical positive `uint256` decimal string (`"1"`, not a JSON number). When the
+optional legacy Fee V2 package is selected, keep its fee owner and independent platform-admin wallet as separate
+authorities; neither role inherits the other's claim or launch power. Without that selection, do not create those
+authorities or a fee-exemption question.
 
 Encode `applicationRevision` across Application V3, Registry Acceptance V3 and Launch V2 as a canonical positive decimal
 string with no historical V1 integer, `1,000,000` or JavaScript safe-integer ceiling. Historical V1 revisions retain
@@ -100,7 +100,8 @@ Report each axis independently:
 | Implementation | not started, in progress, structurally complete | tests, audit or deployment |
 | Package | invalid, valid, split review required | human approval |
 | GitHub transport | not submitted, draft/open, checks running, changes requested, merged/closed | canonical acceptance |
-| Launch-admission policy review | no determination, changes required, platform pending, ready for final verification | signed approval or typed checker enforcement |
+| Historical local admission model | frozen legacy evidence only; never a current Programmable decision | current central rule or outcome |
+| Central policy profile | exact protected binding, applicable Rule IDs, profile-defined outcome | audit, deployment, routing, or launch authority |
 | Registry acceptance | absent/null, accepted exact revision | launch authorization or deployment |
 | Authenticated approval | absent, approved exact revision, stale, revoked | wallet signature, deployment or launch |
 | Website launch handoff | pending activation, details required, permit ready, blocked, consumed | confirmed transaction |
@@ -154,13 +155,10 @@ valid eval definition is not a model pass.
 Never emit `safe`, `audited`, `rug-free`, `approved`, `launch-ready`, `deployed`, `live` or `Uniswap-endorsed` without
 the external authority and evidence that exact claim requires.
 
-A merged GitHub review thread is not enough for `accepted`. Require a canonical Registry record that binds the exact
-Application V3, source, Submission V2, fee applicability and conditional Fee V2 instance, security assessment,
-verification reports and maintainer decision. Registry acceptance may preserve exact zero-scope `not-applicable` with
-null instance fields. That record omits its own containing commit/tree; the outer launch input binds its exact Registry
-blob. A null acceptance binding reports pre-acceptance `UNRESOLVED` and `NOT_AUTHORIZED`. Launch Bundle V2 is a separate
-canonical fee-bearing contract: N/A cannot be converted into a fake instance, and a zero-scope acceptance remains a
-launch conflict rather than authorization.
+A merged GitHub review thread is not enough for `accepted`. Require whatever exact records and evidence applicable
+current central Rule IDs identify. When an explicit legacy Application V3/Fee V2 workflow is being replayed, its frozen
+Registry record also binds its conditional fee applicability and instance. That historical requirement must not be
+projected onto current work. A null acceptance binding remains pre-acceptance and carries no authorization.
 
 After production activation, report Website launch eligibility only from the authenticated service response for the
 same GitHub subject, exact approved application revision, and unchanged source SHA. Revalidate current source, rights,
@@ -184,7 +182,8 @@ Lead with the actual outcome, then report:
 4. confirmed facts, delegated defaults and unresolved material choices;
 5. selected architecture and every material difference from the request;
 6. implementation changes and exact files;
-7. fee applicability and, only when applicable, Fee V2 scopes, collection profile, immutable owner and project split;
+7. every fee/accounting design selected by intent or an applicable current central Rule ID; include legacy Fee V2
+   applicability and scopes only when that exact frozen package is selected;
 8. security findings, counter-evidence and required independent reviews;
 9. commands/tests actually run and their exact results;
 10. separate GitHub transport/status, Registry acceptance, authenticated approval, Website launch entitlement, runtime

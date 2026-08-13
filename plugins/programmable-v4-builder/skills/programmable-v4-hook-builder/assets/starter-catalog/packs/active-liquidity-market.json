@@ -28,7 +28,7 @@
     "Dedicated quote path that executes the same hook state transition, sender, hookData, price limits and partial-fill behavior as swaps",
     "Vault and PoolId namespace, ownership, maker permissions, cancellation, JIT or lock rules, and solvency invariants",
     "Keeper or maker liveness assumptions, stale inventory, unavailable quote source, fallback and user exit",
-    "How mandatory Programmable fees compose with market spreads, LP fees, maker fees and project charges without double counting"
+    "How every fee explicitly selected by preserved intent or current central policy composes with market spreads, LP fees, maker fees and project charges without double counting"
   ],
   "requiredFiles": [
     "Pricing and inventory specification with worked examples",

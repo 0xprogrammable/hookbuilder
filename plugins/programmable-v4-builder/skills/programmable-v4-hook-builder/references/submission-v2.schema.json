@@ -24,7 +24,6 @@
     "authorities",
     "capabilityProfiles",
     "tradeCapability",
-    "programmableFee",
     "implementation",
     "fragmentation"
   ],
@@ -80,6 +79,16 @@
     "fragmentation": { "$ref": "#/$defs/fragmentation" }
   },
   "allOf": [
+    {
+      "if": { "required": ["programmableFee"] },
+      "then": {
+        "properties": {
+          "supportingPackage": {
+            "required": ["feePolicySchema", "feePolicy"]
+          }
+        }
+      }
+    },
     {
       "if": {
         "required": ["stage"],
@@ -220,7 +229,7 @@
     "supportingPackage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["feePolicySchema", "feePolicy", "securityAssessmentSchema", "securityAssessment"],
+      "required": ["securityAssessmentSchema", "securityAssessment"],
       "properties": {
         "feePolicySchema": { "$ref": "#/$defs/supportingArtifactBinding" },
         "feePolicy": {

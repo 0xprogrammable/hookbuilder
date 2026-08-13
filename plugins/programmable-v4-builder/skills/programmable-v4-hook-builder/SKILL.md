@@ -78,6 +78,8 @@ Only `PROJECT_PREFLIGHT_VALID` for those exact bytes completes Autopilot. `CLEAR
   `no-market`; per market bind PoolKey, router/quoter, Permit2, hookData, limits, fees and tests in a schema-valid
   `NOT_APPROVED` manifest.
 - Escalate novel, value-bearing or ambiguous slices. Mark unavailable provider gates `EXTERNAL_BLOCKED`.
+- For Programmable admission, resolve the exact protected Submit Launch policy and schema bytes. Local approval,
+  alignment, fee, template, and security prose is engineering guidance only and cannot add a launch requirement.
 - After local validation, `prepare-pr` only to `0xprogrammable/submit-launch` (`1320171831`, `main`, status v2). Do not
   open a Hookbuilder PR or infer submission, acceptance, deployment, discovery or live state.
 

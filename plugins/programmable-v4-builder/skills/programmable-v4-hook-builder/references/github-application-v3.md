@@ -4,6 +4,10 @@
 > use the canonical `0xprogrammable/submit-launch:main` repository identity; never create a new Applicant PR in
 > Hookbuilder.
 
+Fee V2 fields below are frozen candidate-contract compatibility only. They apply only when preserved project intent or
+an applicable current central-policy Rule ID selects that exact legacy package; Submission V2 cannot create the
+requirement itself.
+
 Use this reference only for `submission.v2.json` and `public-pr-application-v3`. Do not route a v2 project through the
 historical v1 `prepare-pr` contract, six-file `application.json` package or maximum-eight-companion path.
 
@@ -38,7 +42,7 @@ Generate `application.v3.json` only through the released v3 generator. Bind:
 - the exact idea-source repository/path/digest as the sole normative intent source;
 - intent and fidelity state without inherited approval;
 - `submission.v2.json` by repository, path and digest;
-- Fee V2 schema, derived `feeApplicability`, and a real project instance only when applicability is `applicable`;
+- optional Fee V2 schema/applicability/instance only when that exact legacy package was explicitly selected;
 - security schema plus source-assessed security and verification records derived after source freeze;
 - exact review-package records and evidence; and
 - every primary/companion repository by local id, GitHub numeric id, URI, commit and tree.
@@ -66,15 +70,16 @@ second normative summary that can replace provenance.
 Keep a submitted application `unreviewed`. Require no acceptance binding and grant no approval. A later trusted review
 decision is a separate authority record for one exact revision.
 
-Derive fee applicability from the exact bound Submission V2 graph:
+Only after the legacy Fee V2 package is explicitly selected, derive its compatibility field from the exact bound
+Submission V2 graph:
 
 - `proposal` requires `unresolved` and null fee-instance path, repository and digest;
 - a prototype with at least one `programmable-canonical` scope requires `applicable` plus a real instance path,
   repository and digest; and
 - an exact zero-scope prototype requires `not-applicable` and keeps all three instance fields null.
 
-Do not use N/A to hide a canonical execution path, and do not fabricate a market or fee artifact for a zero-scope app,
-service, indexer, game or standalone external settlement.
+Inside that selected package, do not use N/A to hide a declared Fee V2 execution path. Outside it, do not fabricate
+`feeApplicability`, a market, or a fee artifact for any project.
 
 Let a source-owned proposal keep its security assessment null or explicitly pending/unassessed. Do not place a
 source-assessed security instance or source-verification report in the source commit whose id it contains. After

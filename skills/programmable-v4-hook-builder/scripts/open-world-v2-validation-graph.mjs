@@ -129,7 +129,8 @@ export function validateOpenWorldV2Graph(context) {
     }
     const canonicalScopes = requireArray(market.canonicalScopes, `${marketPath}.canonicalScopes`, "MARKET_CANONICAL_SCOPE_REFS_INVALID");
     canonicalScopes.forEach((ref) => requireSlug(ref, `${marketPath}.canonicalScopes`));
-    if (market.executionClass === "programmable-canonical" && canonicalScopes.length !== 1) add("blocker", "PROGRAMMABLE_CANONICAL_SCOPE_COUNT_INVALID", `${marketPath}.canonicalScopes`, "A programmable-canonical market must bind exactly one active fee-v2 scope.", { count: canonicalScopes.length });
+    if (market.executionClass === "programmable-canonical" && submission.programmableFee !== undefined && canonicalScopes.length !== 1) add("blocker", "PROGRAMMABLE_CANONICAL_SCOPE_COUNT_INVALID", `${marketPath}.canonicalScopes`, "A programmable-canonical market with an explicitly selected frozen Fee V2 contract must bind exactly one active Fee V2 scope.", { count: canonicalScopes.length });
+    if (market.executionClass === "programmable-canonical" && submission.programmableFee === undefined && canonicalScopes.length !== 0) add("blocker", "ORPHAN_LEGACY_FEE_SCOPE", `${marketPath}.canonicalScopes`, "A current build without an explicitly selected frozen Fee V2 contract must not materialize local Fee V2 scopes.", { count: canonicalScopes.length });
     if ((market.executionClass === "external" || market.executionClass === "non-launchable") && canonicalScopes.length !== 0) add("blocker", "NONPROGRAMMABLE_MARKET_SCOPE_FORBIDDEN", `${marketPath}.canonicalScopes`, "External and non-launchable markets must bind zero Programmable fee scopes.", { executionClass: market.executionClass, count: canonicalScopes.length });
   });
   const tradeCapability = submission.tradeCapability;

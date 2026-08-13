@@ -14,6 +14,7 @@ import {
   OpenWorldV2Error,
   architectureSnapshotSha256,
   canonicalJson,
+  createLegacyFeeV2DraftPackage,
   createOpenWorldDraftPackage,
   deriveOpenWorldV2FeeApplicability,
   isRepositorySchemaBinding,
@@ -67,7 +68,7 @@ function artifactBinding(spec, bytes) {
 }
 
 function unpackDraft(publicIdeaText = "Build an unusual but safe onchain game.") {
-  const draft = createOpenWorldDraftPackage({ applicationId: "open-world-test", publicIdeaText, sourceRef: "test-message" });
+  const draft = createLegacyFeeV2DraftPackage({ applicationId: "open-world-test", publicIdeaText, sourceRef: "test-message" });
   assert.equal(draft.materializationAllowed, true, JSON.stringify(draft.report));
   const files = Object.fromEntries(draft.files.map((file) => [file.path, JSON.parse(file.content)]));
   return {
@@ -965,7 +966,6 @@ test("fresh init and checked-in new-idea package are valid but explicitly review
   assert.ok(draft.report.findings.some(({ code, severity }) => code === "TRADE_CAPABILITY_UNRESOLVED" && severity === "review"));
   assert.deepEqual(draft.files.map(({ path: filePath }) => filePath), [
     "architecture-decisions.v1.json",
-    "fee-policy-v2.schema.json",
     "idea-source.v1.json",
     "intent-contract.v1.json",
     "intent-fidelity.v1.json",
@@ -974,6 +974,8 @@ test("fresh init and checked-in new-idea package are valid but explicitly review
     "submission.v2.json"
   ]);
   assert.equal(draft.files.some(({ path: filePath }) => filePath === "fee-policy.v2.json"), false);
+  assert.equal(Object.hasOwn(draftSubmission, "programmableFee"), false);
+  assert.equal(Object.hasOwn(draftSubmission.supportingPackage, "feePolicySchema"), false);
   const diskReport = validateOpenWorldPackage({ packageRoot: templateRoot });
   assert.equal(diskReport.valid, true, JSON.stringify(diskReport.findings));
   assert.equal(diskReport.status, "REVIEW_REQUIRED");

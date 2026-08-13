@@ -350,7 +350,9 @@ export function composeTemplate({
     packs: selectedPackIds.map((id) => structuredClone(catalog.byId.get(id))),
     ...(directCapabilityLegos === null ? {} : { directCapabilityLegos }),
     implementationLegos,
-    feePolicy: buildImplementationFeePolicy(),
+    ...(selectedPackIds.includes("programmable-volume-fee") ? {
+      feePolicy: buildImplementationFeePolicy()
+    } : {}),
     customCapabilities: normalizedCustomCapabilities,
     machineCapabilities: {
       semantics: "internal-planning-and-review-only",
@@ -670,7 +672,7 @@ export function buildImplementationLegoSelection({
 export function buildImplementationFeePolicy() {
   return {
     schemaVersion: "1.0.0",
-    kind: "programmable-fee-applicability",
+    kind: "legacy-fee-v2-implementation-contract",
     platformFeeOwner: PROGRAMMABLE_FEE_OWNER,
     platformShareBps: PROGRAMMABLE_PLATFORM_SHARE_BPS,
     effectiveTotalFeeFloorBps: PROGRAMMABLE_PLATFORM_SHARE_BPS,

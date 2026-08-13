@@ -33,10 +33,10 @@ Never infer that an idea is unsafe, rejected or unsupported because its category
 capability, describe its actors, assets, authorities, value flows, dependencies and failure behavior, and route it to
 architecture review. Objective hard findings still come from the main policy and evidence workflow, not this catalog.
 
-Every starter includes the Programmable fee-applicability, metadata/disclosure and test/evidence planning packs. The fee
-pack first derives whether any `programmable-canonical` execution scope exists. Canonical scopes require the real Fee V2
-instance and evidence; an exact zero-scope plan remains `not-applicable` and must not invent a market, PoolKey, hook or
-receipt. Generated artifacts prove no integrated implementation or runtime behavior.
+Every starter may carry metadata/disclosure and test/evidence planning packs. The legacy Fee V2 pack is optional and may
+be selected only by preserved project intent or an applicable current central-policy Rule ID. A starter, canonical pool,
+or catalog label cannot select it. When unselected, materialization must create no Fee V2 applicability, instance, hook,
+or receipt. Generated artifacts prove no integrated implementation or runtime behavior.
 
 ## Selection model
 
@@ -140,7 +140,7 @@ Neither label claims fee conformance, safety, audit, deployment, production read
 descriptor records those claims as false or not claimed. Exact hard-conflict predicates address concrete unsafe
 behavior; they are never category bans.
 
-Every materialized plan also carries the immutable Programmable fee owner
+Only a materialized plan that explicitly selected the legacy Fee V2 package carries its immutable fee owner
 `0x4957f49620AFf3Adbbe8195a4f633E49cc93376c`, the 10-basis-point platform share and the 10-basis-point effective total
 fee floor for each applicable canonical execution scope, including a selected total fee of zero. Until each actual
 standard-AMM, zero-AMM, async/batched or custom-reviewed path has scope-specific code and tests, fee conformance remains

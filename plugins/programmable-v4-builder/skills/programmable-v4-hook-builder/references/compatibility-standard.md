@@ -136,7 +136,7 @@ asset creation
 → first transaction
 → swaps in both directions
 → liquidity changes and donations
-→ mandatory Programmable fee and any project fee or reward accounting
+→ any fee or reward accounting selected by intent or an applicable current central-policy Rule ID
 → claims and payout changes
 → dependency failure
 → retirement or migration
@@ -451,21 +451,22 @@ self-assessment, not a badge. Programmable does not convert it into “safe.”
 1. The deterministic report has no hard or blocking design finding.
 2. Independent semantic review confirms that the design card, structured fields, worked numerical examples, value
    conservation, failure behavior, proposal, threat model, and test plan agree.
-3. The design completely specifies the required canonical-pool hook binding, non-additive mandatory fee policy, claim
-   authority, and exact source and test obligations. Source need not exist yet at design stage.
+3. The design completely specifies every canonical-pool hook binding, fee or accounting policy, claim authority, and
+   exact source and test obligation selected by intent or an applicable current central-policy Rule ID. Source need not
+   exist yet at design stage.
 
 `DESIGN_READY` permits isolated implementation only. It does not mean code exists, was tested or reviewed, was
 submitted, or can launch. Set `readiness.implementation: STRUCTURALLY_COMPLETE` only after the exact source and
 repository closure are statically bound to the declared evidence. This does not execute an evidence command or rebuild
-the implementation. A pending or substitute fee integration prevents `STRUCTURALLY_COMPLETE` even when the design
-itself is ready.
+the implementation. A pending integration prevents `STRUCTURALLY_COMPLETE` only when that integration is selected by
+intent or an applicable current central-policy Rule ID.
 
 Schema-valid prose is not evidence that an equation is correct or a dependency claim is true.
 Review public UI and application strings as well as documents. Ignore comments and declared test fixtures, but reject
 unsupported approval, audit, safety, deployment and availability claims that would actually be shown to users.
 
-`PROTOTYPE_READY` is not a launch-admission verdict. Apply [approval-criteria.md](approval-criteria.md) to the immutable
-prototype before reporting `CHANGES REQUIRED`, `PLATFORM PENDING`, or `READY FOR FINAL VERIFICATION`.
+`PROTOTYPE_READY` is not a Programmable admission outcome. Resolve the exact central policy and selected profile as
+described in [approval-criteria.md](approval-criteria.md); do not derive an admission verdict from this local standard.
 
 ## Platform profiles
 

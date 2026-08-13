@@ -347,8 +347,12 @@ function validateImplementationLegoPlan({
   if (canonicalJson(implementationLegos) !== canonicalJson(expected)) {
     invalid("template plan implementation Legos are stale, incomplete or digest-invalid");
   }
-  if (canonicalJson(feePolicy) !== canonicalJson(buildImplementationFeePolicy())) {
-    invalid("template plan fee applicability is missing or has been weakened");
+  const legacyFeeV2Selected = selectedPackIds.includes("programmable-volume-fee");
+  if (legacyFeeV2Selected && canonicalJson(feePolicy) !== canonicalJson(buildImplementationFeePolicy())) {
+    invalid("explicitly selected legacy Fee V2 implementation contract is missing or has been weakened");
+  }
+  if (!legacyFeeV2Selected && feePolicy !== undefined) {
+    invalid("template plan materializes an unselected local Fee V2 implementation contract");
   }
 }
 

@@ -10,8 +10,8 @@ remain eligible and enter architecture review with their owner-defined capabilit
 2. Prefer the smallest stable pinned primitive whose exact semantics match.
 3. Inspect the installed source and dependency closure. A repository head, npm tag, docs page, or generated scaffold is
    not the build authority.
-4. Enable only the required hook permissions and compose the mandatory Programmable 10 bps policy into the pool's one
-   fee-enforcing hook.
+4. Enable only the required hook permissions. Compose a fee kernel into the pool's one fee-enforcing hook only when the
+   preserved project intent or an applicable current central-policy Rule ID selects that kernel.
 5. One PoolKey has one hook address. Compose behaviors inside one reviewed hook or through explicit modules; do not
    pretend several independent hook addresses can attach to the same pool.
 6. One hook contract may serve several pools only with exact PoolKey admission and PoolId-namespaced state,

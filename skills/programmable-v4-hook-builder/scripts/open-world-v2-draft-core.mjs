@@ -66,13 +66,24 @@ function publicSourceMessageId(sourceRef) {
   return candidate;
 }
 
-export function createOpenWorldDraftPackage({ applicationId, publicIdeaText, sourceRef = null } = {}) {
+export function createOpenWorldDraftPackage(options = {}) {
+  return createDraftPackage(options, { legacyFeeV2: false });
+}
+
+/** Frozen Fee V2 compatibility constructor. Current/default builds use createOpenWorldDraftPackage. */
+export function createLegacyFeeV2DraftPackage(options = {}) {
+  return createDraftPackage(options, { legacyFeeV2: true });
+}
+
+function createDraftPackage({ applicationId, publicIdeaText, sourceRef = null } = {}, { legacyFeeV2 }) {
   if (typeof applicationId !== "string" || applicationId.length > 120 || !slugPattern.test(applicationId)) throw new OpenWorldV2Error("DRAFT_APPLICATION_ID_INVALID", "applicationId must be a lowercase slug.", { exitCode: 2 });
   if (typeof publicIdeaText !== "string" || publicIdeaText.length === 0) throw new OpenWorldV2Error("DRAFT_PUBLIC_IDEA_REQUIRED", "publicIdeaText must be a non-empty string.", { exitCode: 2 });
   const publicIdeaByteLength = utf8ByteLength(publicIdeaText);
   const builtin = (schemaId) => ({ kind: "builtin", schemaId, path: null, sha256: null, byteLength: null });
 
-  const feePolicySchemaFile = canonicalFile(OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.feePolicySchema.file, bundledSchemas.feePolicySchema);
+  const feePolicySchemaFile = legacyFeeV2
+    ? canonicalFile(OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.feePolicySchema.file, bundledSchemas.feePolicySchema)
+    : null;
   const securitySchemaFile = canonicalFile(OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.securityAssessmentSchema.file, bundledSchemas.securityAssessmentSchema);
   const securityAssessment = {
     schemaVersion: "open-world-security-v1",
@@ -88,8 +99,10 @@ export function createOpenWorldDraftPackage({ applicationId, publicIdeaText, sou
   };
   const securityFile = canonicalFile(OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.securityAssessment.file, securityAssessment);
   const supportingPackage = {
-    feePolicySchema: artifactBindingForFile(OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.feePolicySchema, feePolicySchemaFile),
-    feePolicy: null,
+    ...(legacyFeeV2 ? {
+      feePolicySchema: artifactBindingForFile(OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.feePolicySchema, feePolicySchemaFile),
+      feePolicy: null
+    } : {}),
     securityAssessmentSchema: artifactBindingForFile(OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.securityAssessmentSchema, securitySchemaFile),
     securityAssessment: artifactBindingForFile(OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.securityAssessment, securityFile)
   };
@@ -169,7 +182,7 @@ export function createOpenWorldDraftPackage({ applicationId, publicIdeaText, sou
     decisions: []
   };
   const architectureFile = canonicalFile(OPEN_WORLD_V2_ARTIFACTS.architectureDecisions.file, architectureDecisions);
-  const platformAuthority = {
+  const platformAuthority = legacyFeeV2 ? {
     id: "programmable-fee-owner",
     kind: "immutable-platform-fee-authority",
     profileSchema: builtin("urn:programmable:builtin:authority:immutable-wallet:1.0.0"),
@@ -177,7 +190,7 @@ export function createOpenWorldDraftPackage({ applicationId, publicIdeaText, sou
     holder: PROGRAMMABLE_FEE_V2.owner,
     capabilityRefs: [],
     revocation: "immutable"
-  };
+  } : null;
   const submission = {
     $schema: "urn:programmable:v4-hook-submission:2.0.0",
     schemaVersion: 2,
@@ -209,14 +222,14 @@ export function createOpenWorldDraftPackage({ applicationId, publicIdeaText, sou
     lifecyclePhases: [],
     components: [],
     valueFlows: [],
-    authorities: [platformAuthority],
+    authorities: legacyFeeV2 ? [platformAuthority] : [],
     capabilityProfiles: [],
     tradeCapability: {
       applicability: "unresolved",
       facetEntryRef: "routing-trade-capability",
       markets: []
     },
-    programmableFee: {
+    ...(legacyFeeV2 ? { programmableFee: {
       policyId: PROGRAMMABLE_FEE_V2.policyId,
       policyVersion: PROGRAMMABLE_FEE_V2.policyVersion,
       policyHashPreimage: PROGRAMMABLE_FEE_V2.policyHashPreimage,
@@ -230,7 +243,7 @@ export function createOpenWorldDraftPackage({ applicationId, publicIdeaText, sou
       collectionProfile: { status: "unresolved", runtimeBindings: "not-created" },
       claimAuthorityRef: platformAuthority.id,
       conformance: { status: "required", evidenceRefs: [], evidenceDigests: [], scopeArtifacts: [] }
-    },
+    } } : {}),
     implementation: { sourcePaths: [], testPaths: [], evidenceRefs: [] },
     fragmentation: { strategy: "single-review", fragments: [] }
   };
@@ -269,7 +282,9 @@ export function createOpenWorldDraftPackage({ applicationId, publicIdeaText, sou
     intentFidelity: { value: intentFidelity, bytes: Buffer.from(fidelityFile.content, "utf8") }
   };
   const supportingRecords = {
-    feePolicySchema: { value: bundledSchemas.feePolicySchema, bytes: Buffer.from(feePolicySchemaFile.content, "utf8") },
+    ...(legacyFeeV2 ? {
+      feePolicySchema: { value: bundledSchemas.feePolicySchema, bytes: Buffer.from(feePolicySchemaFile.content, "utf8") }
+    } : {}),
     securityAssessmentSchema: { value: bundledSchemas.securityAssessmentSchema, bytes: Buffer.from(securitySchemaFile.content, "utf8") },
     securityAssessment: { value: securityAssessment, bytes: Buffer.from(securityFile.content, "utf8") }
   };
@@ -280,7 +295,7 @@ export function createOpenWorldDraftPackage({ applicationId, publicIdeaText, sou
     supportingRecords
   });
   const materializationAllowed = report.automaticMaterialization === true;
-  const files = [ideaFile, intentFile, architectureFile, fidelityFile, feePolicySchemaFile, securitySchemaFile, securityFile, submissionFile]
+  const files = [ideaFile, intentFile, architectureFile, fidelityFile, ...(legacyFeeV2 ? [feePolicySchemaFile] : []), securitySchemaFile, securityFile, submissionFile]
     .sort((left, right) => left.path.localeCompare(right.path));
   return {
     target: {

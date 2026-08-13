@@ -35,6 +35,11 @@ import {
 } from "./github-application-normalizers.mjs";
 
 import { readIntakeStatus } from "./github-application-status-core.mjs";
+import { resolveSubmitLaunchPolicyWithTransport } from "./submit-launch-policy-github.mjs";
+import {
+  SubmitLaunchPolicyError,
+  submitLaunchPolicyContentMatches
+} from "./submit-launch-policy-contract.mjs";
 
 const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
 
@@ -74,14 +79,12 @@ export async function inspectRemoteState({ prepared, transport, explicitPull }) 
     await transport.getRef(CENTRAL_REPOSITORY, CENTRAL_BASE_BRANCH),
     CENTRAL_BASE_BRANCH
   );
-  if (baseRef.commit !== prepared.central.baseCommit) {
-    fail("PREPARE_PR_STALE", "Programmable main changed after prepare-pr; regenerate the six-file package");
-  }
   const centralCommit = normalizeGitCommit(
-    await transport.getGitCommit(CENTRAL_REPOSITORY, prepared.central.baseCommit),
+    await transport.getGitCommit(CENTRAL_REPOSITORY, baseRef.commit),
     "central base commit"
   );
-  if (centralCommit.tree !== prepared.central.baseTree) {
+  await assertPreparedPolicyCurrent({ prepared, transport, currentCommit: baseRef.commit, currentTree: centralCommit.tree });
+  if (baseRef.commit !== prepared.central.baseCommit || centralCommit.tree !== prepared.central.baseTree) {
     fail("PREPARE_PR_STALE", "the prepared central base tree no longer matches GitHub");
   }
   const intake = await readIntakeStatus({ transport, commit: prepared.central.baseCommit });
@@ -431,20 +434,47 @@ export async function assertAuthoritySnapshotUnchanged({ prepared, transport, pl
     await transport.getRef(CENTRAL_REPOSITORY, CENTRAL_BASE_BRANCH),
     CENTRAL_BASE_BRANCH
   );
-  if (baseRef.commit !== prepared.central.baseCommit) {
-    fail("PREPARE_PR_STALE", "Programmable main changed after confirmation; the public pull request was not opened");
-  }
   const centralCommit = normalizeGitCommit(
-    await transport.getGitCommit(CENTRAL_REPOSITORY, prepared.central.baseCommit),
+    await transport.getGitCommit(CENTRAL_REPOSITORY, baseRef.commit),
     "central base commit"
   );
-  if (centralCommit.tree !== prepared.central.baseTree) {
+  await assertPreparedPolicyCurrent({ prepared, transport, currentCommit: baseRef.commit, currentTree: centralCommit.tree });
+  if (baseRef.commit !== prepared.central.baseCommit || centralCommit.tree !== prepared.central.baseTree) {
     fail("PREPARE_PR_STALE", "the exact central base tree changed after confirmation");
   }
   const intake = await readIntakeStatus({ transport, commit: prepared.central.baseCommit });
   if (canonicalJson(intake) !== canonicalJson(plan.central.intake)) {
     fail("INTAKE_STATE_CHANGED", "the trusted intake state changed after confirmation");
   }
+}
+
+async function assertPreparedPolicyCurrent({ prepared, transport, currentCommit, currentTree }) {
+  let current;
+  try {
+    current = await resolveSubmitLaunchPolicyWithTransport({ transport });
+    if (
+      current.policyBinding.baseCommit !== currentCommit
+      || current.policyBinding.baseTree !== currentTree
+      || current.policySchemaBinding.baseCommit !== currentCommit
+      || current.policySchemaBinding.baseTree !== currentTree
+    ) {
+      fail("POLICY_DRIFT", "the protected Submit Launch branch changed during the final policy preflight");
+    }
+    if (!submitLaunchPolicyContentMatches({
+      expectedPolicyBinding: prepared.central.policyBinding,
+      observedPolicyBinding: current.policyBinding,
+      expectedPolicySchemaBinding: prepared.central.policySchemaBinding,
+      observedPolicySchemaBinding: current.policySchemaBinding
+    })) {
+      fail("POLICY_DRIFT", "the protected Submit Launch policy changed; regenerate and re-evaluate before any GitHub write");
+    }
+  } catch (error) {
+    if (error instanceof SubmitLaunchPolicyError) {
+      fail("POLICY_DRIFT", "the protected Submit Launch policy or schema changed; regenerate before any GitHub write");
+    }
+    throw error;
+  }
+  return current;
 }
 
 

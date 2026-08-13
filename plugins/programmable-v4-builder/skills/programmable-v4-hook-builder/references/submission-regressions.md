@@ -1,8 +1,9 @@
 # Submission regression playbook
 
-Use this playbook during Prototype, Repair, Review, and the final pre-Submit red-team pass. It generalizes failures
-observed across real applications without treating any project category as inherently unsafe. The normative verdict
-rules remain in [approval-criteria.md](approval-criteria.md).
+Use this non-normative engineering playbook during Prototype, Repair, Review, and the final pre-Submit red-team pass. It
+generalizes failures observed across real applications without treating any project category as inherently unsafe.
+Programmable requirements and outcomes come only from the exact central policy described in
+[approval-criteria.md](approval-criteria.md); this playbook cannot add either.
 
 ## Diagnose two different causes
 
@@ -21,7 +22,7 @@ earlier. State both facts.
 
 | Cluster | Prevent before the PR | Review signal |
 | --- | --- | --- |
-| Architecture presented as launch-ready | Declare review intent before implementation; launch admission requires executable source, tests, and a complete launch plan | Documents, interfaces, mocks, or validators exist but no deployable lifecycle |
+| Architecture presented as launch-ready | Declare review intent before implementation; for a launch profile, satisfy only the exact active central Rule IDs and their evidence requirements | Documents, interfaces, mocks, or validators exist but the evidence required by the selected central profile is absent |
 | Package-channel drift | Resolve the exact trusted intake validator, package-contract version, and allowed filenames before packaging | A released builder emits six files while the active autonomous intake expects seven, or the inverse |
 | Structurally green but semantically incomplete launch | Model the launch as a closed graph and mutation-test every node, edge, locator, argument, initialization value, custody transfer, and postcondition | Green schema check with prose-only steps, empty constructors, missing factories, or disconnected targets |
 | Compiler and bytecode drift | Generate the launch artifact from the exact build profile and compare standard JSON input, build info, ABI, creation code, and runtime | Optimizer, via-IR, EVM, metadata, library links, constructor ABI, source hash, or runtime differs |
@@ -43,7 +44,7 @@ earlier. State both facts.
 | Circular generated evidence | Record code, test, assertion, runner, and reviewer authorship; require independent clean-clone reproduction | One agent generates code and its only tests, then treats their agreement as independent proof |
 | Simulation or attestation overclaim | Keep simulation, authorization, receipt, runtime verification, and provenance as separate gates | One fork swap or a valid signature is described as safe, audited, deployed, approved, or launchable |
 | Mutable execution evidence | Use run-scoped immutable artifacts and bind authorization to exact target, chain, bundle, signer, limits, nonce range and expiry | Shared `latest` output is overwritten, authorization is replayed, or a secret reaches argv/logs/artifacts |
-| Platform-only remainder | Freeze the applicant revision after every applicant gate passes and name the exact missing platform capability | Only released adapter, registry, UI/API/indexer, deployment authorization, runtime verification, routing, or signed final verification remains |
+| Platform-only remainder | Freeze the applicant revision after its declared engineering checks and applicable central rules pass, then name the exact missing platform capability | Only released adapter, registry, UI/API/indexer, deployment authorization, runtime verification, routing, or signed final verification remains |
 | Questionnaire-dependent builder | Compile through Autopilot, choose safe reversible defaults and ask only for one irreducible owner fact | A normal user must answer protocol jargon or repeat derivable facts before useful work begins |
 | Autopilot invented-fact false green | Separate safe defaults from prompt or evidence facts and unresolved decisions | Generated prose, mocks or templates invent an oracle, beneficiary, payout, custody, authority, affiliation or provider support and pass their own tests |
 | Technical demo without a business loop | Compile the user job, economic engine, state machine and first closed vertical slice before implementation | Contracts compile but the promised launch, use, result, failure, claim or exit lifecycle is absent |
@@ -52,7 +53,7 @@ earlier. State both facts.
 
 ## Mandatory pre-Submit red team
 
-Before preparing a launch-admission package:
+Before preparing a Programmable evidence package:
 
 1. Resolve the target channel's trusted validator revision and package contract independently of the target PR branch.
 2. Re-resolve numeric repository ids, exact commits, trees, and anonymous public reachability. Never follow a reused slug.
@@ -75,7 +76,7 @@ Before preparing a launch-admission package:
 14. Mutate code, build config, dependency lock, launch plan, and public claims independently; stale evidence must stop
    the package.
 15. Render the proposed decision record and reject blank, placeholder, malformed, mixed-revision, or unsupported fields.
-16. Disable every analyzer and force empty output; A10 must remain blocked instead of becoming clean.
+16. Disable every analyzer and force empty output; every dependent evidence result must remain unproved instead of clean.
 17. Separate same-run generated code/tests from independently reproduced semantic evidence and preserve authorship.
 18. Replay an attestation after changing source, policy, workflow, manifest, or artifact bytes; reject every mismatch.
 19. Replay deployment authorization across chain, target, bundle, signer, nonce range, limits, or expiry, and pass a
@@ -84,7 +85,7 @@ Before preparing a launch-admission package:
     explicit defaults and owner facts, capability and property map, and either a complete local pipeline or one material
     question. Remove private chat history; no reviewed fact may disappear or be invented.
 21. Repeat the cold prompt with unrelated specialists available, unavailable and renamed. The selected business loop,
-    capabilities and gate result remain stable; only attributable tooling evidence may differ.
+    capabilities and central Rule-ID result remain stable; only attributable tooling evidence may differ.
 22. Remove every component and surface from the first vertical slice in turn. Fail both a missing closed-loop step and
     an unnecessary hook, token, oracle, admin, indexer, app or service introduced merely because generation was possible.
 
@@ -93,15 +94,16 @@ Before preparing a launch-admission package:
 A review is not improved by rejecting every unusual mechanism. Include positive controls:
 
 - A novel design with complete executable behavior, bounded powers, reproducible evidence, and no hard conflict can
-  pass applicant gates.
-- Missing routing, UI, registry, deployment authorization, or a released platform adapter becomes `PLATFORM PENDING`
-  only after applicant gates pass.
+  pass objective engineering checks and applicable central rules.
+- Missing routing, UI, Registry, deployment authorization, or a released platform adapter remains a separately owned
+  unresolved fact; only the current central policy may map it to an outcome.
 - Missing evidence means unproved. It does not prove a drain, theft, or economic defect.
 - A parser or infrastructure outage is a tooling result. Preserve the last attributable result and retry safely.
 - A scanner hit is a candidate finding until reachability and impact are reproduced; missing scanners are missing
   evidence, not proof that the design is unsafe or clean.
 - A valid run attestation can strengthen provenance without raising the underlying security result.
-- Economic attractiveness, token price, and likely demand are outside launch-admission security criteria.
+- Economic attractiveness, token price, and likely demand are outside this engineering security analysis unless a
+  current central Rule ID explicitly requires related evidence.
 - Scientific, game, wagering, participant-funded, RWA, privacy, AI, cross-chain, multi-token, multi-pool, and unknown
   concepts are never rejected by category. Apply objective triggered properties and separate current platform/product/
   legal eligibility from applicant technical integrity.
@@ -117,17 +119,17 @@ A review is not improved by rejecting every unusual mechanism. Include positive 
 
 ## Change-impact rule
 
-Every revision declares which gates are invalidated. Use at least this dependency map:
+Every revision declares which evidence and current central Rule IDs are invalidated. Use at least this dependency map:
 
-| Changed surface | Minimum invalidated gates |
+| Changed surface | Minimum invalidated evidence |
 | --- | --- |
-| Contract source, library, compiler, or build settings | A1-A10 plus every derived bytecode, address, fork, static, and launch result |
-| Constructor, initializer, factory, salt, locator, or launch graph | A1, A3-A5, A7, A9, A10 and platform simulation/runtime gates |
-| Fee math, rate, currency, owner, claim, or event | A3-A7, A10, A11 |
-| Oracle, keeper, queue, timeout, or bounded storage | A3, A7-A10, A11 |
-| Position, custody, lock, rescue, or admin path | A3, A5, A7-A10, A11 |
-| Proposal, threat model, test plan, launch plan, compatibility, evidence, tool/ruleset/suppression, prompt/model, or attestation manifest | A1, A3, A10, A11 and any gate whose claimed behavior changed |
-| Component ownership, policy interpretation, business compiler input, or verdict supersession | A2, A3, A9-A11 and every affected platform gate |
-| Repository visibility, numeric identity, reachability, or rights | A1, A10, A11 and every positive verdict |
+| Contract source, library, compiler, or build settings | Every derived bytecode, address, fork, static-analysis, launch result, and dependent current Rule ID |
+| Constructor, initializer, factory, salt, locator, or launch graph | Architecture, identity, accounting, simulation, runtime, and dependent current Rule-ID evidence |
+| Fee math, rate, currency, owner, claim, or event | Fee, accounting, lifecycle, tests, claims, and dependent current Rule-ID evidence |
+| Oracle, keeper, queue, timeout, or bounded storage | External-system, liveness, boundedness, tests, claims, and dependent current Rule-ID evidence |
+| Position, custody, lock, rescue, or admin path | Accounting, authority, lifecycle, tests, claims, and dependent current Rule-ID evidence |
+| Proposal, threat model, test plan, launch plan, compatibility, evidence, tool/ruleset/suppression, prompt/model, or attestation manifest | Every result whose facts, claims, provenance, or current Rule-ID evidence changed |
+| Component ownership, policy interpretation, business compiler input, or outcome supersession | Architecture, capability, evidence, and every affected current Rule-ID result |
+| Repository visibility, numeric identity, reachability, or rights | Every source-bound result and dependent current Rule-ID outcome |
 
 Never copy a prior result forward merely because Solidity did not change.

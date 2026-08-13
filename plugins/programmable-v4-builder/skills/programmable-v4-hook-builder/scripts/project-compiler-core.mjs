@@ -23,10 +23,8 @@ import { projectStatePayloadSha256, validateProjectState } from "./project-state
 import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
 import { validateTradeCapabilityManifestV1 } from "./trade-capability-manifest-core.mjs";
 export const PROJECT_COMPILER_VERSION = "1.0.0";
-
 const phaseOrder = Object.freeze(["project-spec", "product-graphs", "architecture-selection", "repository-materialization", "verification", "submission-evidence"]);
 const severityOrder = Object.freeze({ blocker: 0, review: 1, advisory: 2 });
-
 /**
  * Compile one phase-bounded project bundle into a deterministic validation
  * report. This function never runs repository commands, grants approval, or
@@ -45,7 +43,6 @@ export function compileProjectBundle(bundle, options = {}) {
   } = bundle ?? {};
   const phaseIndex = phaseOrder.indexOf(projectState?.phase);
   const findings = [];
-
   findings.push(...validateProjectSpec(projectSpec));
   if (phaseIndex >= 1 || productGraph !== undefined) findings.push(...validateProductGraph(projectSpec, productGraph));
   if (phaseIndex >= 2 || architectureCandidates !== undefined) findings.push(...validateArchitectureCandidates(projectSpec, productGraph, architectureCandidates));
@@ -362,7 +359,10 @@ function inspectSubmissionPackage(root, submission) {
     OPEN_WORLD_V2_SUBMISSION_FILE,
     ...Object.values(OPEN_WORLD_V2_ARTIFACTS).map(({ file }) => file),
     ...Object.values(OPEN_WORLD_V2_SUPPORTING_ARTIFACTS)
-      .filter(({ file }) => file !== OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.securityAssessment.file || submission.supportingPackage?.securityAssessment !== null)
+      .filter(({ file }) => (
+        (file !== OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.securityAssessment.file || submission.supportingPackage?.securityAssessment !== null)
+        && (file !== OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.feePolicySchema.file || submission.supportingPackage?.feePolicySchema !== undefined)
+      ))
       .map(({ file }) => file)
   ]);
   if (submission.supportingPackage?.feePolicy !== null && submission.supportingPackage?.feePolicy !== undefined) {

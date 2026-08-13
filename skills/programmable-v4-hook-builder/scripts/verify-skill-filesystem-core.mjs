@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-// Reviewed v0.6.0 growth: three external-executor closure files and five exact Chainlink product definitions.
-export const MAX_PORTABLE_FILES = 662;
+// Reviewed v0.6.0 growth: central-policy consumer, focused test/support, and three non-normative parity snapshots.
+export const MAX_PORTABLE_FILES = 670;
 
 export function createPortableFilesystem(skillRoot) {
   function relative(target) {

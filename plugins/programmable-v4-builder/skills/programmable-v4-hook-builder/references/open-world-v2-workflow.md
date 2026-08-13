@@ -119,9 +119,9 @@ storage/namespace, delta, fee, authority, lifecycle, router, settlement, and dep
 Route `INDEPENDENT_REVIEW_REQUIRED`. Every report keeps implementation, security, and deployment authorization
 `NOT_GRANTED` and `independentReviewerRequired: true`; `NO_KNOWN_CONFLICT` never means safety or approval.
 
-Derive fee applicability from the full graph. Keep it `unresolved` while an unknown surface might be
-Programmable-canonical. Load Fee V2 only for an actual canonical or explicit fee-bearing scope. A service, external
-market, no-pool system, or other zero-scope design must not gain a placeholder hook, pool, fee instance, or receipt.
+Do not derive a Programmable fee requirement from the graph. Load and derive the frozen Fee V2 package only when the
+preserved project intent or an applicable current central-policy Rule ID selects that exact kernel. Otherwise create no
+Fee V2 applicability, hook, pool, fee instance, or receipt. A local `Programmable-canonical` label is never sufficient.
 
 For each v4 hook, require the typed semantic profile in `submission.v2.json`; permission booleans alone are
 insufficient. Proposal gaps route to review; prototype gaps block. Bind PoolManager authentication/address, PoolId
