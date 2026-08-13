@@ -513,7 +513,33 @@ export function validateRevealedHoldoutCases({ corpus, cases }) {
   });
 }
 
+const validatedCorpusStateByStructure = new WeakMap();
+
+function canonicalRepositoryRoot(repositoryRoot) {
+  if (typeof repositoryRoot !== 'string' || repositoryRoot.length === 0) {
+    throw new E2EStructureError(['repositoryRoot must be a non-empty path']);
+  }
+  try {
+    const canonicalRoot = fs.realpathSync.native(path.resolve(repositoryRoot));
+    if (!fs.statSync(canonicalRoot).isDirectory()) {
+      throw new Error('not a directory');
+    }
+    return canonicalRoot;
+  } catch (error) {
+    throw new E2EStructureError([`repositoryRoot cannot be resolved to a canonical directory: ${error.message}`]);
+  }
+}
+
+function deepFreeze(value, seen = new Set()) {
+  if (value === null || typeof value !== 'object' || seen.has(value)) return value;
+  seen.add(value);
+  for (const key of Reflect.ownKeys(value)) deepFreeze(value[key], seen);
+  return Object.freeze(value);
+}
+
 export function validateE2EStructure({ repositoryRoot }) {
+  const canonicalRoot = canonicalRepositoryRoot(repositoryRoot);
+  const corpus = loadHoldoutCorpus({ repositoryRoot: canonicalRoot });
   const {
     manifest,
     manifestSha256,
@@ -521,8 +547,8 @@ export function validateE2EStructure({ repositoryRoot }) {
     holdoutCorpusSha256,
     combinedCorpusSha256,
     cases,
-  } = loadHoldoutCorpus({ repositoryRoot });
-  return {
+  } = corpus;
+  const structure = deepFreeze({
     status: 'E2E_ENVELOPES_VALID',
     publicResponseEvalCaseCount: manifest.devCaseCount,
     sealedRepositoryCaseEnvelopeCount: cases.length,
@@ -536,7 +562,24 @@ export function validateE2EStructure({ repositoryRoot }) {
     sealedRepositoryCorpusSha256: holdoutCorpusSha256,
     crossMethodInventorySha256: combinedCorpusSha256,
     modelExecution: 'not-run',
-  };
+  });
+  // The opaque structure object is a validated, root-bound token. Cache a
+  // separate deeply immutable snapshot so callers cannot weaken validated
+  // state and no second corpus walk can race the subsequent CLI run.
+  validatedCorpusStateByStructure.set(structure, Object.freeze({
+    canonicalRoot,
+    corpus: deepFreeze(structuredClone(corpus)),
+  }));
+  return structure;
+}
+
+export function corpusFromValidatedE2EStructure({ structure, repositoryRoot }) {
+  const state = validatedCorpusStateByStructure.get(structure);
+  if (!state) throw new E2EStructureError(['validated E2E structure token is not recognized']);
+  if (canonicalRepositoryRoot(repositoryRoot) !== state.canonicalRoot) {
+    throw new E2EStructureError(['validated E2E structure token belongs to a different repositoryRoot']);
+  }
+  return state.corpus;
 }
 
 export const E2E_STAGE_IDS = Object.freeze([...STAGE_IDS]);
