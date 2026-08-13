@@ -71,6 +71,7 @@ export function attachMeasuredContextBudget(resultWithoutBudget, {
 }
 
 export function buildKnowledgeSelectorInventory({ routing, catalog }) {
+  assertCatalogSurfaceRoutingComplete({ routing, catalog });
   const capabilityIds = [...new Set([
     ...catalog.definitions.flatMap((definition) => definition.capabilities),
     ...routing.capabilityRoutes.flatMap((route) => route.matches)
@@ -95,6 +96,19 @@ export function buildKnowledgeSelectorInventory({ routing, catalog }) {
     packIds: Object.freeze(catalog.definitions.filter(({ kind }) => kind === "pack").map(({ id }) => id).sort(compareUtf8)),
     routeFamilies: Object.freeze(routeFamilies)
   });
+}
+
+export function assertCatalogSurfaceRoutingComplete({ routing, catalog }) {
+  const routedSurfaceIds = new Set(routing.surfaceRoutes.flatMap(({ matches }) => matches));
+  const missingSurfaceIds = [...new Set(catalog.definitions.flatMap(({ projectSurfaces }) => projectSurfaces))]
+    .filter((surfaceId) => !routedSurfaceIds.has(surfaceId))
+    .sort(compareUtf8);
+  if (missingSurfaceIds.length > 0) {
+    fail(
+      "KNOWLEDGE_ROUTING_INVALID",
+      `Canonical catalog surfaces have no knowledge route: ${missingSurfaceIds.join(", ")}.`
+    );
+  }
 }
 
 function routeFamilyDescriptor(kind, route, catalog) {

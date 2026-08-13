@@ -339,6 +339,8 @@ test("Chainlink routing is explicit while generic production invariants remain p
     skillRoot
   });
   assert.equal(selected.capabilities.includes("chainlink-provider"), true);
+  assert.equal(selected.surfaces.includes("external-provider"), true);
+  assert.equal(selected.surfaces.includes("oracle"), false);
   assert.equal(selected.reviewRoute, "architecture-review-required");
   assert.equal(selected.networkAccessed, false);
   for (const reference of [
@@ -373,6 +375,29 @@ test("Chainlink routing is explicit while generic production invariants remain p
 
   const contractOnly = planKnowledge({ mode: "prototype", surfaces: ["contract"], skillRoot });
   assert.equal(paths(contractOnly).includes("references/ethereum-production-invariants.md"), false);
+});
+
+test("every canonical catalog surface has an explicit route and route drift fails closed", (t) => {
+  const routing = JSON.parse(fs.readFileSync(path.join(skillRoot, "references", "knowledge-routing.json"), "utf8"));
+  const routedSurfaces = new Set(routing.surfaceRoutes.flatMap(({ matches }) => matches));
+  const catalogSurfaces = [...new Set(catalog.definitions.flatMap(({ projectSurfaces }) => projectSurfaces))].sort();
+  assert.deepEqual(catalogSurfaces.filter((surface) => !routedSurfaces.has(surface)), []);
+
+  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "programmable-routing-surface-closure-")));
+  t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const copiedSkill = path.join(temporary, "skill");
+  fs.cpSync(skillRoot, copiedSkill, { recursive: true });
+  const copiedRoutingPath = path.join(copiedSkill, "references", "knowledge-routing.json");
+  const copiedRouting = JSON.parse(fs.readFileSync(copiedRoutingPath, "utf8"));
+  copiedRouting.surfaceRoutes = copiedRouting.surfaceRoutes.filter(({ id }) => id !== "external-provider");
+  fs.writeFileSync(copiedRoutingPath, `${JSON.stringify(copiedRouting, null, 2)}\n`);
+
+  assert.throws(
+    () => planKnowledge({ mode: "prototype", packs: ["chainlink-provider"], skillRoot: copiedSkill }),
+    (error) => error instanceof KnowledgeRouterError
+      && error.code === "KNOWLEDGE_ROUTING_INVALID"
+      && /external-provider/u.test(error.message)
+  );
 });
 
 test("every routing-contract match is known and genuinely unlisted ids remain exact", (t) => {

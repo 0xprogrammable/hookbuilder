@@ -1,6 +1,6 @@
 # Ethereum production invariants
 
-Use this chapter when routing selects an offchain-trust capability or an indexer, keeper, connected-service or external-provider surface. Within those projects, apply the account-execution and chain-capability sections whenever those concerns are present. The topic inventory was informed by the pinned advisory receipt in `provider-knowledge-source-receipt-2026-08-13.json`; all rules below are independently authored for Programmable and must be resolved against primary EIPs, ERCs, execution specifications, target-chain documentation and runtime evidence. Pure account- or chain-specific contract projects are not claimed as covered by this route.
+Use this chapter when routing selects an offchain-trust capability or an indexer, keeper, connected-service or external-provider surface. Within those projects, apply the account-execution and chain-capability sections whenever those concerns are present. The topic inventory was informed by the date-pinned advisory receipt in `provider-knowledge-source-receipt-2026-08-13.json`; it makes no current or latest upstream claim. All rules below are independently authored for Programmable and must be resolved against primary EIPs, ERCs, execution specifications, target-chain documentation and runtime evidence. Pure account- or chain-specific contract projects are not claimed as covered by this route.
 
 ## State-transition liveness
 

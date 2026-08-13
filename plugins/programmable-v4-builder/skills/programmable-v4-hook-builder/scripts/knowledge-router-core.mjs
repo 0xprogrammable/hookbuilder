@@ -10,6 +10,7 @@ import {
   MAX_TEMPLATE_PLAN_BYTES,
   addDeferredReference,
   addReference,
+  assertCatalogSurfaceRoutingComplete,
   attachMeasuredContextBudget,
   buildDirectCapabilityLegos,
   buildKnowledgeSelectorInventory,
@@ -55,6 +56,7 @@ export function describeKnowledgeSelectors({ skillRoot = defaultSkillRoot } = {}
   const resolvedSkillRoot = path.resolve(skillRoot);
   const routing = loadKnowledgeRouting({ skillRoot: resolvedSkillRoot });
   const catalog = loadTemplateCatalog({ skillRoot: resolvedSkillRoot });
+  assertCatalogSurfaceRoutingComplete({ routing, catalog });
   return buildKnowledgeSelectorInventory({ routing, catalog });
 }
 
@@ -82,6 +84,7 @@ export function planKnowledge({
   });
 
   const catalog = loadTemplateCatalog({ skillRoot: resolvedSkillRoot });
+  assertCatalogSurfaceRoutingComplete({ routing, catalog });
   // Catalog definitions and the routing contract are independent canonical
   // vocabularies. A route-only id is known to the knowledge router even when
   // it does not select a catalog Lego. Registry discovery metadata remains

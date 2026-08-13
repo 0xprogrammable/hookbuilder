@@ -2,6 +2,12 @@
   "schemaVersion": "1.0.0",
   "kind": "programmable-provider-knowledge-source-receipt",
   "observedAt": "2026-08-13T07:10:57Z",
+  "snapshotSemantics": {
+    "claim": "DATE_PINNED_OBSERVATION_ONLY",
+    "currentOrLatestClaim": false,
+    "automaticRefresh": false,
+    "supersessionPolicy": "new-content-addressed-receipt-and-independent-review-required"
+  },
   "integrationBase": {
     "repository": "https://github.com/0xprogrammable/hookbuilder.git",
     "ref": "main",

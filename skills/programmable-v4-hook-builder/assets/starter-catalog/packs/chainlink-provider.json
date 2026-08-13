@@ -15,9 +15,9 @@
   ],
   "projectSurfaces": [
     "contract",
+    "external-provider",
     "indexer",
     "keeper",
-    "oracle",
     "service"
   ],
   "requiredFacts": [

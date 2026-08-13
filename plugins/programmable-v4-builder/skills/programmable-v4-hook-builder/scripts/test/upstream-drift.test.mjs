@@ -30,6 +30,12 @@ test("provider knowledge receipt binds reviewed source identities, license limit
   assert.equal(`sha256:${crypto.createHash("sha256").update(receiptBytes).digest("hex")}`, CHAINLINK_KNOWLEDGE_RECEIPT_SHA256_V1);
   const receipt = JSON.parse(receiptBytes);
   assert.equal(receipt.observedAt, "2026-08-13T07:10:57Z");
+  assert.deepEqual(receipt.snapshotSemantics, {
+    claim: "DATE_PINNED_OBSERVATION_ONLY",
+    currentOrLatestClaim: false,
+    automaticRefresh: false,
+    supersessionPolicy: "new-content-addressed-receipt-and-independent-review-required"
+  });
   assert.deepEqual(receipt.integrationBase, {
     repository: "https://github.com/0xprogrammable/hookbuilder.git",
     ref: "main",

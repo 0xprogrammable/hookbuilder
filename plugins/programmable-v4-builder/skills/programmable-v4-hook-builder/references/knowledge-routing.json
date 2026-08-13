@@ -646,6 +646,16 @@
       ]
     },
     {
+      "id": "contract",
+      "matches": [
+        "contract"
+      ],
+      "references": [
+        "project-surfaces-and-capabilities.md",
+        "security-and-evidence.md"
+      ]
+    },
+    {
       "id": "runtime",
       "matches": [
         "game"
@@ -687,6 +697,25 @@
       "references": [
         "project-surfaces-and-capabilities.md",
         "ethereum-production-invariants.md"
+      ]
+    },
+    {
+      "id": "metadata",
+      "matches": [
+        "metadata"
+      ],
+      "references": [
+        "project-surfaces-and-capabilities.md",
+        "routing-and-discovery.md"
+      ]
+    },
+    {
+      "id": "other",
+      "matches": [
+        "other"
+      ],
+      "references": [
+        "project-surfaces-and-capabilities.md"
       ]
     }
   ],

@@ -2,7 +2,7 @@
 
 Load this chapter only after the architecture explicitly names a Chainlink product. This is an EVM-only provider specialization. It never selects Chainlink automatically and never replaces the generic capability contract: VRF must declare `randomness`, Data Feeds and Data Streams `oracle-data`, CRE `keeper-automation`, and CCIP `cross-chain-messaging`.
 
-The reviewed source revision, selected deep references, license decisions and rejected claims are pinned in `provider-knowledge-source-receipt-2026-08-13.json`. Load that receipt only for provenance, license or source-drift work. Process `chainlink-provider-profile-v1.schema.json` with the validator instead of putting the schema in the model context.
+The source review is a date-pinned observation from `2026-08-13T07:10:57Z`, not a current-branch or latest-release claim. Its exact revisions, selected deep references, license decisions and rejected claims are bound in `provider-knowledge-source-receipt-2026-08-13.json`. A refresh requires a new content-addressed receipt and independent review; it never mutates this snapshot in place. Load the receipt only for provenance, license or source-drift work. Process `chainlink-provider-profile-v1.schema.json` with the validator instead of putting the schema in the model context.
 
 Validate a project-owned profile from any candidate repository with:
 
@@ -16,7 +16,8 @@ The command is offline. It verifies the profile shape, semantic composition, the
 - Keep credentials in a backend secret boundary. Never put keys, subscriptions, private endpoints or wallet material in bytecode, browser bundles, manifests, logs or public evidence.
 - Model operations, not blanket product placement. Async callbacks and cross-chain delivery remain outside v4 callbacks. A bounded synchronous feed read can be declared separately. Heavy report verification stays outside the callback.
 - Define provider replacement, outage, stale-data, billing, beneficiary recovery, total work and terminal exit behavior before implementation. Silent fallback that changes the trust model is forbidden.
-- Use only `planned`, `implemented-structure` or `deployment-evidence-declared`. The structural profile deliberately has no `verified` status.
+- Use only `planned`, `implemented-structure` or `deployment-evidence-declared`. A planned integration declares configuration and requirements; it cannot claim tested, enforced, simulated, deployed or provider-executed behavior. The structural profile deliberately has no `verified` status.
+- Every production-invariant section is either `requirements-declared` or `not-applicable-with-evidence`. N/A needs a reason and the digest of a bound review or test artifact; absence, convenience or an unknown is not N/A evidence.
 
 ## VRF v2.5
 

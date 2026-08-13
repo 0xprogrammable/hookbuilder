@@ -129,5 +129,9 @@ Upstream refreshes are review tasks. The drift checker observes public metadata 
 maintainer reads source and release diffs, selects one coherent candidate set, updates the observed snapshot, runs all
 invalidated tests, records compatibility and migration impact, and changes the tested baseline only in a new release.
 
+Provider-advisory receipts follow the same non-mutating rule but are separately date-pinned. The Chainlink and ETHSkills
+receipt observed exact bytes at `2026-08-13T07:10:57Z`; it makes no current or latest claim. Any refresh requires a new
+content-addressed receipt, renewed license/no-copy review, and the tests invalidated by the selected facts.
+
 The exact research snapshot and adopted lessons are recorded in
 [`UNISWAP_MASTER_SKILL_ADOPTION.md`](UNISWAP_MASTER_SKILL_ADOPTION.md).

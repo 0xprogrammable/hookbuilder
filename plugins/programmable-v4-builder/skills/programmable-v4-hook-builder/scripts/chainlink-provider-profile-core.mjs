@@ -8,7 +8,7 @@ const VERSION = /^[A-Za-z0-9][A-Za-z0-9._+/-]{0,127}$/u;
 const PORTABLE_PATH = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9._/-]+$/u;
 const UINT256_MAX = (1n << 256n) - 1n;
 
-export const CHAINLINK_KNOWLEDGE_RECEIPT_SHA256_V1 = "sha256:e95511be2bfceb7b6fcd7093a4623a998df823bb7b5657564c7290cee98986cf";
+export const CHAINLINK_KNOWLEDGE_RECEIPT_SHA256_V1 = "sha256:d20bbab97b368d51e27251bd2f2c82995b6fb9fde729eb67addc7a08482ef36b";
 
 export const CHAINLINK_INTEGRATION_IDS_V1 = Object.freeze([
   "ccip",
@@ -58,7 +58,7 @@ export function validateChainlinkProviderProfileV1(input) {
   equal(input?.sourceCoverage?.ace, "excluded-separate-legal-license-security-review", "$.sourceCoverage.ace", add);
   equal(input?.sourceCoverage?.nonEvm, "out-of-scope", "$.sourceCoverage.nonEvm", add);
 
-  validateProductionInvariants(input?.productionInvariants, "$.productionInvariants", add);
+  validateProductionInvariants(input?.productionInvariants, input?.evidence, "$.productionInvariants", add);
   validateChainlinkIntegrations(input?.integrations, input?.targetChainIds, add);
   validateArtifactBindings(input?.evidence, "$.evidence", add);
   return errors;
@@ -87,39 +87,76 @@ export function requiredChainlinkGenericCapabilitiesV1(input) {
     .sort((left, right) => Buffer.compare(Buffer.from(left, "utf8"), Buffer.from(right, "utf8")));
 }
 
-function validateProductionInvariants(value, path, add) {
+function validateProductionInvariants(value, evidence, path, add) {
   exactObject(value, ["liveness", "accountExecution", "indexerRpc", "chainCapability", "futureProtocol"], path, add);
-  requireTrueObject(value?.liveness, [
-    "callerBound", "authorizationBound", "gasPayerBound", "fundingAndIncentiveBound",
-    "deadlineBound", "workBounded", "retryIdempotent", "stuckExitBound"
-  ], `${path}.liveness`, add);
+  const livenessKeys = [
+    "callerBinding", "authorizationBinding", "gasPayerBinding", "fundingAndIncentiveBinding",
+    "deadlineBinding", "workBound", "retryIdempotency", "stuckExitBinding"
+  ];
+  if (validateInvariantRequirementSection(value?.liveness, evidence, livenessKeys, `${path}.liveness`, add)) {
+    for (const key of livenessKeys) equal(value?.liveness?.[key], "required", `${path}.liveness.${key}`, add);
+  }
+
   const account = value?.accountExecution;
-  exactObject(account, [
-    "supportedModels", "nonceBound", "deadlineBound", "domainBound", "replayRejected",
-    "codeLengthAssumptionsForbidden", "mutableSignatureValidityHandled", "persistentDelegationHandled"
-  ], `${path}.accountExecution`, add);
-  validateSortedUniqueEnum(account?.supportedModels, ["eip7702", "eoa", "erc1271", "erc4337", "relayer-session-key"], `${path}.accountExecution.supportedModels`, add);
-  for (const key of [
-    "nonceBound", "deadlineBound", "domainBound", "replayRejected", "codeLengthAssumptionsForbidden",
-    "mutableSignatureValidityHandled", "persistentDelegationHandled"
-  ]) equal(account?.[key], true, `${path}.accountExecution.${key}`, add);
-  requireTrueObject(value?.indexerRpc, [
-    "runtimeHashBound", "abiAndTopicBound", "startBlockHashBound", "blockTagBound", "boundedLogChunks",
-    "removedLogsHandled", "deterministicReplay", "providerDisagreementFailsClosed", "freshnessBound"
-  ], `${path}.indexerRpc`, add);
+  const accountKeys = [
+    "supportedModels", "nonceBinding", "deadlineBinding", "domainBinding", "replayPolicy",
+    "codeLengthAssumptionPolicy", "mutableSignatureValidityPolicy", "persistentDelegationPolicy"
+  ];
+  if (validateInvariantRequirementSection(account, evidence, accountKeys, `${path}.accountExecution`, add)) {
+    validateSortedUniqueEnum(account?.supportedModels, ["eip7702", "eoa", "erc1271", "erc4337", "relayer-session-key"], `${path}.accountExecution.supportedModels`, add);
+    for (const key of ["nonceBinding", "deadlineBinding", "domainBinding"]) equal(account?.[key], "required", `${path}.accountExecution.${key}`, add);
+    equal(account?.replayPolicy, "must-reject", `${path}.accountExecution.replayPolicy`, add);
+    equal(account?.codeLengthAssumptionPolicy, "forbidden", `${path}.accountExecution.codeLengthAssumptionPolicy`, add);
+    equal(account?.mutableSignatureValidityPolicy, "must-handle", `${path}.accountExecution.mutableSignatureValidityPolicy`, add);
+    equal(account?.persistentDelegationPolicy, "must-handle", `${path}.accountExecution.persistentDelegationPolicy`, add);
+  }
+
+  const indexer = value?.indexerRpc;
+  const indexerKeys = [
+    "runtimeHashBinding", "abiAndTopicBinding", "startBlockHashBinding", "blockTagBinding", "logChunkBound",
+    "removedLogPolicy", "deterministicReplayRequirement", "providerDisagreementPolicy", "freshnessBinding"
+  ];
+  if (validateInvariantRequirementSection(indexer, evidence, indexerKeys, `${path}.indexerRpc`, add)) {
+    for (const key of [
+      "runtimeHashBinding", "abiAndTopicBinding", "startBlockHashBinding", "blockTagBinding", "logChunkBound",
+      "deterministicReplayRequirement", "freshnessBinding"
+    ]) equal(indexer?.[key], "required", `${path}.indexerRpc.${key}`, add);
+    equal(indexer?.removedLogPolicy, "must-handle", `${path}.indexerRpc.removedLogPolicy`, add);
+    equal(indexer?.providerDisagreementPolicy, "fail-closed", `${path}.indexerRpc.providerDisagreementPolicy`, add);
+  }
+
   const chain = value?.chainCapability;
-  exactObject(chain, [
-    "inclusionFinalityWithdrawalSeparated", "feeAndTimeSemanticsBound", "sequencerPolicy",
-    "opcodePrecompileCompilerBound", "bridgeReplayDomainBound", "deterministicAddressAssumptionsForbidden"
-  ], `${path}.chainCapability`, add);
-  for (const key of [
-    "inclusionFinalityWithdrawalSeparated", "feeAndTimeSemanticsBound", "opcodePrecompileCompilerBound",
-    "bridgeReplayDomainBound", "deterministicAddressAssumptionsForbidden"
-  ]) equal(chain?.[key], true, `${path}.chainCapability.${key}`, add);
-  oneOf(chain?.sequencerPolicy, ["bound", "not-applicable-with-chain-proof"], `${path}.chainCapability.sequencerPolicy`, add);
-  requireTrueObject(value?.futureProtocol, [
-    "forkInclusionRequired", "executionSpecCommitRequired", "targetRuntimeProofRequired", "fallbackOrMigrationBound"
-  ], `${path}.futureProtocol`, add);
+  const chainKeys = [
+    "inclusionFinalityWithdrawalSeparation", "feeAndTimeSemanticsBinding", "sequencerPolicyRequirement",
+    "opcodePrecompileCompilerBinding", "bridgeReplayDomainBinding", "deterministicAddressAssumptionPolicy"
+  ];
+  if (validateInvariantRequirementSection(chain, evidence, chainKeys, `${path}.chainCapability`, add)) {
+    for (const key of [
+      "inclusionFinalityWithdrawalSeparation", "feeAndTimeSemanticsBinding", "opcodePrecompileCompilerBinding",
+      "bridgeReplayDomainBinding"
+    ]) equal(chain?.[key], "required", `${path}.chainCapability.${key}`, add);
+    equal(chain?.sequencerPolicyRequirement, "bind-or-prove-not-applicable", `${path}.chainCapability.sequencerPolicyRequirement`, add);
+    equal(chain?.deterministicAddressAssumptionPolicy, "forbidden", `${path}.chainCapability.deterministicAddressAssumptionPolicy`, add);
+  }
+
+  const future = value?.futureProtocol;
+  const futureKeys = ["forkInclusionEvidence", "executionSpecCommitBinding", "targetRuntimeProof", "fallbackOrMigrationBinding"];
+  if (validateInvariantRequirementSection(future, evidence, futureKeys, `${path}.futureProtocol`, add)) {
+    for (const key of futureKeys) equal(future?.[key], "required", `${path}.futureProtocol.${key}`, add);
+  }
+}
+
+function validateInvariantRequirementSection(value, evidence, requirementKeys, path, add) {
+  if (value?.disposition === "not-applicable-with-evidence") {
+    exactObject(value, ["disposition", "reason", "evidenceSha256"], path, add);
+    boundedText(value?.reason, 24, 500, `${path}.reason`, add);
+    pattern(value?.evidenceSha256, SHA256, `${path}.evidenceSha256`, add);
+    requireEvidenceDigest(evidence, value?.evidenceSha256, ["review", "test"], `${path}.evidenceSha256`, add);
+    return false;
+  }
+  const isObject = exactObject(value, ["disposition", ...requirementKeys], path, add);
+  equal(value?.disposition, "requirements-declared", `${path}.disposition`, add);
+  return isObject;
 }
 
 function validateChainlinkIntegrations(value, targetChainIds, add) {
@@ -139,6 +176,15 @@ function validateChainlinkIntegrations(value, targetChainIds, add) {
     validateDeployments(integration?.deployments, targetChainIds, `${path}.deployments`, add);
     validateIntegrationProperties(integration?.id, integration?.status, integration?.properties, integration?.deployments, integration?.evidence, `${path}.properties`, add, targetChainIds);
     validateArtifactBindings(integration?.evidence, `${path}.evidence`, add);
+    if (integration?.status === "planned") {
+      if (Array.isArray(integration?.deployments) && integration.deployments.length !== 0) {
+        add(`${path}.deployments`, "planned integrations must not declare deployed contract roles");
+      }
+      const claimedRuntimeKinds = new Set(["deployment", "receipt", "runtime", "simulation"]);
+      if (Array.isArray(integration?.evidence) && integration.evidence.some(({ kind }) => claimedRuntimeKinds.has(kind))) {
+        add(`${path}.evidence`, "planned integrations may bind requirements and source inputs but must not declare runtime, deployment, simulation or receipt evidence");
+      }
+    }
     if (["implemented-structure", "deployment-evidence-declared"].includes(integration?.status)) {
       requireEvidenceKind(integration?.evidence, "source", `${path}.evidence`, add);
       requireEvidenceKind(integration?.evidence, "config", `${path}.evidence`, add);
@@ -220,7 +266,7 @@ function validateDeployments(value, targetChainIds, path, add) {
 
 function validateIntegrationProperties(id, status, value, deployments, evidence, path, add, targetChainIds) {
   if (id === "vrf-v2-5") validateVrf(value, status, deployments, path, add);
-  else if (id === "data-feeds") validateDataFeeds(value, status, deployments, path, add);
+  else if (id === "data-feeds") validateDataFeeds(value, status, deployments, evidence, path, add);
   else if (id === "ccip") validateCcip(value, status, deployments, evidence, path, add);
   else if (id === "data-streams") validateDataStreams(value, status, deployments, evidence, path, add);
   else if (id === "cre") validateCre(value, evidence, path, add);
@@ -233,8 +279,8 @@ function validateIntegrationProperties(id, status, value, deployments, evidence,
 function validateVrf(value, status, deployments, path, add) {
   exactObject(value, [
     "chainId", "paymentMode", "coordinatorKeyHash", "subscriptionId", "minimumRequestConfirmations", "callbackGasLimit", "numWords", "coordinatorMaximumNumWords", "fundingAsset",
-    "requestIdentityBound", "frozenInputBound", "replacementRerollAllowed", "callbackCanRevert", "callbackWorkPolicy",
-    "duplicateFulfillmentPolicy", "unknownRequestPolicy", "timeoutPolicy", "outOfOrderFulfillmentTested", "storageBounded"
+    "requestIdentityBinding", "frozenInputBinding", "replacementRerollPolicy", "callbackRevertPolicy", "callbackWorkPolicy",
+    "duplicateFulfillmentPolicy", "unknownRequestPolicy", "timeoutPolicy", "outOfOrderFulfillmentTestRequirement", "storageBoundRequirement"
   ], path, add);
   positiveUint256(value?.chainId, `${path}.chainId`, add);
   oneOf(value?.paymentMode, ["direct-funding", "subscription"], `${path}.paymentMode`, add);
@@ -247,9 +293,9 @@ function validateVrf(value, status, deployments, path, add) {
   positiveUintBound(value?.coordinatorMaximumNumWords, 4_294_967_295n, `${path}.coordinatorMaximumNumWords`, add);
   if (validUnsigned(value?.numWords) && validUnsigned(value?.coordinatorMaximumNumWords) && BigInt(value.numWords) > BigInt(value.coordinatorMaximumNumWords)) add(`${path}.numWords`, "must not exceed coordinatorMaximumNumWords");
   if (value?.fundingAsset !== "native") pattern(value?.fundingAsset, ADDRESS, `${path}.fundingAsset`, add);
-  for (const key of ["requestIdentityBound", "frozenInputBound", "outOfOrderFulfillmentTested", "storageBounded"]) equal(value?.[key], true, `${path}.${key}`, add);
-  equal(value?.replacementRerollAllowed, false, `${path}.replacementRerollAllowed`, add);
-  equal(value?.callbackCanRevert, false, `${path}.callbackCanRevert`, add);
+  for (const key of ["requestIdentityBinding", "frozenInputBinding", "outOfOrderFulfillmentTestRequirement", "storageBoundRequirement"]) equal(value?.[key], "required", `${path}.${key}`, add);
+  equal(value?.replacementRerollPolicy, "forbidden", `${path}.replacementRerollPolicy`, add);
+  equal(value?.callbackRevertPolicy, "forbidden", `${path}.callbackRevertPolicy`, add);
   equal(value?.callbackWorkPolicy, "minimal-store-only", `${path}.callbackWorkPolicy`, add);
   equal(value?.duplicateFulfillmentPolicy, "idempotent-ignore", `${path}.duplicateFulfillmentPolicy`, add);
   equal(value?.unknownRequestPolicy, "record-and-return", `${path}.unknownRequestPolicy`, add);
@@ -257,10 +303,10 @@ function validateVrf(value, status, deployments, path, add) {
   if (status === "deployment-evidence-declared") requireRolesOnChain(deployments, value?.chainId, ["consumer", "coordinator", ...(value?.paymentMode === "direct-funding" ? ["wrapper"] : [])], path, add);
 }
 
-function validateDataFeeds(value, status, deployments, path, add) {
+function validateDataFeeds(value, status, deployments, evidence, path, add) {
   exactObject(value, [
     "chainId", "pair", "quoteUnit", "inversion", "decimals", "maximumAgeSeconds", "minimumAnswer", "maximumAnswer", "roundCompleteness",
-    "sequencerPolicy", "sequencerGracePeriodSeconds", "futureTimestampRejected", "nonPositiveRejected", "silentFallbackAllowed"
+    "sequencerPolicy", "sequencerGracePeriodSeconds", "sequencerEvidenceSha256", "futureTimestampPolicy", "nonPositiveAnswerPolicy", "silentFallbackPolicy"
   ], path, add);
   positiveUint256(value?.chainId, `${path}.chainId`, add);
   boundedText(value?.pair, 1, 80, `${path}.pair`, add);
@@ -273,12 +319,18 @@ function validateDataFeeds(value, status, deployments, path, add) {
   if (validSigned(value?.minimumAnswer) && validSigned(value?.maximumAnswer) && BigInt(value.minimumAnswer) >= BigInt(value.maximumAnswer)) add(`${path}.maximumAnswer`, "must be greater than minimumAnswer");
   equal(value?.roundCompleteness, "updated-at-nonzero", `${path}.roundCompleteness`, add);
   oneOf(value?.sequencerPolicy, ["not-applicable-with-chain-proof", "official-uptime-feed"], `${path}.sequencerPolicy`, add);
-  if (value?.sequencerPolicy === "official-uptime-feed") positiveUint256(value?.sequencerGracePeriodSeconds, `${path}.sequencerGracePeriodSeconds`, add);
-  else equal(value?.sequencerGracePeriodSeconds, null, `${path}.sequencerGracePeriodSeconds`, add);
-  equal(value?.futureTimestampRejected, true, `${path}.futureTimestampRejected`, add);
-  equal(value?.nonPositiveRejected, true, `${path}.nonPositiveRejected`, add);
-  if (validSigned(value?.minimumAnswer) && BigInt(value.minimumAnswer) < 1n) add(`${path}.minimumAnswer`, "must be positive when nonPositiveRejected is true");
-  equal(value?.silentFallbackAllowed, false, `${path}.silentFallbackAllowed`, add);
+  if (value?.sequencerPolicy === "official-uptime-feed") {
+    positiveUint256(value?.sequencerGracePeriodSeconds, `${path}.sequencerGracePeriodSeconds`, add);
+    equal(value?.sequencerEvidenceSha256, null, `${path}.sequencerEvidenceSha256`, add);
+  } else {
+    equal(value?.sequencerGracePeriodSeconds, null, `${path}.sequencerGracePeriodSeconds`, add);
+    pattern(value?.sequencerEvidenceSha256, SHA256, `${path}.sequencerEvidenceSha256`, add);
+    requireEvidenceDigest(evidence, value?.sequencerEvidenceSha256, ["review"], `${path}.sequencerEvidenceSha256`, add);
+  }
+  equal(value?.futureTimestampPolicy, "reject", `${path}.futureTimestampPolicy`, add);
+  equal(value?.nonPositiveAnswerPolicy, "reject", `${path}.nonPositiveAnswerPolicy`, add);
+  if (validSigned(value?.minimumAnswer) && BigInt(value.minimumAnswer) < 1n) add(`${path}.minimumAnswer`, "must be positive when nonPositiveAnswerPolicy is reject");
+  equal(value?.silentFallbackPolicy, "forbidden", `${path}.silentFallbackPolicy`, add);
   if (status === "deployment-evidence-declared") requireRolesOnChain(deployments, value?.chainId, ["current-aggregator", "feed-proxy", ...(value?.sequencerPolicy === "official-uptime-feed" ? ["sequencer-uptime-feed"] : [])], path, add);
 }
 
@@ -286,7 +338,7 @@ function validateCcip(value, status, deployments, evidence, path, add) {
   exactObject(value, [
     "direction", "sourceChainId", "sourceChainSelector", "destinationChainId", "destinationChainSelector", "sender", "receiver",
     "payloadSchemaSha256", "applicationDomain", "maximumPayloadBytes", "maximumPendingMessages", "finalityPolicySha256",
-    "rateLimitPolicySha256", "feeFundingPolicySha256", "recoveryBeneficiary", "replayRejected", "reorderingHandled", "ownerRedirectAllowed"
+    "rateLimitPolicySha256", "feeFundingPolicySha256", "recoveryBeneficiary", "replayPolicy", "reorderingPolicy", "ownerRedirectPolicy"
   ], path, add);
   equal(value?.direction, "source-to-destination", `${path}.direction`, add);
   positiveUint256(value?.sourceChainId, `${path}.sourceChainId`, add);
@@ -306,9 +358,9 @@ function validateCcip(value, status, deployments, evidence, path, add) {
   positiveUint256(value?.maximumPayloadBytes, `${path}.maximumPayloadBytes`, add);
   positiveUint256(value?.maximumPendingMessages, `${path}.maximumPendingMessages`, add);
   pattern(value?.recoveryBeneficiary, ADDRESS, `${path}.recoveryBeneficiary`, add);
-  equal(value?.replayRejected, true, `${path}.replayRejected`, add);
-  equal(value?.reorderingHandled, true, `${path}.reorderingHandled`, add);
-  equal(value?.ownerRedirectAllowed, false, `${path}.ownerRedirectAllowed`, add);
+  equal(value?.replayPolicy, "must-reject", `${path}.replayPolicy`, add);
+  equal(value?.reorderingPolicy, "must-handle", `${path}.reorderingPolicy`, add);
+  equal(value?.ownerRedirectPolicy, "forbidden", `${path}.ownerRedirectPolicy`, add);
   if (status === "deployment-evidence-declared") {
     requireRolesOnChain(deployments, value?.sourceChainId, ["sender", "source-router"], path, add);
     requireRolesOnChain(deployments, value?.destinationChainId, ["destination-router", "receiver"], path, add);
@@ -320,7 +372,7 @@ function validateCcip(value, status, deployments, evidence, path, add) {
 function validateDataStreams(value, status, deployments, evidence, path, add) {
   exactObject(value, [
     "chainId", "feedId", "reportSchemaSha256", "reportSchemaVersion", "maximumObservationAgeSeconds", "maximumFutureSeconds",
-    "maximumReportBytes", "maximumVerificationGas", "validFromEnforced", "expiresAtEnforced", "marketStatusPolicy", "ripcordPolicy", "billingRoute", "credentials"
+    "maximumReportBytes", "maximumVerificationGas", "validFromPolicy", "expiresAtPolicy", "marketStatusPolicy", "ripcordPolicy", "billingRoute", "credentials"
   ], path, add);
   positiveUint256(value?.chainId, `${path}.chainId`, add);
   pattern(value?.feedId, BYTES32, `${path}.feedId`, add);
@@ -331,8 +383,8 @@ function validateDataStreams(value, status, deployments, evidence, path, add) {
   positiveUint256(value?.maximumFutureSeconds, `${path}.maximumFutureSeconds`, add);
   positiveUint256(value?.maximumReportBytes, `${path}.maximumReportBytes`, add);
   positiveUint256(value?.maximumVerificationGas, `${path}.maximumVerificationGas`, add);
-  equal(value?.validFromEnforced, true, `${path}.validFromEnforced`, add);
-  equal(value?.expiresAtEnforced, true, `${path}.expiresAtEnforced`, add);
+  equal(value?.validFromPolicy, "must-enforce", `${path}.validFromPolicy`, add);
+  equal(value?.expiresAtPolicy, "must-enforce", `${path}.expiresAtPolicy`, add);
   oneOf(value?.marketStatusPolicy, ["bound-and-reject-unsupported"], `${path}.marketStatusPolicy`, add);
   oneOf(value?.ripcordPolicy, ["bound-and-fail-closed"], `${path}.ripcordPolicy`, add);
   pattern(value?.billingRoute, SLUG, `${path}.billingRoute`, add);
@@ -343,8 +395,8 @@ function validateDataStreams(value, status, deployments, evidence, path, add) {
 function validateCre(value, evidence, path, add) {
   exactObject(value, [
     "language", "typescriptRuntime", "sdkVersion", "compilerVersion", "workflowId", "workflowArtifactSha256", "configSha256",
-    "targetId", "donId", "triggerType", "randomnessSource", "runtimeTimeOnly", "floatingPointEconomicArithmeticForbidden",
-    "networkWorkBounded", "reportVerificationBound", "retryIdempotent", "localSimulationProof"
+    "targetId", "donId", "triggerType", "randomnessSource", "runtimeTimePolicy", "economicArithmeticPolicy",
+    "networkWorkBoundRequirement", "reportVerificationBoundRequirement", "retryIdempotencyRequirement", "localSimulationEvidenceBoundary"
   ], path, add);
   oneOf(value?.language, ["go", "typescript"], `${path}.language`, add);
   if (value?.language === "typescript") {
@@ -360,8 +412,10 @@ function validateCre(value, evidence, path, add) {
   pattern(value?.configSha256, SHA256, `${path}.configSha256`, add);
   requireEvidenceDigest(evidence, value?.workflowArtifactSha256, ["source"], `${path}.workflowArtifactSha256`, add);
   requireEvidenceDigest(evidence, value?.configSha256, ["config"], `${path}.configSha256`, add);
-  for (const key of ["runtimeTimeOnly", "floatingPointEconomicArithmeticForbidden", "networkWorkBounded", "reportVerificationBound", "retryIdempotent"]) equal(value?.[key], true, `${path}.${key}`, add);
-  equal(value?.localSimulationProof, "single-node-only", `${path}.localSimulationProof`, add);
+  equal(value?.runtimeTimePolicy, "runtime-input-only", `${path}.runtimeTimePolicy`, add);
+  equal(value?.economicArithmeticPolicy, "fixed-or-scaled-integer-only", `${path}.economicArithmeticPolicy`, add);
+  for (const key of ["networkWorkBoundRequirement", "reportVerificationBoundRequirement", "retryIdempotencyRequirement"]) equal(value?.[key], "required", `${path}.${key}`, add);
+  equal(value?.localSimulationEvidenceBoundary, "single-node-only-not-don-proof", `${path}.localSimulationEvidenceBoundary`, add);
 }
 
 function requireRolesOnChain(deployments, chainId, requiredRoles, path, add) {

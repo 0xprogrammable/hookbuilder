@@ -441,7 +441,7 @@ function decisionFixture() {
   };
 }
 
-const chainlinkArtifact = (name, kind = "test", character = "1") => ({ path: `evidence/chainlink/${name}.json`, sha256: H(character), kind });
+const chainlinkArtifact = (name, kind = "review", character = "1") => ({ path: `evidence/chainlink/${name}.json`, sha256: H(character), kind });
 
 function chainlinkDeployment(id, chainId, roles) {
   return {
@@ -482,9 +482,9 @@ function chainlinkFixture() {
         rateLimitPolicySha256: H("5"),
         feeFundingPolicySha256: H("6"),
         recoveryBeneficiary: A("3"),
-        replayRejected: true,
-        reorderingHandled: true,
-        ownerRedirectAllowed: false
+        replayPolicy: "must-reject",
+        reorderingPolicy: "must-handle",
+        ownerRedirectPolicy: "forbidden"
       },
       evidence: [
         artifact("ccip-design"),
@@ -512,12 +512,12 @@ function chainlinkFixture() {
         donId: "reviewed-don",
         triggerType: "cron",
         randomnessSource: "not-used",
-        runtimeTimeOnly: true,
-        floatingPointEconomicArithmeticForbidden: true,
-        networkWorkBounded: true,
-        reportVerificationBound: true,
-        retryIdempotent: true,
-        localSimulationProof: "single-node-only"
+        runtimeTimePolicy: "runtime-input-only",
+        economicArithmeticPolicy: "fixed-or-scaled-integer-only",
+        networkWorkBoundRequirement: "required",
+        reportVerificationBoundRequirement: "required",
+        retryIdempotencyRequirement: "required",
+        localSimulationEvidenceBoundary: "single-node-only-not-don-proof"
       },
       evidence: [
         artifact("cre-config", "config", "2"),
@@ -543,11 +543,12 @@ function chainlinkFixture() {
         roundCompleteness: "updated-at-nonzero",
         sequencerPolicy: "not-applicable-with-chain-proof",
         sequencerGracePeriodSeconds: null,
-        futureTimestampRejected: true,
-        nonPositiveRejected: true,
-        silentFallbackAllowed: false
+        sequencerEvidenceSha256: H("7"),
+        futureTimestampPolicy: "reject",
+        nonPositiveAnswerPolicy: "reject",
+        silentFallbackPolicy: "forbidden"
       },
-      evidence: [artifact("data-feeds-design")]
+      evidence: [artifact("data-feeds-design"), artifact("data-feeds-sequencer-na", "review", "7")]
     },
     {
       id: "data-streams",
@@ -564,8 +565,8 @@ function chainlinkFixture() {
         maximumFutureSeconds: "2",
         maximumReportBytes: "16384",
         maximumVerificationGas: "500000",
-        validFromEnforced: true,
-        expiresAtEnforced: true,
+        validFromPolicy: "must-enforce",
+        expiresAtPolicy: "must-enforce",
         marketStatusPolicy: "bound-and-reject-unsupported",
         ripcordPolicy: "bound-and-fail-closed",
         billingRoute: "backend-billing",
@@ -589,16 +590,16 @@ function chainlinkFixture() {
         numWords: "2",
         coordinatorMaximumNumWords: "500",
         fundingAsset: A("4"),
-        requestIdentityBound: true,
-        frozenInputBound: true,
-        replacementRerollAllowed: false,
-        callbackCanRevert: false,
+        requestIdentityBinding: "required",
+        frozenInputBinding: "required",
+        replacementRerollPolicy: "forbidden",
+        callbackRevertPolicy: "forbidden",
         callbackWorkPolicy: "minimal-store-only",
         duplicateFulfillmentPolicy: "idempotent-ignore",
         unknownRequestPolicy: "record-and-return",
         timeoutPolicy: "cancel-or-refund-without-reroll",
-        outOfOrderFulfillmentTested: true,
-        storageBounded: true
+        outOfOrderFulfillmentTestRequirement: "required",
+        storageBoundRequirement: "required"
       },
       evidence: [artifact("vrf-design")]
     }
@@ -631,53 +632,56 @@ function chainlinkFixture() {
     },
     productionInvariants: {
       liveness: {
-        callerBound: true,
-        authorizationBound: true,
-        gasPayerBound: true,
-        fundingAndIncentiveBound: true,
-        deadlineBound: true,
-        workBounded: true,
-        retryIdempotent: true,
-        stuckExitBound: true
+        disposition: "requirements-declared",
+        callerBinding: "required",
+        authorizationBinding: "required",
+        gasPayerBinding: "required",
+        fundingAndIncentiveBinding: "required",
+        deadlineBinding: "required",
+        workBound: "required",
+        retryIdempotency: "required",
+        stuckExitBinding: "required"
       },
       accountExecution: {
+        disposition: "requirements-declared",
         supportedModels: ["eip7702", "eoa", "erc1271", "erc4337", "relayer-session-key"],
-        nonceBound: true,
-        deadlineBound: true,
-        domainBound: true,
-        replayRejected: true,
-        codeLengthAssumptionsForbidden: true,
-        mutableSignatureValidityHandled: true,
-        persistentDelegationHandled: true
+        nonceBinding: "required",
+        deadlineBinding: "required",
+        domainBinding: "required",
+        replayPolicy: "must-reject",
+        codeLengthAssumptionPolicy: "forbidden",
+        mutableSignatureValidityPolicy: "must-handle",
+        persistentDelegationPolicy: "must-handle"
       },
       indexerRpc: {
-        runtimeHashBound: true,
-        abiAndTopicBound: true,
-        startBlockHashBound: true,
-        blockTagBound: true,
-        boundedLogChunks: true,
-        removedLogsHandled: true,
-        deterministicReplay: true,
-        providerDisagreementFailsClosed: true,
-        freshnessBound: true
+        disposition: "requirements-declared",
+        runtimeHashBinding: "required",
+        abiAndTopicBinding: "required",
+        startBlockHashBinding: "required",
+        blockTagBinding: "required",
+        logChunkBound: "required",
+        removedLogPolicy: "must-handle",
+        deterministicReplayRequirement: "required",
+        providerDisagreementPolicy: "fail-closed",
+        freshnessBinding: "required"
       },
       chainCapability: {
-        inclusionFinalityWithdrawalSeparated: true,
-        feeAndTimeSemanticsBound: true,
-        sequencerPolicy: "not-applicable-with-chain-proof",
-        opcodePrecompileCompilerBound: true,
-        bridgeReplayDomainBound: true,
-        deterministicAddressAssumptionsForbidden: true
+        disposition: "requirements-declared",
+        inclusionFinalityWithdrawalSeparation: "required",
+        feeAndTimeSemanticsBinding: "required",
+        sequencerPolicyRequirement: "bind-or-prove-not-applicable",
+        opcodePrecompileCompilerBinding: "required",
+        bridgeReplayDomainBinding: "required",
+        deterministicAddressAssumptionPolicy: "forbidden"
       },
       futureProtocol: {
-        forkInclusionRequired: true,
-        executionSpecCommitRequired: true,
-        targetRuntimeProofRequired: true,
-        fallbackOrMigrationBound: true
+        disposition: "not-applicable-with-evidence",
+        reason: "The planned integrations do not depend on an unactivated EIP or future target-chain fork.",
+        evidenceSha256: H("8")
       }
     },
     integrations,
-    evidence: [artifact("profile-review", "review")]
+    evidence: [artifact("future-protocol-na", "review", "8"), artifact("profile-review", "review")]
   };
 }
 
@@ -768,17 +772,31 @@ test("Chainlink profile composes provider-specific evidence with production live
   assert.deepEqual(fixture.integrations.map(({ id }) => id), CHAINLINK_INTEGRATION_IDS_V1);
   assert.equal(fixture.integrations.every(({ status, deployments }) => status !== "planned" || deployments.length === 0), true);
 
+  const plannedDeploymentClaim = structuredClone(fixture);
+  plannedDeploymentClaim.integrations.find(({ id }) => id === "data-feeds").deployments = [
+    chainlinkDeployment("data-feeds", "1", ["current-aggregator", "feed-proxy"])
+  ];
+  assert.match(validateChainlinkProviderProfileV1(plannedDeploymentClaim).join("\n"), /planned integrations must not declare deployed contract roles/);
+
+  const plannedRuntimeClaim = structuredClone(fixture);
+  plannedRuntimeClaim.integrations.find(({ id }) => id === "vrf-v2-5").evidence.push(chainlinkArtifact("vrf-runtime", "runtime", "9"));
+  assert.match(validateChainlinkProviderProfileV1(plannedRuntimeClaim).join("\n"), /planned integrations may bind requirements/);
+
+  const plannedTestAssertion = structuredClone(fixture);
+  plannedTestAssertion.integrations.find(({ id }) => id === "vrf-v2-5").properties.outOfOrderFulfillmentTested = true;
+  assert.match(validateChainlinkProviderProfileV1(plannedTestAssertion).join("\n"), /outOfOrderFulfillmentTestRequirement/);
+
   const reroll = structuredClone(fixture);
-  reroll.integrations.find(({ id }) => id === "vrf-v2-5").properties.replacementRerollAllowed = true;
-  assert.match(validateChainlinkProviderProfileV1(reroll).join("\n"), /replacementRerollAllowed/);
+  reroll.integrations.find(({ id }) => id === "vrf-v2-5").properties.replacementRerollPolicy = "allowed";
+  assert.match(validateChainlinkProviderProfileV1(reroll).join("\n"), /replacementRerollPolicy/);
 
   const callback = structuredClone(fixture);
-  callback.integrations.find(({ id }) => id === "vrf-v2-5").properties.callbackCanRevert = true;
-  assert.match(validateChainlinkProviderProfileV1(callback).join("\n"), /callbackCanRevert/);
+  callback.integrations.find(({ id }) => id === "vrf-v2-5").properties.callbackRevertPolicy = "allowed";
+  assert.match(validateChainlinkProviderProfileV1(callback).join("\n"), /callbackRevertPolicy/);
 
   const fallback = structuredClone(fixture);
-  fallback.integrations.find(({ id }) => id === "data-feeds").properties.silentFallbackAllowed = true;
-  assert.match(validateChainlinkProviderProfileV1(fallback).join("\n"), /silentFallbackAllowed/);
+  fallback.integrations.find(({ id }) => id === "data-feeds").properties.silentFallbackPolicy = "allowed";
+  assert.match(validateChainlinkProviderProfileV1(fallback).join("\n"), /silentFallbackPolicy/);
 
   const poolCallback = structuredClone(fixture);
   poolCallback.integrations.find(({ id }) => id === "ccip").executionOperations = ["bounded-sync-read-in-hook"];
@@ -812,11 +830,16 @@ test("Chainlink profile composes provider-specific evidence with production live
   const unclosedClaim = structuredClone(fixture);
   const feed = unclosedClaim.integrations.find(({ id }) => id === "data-feeds");
   feed.status = "deployment-evidence-declared";
+  feed.evidence = [chainlinkArtifact("data-feeds-design")];
   assert.match(validateChainlinkProviderProfileV1(unclosedClaim).join("\n"), /at least two content-addressed artifacts/);
 
   const noReorg = structuredClone(fixture);
-  noReorg.productionInvariants.indexerRpc.removedLogsHandled = false;
-  assert.match(validateChainlinkProviderProfileV1(noReorg).join("\n"), /removedLogsHandled/);
+  noReorg.productionInvariants.indexerRpc.removedLogPolicy = "ignore";
+  assert.match(validateChainlinkProviderProfileV1(noReorg).join("\n"), /removedLogPolicy/);
+
+  const unsupportedNa = structuredClone(fixture);
+  unsupportedNa.productionInvariants.futureProtocol.evidenceSha256 = H("9");
+  assert.match(validateChainlinkProviderProfileV1(unsupportedNa).join("\n"), /futureProtocol\.evidenceSha256/);
 
   const mutableReceipt = structuredClone(fixture);
   mutableReceipt.sourceReceipt.sha256 = H("9");
@@ -881,8 +904,8 @@ test("Chainlink profile composes provider-specific evidence with production live
   assert.match(validateChainlinkProviderProfileV1(unboundedStream).join("\n"), /maximumReportBytes/);
 
   const expiredStreamAccepted = structuredClone(fixture);
-  expiredStreamAccepted.integrations.find(({ id }) => id === "data-streams").properties.expiresAtEnforced = false;
-  assert.match(validateChainlinkProviderProfileV1(expiredStreamAccepted).join("\n"), /expiresAtEnforced/);
+  expiredStreamAccepted.integrations.find(({ id }) => id === "data-streams").properties.expiresAtPolicy = "ignore";
+  assert.match(validateChainlinkProviderProfileV1(expiredStreamAccepted).join("\n"), /expiresAtPolicy/);
 
   const excessiveWords = structuredClone(fixture);
   excessiveWords.integrations.find(({ id }) => id === "vrf-v2-5").properties.numWords = "501";
@@ -905,6 +928,11 @@ test("Chainlink profile composes provider-specific evidence with production live
   malformed.integrations[0].id = { hostile: true };
   assert.doesNotThrow(() => validateChainlinkProviderProfileV1(malformed));
   assert.match(validateChainlinkProviderProfileV1(malformed).join("\n"), /integrations/);
+
+  const malformedInvariant = structuredClone(fixture);
+  malformedInvariant.productionInvariants.liveness = null;
+  assert.doesNotThrow(() => validateChainlinkProviderProfileV1(malformedInvariant));
+  assert.match(validateChainlinkProviderProfileV1(malformedInvariant).join("\n"), /productionInvariants\.liveness/);
 });
 
 test("provider CLI validates the exact profile offline and reports no authority", () => {
@@ -921,6 +949,8 @@ test("provider CLI validates the exact profile offline and reports no authority"
     const evidenceDigest = (integrationId, suffix) => validProfile.integrations
       .find(({ id }) => id === integrationId).evidence
       .find(({ path: artifactPath }) => artifactPath.endsWith(`/${suffix}.json`)).sha256;
+    const rootEvidenceDigest = (suffix) => validProfile.evidence
+      .find(({ path: artifactPath }) => artifactPath.endsWith(`/${suffix}.json`)).sha256;
     const ccipProperties = validProfile.integrations.find(({ id }) => id === "ccip").properties;
     ccipProperties.payloadSchemaSha256 = evidenceDigest("ccip", "ccip-payload-schema");
     ccipProperties.finalityPolicySha256 = evidenceDigest("ccip", "ccip-finality-policy");
@@ -929,7 +959,9 @@ test("provider CLI validates the exact profile offline and reports no authority"
     const creProperties = validProfile.integrations.find(({ id }) => id === "cre").properties;
     creProperties.workflowArtifactSha256 = evidenceDigest("cre", "cre-workflow");
     creProperties.configSha256 = evidenceDigest("cre", "cre-config");
+    validProfile.integrations.find(({ id }) => id === "data-feeds").properties.sequencerEvidenceSha256 = evidenceDigest("data-feeds", "data-feeds-sequencer-na");
     validProfile.integrations.find(({ id }) => id === "data-streams").properties.reportSchemaSha256 = evidenceDigest("data-streams", "data-streams-report-schema");
+    validProfile.productionInvariants.futureProtocol.evidenceSha256 = rootEvidenceDigest("future-protocol-na");
     const projectPlanPath = path.join(directory, validProfile.projectPlan.path);
     const projectPlan = composeTemplate({
       catalog: loadTemplateCatalog({ skillRoot }),

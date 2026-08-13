@@ -113,82 +113,102 @@
       "additionalProperties": false,
       "required": ["liveness", "accountExecution", "indexerRpc", "chainCapability", "futureProtocol"],
       "properties": {
-        "liveness": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["callerBound", "authorizationBound", "gasPayerBound", "fundingAndIncentiveBound", "deadlineBound", "workBounded", "retryIdempotent", "stuckExitBound"],
-          "properties": {
-            "callerBound": { "const": true },
-            "authorizationBound": { "const": true },
-            "gasPayerBound": { "const": true },
-            "fundingAndIncentiveBound": { "const": true },
-            "deadlineBound": { "const": true },
-            "workBounded": { "const": true },
-            "retryIdempotent": { "const": true },
-            "stuckExitBound": { "const": true }
-          }
+        "liveness": { "oneOf": [{ "$ref": "#/$defs/invariantNotApplicable" }, { "$ref": "#/$defs/livenessRequirements" }] },
+        "accountExecution": { "oneOf": [{ "$ref": "#/$defs/invariantNotApplicable" }, { "$ref": "#/$defs/accountExecutionRequirements" }] },
+        "indexerRpc": { "oneOf": [{ "$ref": "#/$defs/invariantNotApplicable" }, { "$ref": "#/$defs/indexerRpcRequirements" }] },
+        "chainCapability": { "oneOf": [{ "$ref": "#/$defs/invariantNotApplicable" }, { "$ref": "#/$defs/chainCapabilityRequirements" }] },
+        "futureProtocol": { "oneOf": [{ "$ref": "#/$defs/invariantNotApplicable" }, { "$ref": "#/$defs/futureProtocolRequirements" }] }
+      }
+    },
+    "invariantNotApplicable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "reason", "evidenceSha256"],
+      "properties": {
+        "disposition": { "const": "not-applicable-with-evidence" },
+        "reason": { "type": "string", "minLength": 24, "maxLength": 500 },
+        "evidenceSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "livenessRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "callerBinding", "authorizationBinding", "gasPayerBinding", "fundingAndIncentiveBinding", "deadlineBinding", "workBound", "retryIdempotency", "stuckExitBinding"],
+      "properties": {
+        "disposition": { "const": "requirements-declared" },
+        "callerBinding": { "const": "required" },
+        "authorizationBinding": { "const": "required" },
+        "gasPayerBinding": { "const": "required" },
+        "fundingAndIncentiveBinding": { "const": "required" },
+        "deadlineBinding": { "const": "required" },
+        "workBound": { "const": "required" },
+        "retryIdempotency": { "const": "required" },
+        "stuckExitBinding": { "const": "required" }
+      }
+    },
+    "accountExecutionRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "supportedModels", "nonceBinding", "deadlineBinding", "domainBinding", "replayPolicy", "codeLengthAssumptionPolicy", "mutableSignatureValidityPolicy", "persistentDelegationPolicy"],
+      "properties": {
+        "disposition": { "const": "requirements-declared" },
+        "supportedModels": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": { "enum": ["eip7702", "eoa", "erc1271", "erc4337", "relayer-session-key"] }
         },
-        "accountExecution": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["supportedModels", "nonceBound", "deadlineBound", "domainBound", "replayRejected", "codeLengthAssumptionsForbidden", "mutableSignatureValidityHandled", "persistentDelegationHandled"],
-          "properties": {
-            "supportedModels": {
-              "type": "array",
-              "minItems": 1,
-              "maxItems": 5,
-              "uniqueItems": true,
-              "items": { "enum": ["eip7702", "eoa", "erc1271", "erc4337", "relayer-session-key"] }
-            },
-            "nonceBound": { "const": true },
-            "deadlineBound": { "const": true },
-            "domainBound": { "const": true },
-            "replayRejected": { "const": true },
-            "codeLengthAssumptionsForbidden": { "const": true },
-            "mutableSignatureValidityHandled": { "const": true },
-            "persistentDelegationHandled": { "const": true }
-          }
-        },
-        "indexerRpc": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["runtimeHashBound", "abiAndTopicBound", "startBlockHashBound", "blockTagBound", "boundedLogChunks", "removedLogsHandled", "deterministicReplay", "providerDisagreementFailsClosed", "freshnessBound"],
-          "properties": {
-            "runtimeHashBound": { "const": true },
-            "abiAndTopicBound": { "const": true },
-            "startBlockHashBound": { "const": true },
-            "blockTagBound": { "const": true },
-            "boundedLogChunks": { "const": true },
-            "removedLogsHandled": { "const": true },
-            "deterministicReplay": { "const": true },
-            "providerDisagreementFailsClosed": { "const": true },
-            "freshnessBound": { "const": true }
-          }
-        },
-        "chainCapability": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["inclusionFinalityWithdrawalSeparated", "feeAndTimeSemanticsBound", "sequencerPolicy", "opcodePrecompileCompilerBound", "bridgeReplayDomainBound", "deterministicAddressAssumptionsForbidden"],
-          "properties": {
-            "inclusionFinalityWithdrawalSeparated": { "const": true },
-            "feeAndTimeSemanticsBound": { "const": true },
-            "sequencerPolicy": { "enum": ["bound", "not-applicable-with-chain-proof"] },
-            "opcodePrecompileCompilerBound": { "const": true },
-            "bridgeReplayDomainBound": { "const": true },
-            "deterministicAddressAssumptionsForbidden": { "const": true }
-          }
-        },
-        "futureProtocol": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["forkInclusionRequired", "executionSpecCommitRequired", "targetRuntimeProofRequired", "fallbackOrMigrationBound"],
-          "properties": {
-            "forkInclusionRequired": { "const": true },
-            "executionSpecCommitRequired": { "const": true },
-            "targetRuntimeProofRequired": { "const": true },
-            "fallbackOrMigrationBound": { "const": true }
-          }
-        }
+        "nonceBinding": { "const": "required" },
+        "deadlineBinding": { "const": "required" },
+        "domainBinding": { "const": "required" },
+        "replayPolicy": { "const": "must-reject" },
+        "codeLengthAssumptionPolicy": { "const": "forbidden" },
+        "mutableSignatureValidityPolicy": { "const": "must-handle" },
+        "persistentDelegationPolicy": { "const": "must-handle" }
+      }
+    },
+    "indexerRpcRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "runtimeHashBinding", "abiAndTopicBinding", "startBlockHashBinding", "blockTagBinding", "logChunkBound", "removedLogPolicy", "deterministicReplayRequirement", "providerDisagreementPolicy", "freshnessBinding"],
+      "properties": {
+        "disposition": { "const": "requirements-declared" },
+        "runtimeHashBinding": { "const": "required" },
+        "abiAndTopicBinding": { "const": "required" },
+        "startBlockHashBinding": { "const": "required" },
+        "blockTagBinding": { "const": "required" },
+        "logChunkBound": { "const": "required" },
+        "removedLogPolicy": { "const": "must-handle" },
+        "deterministicReplayRequirement": { "const": "required" },
+        "providerDisagreementPolicy": { "const": "fail-closed" },
+        "freshnessBinding": { "const": "required" }
+      }
+    },
+    "chainCapabilityRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "inclusionFinalityWithdrawalSeparation", "feeAndTimeSemanticsBinding", "sequencerPolicyRequirement", "opcodePrecompileCompilerBinding", "bridgeReplayDomainBinding", "deterministicAddressAssumptionPolicy"],
+      "properties": {
+        "disposition": { "const": "requirements-declared" },
+        "inclusionFinalityWithdrawalSeparation": { "const": "required" },
+        "feeAndTimeSemanticsBinding": { "const": "required" },
+        "sequencerPolicyRequirement": { "const": "bind-or-prove-not-applicable" },
+        "opcodePrecompileCompilerBinding": { "const": "required" },
+        "bridgeReplayDomainBinding": { "const": "required" },
+        "deterministicAddressAssumptionPolicy": { "const": "forbidden" }
+      }
+    },
+    "futureProtocolRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "forkInclusionEvidence", "executionSpecCommitBinding", "targetRuntimeProof", "fallbackOrMigrationBinding"],
+      "properties": {
+        "disposition": { "const": "requirements-declared" },
+        "forkInclusionEvidence": { "const": "required" },
+        "executionSpecCommitBinding": { "const": "required" },
+        "targetRuntimeProof": { "const": "required" },
+        "fallbackOrMigrationBinding": { "const": "required" }
       }
     },
     "contractRole": {

@@ -91,16 +91,16 @@
       "schema": {
         "id": "urn:programmable:chainlink-provider-profile:1.0.0",
         "path": "references/chainlink-provider-profile-v1.schema.json",
-        "byteLength": 10279,
-        "sha256": "sha256:7f4f56ae8163f76f4d6e7fcc2dd6ea87022032223c9e1bf6a84c887a72619909"
+        "byteLength": 11733,
+        "sha256": "sha256:2df4f5a8b42ecc66b9094a32a67b3033fb65bd35bf12f1fbef238c19675ed8b7"
       },
       "validator": {
         "modulePath": "scripts/chainlink-provider-profile-core.mjs",
         "exportName": "validateChainlinkProviderProfileV1",
         "mode": "direct",
-        "moduleByteLength": 32170,
-        "moduleSha256": "sha256:78415b413fe4467eb757a839c3e130fe1bbc252956370f41fc2b9a75f47f00cd",
-        "closureSha256": "sha256:374ea6b674658bd242c9e368214a8730bc18fe482508a86df635a9428e4cffee"
+        "moduleByteLength": 35900,
+        "moduleSha256": "sha256:d8142aa91d1c096269eaaa83079c0d7ed0e866a72a2ab7989811ed09aa15bd11",
+        "closureSha256": "sha256:b1d4378a08fdd3dcf184017ae07979d2efc3fad2909370907a4bfb2d0e208932"
       }
     },
     {
@@ -945,16 +945,16 @@
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/chainlink-provider-profile-core.mjs",
       "moduleCount": 1,
-      "totalByteLength": 32170,
+      "totalByteLength": 35900,
       "modules": [
         {
           "path": "scripts/chainlink-provider-profile-core.mjs",
-          "byteLength": 32170,
-          "sha256": "sha256:78415b413fe4467eb757a839c3e130fe1bbc252956370f41fc2b9a75f47f00cd",
+          "byteLength": 35900,
+          "sha256": "sha256:d8142aa91d1c096269eaaa83079c0d7ed0e866a72a2ab7989811ed09aa15bd11",
           "localImports": []
         }
       ],
-      "closureSha256": "sha256:374ea6b674658bd242c9e368214a8730bc18fe482508a86df635a9428e4cffee"
+      "closureSha256": "sha256:b1d4378a08fdd3dcf184017ae07979d2efc3fad2909370907a4bfb2d0e208932"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -10630,8 +10630,8 @@
     "validatorClosureModuleBindingCount": 1011,
     "validatorClosureDistinctModuleCount": 172,
     "schemaPathsSha256": "sha256:8507a8b6e2fb0904900866ff6d681e14ba668623752953a3aea0d353095935f2",
-    "validatorBindingsSha256": "sha256:69cac8759624a2f8824f81b370dcf76783ff6507312e573445d85b65973ad480",
-    "validatorClosuresSha256": "sha256:49d415d96e568f70105fc3a11a3c3c1c40f45613fd8cc0e13288be70ecc934b5"
+    "validatorBindingsSha256": "sha256:c111d52a9952e3a2dd5ec00418b5fceb4743fcd5b092deaa82f052c7eec7d463",
+    "validatorClosuresSha256": "sha256:ac33ff5b5b8f085ea56e48a403193034e759c481ee4c94ae507e899ef496ff9e"
   },
-  "registrySha256": "sha256:f01db4fd69a8f95ded519ea291a088ef0352604a4966a1ff49d3ca764183ccb8"
+  "registrySha256": "sha256:ac063d3eb6716a524b5e95bb46f00ded69b4634e995fc9311b2cd28e9fcbd159"
 }
