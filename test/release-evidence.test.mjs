@@ -192,19 +192,19 @@ test("candidate quantitative docs match generator-backed source inventories", ()
   const productionModuleCount = sizeReport.discovery.discoveredFiles;
 
   assert.equal(sizeReport.status, "SIZE_BUDGET_PASSED");
-  assert.equal(productionModuleCount, 320);
+  assert.equal(productionModuleCount, 321);
   assert.deepEqual(v2Inventory, { unit: 54, fuzz: 1, invariant: 3, invariantPolicy: "required-and-present" });
-  assert.equal(registry.inventory.contractCount, 49);
-  assert.equal(registry.inventory.validatorClosureCount, 24);
-  assert.equal(registry.inventory.validatorClosureModuleBindingCount, 1011);
-  assert.equal(registry.inventory.validatorClosureDistinctModuleCount, 172);
+  assert.equal(registry.inventory.contractCount, 50);
+  assert.equal(registry.inventory.validatorClosureCount, 25);
+  assert.equal(registry.inventory.validatorClosureModuleBindingCount, 1032);
+  assert.equal(registry.inventory.validatorClosureDistinctModuleCount, 174);
   assert.equal(evalTestCount, 9);
 
   for (const document of [maturity, candidateNotes]) {
     assert.match(document, new RegExp(`${productionModuleCount} production`, "u"));
     assert.match(document, new RegExp(`${registry.inventory.contractCount} (?:portable contracts|schema contracts)`, "u"));
     assert.match(document, new RegExp(`${registry.inventory.validatorClosureCount} validator closures`, "u"));
-    assert.match(document, /1,011 transitive\s+(?:module\s+)?bindings/u);
+    assert.match(document, /1,032 transitive\s+(?:module\s+)?bindings/u);
     assert.match(document, new RegExp(`${registry.inventory.validatorClosureDistinctModuleCount} distinct modules`, "u"));
   }
   for (const document of [maturity, readiness, candidateNotes]) {
