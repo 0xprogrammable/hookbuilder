@@ -34,7 +34,14 @@ function validateUsage(value) {
 }
 
 function validateTelemetry(value) {
-  if (!exactKeys(value, ['retries', 'toolCalls', 'toolErrors'])) {
+  if (!exactKeys(value, [
+    'activatedReferenceBytes',
+    'descendantSubagentCount',
+    'emittedBytes',
+    'retries',
+    'toolCalls',
+    'toolErrors',
+  ])) {
     throw new E2ERunError('JUDGE_RESULT_INVALID', 'judge telemetry keys drift');
   }
   for (const key of Object.keys(value)) {
@@ -131,7 +138,7 @@ function validateJudgeResult({ value, requestSha256, caseRecord, workspace, evid
     throw new E2ERunError('JUDGE_RESULT_INVALID', 'judge result root keys drift');
   }
   if (
-    value.schemaVersion !== '1.0.0'
+    value.schemaVersion !== '1.1.0'
     || value.kind !== 'programmable-e2e-judge-result'
     || value.requestSha256 !== requestSha256
   ) {

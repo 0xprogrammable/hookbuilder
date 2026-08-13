@@ -296,11 +296,33 @@ git(['-c', 'user.name=Programmable E2E', '-c', 'user.email=e2e@example.invalid',
 git(['-c', 'user.name=Programmable E2E', '-c', 'user.email=e2e@example.invalid', 'commit', '--quiet', '-m', 'generated repository']);
 if (mode === 'dirty-repository') write('src/uncommitted.mjs', 'export const uncommitted = true;\n');
 
-const usage = mode === 'over-budget'
+let usage = mode === 'over-budget'
   ? { inputTokens: 12000, outputTokens: 2000, totalTokens: 14000, coldStartContextTokens: 5000, architectureContextTokens: 9000 }
   : { inputTokens: 7000, outputTokens: 2000, totalTokens: 9000, coldStartContextTokens: 3000, architectureContextTokens: 7000 };
+if (mode === 'efficiency-abuse') {
+  usage = {
+    inputTokens: 100_000_000,
+    outputTokens: 800_000_000,
+    totalTokens: 900_000_000,
+    coldStartContextTokens: 3000,
+    architectureContextTokens: 7000,
+  };
+}
+const telemetry = {
+  activatedReferenceBytes: 64 * 1024,
+  descendantSubagentCount: 0,
+  emittedBytes: 64 * 1024,
+  toolCalls: mode === 'efficiency-abuse' ? 9_000_000 : 20,
+  toolErrors: 1,
+  retries: mode === 'efficiency-abuse' ? 8_000_000 : 1,
+  timeToUsefulMs: 1000,
+  questions: 0,
+  manualInterventions: mode === 'assisted' ? 1 : 0,
+  escalations: mode === 'assisted' ? 1 : 0,
+};
+if (mode === 'missing-efficiency-telemetry') delete telemetry.emittedBytes;
 json('.programmable-e2e/agent-result.json', {
-  schemaVersion: '1.0.0',
+  schemaVersion: '1.1.0',
   kind: 'programmable-e2e-agent-result',
   status: 'COMPLETED',
   providerReceipt: {
@@ -319,12 +341,5 @@ json('.programmable-e2e/agent-result.json', {
     responseSha256: sha256('fixture-agent-response'),
   },
   usage,
-  telemetry: {
-    toolCalls: 20,
-    toolErrors: 1,
-    retries: 1,
-    questions: 0,
-    manualInterventions: mode === 'assisted' ? 1 : 0,
-    escalations: mode === 'assisted' ? 1 : 0,
-  },
+  telemetry,
 });

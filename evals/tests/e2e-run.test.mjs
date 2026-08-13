@@ -55,7 +55,7 @@ test('keyless validation reports envelope hashes and distinct response/repositor
     payloadValidation: 'requires-external-key-and-trusted-execution',
     minimumRepetitions: 3,
     tierProfiles: ['frontier', 'mid', 'small'],
-    manifestSha256: 'fd16f34e34cf911c692e1466e3f1c78ca6fc1fa88fddabb7759a01e8763619ce',
+    manifestSha256: '7554eade0e78461f229f3af8414e538e37b2eac505e08fb5f31399cd9da5990c',
     publicResponseCorpusSha256: '8531f0dc8221b894b77486f8c5663f67d56fb73f0ee707b88bb9af2c286839be',
     sealedRepositoryCorpusSha256: 'a5ff5c220b2d9fe943fe5d453efa199856c4e2ff0e278bc5b3cfec341e9f1d9b',
     crossMethodInventorySha256: 'cc320a4ba6ecb1d269c1821ad94b6d315d8c3bf712256cc032abea479c7b6a8c',

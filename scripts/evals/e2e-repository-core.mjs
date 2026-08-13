@@ -126,7 +126,7 @@ export function validateAgentResult(value) {
   if (!exactKeys(value, ['kind', 'providerReceipt', 'schemaVersion', 'status', 'telemetry', 'usage'])) {
     throw new E2ERunError('AGENT_RESULT_INVALID', 'agent result keys drift');
   }
-  if (value.schemaVersion !== '1.0.0' || value.kind !== 'programmable-e2e-agent-result' || value.status !== 'COMPLETED') {
+  if (value.schemaVersion !== '1.1.0' || value.kind !== 'programmable-e2e-agent-result' || value.status !== 'COMPLETED') {
     throw new E2ERunError('AGENT_RESULT_INVALID', 'agent result identity or status is invalid');
   }
   if (!exactKeys(value.usage, [
@@ -153,10 +153,14 @@ export function validateAgentResult(value) {
     throw new E2ERunError('AGENT_RESULT_INVALID', 'phase context tokens cannot exceed measured input tokens');
   }
   if (!exactKeys(value.telemetry, [
+    'activatedReferenceBytes',
+    'descendantSubagentCount',
+    'emittedBytes',
     'escalations',
     'manualInterventions',
     'questions',
     'retries',
+    'timeToUsefulMs',
     'toolCalls',
     'toolErrors',
   ])) {

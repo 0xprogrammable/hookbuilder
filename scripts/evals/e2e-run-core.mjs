@@ -40,7 +40,7 @@ import {
   verifyPostStageWorkspaceSnapshot,
 } from './e2e-repository-core.mjs';
 import { spawnIsolated, loadSubjectSandbox } from './e2e-sandbox-core.mjs';
-import { externalBlockedScorecard, summarizeRuns } from './e2e-score-core.mjs';
+import { evaluateRunEfficiency, externalBlockedScorecard, summarizeRuns } from './e2e-score-core.mjs';
 
 const MAX_ADAPTER_OUTPUT_BYTES = 16 * 1024 * 1024;
 const DEFAULT_ADAPTER_TIMEOUT_MS = 20 * 60 * 1000;
@@ -104,8 +104,9 @@ function revealedCase(caseRecord, holdoutKeyFilePath) {
   return caseRecord;
 }
 
-function initialRunRecord({ evalCase, tierProfile, modelId, repeat, suiteBinding, adapter, sandboxReceipt }) {
+function initialRunRecord({ evalCase, tierProfile, modelId, repeat, suiteBinding, adapter, sandboxReceipt, runStartedAtMs }) {
   return {
+    _runStartedAtMs: runStartedAtMs,
     runId: `${evalCase.id}:${tierProfile.id}:${repeat}`,
     caseId: evalCase.id,
     casePromptSha256: sha256(evalCase.prompt),
@@ -125,9 +126,13 @@ function initialRunRecord({ evalCase, tierProfile, modelId, repeat, suiteBinding
   };
 }
 
+function timedRunPayload(common, value, wallTimeMs = Date.now() - common._runStartedAtMs) {
+  const { _runStartedAtMs, ...publicCommon } = common;
+  return { ...publicCommon, ...value, wallTimeMs };
+}
+
 function terminalRun(common, status, reason, partial = {}) {
-  return finalizeRun({
-    ...common,
+  return finalizeRun(timedRunPayload(common, {
     status,
     reason,
     usage: partial.usage ?? null,
@@ -140,7 +145,7 @@ function terminalRun(common, status, reason, partial = {}) {
     repositoryInventory: partial.repositoryInventory ?? null,
     stageEvidenceQualification: partial.stageEvidenceQualification ?? 'NOT_REACHED',
     judge: partial.judge ?? null,
-  });
+  }));
 }
 
 function failedRun(common, reason, partial) {
@@ -189,7 +194,6 @@ export function runSingleEvaluation({
   pinnedSkillRoot = null,
   suiteBinding = null,
   sandbox = null,
-  efficiencyContract = { coldStartContextTargetTokens: 4000, standardArchitectureContextTargetTokens: 8000 },
 }) {
   if (!Array.isArray(adapterCommand) || adapterCommand.length === 0) throw new E2ERunError('ADAPTER_COMMAND_MISSING', 'agent adapter command is required');
   if (!Array.isArray(judgeCommand) || judgeCommand.length === 0) throw new E2ERunError('JUDGE_COMMAND_MISSING', 'independent judge adapter command is required');
@@ -199,6 +203,8 @@ export function runSingleEvaluation({
     throw new E2ERunError('JUDGE_MODEL_INVALID', 'judge model must be configured and independent from the subject model');
   }
   if (!Number.isInteger(repeat) || repeat < 1) throw new E2ERunError('REPEAT_INVALID', 'repeat must be a positive integer');
+  const resolvedEfficiencyContract = loadHoldoutCorpus({ repositoryRoot }).manifest.efficiencyContract;
+  const runStartedAtMs = Date.now();
 
   const evalCase = revealedCase(caseRecord, holdoutKeyFilePath);
   if (evalCase.forkRequired && !loopbackRpcProxy(forkRpcProxyUrl)) {
@@ -255,6 +261,7 @@ export function runSingleEvaluation({
         suiteBinding: binding,
         adapter: null,
         sandboxReceipt: null,
+        runStartedAtMs,
       });
       returned = blockedRun(common, error.code ?? 'subject-sandbox-receipt-invalid');
       return returned;
@@ -267,7 +274,16 @@ export function runSingleEvaluation({
       stdout: logRecord(child.stdout),
       stderr: logRecord(`${child.stderr ?? ''}${child.error ? `\n${child.error.message}` : ''}`),
     };
-    const common = initialRunRecord({ evalCase, tierProfile, modelId, repeat, suiteBinding: binding, adapter, sandboxReceipt });
+    const common = initialRunRecord({
+      evalCase,
+      tierProfile,
+      modelId,
+      repeat,
+      suiteBinding: binding,
+      adapter,
+      sandboxReceipt,
+      runStartedAtMs,
+    });
     const agentResultAbsolutePath = path.join(agentWorkspace, E2E_AGENT_RESULT_PATH);
     if (child.error?.code === 'ENOENT' || child.status === 75) {
       returned = blockedRun(common, child.error?.code === 'ENOENT' ? 'agent-adapter-not-found' : 'agent-provider-unavailable');
@@ -417,15 +433,9 @@ export function runSingleEvaluation({
       return returned;
     }
 
-    const standardTokenTargetExceeded = !evalCase.novel && (
-      agentResult.usage.coldStartContextTokens > efficiencyContract.coldStartContextTargetTokens
-      || agentResult.usage.architectureContextTokens > efficiencyContract.standardArchitectureContextTargetTokens
-    );
     const assisted = agentResult.telemetry.manualInterventions > 0 || agentResult.telemetry.escalations > 0;
-    returned = finalizeRun({
-      ...common,
-      status: standardTokenTargetExceeded ? 'FAIL' : assisted ? 'ASSISTED' : 'PASS',
-      ...(standardTokenTargetExceeded ? { reason: 'standard-context-token-target-exceeded' } : {}),
+    const wallTimeMs = Date.now() - runStartedAtMs;
+    const completed = timedRunPayload(common, {
       usage: { ...agentResult.usage },
       telemetry,
       providerReceipt,
@@ -436,6 +446,25 @@ export function runSingleEvaluation({
       verificationRevision: partial.verificationRevision,
       repositoryInventory,
       judge,
+    }, wallTimeMs);
+    const efficiency = evaluateRunEfficiency(completed, resolvedEfficiencyContract);
+    const contextTargetExceeded = [
+      efficiency.measurements.coldStartContextTokens,
+      efficiency.measurements.architectureContextTokens,
+    ].some(({ status }) => status === 'FAIL');
+    const efficiencyFailed = efficiency.status === 'FAIL';
+    const efficiencyUnmeasured = efficiency.status === 'UNMEASURED';
+    returned = finalizeRun({
+      ...completed,
+      status: efficiencyFailed || efficiencyUnmeasured ? 'FAIL' : assisted ? 'ASSISTED' : 'PASS',
+      ...(contextTargetExceeded
+        ? { reason: 'standard-context-token-target-exceeded' }
+        : efficiencyFailed
+          ? { reason: 'efficiency-budget-exceeded' }
+          : efficiencyUnmeasured
+            ? { reason: 'efficiency-telemetry-unmeasured' }
+            : {}),
+      efficiency,
     });
     return returned;
   } finally {
@@ -480,6 +509,7 @@ export function runE2EEvaluations({
   tierIds = [],
   repetitions,
   validatedStructure = null,
+  baselineRuns = null,
 }) {
   const corpus = validatedStructure === null
     ? loadHoldoutCorpus({ repositoryRoot })
@@ -573,12 +603,11 @@ export function runE2EEvaluations({
             pinnedSkillRoot,
             suiteBinding,
             sandbox,
-            efficiencyContract: corpus.manifest.efficiencyContract,
           }));
         }
       }
     }
-    return summarizeRuns({ runs, ...selection, suiteBinding, revealedCoverage });
+    return summarizeRuns({ runs, ...selection, suiteBinding, revealedCoverage, baselineRuns });
   } finally {
     makeTreeDisposable(suiteRoot);
     fs.rmSync(suiteRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });

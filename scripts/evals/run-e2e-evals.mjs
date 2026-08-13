@@ -409,6 +409,8 @@ export function runCli(argv) {
     status: scorecard.status,
     scorecardSha256: scorecard.scorecardSha256,
     resultArtifact: output.destination,
+    primaryDiagnostics: scorecard.diagnostics.primary,
+    exhaustiveDiagnosticsArtifact: output.destination,
     plannedRunCount: scorecard.plannedRunCount,
     completedRunCount: scorecard.completedRunCount,
     releaseGateSatisfied: scorecard.status === 'PASS',

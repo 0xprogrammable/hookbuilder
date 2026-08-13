@@ -200,18 +200,20 @@ function validateTierProfiles(manifest, issues) {
 function validateContracts(manifest, issues) {
   addIssue(
     issues,
-    exactKeys(manifest.adapterContract, ['arguments', 'resultPath'])
+    exactKeys(manifest.adapterContract, ['arguments', 'resultPath', 'resultSchemaVersion'])
       && JSON.stringify(manifest.adapterContract.arguments) === JSON.stringify(['installedSkillPath', 'naturalPrompt'])
-      && manifest.adapterContract.resultPath === '.programmable-e2e/agent-result.json',
+      && manifest.adapterContract.resultPath === '.programmable-e2e/agent-result.json'
+      && manifest.adapterContract.resultSchemaVersion === '1.1.0',
     'adapter contract must expose only installedSkillPath and naturalPrompt',
   );
   addIssue(
     issues,
-    exactKeys(manifest.judgeContract, ['arguments', 'independentModelEnv', 'requestPath', 'resultPath'])
+    exactKeys(manifest.judgeContract, ['arguments', 'independentModelEnv', 'requestPath', 'resultPath', 'resultSchemaVersion'])
       && JSON.stringify(manifest.judgeContract.arguments) === JSON.stringify(['evaluationRequestPath', 'judgeResultPath'])
       && manifest.judgeContract.independentModelEnv === 'PROGRAMMABLE_E2E_JUDGE_MODEL'
       && manifest.judgeContract.requestPath === 'judge-request.json'
-      && manifest.judgeContract.resultPath === 'judge-result.json',
+      && manifest.judgeContract.resultPath === 'judge-result.json'
+      && manifest.judgeContract.resultSchemaVersion === '1.1.0',
     'judge contract must remain independent and hash-bind its request and result paths',
   );
   const contract = manifest.repositoryContract;
@@ -232,13 +234,37 @@ function validateContracts(manifest, issues) {
       'assistedRunsCountAsPass',
       'coldStartContextTargetTokens',
       'escalatedRunsCountAsPass',
+      'maxActivatedReferenceBytes',
+      'maxCombinedTokens',
+      'maxDescendantSubagents',
+      'maxEmittedBytes',
+      'maxRetries',
+      'maxTimeToUsefulMs',
+      'maxToolCalls',
+      'maxTotalInputTokens',
+      'maxTotalOutputTokens',
+      'maxWallTimeMs',
       'standardArchitectureContextTargetTokens',
     ])
       && manifest.efficiencyContract.coldStartContextTargetTokens === 4000
       && manifest.efficiencyContract.standardArchitectureContextTargetTokens === 8000
       && manifest.efficiencyContract.assistedRunsCountAsPass === false
-      && manifest.efficiencyContract.escalatedRunsCountAsPass === false,
-    'efficiency contract must preserve measured 4k/8k targets and exclude assisted or escalated runs from PASS',
+      && manifest.efficiencyContract.escalatedRunsCountAsPass === false
+      && [
+        'maxActivatedReferenceBytes',
+        'maxCombinedTokens',
+        'maxEmittedBytes',
+        'maxRetries',
+        'maxTimeToUsefulMs',
+        'maxToolCalls',
+        'maxTotalInputTokens',
+        'maxTotalOutputTokens',
+        'maxWallTimeMs',
+      ].every((key) => Number.isSafeInteger(manifest.efficiencyContract[key]) && manifest.efficiencyContract[key] > 0)
+      && manifest.efficiencyContract.maxDescendantSubagents === 0
+      && manifest.efficiencyContract.maxCombinedTokens
+        === manifest.efficiencyContract.maxTotalInputTokens + manifest.efficiencyContract.maxTotalOutputTokens,
+    'efficiency contract must own complete positive run budgets, preserve measured 4k/8k targets, default descendants to zero, and exclude assisted or escalated runs from PASS',
   );
 }
 
