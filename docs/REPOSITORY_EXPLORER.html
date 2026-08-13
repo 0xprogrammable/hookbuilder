@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Explore what each part of the Programmable v4 Builder repository owns, how checks fit together and where external authority begins.">
+  <title>Programmable v4 Builder repository explorer</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #f7f4ec;
+      --muted: #aaa89f;
+      --faint: #74736e;
+      --night: #0b0c0b;
+      --panel: #121311;
+      --panel-2: #181916;
+      --panel-3: #20211d;
+      --line: #2e302a;
+      --line-strong: #474a40;
+      --lime: #c8ff65;
+      --lime-ink: #172000;
+      --gold: #f4c76b;
+      --blue: #88c8ff;
+      --violet: #c7a7ff;
+      --rose: #ff9a9e;
+      --radius: 1rem;
+      --shadow: 0 1rem 3rem rgb(0 0 0 / 0.24);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 20rem;
+      background:
+        radial-gradient(circle at 80% -10%, rgb(200 255 101 / 0.09), transparent 30rem),
+        var(--night);
+      color: var(--ink);
+      font: 400 1rem/1.55 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    button, select, input { font: inherit; }
+    button, a, select { -webkit-tap-highlight-color: transparent; }
+    a { color: inherit; }
+    code, .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.88em;
+    }
+    :focus-visible {
+      outline: 0.18rem solid var(--lime);
+      outline-offset: 0.2rem;
+    }
+    .skip-link {
+      position: fixed;
+      z-index: 100;
+      inset-block-start: 0.75rem;
+      inset-inline-start: 0.75rem;
+      translate: 0 -5rem;
+      padding: 0.7rem 1rem;
+      border-radius: 0.7rem;
+      background: var(--lime);
+      color: var(--lime-ink);
+      font-weight: 750;
+    }
+    .skip-link:focus { translate: 0; }
+    .shell { width: min(92rem, calc(100% - 2rem)); margin-inline: auto; }
+    header {
+      padding-block: clamp(2.5rem, 7vw, 6.5rem) 2rem;
+    }
+    .eyebrow {
+      margin: 0 0 1rem;
+      color: var(--lime);
+      font: 750 0.78rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3, p { margin-block-start: 0; }
+    h1 {
+      max-width: 13ch;
+      margin-block-end: 1.25rem;
+      font-size: clamp(2.7rem, 8vw, 6.5rem);
+      line-height: 0.98;
+      letter-spacing: -0.06em;
+      text-wrap: balance;
+    }
+    h2 { font-size: clamp(1.8rem, 4vw, 3.35rem); line-height: 1.1; letter-spacing: -0.045em; text-wrap: balance; }
+    h3 { font-size: 1.08rem; line-height: 1.25; }
+    p { text-wrap: pretty; }
+    .lede { max-width: 65ch; color: #d1cec5; font-size: clamp(1.05rem, 2vw, 1.3rem); }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(17rem, 0.7fr);
+      gap: 1.5rem;
+      align-items: end;
+    }
+    .callout {
+      padding: 1.25rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgb(24 25 22 / 0.88);
+      box-shadow: var(--shadow);
+    }
+    .callout strong { display: block; margin-block-end: 0.4rem; color: var(--gold); }
+    .callout p { margin: 0; color: var(--muted); }
+    .mental-model { display: grid; gap: 0.45rem; margin: 0; padding-inline-start: 1.25rem; color: var(--muted); }
+    .mental-model li::marker { color: var(--gold); font-weight: 800; }
+    .top-nav {
+      position: sticky;
+      z-index: 20;
+      inset-block-start: 0;
+      border-block: 1px solid var(--line);
+      background: rgb(11 12 11 / 0.88);
+      backdrop-filter: blur(1rem);
+    }
+    .nav-inner { display: flex; gap: 0.35rem; overflow-x: auto; padding-block: 0.6rem; scrollbar-width: thin; }
+    .nav-inner a {
+      flex: 0 0 auto;
+      min-height: 2.5rem;
+      padding: 0.58rem 0.9rem;
+      border-radius: 0.7rem;
+      color: var(--muted);
+      text-decoration: none;
+      font-weight: 650;
+    }
+    .nav-inner a:hover { background: var(--panel-2); color: var(--ink); }
+    main { padding-block: 4rem 7rem; }
+    section { scroll-margin-top: 5rem; margin-block-end: clamp(5rem, 10vw, 9rem); }
+    .section-head { max-width: 68ch; margin-block-end: 2rem; }
+    .section-head p { color: var(--muted); }
+    .pill-row { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2rem;
+      padding: 0.35rem 0.68rem;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      color: var(--muted);
+      background: var(--panel);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .pill::before { width: 0.45rem; height: 0.45rem; margin-inline-end: 0.45rem; border-radius: 50%; background: currentColor; content: ""; }
+    .pill.canonical { color: var(--lime); }
+    .pill.derived { color: var(--blue); }
+    .pill.evidence { color: var(--gold); }
+    .pill.external { color: var(--violet); }
+    .pill.warning { color: var(--rose); }
+    .map-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: space-between;
+      align-items: end;
+      margin-block-end: 1.25rem;
+    }
+    .filter-set { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+    .filter, .shape-button, .trace-button, .copy-button {
+      min-height: 2.75rem;
+      border: 1px solid var(--line-strong);
+      border-radius: 0.75rem;
+      padding: 0.62rem 0.85rem;
+      background: var(--panel-2);
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 700;
+      transition-property: color, background-color, border-color, scale;
+      transition-duration: 140ms;
+    }
+    .filter:hover, .shape-button:hover, .trace-button:hover, .copy-button:hover { color: var(--ink); border-color: #62665a; }
+    .filter:active, .shape-button:active, .trace-button:active, .copy-button:active { scale: 0.96; }
+    .filter[aria-pressed="true"], .shape-button[aria-pressed="true"] { border-color: var(--lime); background: var(--lime); color: var(--lime-ink); }
+    .search-field { display: grid; gap: 0.35rem; min-width: min(100%, 18rem); color: var(--muted); font-size: 0.86rem; font-weight: 700; }
+    .search-field input, .scenario-select {
+      min-height: 2.75rem;
+      border: 1px solid var(--line-strong);
+      border-radius: 0.75rem;
+      padding-inline: 0.8rem;
+      background: var(--panel-2);
+      color: var(--ink);
+    }
+    .map-layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(19rem, 0.75fr); gap: 1.25rem; align-items: start; }
+    .map-stage {
+      position: relative;
+      min-height: 42rem;
+      padding: 1rem;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: calc(var(--radius) + 0.4rem);
+      background:
+        linear-gradient(rgb(255 255 255 / 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(255 255 255 / 0.025) 1px, transparent 1px),
+        var(--panel);
+      background-size: 2rem 2rem;
+    }
+    #edgeLayer { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    #edgeLayer line { stroke: #3d4037; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+    #edgeLayer line.active { stroke: var(--lime); stroke-width: 2.5; }
+    .node-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: clamp(1.5rem, 4vw, 4.5rem) clamp(0.7rem, 2vw, 1.4rem);
+      align-content: start;
+      min-height: 38rem;
+      padding-block: 1.25rem;
+    }
+    .node {
+      min-height: 8.75rem;
+      padding: 1rem;
+      border: 1px solid var(--line-strong);
+      border-radius: 0.9rem;
+      background: rgb(24 25 22 / 0.96);
+      color: var(--ink);
+      text-align: start;
+      cursor: pointer;
+      box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.14);
+      transition-property: border-color, background-color, opacity, scale, box-shadow;
+      transition-duration: 160ms;
+    }
+    .node:hover { border-color: #777c6b; }
+    .node:active { scale: 0.96; }
+    .node.active { border-color: var(--lime); box-shadow: 0 0 0 1px var(--lime), 0 0.9rem 2.5rem rgb(200 255 101 / 0.09); }
+    .node.related { border-color: #77964d; }
+    .node.dimmed { opacity: 0.24; }
+    .node[hidden] { display: none; }
+    .node-kicker { display: block; margin-block-end: 0.5rem; color: var(--muted); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+    .node-title { display: block; margin-block-end: 0.4rem; font-size: 0.98rem; font-weight: 800; }
+    .node-summary { display: block; color: var(--muted); font-size: 0.78rem; line-height: 1.4; }
+    .inspector {
+      position: sticky;
+      inset-block-start: 5.25rem;
+      min-height: 29rem;
+      padding: 1.35rem;
+      border-radius: calc(var(--radius) + 0.4rem);
+      background: var(--panel-2);
+      box-shadow: var(--shadow);
+    }
+    .inspector .pill { margin-block-end: 1rem; }
+    .inspector h3 { font-size: 1.5rem; letter-spacing: -0.025em; }
+    .inspector p, .inspector li { color: var(--muted); }
+    .inspector ul { padding-inline-start: 1.2rem; }
+    .inspector-subhead { margin-block: 1.4rem 0.4rem; color: var(--ink); font-size: 0.9rem; }
+    .file-link {
+      display: block;
+      margin-block: 0.7rem;
+      padding: 0.8rem;
+      overflow-wrap: anywhere;
+      border-radius: 0.7rem;
+      background: var(--panel-3);
+      color: var(--blue);
+      text-decoration: none;
+    }
+    .file-link:hover { text-decoration: underline; }
+    .connection-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-block-start: 0.8rem; }
+    .connection-button { border: 0; border-radius: 999px; padding: 0.42rem 0.65rem; background: #2a2c26; color: #d8d5cc; cursor: pointer; }
+    .connection-button:hover { background: #35382f; }
+    .shape-switcher { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin-block-end: 1rem; }
+    .shape-button { min-height: 4.5rem; text-align: start; }
+    .lab-grid { display: grid; grid-template-columns: minmax(17rem, 0.75fr) minmax(0, 1.55fr); gap: 1rem; }
+    .shape-card, .flow-panel, .change-card, .first-hour-card {
+      padding: 1.35rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+    .shape-card { background: var(--lime); color: var(--lime-ink); }
+    .shape-card p { opacity: 0.75; }
+    .shape-card .eyebrow { color: inherit; }
+    .shape-summary-title { margin-block-end: 0.8rem; font-size: 1.65rem; }
+    .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.55rem; margin-block-start: 1.3rem; }
+    .metric { padding: 0.75rem; border-radius: 0.7rem; background: rgb(11 12 11 / 0.12); }
+    .metric span { display: block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; opacity: 0.65; }
+    .metric strong { display: block; margin-block-start: 0.2rem; font-size: 0.95rem; }
+    .flow-list { display: grid; gap: 0.65rem; margin: 0; padding: 0; list-style: none; }
+    .flow-item { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; gap: 0.8rem; align-items: start; padding: 0.85rem; border-radius: 0.8rem; background: var(--panel-2); }
+    .flow-index { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 50%; background: #34372f; color: var(--muted); font-weight: 800; }
+    .flow-item.required .flow-index { background: var(--lime); color: var(--lime-ink); }
+    .flow-item.optional { opacity: 0.5; }
+    .flow-copy strong, .flow-copy span { display: block; }
+    .flow-copy span { color: var(--muted); font-size: 0.82rem; }
+    .flow-state { align-self: center; max-width: 12ch; color: var(--muted); font-size: 0.7rem; font-weight: 800; text-align: end; text-wrap: balance; }
+    .lifecycle { display: grid; gap: 0.75rem; }
+    .phase {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 1rem;
+      align-items: center;
+      min-height: 5.2rem;
+      padding: 1rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+    }
+    .phase-number { display: grid; width: 2.4rem; height: 2.4rem; place-items: center; border-radius: 0.8rem; background: var(--panel-3); color: var(--lime); font-weight: 850; }
+    .phase strong, .phase > div > span { display: block; }
+    .phase > div > span { color: var(--muted); font-size: 0.86rem; }
+    .phase .owner { color: var(--gold); font: 700 0.72rem/1.3 ui-monospace, monospace; text-align: end; }
+    .boundary { margin-block: 0.2rem; padding: 0.65rem 1rem; border: 1px dashed var(--violet); border-radius: 999px; color: var(--violet); text-align: center; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+    .change-layout { display: grid; grid-template-columns: minmax(16rem, 0.65fr) minmax(0, 1.35fr); gap: 1rem; }
+    .scenario-select { width: 100%; margin-block: 0.5rem 1rem; }
+    .change-stack { display: grid; gap: 0.7rem; }
+    .change-step { padding: 1rem; border-radius: 0.8rem; background: var(--panel-2); }
+    .change-step small { display: block; margin-block-end: 0.3rem; color: var(--lime); font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; }
+    .change-step p { margin: 0; color: var(--muted); }
+    .command {
+      position: relative;
+      margin-block: 0.75rem;
+      padding: 1rem 3.5rem 1rem 1rem;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 0.8rem;
+      background: #080908;
+      color: #e6e3da;
+      white-space: pre;
+    }
+    .copy-button { position: absolute; inset-block-start: 0.45rem; inset-inline-end: 0.45rem; min-height: 2.35rem; padding: 0.35rem 0.65rem; font-size: 0.78rem; }
+    .hour-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+    .first-hour-card { display: flex; flex-direction: column; }
+    .first-hour-card .time { color: var(--lime); font: 800 0.8rem/1 ui-monospace, monospace; }
+    .first-hour-card p { flex: 1; color: var(--muted); }
+    .first-hour-card a { color: var(--blue); }
+    .guardrail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .guardrail { padding: 1.2rem; border-radius: var(--radius); background: var(--panel); }
+    .guardrail strong { color: var(--lime); }
+    .guardrail.no strong { color: var(--rose); }
+    .guardrail p { margin: 0.4rem 0 0; color: var(--muted); }
+    footer { padding-block: 2.5rem; border-block-start: 1px solid var(--line); color: var(--muted); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    [hidden] { display: none !important; }
+
+    @media (max-width: 66rem) {
+      .map-layout, .lab-grid, .change-layout { grid-template-columns: 1fr; }
+      .inspector { position: static; min-height: 0; }
+      .hero-grid { grid-template-columns: 1fr; }
+      .shape-switcher { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 46rem) {
+      .shell { width: min(100% - 1.1rem, 92rem); }
+      .node-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 0.65rem; min-height: 0; }
+      .map-stage { min-height: 0; }
+      #edgeLayer { display: none; }
+      .node { min-height: 9.5rem; }
+      .hour-grid, .guardrail-grid { grid-template-columns: 1fr; }
+      .phase { grid-template-columns: auto 1fr; }
+      .phase .owner { grid-column: 2; text-align: start; }
+    }
+    @media (max-width: 30rem) {
+      .node-grid, .shape-switcher { grid-template-columns: 1fr; }
+      .metric-grid { grid-template-columns: 1fr; }
+      .flow-item { grid-template-columns: 2rem minmax(0, 1fr); }
+      .flow-state { grid-column: 2; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to explorer</a>
+
+  <header class="shell">
+    <div class="hero-grid">
+      <div>
+        <p class="eyebrow">Interactive repository guide · v0.5.1 source</p>
+        <h1>Understand the repository</h1>
+        <p class="lede">Use this guide to see how an idea becomes a reviewable project. It explains what each repository part does and where local checks stop. It is not a validator, audit, approval or deployment tool.</p>
+      </div>
+      <aside class="callout" aria-label="How the repository fits together">
+        <strong>How the repository fits together</strong>
+        <ol class="mental-model">
+          <li><code>SKILL.md</code> sets the agent's behaviour</li>
+          <li>Routing chooses which knowledge to load</li>
+          <li>Schemas define the data shape</li>
+          <li>Validators check whether the facts agree</li>
+          <li>The compiler creates the project files</li>
+          <li>Tests provide evidence for the exact inputs they run</li>
+        </ol>
+      </aside>
+    </div>
+  </header>
+
+  <nav class="top-nav" aria-label="Explorer sections">
+    <div class="shell nav-inner">
+      <a href="#system-map">System map</a>
+      <a href="#shape-lab">Project types</a>
+      <a href="#lifecycle">Lifecycle</a>
+      <a href="#change-path">Where to make changes</a>
+      <a href="#first-hour">Start here</a>
+    </div>
+  </nav>
+
+  <main id="main" class="shell">
+    <section id="system-map" aria-labelledby="system-title">
+      <div class="section-head">
+        <p class="eyebrow">01 · System map</p>
+        <h2 id="system-title">See how repository parts connect</h2>
+        <p>Select a component to see what it owns, what it receives and what it produces. Lines show direct dependencies. They do not transfer authority.</p>
+        <div class="pill-row" aria-label="Component categories">
+          <span class="pill canonical">Source of truth</span>
+          <span class="pill derived">Generated output</span>
+          <span class="pill evidence">Tests and evidence</span>
+          <span class="pill external">External system</span>
+        </div>
+      </div>
+
+      <div class="map-controls">
+        <div class="filter-set" aria-label="Filter components by type">
+          <button class="filter" type="button" data-filter="all" aria-pressed="true">All components</button>
+          <button class="filter" type="button" data-filter="canonical" aria-pressed="false">Source</button>
+          <button class="filter" type="button" data-filter="derived" aria-pressed="false">Generated</button>
+          <button class="filter" type="button" data-filter="evidence" aria-pressed="false">Tests</button>
+          <button class="filter" type="button" data-filter="external" aria-pressed="false">External</button>
+        </div>
+        <label class="search-field" for="mapSearch">Search components
+          <input id="mapSearch" type="search" placeholder="For example, schema or test" autocomplete="off">
+        </label>
+      </div>
+
+      <div class="map-layout">
+        <div class="map-stage" id="mapStage" role="region" aria-label="Repository component map">
+          <svg id="edgeLayer" aria-hidden="true"></svg>
+          <div id="nodeGrid" class="node-grid" role="group" aria-label="Repository components"></div>
+        </div>
+        <aside id="inspector" class="inspector" aria-live="polite" aria-label="Details for the selected component"></aside>
+      </div>
+      <p id="mapStatus" class="sr-only" role="status"></p>
+    </section>
+
+    <section id="shape-lab" aria-labelledby="shape-title">
+      <div class="section-head">
+        <p class="eyebrow">02 · Project types</p>
+        <h2 id="shape-title">Different project types need different inputs</h2>
+        <p>The catalog speeds up known work but does not limit new ideas. Choose an example to see which components may be relevant. The example does not decide whether a project is safe or accepted.</p>
+      </div>
+      <div id="shapeSwitcher" class="shape-switcher" role="group" aria-label="Choose an example project type"></div>
+      <div class="lab-grid">
+        <article class="shape-card" id="shapeSummary"></article>
+        <div class="flow-panel">
+          <h3>Components this example needs</h3>
+          <ul id="shapeFlow" class="flow-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="lifecycle" aria-labelledby="life-title">
+      <div class="section-head">
+        <p class="eyebrow">03 · Checks and authority</p>
+        <h2 id="life-title">See what the repository checks</h2>
+        <p>The repository can produce repeatable local evidence. It cannot make decisions for maintainers, owners or external platforms.</p>
+      </div>
+      <div class="lifecycle">
+        <article class="phase"><span class="phase-number">1</span><div><strong>Record the idea</strong><span>Keep the public-safe prompt unchanged, then derive <code>ProjectSpec</code> and nine typed graphs.</span></div><span class="owner">Builder · local</span></article>
+        <article class="phase"><span class="phase-number">2</span><div><strong>Choose an architecture</strong><span>Compare the smallest correct, v4-native and hybrid designs. Choose the simplest design that preserves the idea.</span></div><span class="owner">Builder and owner facts</span></article>
+        <article class="phase"><span class="phase-number">3</span><div><strong>Create the project files</strong><span>Generate source, schemas, locks, tests, plans and state checkpoints from source-of-truth inputs.</span></div><span class="owner">Builder · local write</span></article>
+        <article class="phase"><span class="phase-number">4</span><div><strong>Run the declared checks</strong><span>Run bounded commands and record their inputs and results. A pass proves only the tested bytes.</span></div><span class="owner">Tools · local</span></article>
+        <article class="phase"><span class="phase-number">5</span><div><strong>Check the outputs</strong><span>Rebuild the file inventory and identity. Autopilot ends only when <code>PROJECT_PREFLIGHT_VALID</code> is present.</span></div><span class="owner">Validator · local</span></article>
+        <article class="phase"><span class="phase-number">6</span><div><strong>Prepare the review package</strong><span>Freeze the exact public GitHub source and a draft-only 'Submit a Launch' application.</span></div><span class="owner">Builder · no network write</span></article>
+        <div class="boundary">External authority starts here</div>
+        <article class="phase"><span class="phase-number">7</span><div><strong>Review by maintainers</strong><span>Maintainers review the exact application and evidence. A local pass cannot grant approval.</span></div><span class="owner">Maintainers · external</span></article>
+        <article class="phase"><span class="phase-number">8</span><div><strong>Launch and runtime actions</strong><span>Signing, broadcasting, deployment, registry writes, routing and availability need separate authority and runtime evidence.</span></div><span class="owner">Owner and platform · external</span></article>
+      </div>
+    </section>
+
+    <section id="change-path" aria-labelledby="change-title">
+      <div class="section-head">
+        <p class="eyebrow">04 · Where to make changes</p>
+        <h2 id="change-title">Edit the owning file, then update affected outputs</h2>
+        <p>Choose what you want to change. You will see the owning file family, the work that may need updating and a focused check to run before the full repository gate.</p>
+      </div>
+      <div class="change-layout">
+        <div class="change-card">
+          <label for="changeSelect"><strong>Choose a change type</strong></label>
+          <select id="changeSelect" class="scenario-select"></select>
+          <p id="changeWhy" style="color: var(--muted)"></p>
+        </div>
+        <div class="change-card change-stack" id="changeStack"></div>
+      </div>
+    </section>
+
+    <section id="first-hour" aria-labelledby="hour-title">
+      <div class="section-head">
+        <p class="eyebrow">05 · Recommended start</p>
+        <h2 id="hour-title">Start with one small example</h2>
+        <p>Follow one small path before you open the large orchestration files. These steps take you from the operating contract to an executable test.</p>
+      </div>
+      <div class="hour-grid">
+        <article class="first-hour-card">
+          <p class="time">0 to 15 minutes</p>
+          <h3>Find who owns each rule</h3>
+          <p>Read the repository map, contribution table and skill contract. You should be able to name the file that owns each rule.</p>
+          <a href="../README.md">Read README.md</a>
+          <a href="../CONTRIBUTING.md">Read CONTRIBUTING.md</a>
+          <a href="../skills/programmable-v4-hook-builder/SKILL.md">Read the skill contract</a>
+        </article>
+        <article class="first-hour-card">
+          <p class="time">15 to 35 minutes</p>
+          <h3>See how context is selected</h3>
+          <p>Run the offline router. Compare <code>loadNow</code> and <code>loadLater</code>. Then read the focused test.</p>
+          <div class="command"><code>node skills/programmable-v4-hook-builder/scripts/cli.mjs context --mode explore</code><button class="copy-button" type="button" aria-label="Copy context command">Copy command</button></div>
+          <a href="../skills/programmable-v4-hook-builder/scripts/test/knowledge-router.test.mjs">Read the knowledge router test</a>
+        </article>
+        <article class="first-hour-card">
+          <p class="time">35 to 60 minutes</p>
+          <h3>Follow one example through the system</h3>
+          <p>Run the golden scenarios test. Then read the project compiler test. Follow the path from input to validation, findings and gates.</p>
+          <div class="command"><code>node --test skills/programmable-v4-hook-builder/scripts/test/golden-scenarios.test.mjs</code><button class="copy-button" type="button" aria-label="Copy golden scenarios test command">Copy command</button></div>
+          <a href="../skills/programmable-v4-hook-builder/scripts/test/project-compiler-materialization.test.mjs">Read the materialization tests</a>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="guardrail-title">
+      <div class="section-head">
+        <p class="eyebrow">Limits of local checks</p>
+        <h2 id="guardrail-title">What local checks can and cannot tell you</h2>
+      </div>
+      <div class="guardrail-grid">
+        <article class="guardrail"><strong>Local checks can show</strong><p>Whether the schema is valid, fields are consistent, commands return expected results, hashes match, source files are complete and tested bytes behave reproducibly.</p></article>
+        <article class="guardrail no"><strong>Local checks cannot show</strong><p>Whether an independent auditor or maintainer will approve the work. They cannot grant signing authority, deploy or publish anything, or prove provider support, routing, tradability, indexing or public availability.</p></article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell">This page is a dependency-free learning aid built from the repository's source files. If it disagrees with a machine contract, follow the schema and validator.</div>
+  </footer>
+
+  <script>
+    const components = [
+      {
+        id: "entry", type: "canonical", kicker: "Operating contract", title: "SKILL.md", summary: "Modes, limits, commands and context loading.",
+        description: "This small contract tells an agent how to work in each mode: Explore, Autopilot, Preflight, Prototype, Repair, Review, Submit and Handoff. Local work does not grant external authority.",
+        path: "../skills/programmable-v4-hook-builder/SKILL.md", links: ["routing", "cli", "compiler"]
+      },
+      {
+        id: "routing", type: "canonical", kicker: "Context selection", title: "Routing contract", summary: "Chooses which references to load offline.",
+        description: "knowledge-routing.json chooses what to load now and later based on the mode, confirmed capability and project area. Unknown capabilities stay eligible and go to architecture review.",
+        path: "../skills/programmable-v4-hook-builder/references/knowledge-routing.json", links: ["catalog", "compiler"]
+      },
+      {
+        id: "catalog", type: "canonical", kicker: "Reusable patterns", title: "Starter catalog", summary: "Hash-bound starters and composition packs.",
+        description: "The catalog speeds up known work but is not an allowlist. It records hashes for reusable pieces while blank-custom and owner-defined capabilities keep the system open.",
+        path: "../skills/programmable-v4-hook-builder/assets/starter-catalog/catalog.json", links: ["compiler", "evidence"]
+      },
+      {
+        id: "schemas", type: "canonical", kicker: "Data shape", title: "Schemas", summary: "Define allowed data structures and versions.",
+        description: "JSON Schemas define the machine-readable shape. Versioned V1 and open-world V2 contracts stay separate. Prose cannot add fields that the schema does not allow.",
+        path: "../skills/programmable-v4-hook-builder/references/submission-v2.schema.json", links: ["validators", "compiler"]
+      },
+      {
+        id: "validators", type: "canonical", kicker: "Meaning and rules", title: "Validators", summary: "Check relationships between fields and evidence.",
+        description: "Validators apply rules after schema validation. They check intent, value flow, authority, fees, trade, security, source and lifecycle. The schema says what can be written. The validator checks whether the facts agree.",
+        path: "../skills/programmable-v4-hook-builder/scripts/open-world-v2-validation-core.mjs", links: ["compiler", "evidence"]
+      },
+      {
+        id: "cli", type: "canonical", kicker: "Command line", title: "CLI router", summary: "Runs doctor, context, project, review and lifecycle commands.",
+        description: "cli.mjs is the command boundary for people and agents. It calls focused modules through bounded child processes and returns structured JSON results.",
+        path: "../skills/programmable-v4-hook-builder/scripts/cli.mjs", links: ["routing", "compiler", "review"]
+      },
+      {
+        id: "compiler", type: "canonical", kicker: "Build pipeline", title: "Project compiler", summary: "Turns a project description into files and checks.",
+        description: "This pipeline validates and generates an exact project bundle. It compares architectures, creates generated files, runs declared plans and checks that outputs are complete.",
+        path: "../skills/programmable-v4-hook-builder/scripts/project-compiler.mjs", links: ["artifacts", "evidence"]
+      },
+      {
+        id: "artifacts", type: "derived", kicker: "Generated project files", title: "Project package", summary: "Spec, nine graphs, plan, states and submission.",
+        description: "These files are generated from the preserved idea and chosen architecture. Their hashes help prove which content they contain. Do not hand-edit files to hide a hash failure.",
+        path: "../skills/programmable-v4-hook-builder/assets/templates/open-world-v2/new-idea/submission.v2.json", links: ["evidence", "review"]
+      },
+      {
+        id: "evidence", type: "evidence", kicker: "Tests and records", title: "Tests and evidence", summary: "Tests, kernels, evaluations and command records.",
+        description: "Root tests check repository contracts. Skill tests check package behaviour. Evaluations check agent behaviour. Reference kernels provide executable Solidity evidence. Each record applies only to the exact bytes and conditions it tested.",
+        path: "../scripts/verify-repository.mjs", links: ["review", "distribution"]
+      },
+      {
+        id: "distribution", type: "derived", kicker: "Generated host files", title: "Plugin output", summary: "Copies canonical files into host-specific packages.",
+        description: "config/plugin.json is the source of truth for neutral metadata. A generator creates host manifests and a byte-verified plugin payload. Edit the source files, not generated outputs.",
+        path: "../scripts/generate-plugin-manifests.mjs", links: []
+      },
+      {
+        id: "review", type: "external", kicker: "External review", title: "Submit a launch", summary: "Draft package for independent maintainer review.",
+        description: "prepare-pr creates a review package without writing to GitHub. Submitting or updating it needs explicit authorisation. Review is separate from approval, registry state, deployment and availability.",
+        path: "PUBLIC_GITHUB_PR_BETA.md", links: ["launch"]
+      },
+      {
+        id: "launch", type: "external", kicker: "External system", title: "Launch and runtime", summary: "Signing, deployment, providers, routing, indexing and availability.",
+        description: "These actions happen outside the repository. A local validator, generated report, earlier approval or template match cannot authorise or prove them.",
+        path: "PLATFORM_INTEGRATION.md", links: []
+      }
+    ];
+
+    const typeLabels = { canonical: "Source of truth", derived: "Generated output", evidence: "Tests and evidence", external: "External system" };
+    const byId = new Map(components.map(item => [item.id, item]));
+    const grid = document.querySelector("#nodeGrid");
+    const inspector = document.querySelector("#inspector");
+    const mapStatus = document.querySelector("#mapStatus");
+    let activeId = "compiler";
+    let activeFilter = "all";
+
+    function reverseLinks(id) {
+      return components.filter(item => item.links.includes(id)).map(item => item.id);
+    }
+
+    function renderNodes() {
+      grid.innerHTML = components.map(item => `
+        <button class="node" type="button" id="node-${item.id}" data-id="${item.id}" data-type="${item.type}" aria-pressed="${item.id === activeId}">
+          <span class="node-kicker">${item.kicker}</span>
+          <span class="node-title">${item.title}</span>
+          <span class="node-summary">${item.summary}</span>
+        </button>`).join("");
+      grid.addEventListener("click", event => {
+        const node = event.target.closest(".node");
+        if (node) selectComponent(node.dataset.id);
+      });
+      selectComponent(activeId, false);
+    }
+
+    function selectComponent(id, announce = true) {
+      activeId = id;
+      const item = byId.get(id);
+      const related = new Set([...item.links, ...reverseLinks(id)]);
+      document.querySelectorAll(".node").forEach(node => {
+        const isActive = node.dataset.id === id;
+        node.classList.toggle("active", isActive);
+        node.classList.toggle("related", related.has(node.dataset.id));
+        node.classList.toggle("dimmed", !isActive && !related.has(node.dataset.id));
+        node.setAttribute("aria-pressed", String(isActive));
+      });
+      const incoming = reverseLinks(id);
+      const outgoing = item.links;
+      inspector.innerHTML = `
+        <span class="pill ${item.type}">${typeLabels[item.type]}</span>
+        <h3>${item.title}</h3>
+        <p>${item.description}</p>
+        <a class="file-link mono" href="${item.path}">${item.path.replace(/^\.\.\//, "")}</a>
+        <h3 class="inspector-subhead">Inputs</h3>
+        <div class="connection-list">${incoming.length ? incoming.map(connectionButton).join("") : '<span class="mono" style="color: var(--faint)">No repository input</span>'}</div>
+        <h3 class="inspector-subhead">Outputs</h3>
+        <div class="connection-list">${outgoing.length ? outgoing.map(connectionButton).join("") : '<span class="mono" style="color: var(--faint)">No repository output</span>'}</div>`;
+      inspector.querySelectorAll(".connection-button").forEach(button => button.addEventListener("click", () => selectComponent(button.dataset.target)));
+      if (announce) mapStatus.textContent = `${item.title} selected. ${incoming.length} inputs and ${outgoing.length} outputs.`;
+      drawEdges();
+    }
+
+    function connectionButton(id) {
+      return `<button class="connection-button" type="button" data-target="${id}">${byId.get(id).title}</button>`;
+    }
+
+    function drawEdges() {
+      const svg = document.querySelector("#edgeLayer");
+      const stage = document.querySelector("#mapStage");
+      const stageBox = stage.getBoundingClientRect();
+      svg.setAttribute("viewBox", `0 0 ${stageBox.width} ${stageBox.height}`);
+      const lines = [];
+      components.forEach(source => source.links.forEach(targetId => {
+        const from = document.querySelector(`#node-${source.id}`);
+        const to = document.querySelector(`#node-${targetId}`);
+        if (!from || !to || from.hidden || to.hidden) return;
+        const a = from.getBoundingClientRect();
+        const b = to.getBoundingClientRect();
+        const highlighted = source.id === activeId || targetId === activeId;
+        lines.push(`<line class="${highlighted ? "active" : ""}" x1="${a.left + a.width / 2 - stageBox.left}" y1="${a.top + a.height / 2 - stageBox.top}" x2="${b.left + b.width / 2 - stageBox.left}" y2="${b.top + b.height / 2 - stageBox.top}" />`);
+      }));
+      svg.innerHTML = lines.join("");
+    }
+
+    function applyFilters() {
+      const query = document.querySelector("#mapSearch").value.trim().toLowerCase();
+      let count = 0;
+      components.forEach(item => {
+        const matchesType = activeFilter === "all" || item.type === activeFilter;
+        const matchesText = !query || `${item.title} ${item.kicker} ${item.summary} ${item.description}`.toLowerCase().includes(query);
+        const node = document.querySelector(`#node-${item.id}`);
+        node.hidden = !(matchesType && matchesText);
+        if (!node.hidden) count += 1;
+      });
+      mapStatus.textContent = `${count} components shown.`;
+      requestAnimationFrame(drawEdges);
+    }
+
+    document.querySelectorAll(".filter").forEach(button => button.addEventListener("click", () => {
+      activeFilter = button.dataset.filter;
+      document.querySelectorAll(".filter").forEach(item => item.setAttribute("aria-pressed", String(item === button)));
+      applyFilters();
+    }));
+    document.querySelector("#mapSearch").addEventListener("input", applyFilters);
+    window.addEventListener("resize", drawEdges);
+
+    const shapes = [
+      {
+        id: "no-market", label: "Service without a market", title: "A standalone settlement service", copy: "This project has no pool or hook. It still needs source code, tests, lifecycle rules, authority, failure handling and exit rules.",
+        trade: "not applicable", fee: "not applicable", route: "none",
+        components: [
+          ["Intent and nine graphs", "Required", true], ["Custom source and node:test", "Required", true], ["Repository plan and states", "Required", true], ["Trade manifest", "Not used", false], ["Fee V2 scope", "Not used", false]
+        ]
+      },
+      {
+        id: "ordinary", label: "Standard token launch", title: "A standard token launch", copy: "The starter can speed up planning. It does not decide whether the project needs a market or trade support. Confirm those facts from the project intent.",
+        trade: "owner-provided fact", fee: "depends on the graphs", route: "conditional",
+        components: [
+          ["Intent and supply model", "Required", true], ["ordinary-launch starter", "Speeds up planning", true], ["Custody and distribution plan", "Required", true], ["Trade capability", "Confirm first", true], ["Fee V2 scope", "If applicable", true]
+        ]
+      },
+      {
+        id: "v4-hook", label: "Custom v4 hook", title: "A hook that runs with PoolManager", copy: "Use v4-specific design only when the behaviour must run atomically with PoolManager. Begin with all 14 hook permissions disabled, then prove each permission you enable.",
+        trade: "likely applicable", fee: "depends on the scope", route: "per market",
+        components: [
+          ["v4 protocol mechanics", "Required", true], ["Hook capability contract", "Required", true], ["Four swap cases", "Prove or reject", true], ["Trade manifest per market", "Required", true], ["Fee and settlement evidence", "If in scope", true]
+        ]
+      },
+      {
+        id: "multi-repo", label: "Multi-repository app", title: "An app with services, an indexer and contracts", copy: "Give each repository a stable identity and list its complete source. Define typed boundaries between repositories. Do not rely on trust between folders.",
+        trade: "derived from the graphs", fee: "per execution scope", route: "conditional",
+        components: [
+          ["Component contracts", "Required", true], ["Companion manifests", "Required", true], ["Complete source per repository", "Required", true], ["Indexer reorganisation plan", "If indexed", true], ["Provider and runtime claims", "External evidence", true]
+        ]
+      }
+    ];
+    const shapeSwitcher = document.querySelector("#shapeSwitcher");
+    shapeSwitcher.innerHTML = shapes.map((shape, index) => `<button type="button" class="shape-button" data-shape="${shape.id}" aria-pressed="${index === 0}">${shape.label}</button>`).join("");
+    shapeSwitcher.addEventListener("click", event => {
+      const button = event.target.closest(".shape-button");
+      if (!button) return;
+      chooseShape(button.dataset.shape);
+    });
+    function chooseShape(id) {
+      const shape = shapes.find(item => item.id === id);
+      document.querySelectorAll(".shape-button").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.shape === id)));
+      document.querySelector("#shapeSummary").innerHTML = `<p class="eyebrow">Example project type</p><h3 class="shape-summary-title">${shape.title}</h3><p>${shape.copy}</p><div class="metric-grid"><div class="metric"><span>Trade</span><strong>${shape.trade}</strong></div><div class="metric"><span>Fee rules</span><strong>${shape.fee}</strong></div><div class="metric"><span>External route</span><strong>${shape.route}</strong></div><div class="metric"><span>Evidence state</span><strong>Needs evidence</strong></div></div>`;
+      document.querySelector("#shapeFlow").innerHTML = shape.components.map(([title, state, required], index) => `<li class="flow-item ${required ? "required" : "optional"}"><span class="flow-index">${index + 1}</span><div class="flow-copy"><strong>${title}</strong><span>${required ? "Needed for this project type" : "Not used unless the project intent changes"}</span></div><span class="flow-state">${state}</span></li>`).join("");
+    }
+
+    const changes = [
+      { id: "behavior", label: "Agent behaviour", why: "Keep agent behaviour in the small entry contract. Keep detailed knowledge in routed references.", owner: "skills/programmable-v4-hook-builder/SKILL.md", invalidates: "Update routing expectations, agent behaviour evaluations, documentation and the publish shape if the contract changes.", focused: "node skills/programmable-v4-hook-builder/scripts/verify-skill.mjs" },
+      { id: "knowledge", label: "Protocol or platform facts", why: "Keep each detailed fact in one focused reference. Routing decides when the reference is loaded.", owner: "skills/programmable-v4-hook-builder/references/<focused-topic>.md", invalidates: "Update source receipts, routes, deterministic tests and the relevant evaluation rubric.", focused: "node --test skills/programmable-v4-hook-builder/scripts/test/knowledge-router.test.mjs" },
+      { id: "routing", label: "Initial context loading", why: "Context selection is a measured repository contract.", owner: "skills/programmable-v4-hook-builder/references/knowledge-routing.json", invalidates: "Update router tests, closure checks, profile digests and documented context budgets.", focused: "node --test skills/programmable-v4-hook-builder/scripts/test/knowledge-router.test.mjs" },
+      { id: "pattern", label: "Reusable project pattern", why: "Known patterns speed up composition. Custom ideas must remain eligible.", owner: "skills/programmable-v4-hook-builder/assets/starter-catalog/", invalidates: "Update the pack hash, catalog digest, release receipts, catalog tests and scenarios.", focused: "node skills/programmable-v4-hook-builder/scripts/verify-skill.mjs" },
+      { id: "schema", label: "Submission or intent field", why: "The schema defines the data shape. The matching validator defines its meaning.", owner: "skills/programmable-v4-hook-builder/references/<artifact>.schema.json", invalidates: "Update the catalog, materializer, validator, application projection, migrations, negative tests, examples and hashes.", focused: "node --test skills/programmable-v4-hook-builder/scripts/test/project-compiler-*.test.mjs" },
+      { id: "safety", label: "Safety or semantic rule", why: "Put each concrete unsafe behaviour in its owning validator and give the result stable finding semantics.", owner: "skills/programmable-v4-hook-builder/scripts/<domain>-core.mjs", invalidates: "Update negative tests, the semantic-rule registry, evaluation rubric, public wording and migration notes.", focused: "npm run quality:semantic-rules" },
+      { id: "metadata", label: "Host or plugin metadata", why: "Keep neutral metadata as the source of truth. Generate host manifests and plugin payloads from it.", owner: "config/plugin.json", invalidates: "Regenerate every host manifest and the byte-verified plugin payload.", focused: "npm run plugin:write && npm run plugin:check" }
+    ];
+    const changeSelect = document.querySelector("#changeSelect");
+    changeSelect.innerHTML = changes.map(item => `<option value="${item.id}">${item.label}</option>`).join("");
+    changeSelect.addEventListener("change", () => renderChange(changeSelect.value));
+    function renderChange(id) {
+      const item = changes.find(change => change.id === id);
+      document.querySelector("#changeWhy").textContent = item.why;
+      document.querySelector("#changeStack").innerHTML = `
+        <div class="change-step"><small>1 · Edit first</small><p class="mono">${item.owner}</p></div>
+        <div class="change-step"><small>2 · Update affected files</small><p>${item.invalidates}</p></div>
+        <div class="change-step"><small>3 · Run a focused check</small><div class="command"><code>${item.focused}</code><button class="copy-button" type="button" aria-label="Copy focused check">Copy command</button></div></div>
+        <div class="change-step"><small>4 · Run the required repository checks</small><div class="command"><code>npm test\ngh skill publish --dry-run</code><button class="copy-button" type="button" aria-label="Copy required checks">Copy commands</button></div></div>`;
+      wireCopyButtons(document.querySelector("#changeStack"));
+    }
+
+    function wireCopyButtons(root = document) {
+      root.querySelectorAll(".copy-button").forEach(button => {
+        if (button.dataset.ready) return;
+        button.dataset.ready = "true";
+        button.addEventListener("click", async () => {
+          const defaultLabel = button.textContent;
+          const text = button.parentElement.querySelector("code").textContent;
+          try {
+            await navigator.clipboard.writeText(text);
+            button.textContent = "Copied";
+          } catch {
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(button.parentElement.querySelector("code"));
+            selection.removeAllRanges();
+            selection.addRange(range);
+            button.textContent = "Selected";
+          }
+          window.setTimeout(() => { button.textContent = defaultLabel; }, 1400);
+        });
+      });
+    }
+
+    renderNodes();
+    chooseShape("no-market");
+    renderChange("behavior");
+    wireCopyButtons();
+    requestAnimationFrame(drawEdges);
+  </script>
+</body>
+</html>
