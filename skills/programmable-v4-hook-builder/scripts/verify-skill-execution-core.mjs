@@ -1,14 +1,106 @@
-import childProcess from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 import process from "node:process";
+import vm from "node:vm";
+import { isMainThread, parentPort, Worker, workerData } from "node:worker_threads";
 import { runBoundedChildProcess } from "./bounded-child-process-core.mjs";
 
+const MODULE_SYNTAX_TIMEOUT_MS = 60_000;
+const MODULE_SYNTAX_OUTPUT_BYTES = 4 * 1024 * 1024;
 const TEST_BATCH_COUNT = 2;
 const TEST_TIMEOUT_MS = 15 * 60 * 1000;
 const TEST_OUTPUT_BYTES = 128 * 1024 * 1024;
 const monotonicNow = () => performance.now();
+
+if (!isMainThread && workerData?.kind === "module-syntax-parser") {
+  if (!Array.isArray(workerData.scripts) || typeof vm.SourceTextModule !== "function") {
+    throw new Error("module syntax parser requires Node 24 vm.SourceTextModule and a script inventory");
+  }
+  const diagnostics = [];
+  for (const script of workerData.scripts) {
+    try {
+      const source = fs.readFileSync(script, "utf8");
+      new vm.SourceTextModule(source, { identifier: script });
+    } catch (error) {
+      const name = typeof error?.name === "string" ? error.name : "Error";
+      const message = typeof error?.message === "string" ? error.message : String(error);
+      diagnostics.push({ message: `${name}: ${message}`.slice(0, 4_096), script });
+    }
+  }
+  parentPort.postMessage({ diagnostics });
+}
+
+export async function parseModuleSyntax({
+  scripts,
+  timeoutMs = MODULE_SYNTAX_TIMEOUT_MS
+}) {
+  return await new Promise((resolve) => {
+    let payload = null;
+    let settled = false;
+    let deadline = null;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      if (deadline !== null) clearTimeout(deadline);
+      resolve(result);
+    };
+    let worker;
+    try {
+      worker = new Worker(new URL(import.meta.url), {
+        execArgv: ["--experimental-vm-modules", "--no-warnings"],
+        resourceLimits: {
+          codeRangeSizeMb: 16,
+          maxOldGenerationSizeMb: 128,
+          maxYoungGenerationSizeMb: 16,
+          stackSizeMb: 4
+        },
+        type: "module",
+        workerData: { kind: "module-syntax-parser", scripts }
+      });
+    } catch (error) {
+      finish({ diagnostics: [], failure: `module syntax parser could not start: ${error.message}` });
+      return;
+    }
+    deadline = setTimeout(() => {
+      void worker.terminate();
+      finish({ diagnostics: [], failure: `module syntax parser exceeded its ${timeoutMs}ms bound` });
+    }, timeoutMs);
+
+    worker.once("message", (message) => {
+      let outputBytes;
+      try {
+        outputBytes = Buffer.byteLength(JSON.stringify(message));
+      } catch {
+        void worker.terminate();
+        finish({ diagnostics: [], failure: "module syntax parser returned an invalid result" });
+        return;
+      }
+      if (outputBytes > MODULE_SYNTAX_OUTPUT_BYTES) {
+        void worker.terminate();
+        finish({ diagnostics: [], failure: "module syntax parser exceeded its 4 MiB output bound" });
+        return;
+      }
+      payload = message;
+    });
+    worker.once("error", (error) => {
+      finish({ diagnostics: [], failure: `module syntax parser failed: ${error.message}` });
+    });
+    worker.once("exit", (status) => {
+      if (status !== 0) {
+        finish({ diagnostics: [], failure: `module syntax parser exited with status ${status}` });
+        return;
+      }
+      if (!Array.isArray(payload?.diagnostics) || payload.diagnostics.some((diagnostic) =>
+        typeof diagnostic?.script !== "string" || typeof diagnostic?.message !== "string"
+      )) {
+        finish({ diagnostics: [], failure: "module syntax parser returned an invalid result" });
+        return;
+      }
+      finish({ diagnostics: payload.diagnostics, failure: null });
+    });
+  });
+}
 
 export function createDeterministicTestBatches(testFiles) {
   return Array.from({ length: TEST_BATCH_COUNT }, (_, batchIndex) =>
@@ -76,9 +168,16 @@ export async function validateScriptsAndTests({
   untrustedDataMode,
   walk
 }) {
-  for (const script of walk(path.join(skillRoot, "scripts")).filter((entry) => entry.stat.isFile() && entry.path.endsWith(".mjs")).map((entry) => entry.path)) {
-    const result = childProcess.spawnSync(process.execPath, ["--check", script], { encoding: "utf8", shell: false });
-    if (result.status !== 0) errors.push(`${relative(script)}: ${result.stderr.trim()}`);
+  const scripts = walk(path.join(skillRoot, "scripts"))
+    .filter((entry) => entry.stat.isFile() && entry.path.endsWith(".mjs"))
+    .map((entry) => entry.path);
+  const syntax = await parseModuleSyntax({ scripts });
+  if (syntax.failure) {
+    errors.push(syntax.failure);
+  } else {
+    for (const diagnostic of syntax.diagnostics) {
+      errors.push(`${relative(diagnostic.script)}: ${diagnostic.message}`);
+    }
   }
 
   const testDirectory = path.join(skillRoot, "scripts", "test");
