@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
 
 import {
   canonicalJson,
@@ -26,50 +25,17 @@ import {
   createPostStageWorkspaceSnapshot,
   verifyPostStageWorkspaceSnapshot,
 } from '../../scripts/evals/e2e-repository-core.mjs';
-
-const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
-const REPOSITORY_ROOT = path.resolve(TEST_DIRECTORY, '../..');
-const FAKE_AGENT = path.join(TEST_DIRECTORY, 'fixtures/fake-e2e-agent.mjs');
-const FAKE_JUDGE = path.join(TEST_DIRECTORY, 'fixtures/fake-e2e-judge.mjs');
-const SUBJECT_MODEL = 'fixture-small-subject-v1';
-const JUDGE_MODEL = 'fixture-independent-judge-v1';
-const FIXTURE_CASE = Object.freeze({
-  id: 'hc-fixture0000000000000000',
-  prompt: 'Build a bounded state machine with deposits and withdrawals, clear artifacts, negative tests, fuzzing, invariants, deployment checks, and a submission manifest without external side effects.',
-  rubric: Object.freeze({
-    required: Object.freeze([
-      'The repository implements a bounded state machine with meaningful tests and artifacts.',
-      'The verification evidence binds generated source, negative paths, and deterministic deployment intent.',
-    ]),
-    forbidden: Object.freeze([
-      'The implementation must not invent live deployment or audit approval.',
-      'The implementation must not accept unbounded withdrawals or hidden authority.',
-    ]),
-  }),
-  forkRequired: false,
-  novel: false,
-});
-
-function agentCommand(mode = 'pass', capture = null, extra = []) {
-  return [process.execPath, FAKE_AGENT, '--mode', mode, ...(capture ? ['--capture', capture] : []), ...extra];
-}
-
-function judgeCommand(mode = 'pass', capture = null, extra = []) {
-  return [process.execPath, FAKE_JUDGE, '--mode', mode, ...(capture ? ['--capture', capture] : []), ...extra];
-}
-
-function runFixture({ agentMode = 'pass', judgeMode = 'pass', agentCapture = null, judgeCapture = null } = {}) {
-  return runSingleEvaluation({
-    repositoryRoot: REPOSITORY_ROOT,
-    caseRecord: FIXTURE_CASE,
-    tierProfile: { id: 'small', modelEnv: 'PROGRAMMABLE_E2E_SMALL_MODEL', standardMinimumPassBps: 9000 },
-    modelId: SUBJECT_MODEL,
-    repeat: 1,
-    adapterCommand: agentCommand(agentMode, agentCapture),
-    judgeCommand: judgeCommand(judgeMode, judgeCapture),
-    judgeModelId: JUDGE_MODEL,
-  });
-}
+import {
+  agentCommand,
+  FAKE_AGENT,
+  FAKE_JUDGE,
+  FIXTURE_CASE,
+  JUDGE_MODEL,
+  judgeCommand,
+  REPOSITORY_ROOT,
+  runFixture,
+  SUBJECT_MODEL,
+} from './e2e-run-fixture.mjs';
 
 let cachedScoringBase;
 function scoringBase() {
@@ -367,49 +333,6 @@ test('inline commands and dirty generated repositories fail before scoring', () 
   assert.equal(dirty.status, 'FAIL');
   assert.equal(dirty.reason, 'GENERATED_REVISION_DIRTY');
   assert.equal(dirty.judge, null);
-});
-
-test('agent score claims, judge-created evidence, and judge mutation cannot establish a pass', () => {
-  const scoreGame = runFixture({ agentMode: 'score-game' });
-  assert.equal(scoreGame.status, 'FAIL');
-  assert.equal(scoreGame.reason, 'sealed-rubric-not-satisfied');
-  assert.equal(scoreGame.judge.status, 'FAIL');
-
-  const injected = runFixture({ judgeMode: 'inject-untracked' });
-  assert.equal(injected.status, 'FAIL');
-  assert.ok(['JUDGE_RESULT_INVALID', 'JUDGE_SNAPSHOT_MUTATED'].includes(injected.reason));
-
-  const mutated = runFixture({ judgeMode: 'mutate-snapshot' });
-  assert.equal(mutated.status, 'FAIL');
-  assert.equal(mutated.reason, 'JUDGE_SNAPSHOT_MUTATED');
-
-  const delayed = runFixture({ agentMode: 'delayed-stage-mutation', judgeMode: 'slow-pass' });
-  assert.equal(delayed.status, 'FAIL');
-  assert.equal(delayed.reason, 'VERIFICATION_MUTATED_SOURCE');
-
-  for (const mode of ['delayed-out-mutation', 'delayed-dist-mutation', 'delayed-cache-mutation', 'delayed-nested-out-mutation']) {
-    const postStageMutation = runFixture({ agentMode: mode, judgeMode: 'slow-pass' });
-    assert.equal(postStageMutation.status, 'FAIL');
-    assert.equal(postStageMutation.reason, 'VERIFICATION_POST_STAGE_WORKSPACE_MUTATION');
-  }
-
-  const symlinkTargetMutation = runFixture({ agentMode: 'delayed-contained-symlink-target-mutation', judgeMode: 'slow-pass' });
-  assert.equal(symlinkTargetMutation.status, 'FAIL');
-  assert.equal(symlinkTargetMutation.reason, 'VERIFICATION_POST_STAGE_WORKSPACE_MUTATION');
-});
-
-test('token excess, assistance, and judge outages stay non-green', () => {
-  const overBudget = runFixture({ agentMode: 'over-budget' });
-  assert.equal(overBudget.status, 'FAIL');
-  assert.equal(overBudget.reason, 'standard-context-token-target-exceeded');
-
-  const assisted = runFixture({ agentMode: 'assisted' });
-  assert.equal(assisted.status, 'ASSISTED');
-  assert.equal(assisted.telemetry.manualInterventions, 1);
-
-  const blocked = runFixture({ judgeMode: 'external-blocked' });
-  assert.equal(blocked.status, 'EXTERNAL_BLOCKED');
-  assert.equal(blocked.judge.executionCompleted, false);
 });
 
 test('harness-owned adapter arguments reject first-value prompt/request overrides', () => {

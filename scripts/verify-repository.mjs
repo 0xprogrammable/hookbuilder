@@ -55,6 +55,7 @@ for (const check of checks) {
   } catch (error) {
     if (!(error instanceof RepositoryCheckError)) throw error;
     results.push({
+      durationMs: error.durationMs ?? null,
       id: check.id,
       exitCode: error.exitCode ?? 1,
       timeoutMs: check.timeoutMs,

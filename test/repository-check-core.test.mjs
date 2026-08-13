@@ -38,6 +38,9 @@ test("repository check plan runs maintainability once and bounds every child sui
     "repository-contract"
   ]);
   assert.equal(plan.filter(({ id }) => id === "maintainability").length, 1);
+  const evalStructure = plan.find(({ id }) => id === "eval-structure");
+  assert.deepEqual(evalStructure.args, ["scripts/evals/validate-evals.mjs"]);
+  assert.ok(plan.indexOf(evalStructure) < plan.findIndex(({ id }) => id === "eval-e2e-harness"));
   for (const check of plan) {
     assert.ok(Number.isSafeInteger(check.timeoutMs));
     assert.ok(check.timeoutMs > 0);
@@ -61,6 +64,7 @@ test("repository verifier pins and schedules every eval test exactly once", () =
   const expectedEvalTestFiles = [
     "e2e-corpus.test.mjs",
     "e2e-external-evidence.test.mjs",
+    "e2e-run-adversarial.test.mjs",
     "e2e-run.test.mjs",
     "run-blind-forward-tests.test.mjs",
     "run-e2e-evals.test.mjs",
@@ -80,7 +84,7 @@ test("repository verifier pins and schedules every eval test exactly once", () =
 
   const evalTestPaths = evalTestFiles.map((name) => `evals/tests/${name}`);
   const packageDocument = JSON.parse(fs.readFileSync(path.join(repositoryRoot, "package.json"), "utf8"));
-  assert.equal(packageDocument.scripts["test:evals:e2e"], `node --test ${evalTestPaths.join(" ")}`);
+  assert.equal(packageDocument.scripts["test:evals:e2e"], `node --test --test-concurrency=2 ${evalTestPaths.join(" ")}`);
   const plan = createRepositoryCheckPlan({
     nodeExecutable: process.execPath,
     npmExecutable: "npm",
@@ -89,7 +93,7 @@ test("repository verifier pins and schedules every eval test exactly once", () =
     repositoryTests: ["test/repository-contract.test.mjs"]
   });
   const evalCheck = plan.find(({ id }) => id === "eval-e2e-harness");
-  assert.deepEqual(evalCheck.args, ["--test", ...evalTestPaths]);
+  assert.deepEqual(evalCheck.args, ["--test", "--test-concurrency=2", ...evalTestPaths]);
 });
 
 test("Windows cleanup selects taskkill for the live process tree as its initial action", () => {
@@ -111,10 +115,13 @@ test("bounded repository runner records the enforced timeout on success", async 
     timeoutMs: 2_000
   }, { cwd: repositoryRoot });
   assert.deepEqual(result, {
+    durationMs: result.durationMs,
     id: "success-probe",
     exitCode: 0,
     timeoutMs: 2_000
   });
+  assert.ok(Number.isSafeInteger(result.durationMs));
+  assert.ok(result.durationMs >= 0);
 });
 
 test("bounded repository runner kills a stalled child and reports one fail-closed diagnostic", async () => {
