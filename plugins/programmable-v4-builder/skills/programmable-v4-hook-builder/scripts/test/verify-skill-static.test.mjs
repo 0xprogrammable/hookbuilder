@@ -67,8 +67,8 @@ test("source verification partitions every portable test exactly once with bound
     .filter((name) => name.endsWith(".test.mjs"))
     .sort();
   const batches = createDeterministicTestBatches(testFiles);
-  assert.equal(testFiles.length, 75);
-  assert.deepEqual(batches.map((batch) => batch.length), [38, 37]);
+  assert.equal(testFiles.length, 80);
+  assert.deepEqual(batches.map((batch) => batch.length), [40, 40]);
   assert.deepEqual(batches[0], testFiles.filter((_, index) => index % 2 === 0));
   assert.deepEqual(batches[1], testFiles.filter((_, index) => index % 2 === 1));
   assert.deepEqual([...batches.flat()].sort(), testFiles);
@@ -79,93 +79,99 @@ test("source verification partitions every portable test exactly once with bound
   assert.doesNotMatch(source, /--test-concurrency=[3-9]/u);
 });
 
-test("deterministic test shards run sequentially with one shared deadline and output budget", async () => {
-  const testFiles = Array.from({ length: 75 }, (_, index) => `test-${String(index).padStart(2, "0")}.test.mjs`);
+test("deterministic test shards run in isolated processes with one shared deadline and output budget", async () => {
+  const testFiles = Array.from({ length: 80 }, (_, index) => `test-${String(index).padStart(2, "0")}.test.mjs`);
   const calls = [];
   let activeChildren = 0;
-  let elapsedMs = 0;
-  const result = await runDeterministicTestBatches({
+  let maximumActiveChildren = 0;
+  const releases = [];
+  const pendingResult = runDeterministicTestBatches({
     command: "/node",
     cwd: "/skill",
     env: { PATH: "/bin" },
-    now: () => elapsedMs,
+    now: () => 250,
     runChildProcess: async (options) => {
-      assert.equal(activeChildren, 0);
       activeChildren += 1;
+      maximumActiveChildren = Math.max(maximumActiveChildren, activeChildren);
       calls.push(options);
-      elapsedMs += calls.length === 1 ? 250 : 500;
+      await new Promise((resolve) => releases.push(resolve));
       activeChildren -= 1;
       return {
         outputExceeded: false,
         signal: null,
         status: 0,
-        stderr: calls.length === 1 ? "de" : "",
-        stdout: calls.length === 1 ? "abc" : "ok",
+        stderr: "",
+        stdout: "ok",
         timedOut: false
       };
     },
     testFiles
   });
+  while (calls.length < 2) await new Promise((resolve) => setImmediate(resolve));
+  for (const release of releases) release();
+  const result = await pendingResult;
   assert.equal(result.failure, null);
   assert.equal(calls.length, 2);
+  assert.equal(maximumActiveChildren, 2);
   assert.deepEqual(calls[0].args, ["--test", "--test-concurrency=2", ...result.batches[0]]);
   assert.deepEqual(calls[1].args, ["--test", "--test-concurrency=2", ...result.batches[1]]);
   assert.equal(calls[0].timeoutMs, 15 * 60 * 1000);
-  assert.equal(calls[1].timeoutMs, 15 * 60 * 1000 - 250);
-  assert.equal(calls[0].maximumOutputBytes, 128 * 1024 * 1024);
-  assert.equal(calls[1].maximumOutputBytes, 128 * 1024 * 1024 - 5);
+  assert.equal(calls[1].timeoutMs, 15 * 60 * 1000);
+  assert.equal(calls[0].maximumOutputBytes, 64 * 1024 * 1024);
+  assert.equal(calls[1].maximumOutputBytes, 64 * 1024 * 1024);
 });
 
-test("deterministic test shards fail first and never double shared resource budgets", async () => {
+test("deterministic test shards report the lowest failing shard and never double shared resource budgets", async () => {
   let calls = 0;
   const firstFailure = await runDeterministicTestBatches({
     command: "/node",
     cwd: "/skill",
     env: {},
-    runChildProcess: async () => {
+    runChildProcess: async ({ args }) => {
       calls += 1;
-      return { outputExceeded: false, signal: "SIGTERM", status: null, stderr: "failed", stdout: "", timedOut: false };
+      return args.at(-1) === "a.test.mjs"
+        ? { outputExceeded: false, signal: "SIGTERM", status: null, stderr: "failed", stdout: "", timedOut: false }
+        : { outputExceeded: false, signal: null, status: 0, stderr: "", stdout: "", timedOut: false };
     },
     testFiles: ["a.test.mjs", "b.test.mjs"]
   });
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
   assert.deepEqual(
     { batchIndex: firstFailure.failure.batchIndex, kind: firstFailure.failure.kind, signal: firstFailure.failure.signal },
     { batchIndex: 0, kind: "status", signal: "SIGTERM" }
   );
 
   calls = 0;
-  let elapsedMs = 0;
+  let nowCalls = 0;
   const timeout = await runDeterministicTestBatches({
     command: "/node",
     cwd: "/skill",
     env: {},
-    now: () => elapsedMs,
+    now: () => nowCalls++ === 0 ? 0 : 11,
     runChildProcess: async () => {
       calls += 1;
-      elapsedMs = 11;
       return { outputExceeded: false, signal: null, status: 0, stderr: "", stdout: "", timedOut: false };
     },
     testFiles: ["a.test.mjs", "b.test.mjs"],
     timeoutMs: 10
   });
-  assert.equal(calls, 1);
-  assert.deepEqual(timeout.failure, { batchIndex: 1, kind: "timeout", signal: null, status: null });
+  assert.equal(calls, 0);
+  assert.deepEqual(timeout.failure, { batchIndex: 0, kind: "timeout", signal: null, status: null });
 
   calls = 0;
   const output = await runDeterministicTestBatches({
     command: "/node",
     cwd: "/skill",
     env: {},
-    maximumOutputBytes: 5,
+    maximumOutputBytes: 1,
     runChildProcess: async () => {
       calls += 1;
       return { outputExceeded: false, signal: null, status: 0, stderr: "de", stdout: "abc", timedOut: false };
     },
     testFiles: ["a.test.mjs", "b.test.mjs"]
   });
-  assert.equal(calls, 1);
-  assert.deepEqual(output.failure, { batchIndex: 1, kind: "output", signal: null, status: null });
+  assert.equal(calls, 0);
+  assert.deepEqual(output.failure, { batchIndex: 0, kind: "output", signal: null, status: null });
 });
 
 test("installed-mode portable execution keeps its single CLI test in one nonempty shard", async () => {
@@ -372,7 +378,7 @@ test("portable verifier declares every direct test exactly once", () => {
     .sort()
     .map((name) => `scripts/test/${name}`);
 
-  assert.equal(portableTestPaths.length, 75);
+  assert.equal(portableTestPaths.length, 80);
   assert.equal(new Set(portableTestPaths).size, portableTestPaths.length);
   assert.deepEqual([...portableTestPaths].sort(), discovered);
 });
@@ -384,9 +390,9 @@ test("portable verifier deletion-guards its exact required inventory in one boun
     .update(`${requiredPaths.join("\n")}\n`)
     .digest("hex");
 
-  assert.equal(requiredPaths.length, 388);
+  assert.equal(requiredPaths.length, 394);
   assert.equal(new Set(requiredPaths).size, requiredPaths.length);
-  assert.equal(inventorySha256, "213603c758ec264cc2373cea9f57c1292c72e66f0cca89b41f06fea153b5dc38");
+  assert.equal(inventorySha256, "eb34b76b38983f8633ed157d110879abb4fa25cb6157d52ee7675ead096abaa3");
   for (const requiredPath of requiredPaths) {
     const entry = fs.lstatSync(path.join(skillRoot, requiredPath));
     assert.ok(entry.isFile(), `${requiredPath} must be a regular file`);
@@ -678,7 +684,7 @@ test("trusted verifier rejects excessive file count before checking candidate sc
     const result = runUntrustedVerifier(candidateRoot);
 
     assert.notEqual(result.status, 0, result.stdout);
-    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 640/);
+    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 646/);
     assert.doesNotMatch(result.stderr, /invalid-syntax|SyntaxError/);
   } finally {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });

@@ -338,15 +338,24 @@ function readRegularFile(repositoryRoot, relativePath) {
 
 function packageInventory(repositoryRoot, relativeRoot) {
   safeAbsolute(repositoryRoot, relativeRoot);
-  const result = childProcess.spawnSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", relativeRoot], {
+  const inventory = childProcess.spawnSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", relativeRoot], {
     cwd: repositoryRoot,
     encoding: "buffer",
     shell: false,
     maxBuffer: 16 * 1024 * 1024
   });
-  if (result.error) throw result.error;
-  if (result.status !== 0) throw new Error(`git ls-files failed: ${String(result.stderr).trim()}`);
-  const files = result.stdout.toString("utf8").split("\u0000").filter(Boolean).sort((left, right) => left.localeCompare(right));
+  if (inventory.error) throw inventory.error;
+  if (inventory.status !== 0) throw new Error(`git ls-files failed: ${String(inventory.stderr).trim()}`);
+  const deletedResult = childProcess.spawnSync("git", ["ls-files", "--deleted", "-z", "--", relativeRoot], {
+    cwd: repositoryRoot,
+    encoding: "buffer",
+    shell: false,
+    maxBuffer: 16 * 1024 * 1024
+  });
+  if (deletedResult.error) throw deletedResult.error;
+  if (deletedResult.status !== 0) throw new Error(`git deleted-file inventory failed: ${String(deletedResult.stderr).trim()}`);
+  const deleted = new Set(deletedResult.stdout.toString("utf8").split("\u0000").filter(Boolean));
+  const files = inventory.stdout.toString("utf8").split("\u0000").filter((filePath) => filePath.length > 0 && !deleted.has(filePath)).sort((left, right) => left.localeCompare(right));
   let bytes = 0;
   for (const relativePath of files) {
     const absolute = safeAbsolute(repositoryRoot, relativePath);

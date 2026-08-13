@@ -28,30 +28,28 @@ export async function runDeterministicTestBatches({
 }) {
   const batches = createDeterministicTestBatches(testFiles);
   const deadline = now() + timeoutMs;
-  const results = [];
-  let remainingOutputBytes = maximumOutputBytes;
+  const batchTimeoutMs = Math.floor(deadline - now());
+  if (batchTimeoutMs < 1) {
+    return { batches, failure: { batchIndex: 0, kind: "timeout", signal: null, status: null }, results: [] };
+  }
+  const batchOutputBytes = Math.floor(maximumOutputBytes / batches.length);
+  if (batchOutputBytes < 1) {
+    return { batches, failure: { batchIndex: 0, kind: "output", signal: null, status: null }, results: [] };
+  }
 
-  for (const [batchIndex, batch] of batches.entries()) {
-    const timeoutMs = Math.floor(deadline - now());
-    if (timeoutMs < 1) {
-      return { batches, failure: { batchIndex, kind: "timeout", signal: null, status: null }, results };
-    }
-    if (remainingOutputBytes < 1) {
-      return { batches, failure: { batchIndex, kind: "output", signal: null, status: null }, results };
-    }
-    const result = await runChildProcess({
-      command,
-      args: ["--test", "--test-concurrency=2", ...batch],
-      cwd,
-      env,
-      maximumOutputBytes: remainingOutputBytes,
-      timeoutMs
-    });
-    results.push(result);
+  const results = await Promise.all(batches.map((batch) => runChildProcess({
+    command,
+    args: ["--test", "--test-concurrency=2", ...batch],
+    cwd,
+    env,
+    maximumOutputBytes: batchOutputBytes,
+    timeoutMs: batchTimeoutMs
+  })));
+
+  for (const [batchIndex, result] of results.entries()) {
     if (result.timedOut) return { batches, failure: { ...result, batchIndex, kind: "timeout" }, results };
     if (result.outputExceeded) return { batches, failure: { ...result, batchIndex, kind: "output" }, results };
     if (result.status !== 0) return { batches, failure: { ...result, batchIndex, kind: "status" }, results };
-    remainingOutputBytes -= Buffer.byteLength(result.stdout) + Buffer.byteLength(result.stderr);
   }
   return { batches, failure: null, results };
 }
