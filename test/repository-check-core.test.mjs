@@ -65,6 +65,7 @@ test("repository verifier pins and schedules every eval test exactly once", () =
     "e2e-corpus.test.mjs",
     "e2e-external-evidence.test.mjs",
     "e2e-run-adversarial.test.mjs",
+    "e2e-run-non-green.test.mjs",
     "e2e-run.test.mjs",
     "run-blind-forward-tests.test.mjs",
     "run-e2e-evals.test.mjs",
