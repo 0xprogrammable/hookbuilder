@@ -399,6 +399,7 @@ export function runCli(argv) {
       caseIds: options.cases,
       tierIds: options.tiers,
       repetitions: options.repetitions,
+      validatedStructure: structure,
     });
     output.commit(`${JSON.stringify(scorecard, null, 2)}\n`);
   } finally {

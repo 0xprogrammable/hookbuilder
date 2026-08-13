@@ -1,0 +1,226 @@
+import test from "node:test";
+import {
+  assert, childProcess, crypto, fs, os, path, process,
+  canonicalJsonSha256V2, canonicalJsonV2, keccak256Hex,
+  PROJECT_COMMAND_MAXIMUM_OUTPUT_BYTES, PROJECT_TRADE_COMMAND_MAXIMUM_OUTPUT_BYTES,
+  createProjectCommandReceipt, executeProjectCommands, projectCommandEnvironmentSha256,
+  projectCommandMaximumOutputBytes, sha256Bytes,
+  compileProjectBundle, preflightProjectOutput, validateProjectOutput,
+  TRADABLE_REFERENCE_PROFILE_ID, bindTradableReferenceIntent,
+  ARCHITECTURE_ROLES, PRODUCT_GRAPH_NAMES, PROJECT_SPEC_FACETS, projectArtifactSha256,
+  validateArchitectureCandidates, validateProductGraph, validateProjectSpec,
+  bindLocalReleaseHandoffV1, createNoMarketProjectAuthoring, renderGitHubSubmissionHandoffV1,
+  sealProjectState, validateProjectState, validateRepositoryPlan, validateAgainstSchema,
+  architectureSnapshotSha256, createOpenWorldDraftPackage, expectedTradeRunnerCallsV1,
+  inspectForgeTradeTestRunnerOutputV1, validateV4DeploymentEvidence, canonicalV4PermissionMask,
+  TRADE_TEST_EXECUTION_CALLDATA_FIXTURE_V1, TRADE_TEST_QUOTE_CALLDATA_FIXTURE_V1,
+  TRADE_TEST_QUOTE_RETURN_DATA_FIXTURE_V1, createApplicableOpenWorldV2PrototypeFixture,
+  createNoMarketOpenWorldV2PrototypeFixture, createStandardTradeCapabilityManifestFixtureV1,
+  createTradeTestResultFixturesV1, tradeTestRevertDataFixtureV1,
+  skillRoot, compilerCli, unifiedCli,
+  makeProjectSpec, facetEntry, sourceSpan, makeProductGraph, makeArchitectures,
+  makeTradablePlanningBundle, makeArchitectureBundle, makeState, statePayload,
+  makePlanningRepositoryPlan, createMaterializedTradableRepository, createCompleteRepository,
+  createMaterializedRepository, createUnresolvedOutputFixture, createTradableOutputFixture,
+  structuredCloneProjectOutputInput, deterministicTarget, deterministicCallData,
+  deterministicReturnData, deterministicSuite, deterministicResult, deterministicResultLog,
+  deterministicCommand, deterministicPlan, deterministicSource, deterministicTool,
+  commandReceiptSchema, deterministicTradeReceipt, deterministicForgeOutput,
+  deterministicRelevantTrace, disabledReleaseActions, writeFile, artifactRecord, git, sha256, slug
+} from "./project-compiler-fixture.mjs";
+
+test("project output gate closes unresolved artifacts and rejects identity, facet, applicability, contract, and package drift deterministically", (t) => {
+  const fixture = createUnresolvedOutputFixture(t);
+  const reportA = validateProjectOutput(fixture.input);
+  const reportB = validateProjectOutput(structuredCloneProjectOutputInput(fixture.input));
+  assert.equal(reportA.status, "PROJECT_OUTPUT_DRAFT_UNRESOLVED", canonicalJsonV2(reportA));
+  assert.equal(reportA.projection.applicability, "unresolved");
+  assert.equal(reportA.submissionPackageStatus, "REVIEW_REQUIRED");
+  assert.equal(reportA.evidenceBoundary.approvalCreated, false);
+  assert.equal(reportA.evidenceBoundary.auditClaimed, false);
+  assert.equal(canonicalJsonV2(reportA), canonicalJsonV2(reportB));
+  assert.equal(reportA.reportSha256, reportB.reportSha256);
+  assert.match(reportA.artifactHashes.submissionPackageInventory, /^sha256:[0-9a-f]{64}$/u);
+  const delegated = childProcess.spawnSync(process.execPath, [
+    unifiedCli,
+    "project",
+    "validate-output",
+    "--repository-root",
+    fixture.root,
+    "--state",
+    ".programmable/project-states/000004-repository-materialization.v1.json",
+    "--previous-state",
+    ".programmable/project-states/000003-architecture-selection.v1.json",
+    "--submission-root",
+    "submission"
+  ], { encoding: "utf8", shell: false });
+  assert.equal(delegated.status, 1, delegated.stderr || delegated.stdout);
+  assert.equal(JSON.parse(delegated.stdout).status, "PROJECT_OUTPUT_DRAFT_UNRESOLVED");
+
+  const mutate = (change) => {
+    const input = structuredCloneProjectOutputInput(fixture.input);
+    change(input);
+    return validateProjectOutput(input);
+  };
+  const inventedContract = mutate(({ repositoryPlan }) => { repositoryPlan.schemaVersion = "programmable-mini-repository-plan-v1"; });
+  assert.equal(inventedContract.status, "PROJECT_OUTPUT_INVALID");
+  assert.ok(inventedContract.findings.some(({ code }) => code === "REPOSITORY_PLAN_SCHEMA_INVALID"));
+
+  const applicationMismatch = mutate(({ projectSpec }) => { projectSpec.applicationId = "invented-application"; });
+  assert.ok(applicationMismatch.findings.some(({ code }) => code === "PROJECT_OUTPUT_APPLICATION_ID_MISMATCH"));
+
+  const facetMismatch = mutate(({ projectSpec }) => { projectSpec.facets.routing.entries[0].id = "invented-trade-facet"; });
+  assert.ok(facetMismatch.findings.some(({ code }) => code === "PROJECT_OUTPUT_TRADE_FACET_MISMATCH"));
+
+  const applicabilityMismatch = mutate(({ repositoryPlan }) => { repositoryPlan.tradeCapability.applicability = "no-market"; });
+  assert.ok(applicabilityMismatch.findings.some(({ code }) => code === "PROJECT_OUTPUT_TRADE_APPLICABILITY_MISMATCH"));
+
+  const boundIdeaPath = path.join(fixture.root, "submission/idea-source.v1.json"), boundIdeaBytes = fs.readFileSync(boundIdeaPath);
+  fs.writeFileSync(boundIdeaPath, Buffer.concat([boundIdeaBytes, Buffer.from("\n")]));
+  const identityDrift = validateProjectOutput(fixture.input);
+  assert.ok(identityDrift.findings.some(({ code, details }) => code === "PROJECT_OUTPUT_SUBMISSION_UNREADABLE" && details?.code === "SUBMISSION_BOUND_FILE_IDENTITY_MISMATCH"));
+  fs.writeFileSync(boundIdeaPath, boundIdeaBytes);
+  writeFile(fixture.root, "submission/unbound-agent-output.json", "{\"contract\":\"invented\"}\n");
+  const orphan = validateProjectOutput(fixture.input);
+  assert.ok(orphan.findings.some(({ code }) => code === "PROJECT_OUTPUT_SUBMISSION_ORPHAN_FILE"));
+});
+
+
+test("project output gate accepts a canonical no-market prototype and forbids any manufactured route evidence", async (t) => {
+  const prototype = createNoMarketOpenWorldV2PrototypeFixture("reward-service");
+  const project = await createCompleteRepository(t, {
+    extraFiles: [...prototype.files].map(([relativePath, bytes]) => [`submission/${relativePath}`, bytes])
+  });
+  const submissionRoot = path.join(project.root, "submission");
+  const input = { ...project.bundle, repositoryRoot: project.root, submissionRoot };
+  const report = validateProjectOutput(input);
+  assert.equal(report.status, "PROJECT_OUTPUT_VALID", canonicalJsonV2(report));
+  assert.equal(report.projection.applicability, "no-market");
+  assert.deepEqual(report.projection.markets, []);
+  const preflight = childProcess.spawnSync(process.execPath, [
+    unifiedCli,
+    "project",
+    "preflight",
+    "--repository-root",
+    project.root,
+    "--state",
+    project.statePath,
+    "--previous-state",
+    project.previousStatePath,
+    "--submission-root",
+    "submission"
+  ], { encoding: "utf8", shell: false });
+  assert.equal(preflight.status, 0, preflight.stderr || preflight.stdout);
+  const preflightReport = JSON.parse(preflight.stdout);
+  assert.equal(preflightReport.status, "PROJECT_PREFLIGHT_VALID");
+  assert.equal(preflightReport.canonicalOutput, true);
+  assert.equal(preflightReport.outputBinding.reportSha256, report.reportSha256);
+  const directPreflight = preflightProjectOutput({
+    repositoryRoot: project.root,
+    statePath: project.statePath,
+    previousStatePath: project.previousStatePath,
+    submissionRoot: "submission"
+  });
+  assert.equal(canonicalJsonV2(directPreflight), canonicalJsonV2(preflightReport));
+
+  const manufactured = structuredCloneProjectOutputInput(input);
+  manufactured.repositoryPlan.commands.push({
+    id: "invented-quote-command",
+    kind: "quote-test",
+    argv: [process.execPath, "tools/project-stage.mjs", "quote"],
+    cwd: ".",
+    required: true,
+    timeoutMs: 30000,
+    executionPolicy: { networkAccess: "forbidden", externalWrites: false }
+  });
+  const rejected = validateProjectOutput(manufactured);
+  assert.ok(rejected.findings.some(({ code }) => code === "PROJECT_OUTPUT_NONTRADABLE_EVIDENCE_FORBIDDEN"));
+
+  const foreignSpec = makeProjectSpec();
+  foreignSpec.applicationId = "foreign-reward-service";
+  const duplicateGraph = makeProductGraph(makeProjectSpec());
+  const foreignManifest = createStandardTradeCapabilityManifestFixtureV1({ applicationId: "foreign-market-app", marketRef: "foreign-market" });
+  const poison = new Map([
+    ["extras/project-spec.v1.json", Buffer.from(`${canonicalJsonV2(foreignSpec)}\n`)],
+    ["extras/product-graph.v1.json", Buffer.from(`${canonicalJsonV2(duplicateGraph)}\n`)],
+    ["extras/foreign.trade-capability.v1.json", Buffer.from(`${canonicalJsonV2(foreignManifest)}\n`)]
+  ]);
+  const poisoned = await createCompleteRepository(t, {
+    extraFiles: [
+      ...[...prototype.files].map(([relativePath, bytes]) => [`submission/${relativePath}`, bytes]),
+      ...poison
+    ],
+    mutatePlan: (plan) => plan.artifacts.documentation.push(...[...poison].map(([artifactPath, bytes], index) => ({
+      id: `foreign-project-metadata-${index}`,
+      path: artifactPath,
+      kind: "project-metadata",
+      systemRefs: ["service-component"],
+      required: true,
+      status: "verified",
+      sha256: sha256(bytes),
+      byteLength: bytes.length
+    })))
+  });
+  const poisonedOutput = validateProjectOutput({ ...poisoned.bundle, repositoryRoot: poisoned.root, submissionRoot: path.join(poisoned.root, "submission") });
+  assert.equal(poisonedOutput.status, "PROJECT_OUTPUT_VALID", canonicalJsonV2(poisonedOutput));
+  const poisonedPreflight = childProcess.spawnSync(process.execPath, [
+    unifiedCli, "project", "preflight", "--repository-root", poisoned.root,
+    "--state", poisoned.statePath, "--previous-state", poisoned.previousStatePath, "--submission-root", "submission"
+  ], { encoding: "utf8", shell: false });
+  assert.equal(poisonedPreflight.status, 1, poisonedPreflight.stderr || poisonedPreflight.stdout);
+  const poisonedReport = JSON.parse(poisonedPreflight.stdout);
+  assert.equal(poisonedReport.status, "PROJECT_PREFLIGHT_BLOCKED");
+  assert.deepEqual(poisonedReport.findings.filter(({ code }) => code === "PROJECT_PREFLIGHT_MACHINE_ARTIFACT_EXTRA").map(({ path: findingPath }) => findingPath), [
+    "$.files.extras/foreign.trade-capability.v1.json",
+    "$.files.extras/product-graph.v1.json",
+    "$.files.extras/project-spec.v1.json"
+  ]);
+});
+
+
+test("project output gate accepts a COMPLETE tradable prototype and fails closed on market, route, completion, and manifest-byte drift", async (t) => {
+  const fixture = await createTradableOutputFixture(t);
+  const report = validateProjectOutput(fixture.input);
+  assert.equal(report.status, "PROJECT_OUTPUT_VALID", canonicalJsonV2(report));
+  assert.equal(report.projection.applicability, "tradable");
+  assert.deepEqual(report.projection.markets, ["main-market"]);
+  assert.equal(report.evidenceBoundary.commandsReexecuted, false);
+  assert.equal(report.evidenceBoundary.approvalCreated, false);
+  const preflight = childProcess.spawnSync(process.execPath, [
+    unifiedCli,
+    "project",
+    "preflight",
+    "--repository-root",
+    fixture.input.repositoryRoot,
+    "--state",
+    ".programmable/project-states/000005-verification.v1.json",
+    "--previous-state",
+    ".programmable/project-states/000004-repository-materialization.v1.json",
+    "--submission-root",
+    "submission"
+  ], { encoding: "utf8", shell: false });
+  assert.equal(preflight.status, 0, preflight.stderr || preflight.stdout);
+  const preflightReport = JSON.parse(preflight.stdout);
+  assert.equal(preflightReport.status, "PROJECT_PREFLIGHT_VALID");
+  assert.equal(preflightReport.outputBinding.reportSha256, report.reportSha256);
+
+  const mutate = (change) => {
+    const input = structuredCloneProjectOutputInput(fixture.input);
+    change(input);
+    return validateProjectOutput(input);
+  };
+  const incomplete = mutate(({ repositoryPlan }) => { repositoryPlan.completionStatus = "materializing"; });
+  assert.ok(incomplete.findings.some(({ code }) => code === "PROJECT_OUTPUT_TRADABLE_COMPLETE_REQUIRED"));
+
+  const marketDrift = mutate(({ repositoryPlan }) => { repositoryPlan.tradeCapability.markets[0].marketSystemRef = "invented-market"; });
+  assert.ok(marketDrift.findings.some(({ code }) => code === "PROJECT_OUTPUT_PLAN_MARKET_BIJECTION_INVALID"));
+
+  const routeDrift = mutate(({ repositoryPlan }) => { repositoryPlan.tradeCapability.markets[0].routeType = "canonical-programmable-adapter"; });
+  assert.ok(routeDrift.findings.some(({ code }) => code === "PROJECT_OUTPUT_ROUTE_TYPE_MISMATCH"));
+
+  const manifestDrift = mutate(({ repositoryPlan }) => {
+    const artifact = repositoryPlan.artifacts.configuration.find(({ kind }) => kind === "trade-capability-manifest");
+    artifact.sha256 = `sha256:${"0".repeat(64)}`;
+  });
+  assert.ok(manifestDrift.findings.some(({ code }) => code === "PROJECT_OUTPUT_MANIFEST_BYTES_MISMATCH"));
+});

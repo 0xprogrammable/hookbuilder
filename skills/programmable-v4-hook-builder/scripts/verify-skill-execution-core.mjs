@@ -28,30 +28,42 @@ export async function runDeterministicTestBatches({
 }) {
   const batches = createDeterministicTestBatches(testFiles);
   const deadline = now() + timeoutMs;
-  const results = [];
-  let remainingOutputBytes = maximumOutputBytes;
+  const batchTimeoutMs = Math.floor(deadline - now());
+  if (batchTimeoutMs < 1) {
+    return { batches, failure: { batchIndex: 0, kind: "timeout", signal: null, status: null }, results: [] };
+  }
+  const batchOutputBytes = Math.floor(maximumOutputBytes / batches.length);
+  if (batchOutputBytes < 1) {
+    return { batches, failure: { batchIndex: 0, kind: "output", signal: null, status: null }, results: [] };
+  }
 
-  for (const [batchIndex, batch] of batches.entries()) {
-    const timeoutMs = Math.floor(deadline - now());
-    if (timeoutMs < 1) {
-      return { batches, failure: { batchIndex, kind: "timeout", signal: null, status: null }, results };
-    }
-    if (remainingOutputBytes < 1) {
-      return { batches, failure: { batchIndex, kind: "output", signal: null, status: null }, results };
-    }
-    const result = await runChildProcess({
-      command,
-      args: ["--test", "--test-concurrency=2", ...batch],
-      cwd,
-      env,
-      maximumOutputBytes: remainingOutputBytes,
-      timeoutMs
-    });
-    results.push(result);
+  const settlements = await Promise.allSettled(batches.map((batch) => runChildProcess({
+    command,
+    args: ["--test", "--test-concurrency=2", ...batch],
+    cwd,
+    env,
+    maximumOutputBytes: batchOutputBytes,
+    timeoutMs: batchTimeoutMs
+  })));
+  const results = settlements.map((settlement) => settlement.status === "fulfilled"
+    ? settlement.value
+    : {
+        outputExceeded: false,
+        runnerRejected: true,
+        signal: null,
+        status: null,
+        stderr: settlement.reason instanceof Error
+          ? settlement.reason.message
+          : "child runner rejected without an Error",
+        stdout: "",
+        timedOut: false
+      });
+
+  for (const [batchIndex, result] of results.entries()) {
+    if (result.runnerRejected) return { batches, failure: { ...result, batchIndex, kind: "runner" }, results };
     if (result.timedOut) return { batches, failure: { ...result, batchIndex, kind: "timeout" }, results };
     if (result.outputExceeded) return { batches, failure: { ...result, batchIndex, kind: "output" }, results };
     if (result.status !== 0) return { batches, failure: { ...result, batchIndex, kind: "status" }, results };
-    remainingOutputBytes -= Buffer.byteLength(result.stdout) + Buffer.byteLength(result.stderr);
   }
   return { batches, failure: null, results };
 }
@@ -88,6 +100,8 @@ export async function validateScriptsAndTests({
         errors.push(`deterministic tests exceeded the shared 15-minute aggregate bound in ${shard}:\n${stdout}${stderr}`.trim());
       } else if (kind === "output") {
         errors.push(`deterministic tests exceeded the shared 128 MiB aggregate output bound in ${shard}`);
+      } else if (kind === "runner") {
+        errors.push(`deterministic test runner failed in ${shard}: ${stderr}`.trim());
       } else {
         errors.push(`deterministic tests failed in ${shard} (status ${status ?? "null"}, signal ${signal ?? "none"}):\n${stdout}${stderr}`.trim());
       }
