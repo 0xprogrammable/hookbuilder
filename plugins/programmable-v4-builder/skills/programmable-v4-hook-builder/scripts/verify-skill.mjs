@@ -22,7 +22,7 @@ if (!Number.isInteger(nodeMajor) || nodeMajor < 24) {
   console.error("verify-skill.mjs: NODE_24_OR_NEWER_REQUIRED");
   process.exit(1);
 }
-const MAX_PORTABLE_FILES = 640;
+const MAX_PORTABLE_FILES = 646;
 const MAX_PORTABLE_BYTES = 12_000_000;
 const MAX_PORTABLE_FILE_BYTES = 1_000_000;
 const REQUIRED_PORTABLE_TESTS = Object.freeze(`
@@ -38,7 +38,9 @@ knowledge-router launch-bundle launch-bundle-v2 launch-bundle-v2-cli
 launch-plan-graph legacy-strict-json-boundaries official-launchpad open-world-migration
 open-world-regressions open-world-runtime open-world-security open-world-source-signals
 open-world-v2 open-world-v2-module-boundaries ordinary-launch-cli package-dependency-contract
-policy-bundle project-compiler project-surfaces public-claims
+policy-bundle project-compiler-foundation project-compiler-materialization
+project-compiler-output project-compiler-plan project-compiler-receipts
+project-compiler-v4-deployment project-surfaces public-claims
 raw-git-integrity-core registry-acceptance-v3-github registry-discovery residual-json-boundaries
 resolve-contract-core review-target review-target-contract reviewed-drift-receipt
 runtime-assets-core schema-security semantic-rule-registry source-closure-verifier
@@ -405,6 +407,7 @@ const required = [
   "scripts/v4-deployment-evidence-core.mjs",
   "scripts/v4-hook-semantic-contract-core.mjs",
   "scripts/test/fee-conformance-v1-fixture.mjs",
+  "scripts/test/project-compiler-fixture.mjs",
   ...REQUIRED_PORTABLE_TESTS,
   "scripts/validate-submission.mjs",
   "scripts/validate-semantic-rule-registry.mjs",

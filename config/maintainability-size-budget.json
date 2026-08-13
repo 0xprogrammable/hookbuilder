@@ -45,11 +45,11 @@
         },
         {
           "path": "scripts/quality/size-budget.mjs",
-          "observedLines": 399,
-          "observedBytes": 22124,
-          "observedComplexityScore": 152,
+          "observedLines": 408,
+          "observedBytes": 22688,
+          "observedComplexityScore": 155,
           "observedMaxBlockDepth": 4,
-          "reviewRef": "v0.5.1 all-production discovery complexity cycle and exact snapshot gate"
+          "reviewRef": "v0.5.1 working-tree package inventory excludes tracked files deleted by a reviewed test split"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/build-info-core.mjs",
@@ -325,11 +325,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
-          "observedLines": 701,
-          "observedBytes": 35437,
+          "observedLines": 704,
+          "observedBytes": 35631,
           "observedComplexityScore": 86,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.5.1 fail-closed Node 24 verifier under the 640-file cap"
+          "reviewRef": "v0.5.1 explicit six-file project compiler test inventory under the reviewed package cap"
         }
       ]
     },
@@ -344,7 +344,7 @@
     "path": "skills/programmable-v4-hook-builder",
     "observedFiles": 640,
     "observedBytes": 9619846,
-    "maxFiles": 640,
+    "maxFiles": 646,
     "maxBytes": 12000000
   }
 }
