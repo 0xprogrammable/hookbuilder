@@ -26,20 +26,30 @@ const expectedTopLevel = [
   "mcp", "package-lock.json", "package.json", "plugins", "scripts", "skills", "submissions", "test"
 ];
 const forbiddenTransientDirectories = new Set(["node_modules", "coverage", "broadcast", "cache", "out"]);
+const ignoredHostMetadataFiles = new Set([".DS_Store"]);
 
-function walk(directory) {
+function visibleDirectoryRows(directory, rootDirectory = repositoryRoot) {
   const rows = [];
   for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name))) {
-    if (directory === repositoryRoot && entry.name === ".git") continue;
+    if (directory === rootDirectory && entry.name === ".git") continue;
     const absolutePath = path.join(directory, entry.name);
-    const relativePath = path.relative(repositoryRoot, absolutePath).split(path.sep).join("/");
     const stat = fs.lstatSync(absolutePath);
+    if (ignoredHostMetadataFiles.has(entry.name) && stat.isFile()) continue;
+    const relativePath = path.relative(rootDirectory, absolutePath).split(path.sep).join("/");
     rows.push({ absolutePath, relativePath, stat });
+  }
+  return rows;
+}
+
+function walk(directory, rootDirectory = repositoryRoot) {
+  const rows = [];
+  for (const row of visibleDirectoryRows(directory, rootDirectory)) {
+    rows.push(row);
     if (
-      stat.isDirectory()
-      && !stat.isSymbolicLink()
-      && !forbiddenTransientDirectories.has(entry.name)
-    ) rows.push(...walk(absolutePath));
+      row.stat.isDirectory()
+      && !row.stat.isSymbolicLink()
+      && !forbiddenTransientDirectories.has(path.basename(row.relativePath))
+    ) rows.push(...walk(row.absolutePath, rootDirectory));
   }
   return rows;
 }
@@ -64,8 +74,35 @@ test("repository containment accepts an in-root ..x name and rejects a real pare
   );
 });
 
+test("repository shape ignores only regular macOS metadata files at every depth", (t) => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-repository-shape-"));
+  t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(fixtureRoot, "nested"), { recursive: true });
+  fs.writeFileSync(path.join(fixtureRoot, ".DS_Store"), "host metadata\n");
+  fs.writeFileSync(path.join(fixtureRoot, "nested", ".DS_Store"), "host metadata\n");
+  fs.writeFileSync(path.join(fixtureRoot, "nested", "kept.txt"), "repository content\n");
+  fs.writeFileSync(path.join(fixtureRoot, "unexpected.txt"), "unexpected repository content\n");
+
+  assert.deepEqual(
+    visibleDirectoryRows(fixtureRoot, fixtureRoot).map(({ relativePath }) => relativePath),
+    ["nested", "unexpected.txt"]
+  );
+  assert.deepEqual(
+    walk(fixtureRoot, fixtureRoot).map(({ relativePath }) => relativePath),
+    ["nested", "nested/kept.txt", "unexpected.txt"]
+  );
+
+  fs.rmSync(path.join(fixtureRoot, ".DS_Store"));
+  fs.mkdirSync(path.join(fixtureRoot, ".DS_Store"));
+  fs.writeFileSync(path.join(fixtureRoot, ".DS_Store", "not-hidden.txt"), "unexpected repository content\n");
+  assert.deepEqual(
+    walk(fixtureRoot, fixtureRoot).map(({ relativePath }) => relativePath),
+    [".DS_Store", ".DS_Store/not-hidden.txt", "nested", "nested/kept.txt", "unexpected.txt"]
+  );
+});
+
 test("repository has one closed top-level product structure and one generated skill mirror", () => {
-  const actual = fs.readdirSync(repositoryRoot).filter((name) => name !== ".git").sort();
+  const actual = visibleDirectoryRows(repositoryRoot).map(({ relativePath }) => relativePath).sort();
   assert.deepEqual(actual, [...expectedTopLevel].sort());
   const skillFiles = walk(repositoryRoot).filter(({ relativePath }) => relativePath.endsWith("/SKILL.md"));
   assert.deepEqual(skillFiles.map(({ relativePath }) => relativePath), [
