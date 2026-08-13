@@ -2,10 +2,11 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import {
-  CHAINLINK_PRODUCT_CAPABILITY_IDS,
   buildDirectCapabilityLegos as buildCatalogDirectCapabilityLegos,
-  canonicalJson
+  canonicalJson,
+  loadTemplateCatalog
 } from "./template-catalog-core.mjs";
+import { CHAINLINK_PRODUCT_CAPABILITY_IDS } from "./template-catalog-composition.mjs";
 
 const idPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 export const MAX_ROUTING_ITEMS = 256;
@@ -97,6 +98,12 @@ export function buildKnowledgeSelectorInventory({ routing, catalog }) {
     packIds: Object.freeze(catalog.definitions.filter(({ kind }) => kind === "pack").map(({ id }) => id).sort(compareUtf8)),
     routeFamilies: Object.freeze(routeFamilies)
   });
+}
+
+export function loadRoutedCatalog(skillRoot, routing) {
+  const catalog = loadTemplateCatalog({ skillRoot });
+  assertCatalogSurfaceRoutingComplete({ routing, catalog });
+  return catalog;
 }
 
 export function assertCatalogSurfaceRoutingComplete({ routing, catalog }) {

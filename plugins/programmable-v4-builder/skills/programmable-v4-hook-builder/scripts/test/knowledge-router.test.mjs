@@ -57,7 +57,7 @@ test("Autopilot starts from the compact compiler with the productive completion 
   assert.match(coldContext, /require authority for secrets, cost, signing, deploy, publish, submit, merge or Registry writes/u);
   assert.match(skill, /project require-output --repository-root "\$NEW_REPOSITORY" --state \.programmable\/project-states\/000006-submission-evidence\.v1\.json --previous-state \.programmable\/project-states\/000005-verification\.v1\.json --submission-root submission/u);
   assert.match(compiler, /project materialize/u);
-  assert.match(compiler, /project require-output/u);
+  assert.match(compiler, /project\s+require-output/u);
   assert.match(compiler, /PROJECT_PREFLIGHT_VALID/u);
   assert.match(compiler, /NOT_SUBMITTED/u);
   assert.ok(deferred(result, "references/intent-contract.md"));

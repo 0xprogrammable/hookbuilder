@@ -3,11 +3,9 @@
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { parseCli } from "./cli-args.mjs";
 import {
   TemplateCatalogError,
   canonicalJson,
-  chainlinkProductCapabilities,
   listImplementationLegos,
   listTemplateCatalog,
   loadTemplateCatalog,
@@ -17,17 +15,14 @@ import {
   showImplementationLego,
   showTemplateDefinition
 } from "./template-catalog-core.mjs";
+import {
+  addChainlinkProductSelection,
+  compactTemplateCatalogEntry,
+  filterTemplateCatalogEntries,
+  parseTemplateCatalogList
+} from "./template-catalog-loader.mjs";
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const compactEntry = ({ id, kind }) => Object.fromEntries([["id", id], ["kind", kind]]);
-const listSpec = {
-  command: "template-catalog.mjs list",
-  options: [
-    { name: "--kind", key: "kind", type: "value", valueName: "starter|pack" },
-    { name: "--filter", key: "filter", type: "value", valueName: "text" },
-    { name: "--json", key: "asJson", type: "boolean" }
-  ], positionals: { min: 0, max: 0 }
-};
 try {
   const args = process.argv.slice(2);
   if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
@@ -36,12 +31,17 @@ try {
     const command = args[0];
     const catalog = loadTemplateCatalog({ skillRoot });
     if (command === "list") {
-      const options = parseList(args.slice(1));
-      const entries = filterEntries(listTemplateCatalog(catalog, options), options.filter);
+      const parsed = parseTemplateCatalogList(args.slice(1));
+      if (parsed.help) {
+        process.stdout.write(listHelp());
+        process.exit(0);
+      }
+      const options = parsed.options;
+      const entries = filterTemplateCatalogEntries(listTemplateCatalog(catalog, options), options.filter);
       emitSuccess(command, {
         catalogDigest: catalog.catalogDigest,
         count: entries.length,
-        entries: options.asJson ? entries : entries.map(compactEntry)
+        entries: options.asJson ? entries : entries.map(compactTemplateCatalogEntry)
       });
     } else if (command === "list-legos") {
       const options = parseLegoList(args.slice(1));
@@ -94,21 +94,6 @@ try {
   }
   process.stdout.write(`${canonicalJson(output)}\n`);
   process.exitCode = code === "USAGE_ERROR" ? 2 : 1;
-}
-function parseList(args) {
-  if (args.includes("--help") || args.includes("-h")) {
-    process.stdout.write(listHelp());
-    process.exit(0);
-  }
-  try {
-    return parseCli(listSpec, args).options;
-  } catch (error) {
-    usageError(error.message);
-  }
-}
-
-function filterEntries(entries, filter) {
-  return filter === null ? entries : entries.filter((entry) => JSON.stringify(entry).toLowerCase().includes(filter.normalize("NFC").toLowerCase()));
 }
 function parseShow(args, command = "show") {
   if (args.includes("--help") || args.includes("-h")) {
@@ -170,11 +155,7 @@ function parseMaterialize(args) {
     }
     if (argument === "--chainlink-product") {
       const product = requireValue(args, ++index, "--chainlink-product");
-      if (options.chainlinkProducts.includes(product)) usageError(`Duplicate Chainlink product: ${product}.`);
-      options.chainlinkProducts.push(product);
-      for (const capability of chainlinkProductCapabilities(product)) {
-        if (!options.capabilityIds.includes(capability)) options.capabilityIds.push(capability);
-      }
+      addChainlinkProductSelection(options, product);
       continue;
     }
     if (argument === "--custom-capability") {

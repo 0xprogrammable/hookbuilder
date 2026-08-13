@@ -7,15 +7,17 @@ import { fileURLToPath } from "node:url";
 import { parseCli, renderHelp } from "./cli-args.mjs";
 import { normalizeCompanionManifest } from "./companion-manifest-contract.mjs";
 import { inspectLocalGitReadiness, preparePullRequest } from "./cli-prepare-pr.mjs";
+import { compactDoctorReport } from "./cli-prepare-pr-readiness.mjs";
 import { runLaunchBundleV2Cli } from "./launch-bundle-v2.mjs";
+import { detectOpenWorldV2Submission, executeOpenWorldV2Check } from "./open-world-v2-validation-core.mjs";
 import { assertInsideRepository, resolveInstalledPackageRoot, resolveRepositoryRoot } from "./repository-root.mjs";
 import { CliFailure, emitFailure, emitSuccess, requireJsonResult, runBundledCommand } from "./cli-runtime.mjs";
 import { canonicalJson } from "./submission-core.mjs";
+import { summarizeV1Check, summarizeV2Check } from "./submission-report-core.mjs";
 import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
 import { SUBMIT_LAUNCH_INTAKE_CONTRACT as INTAKE } from "./registry-intake-contract.mjs";
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const launchTarget = INTAKE.repository;
-const MAX_CHECK_INPUT_BYTES = 32 * 1024 * 1024;
 const delegatedCommands = new Map([
   ["open-world", { script: "open-world.mjs", prefix: [] }],
   ["application-recheck", { script: "application-recheck.mjs", prefix: [] }],
@@ -201,16 +203,7 @@ async function execute(command, options, positionals) {
         ? "Local Git gates are ready; public GitHub repository, commit and tree reachability remain notChecked until prepare-pr."
         : "One or more local Git gates block prepare-pr; public reachability remains notChecked."
     };
-    const blockers = report.publicBetaBlockers.slice(0, 3);
-    return new Map([[false, {
-      status: ["LOCAL_TOOLING_BLOCKED", "IDEA_WORK_READY", "LOCAL_REPOSITORY_READY"][Number(report.readyForDeterministicPreflight) + Number(report.readyForRepositoryWork)],
-      ready: { ideaWork: report.readyForIdeaWork, deterministicPreflight: report.readyForDeterministicPreflight, repositoryWork: report.readyForRepositoryWork, publicBeta: false },
-      repository: { root: report.repositoryRoot, cleanWorktree: report.cleanWorktree, preparePrLocal: publicBetaGit.readyForPreparePrLocal },
-      node: report.runtimeCompatibility.node,
-      blockers,
-      omittedBlockers: report.publicBetaBlockers.length - blockers.length,
-      next: "If repositoryWork is true, run context --mode autopilot; otherwise rerun doctor --json."
-    }], [true, report]]).get(options.fullJson);
+    return new Map([[false, compactDoctorReport(report, publicBetaGit)], [true, report]]).get(options.fullJson);
   }
   if (command === "scaffold") {
     const [modelId] = positionals;
@@ -234,8 +227,8 @@ async function execute(command, options, positionals) {
   }
   if (command === "check") {
     const submission = resolveRegularFile(repositoryRoot, positionals[0]);
-    if (detectSubmissionFormat(submission) === "open-world-v2") {
-      return executeOpenWorldV2Check({ submission, repositoryRoot, options });
+    if (detectOpenWorldV2Submission(submission)) {
+      return executeOpenWorldV2Check({ submission, repositoryRoot, options, summarize: summarizeV2Check });
     }
     const args = [submission, "--repository-root", repositoryRoot];
     const result = requireJsonResult(
@@ -528,213 +521,6 @@ function checkCommandOutcome(result, options) {
   };
 }
 
-function summarizeV1Check(result) {
-  const diagnostics = summarizeFindings(result.findings);
-  return {
-    submissionFormat: "v1",
-    submissionHash: result.submissionHash,
-    status: result.decision,
-    readiness: {
-      design: result.readiness?.design ?? null,
-      implementation: result.readiness?.implementation ?? null,
-      repositoryClosure: result.closure?.status ?? null
-    },
-    gatePassed: result.gatePassed,
-    commandOutcome: result.commandOutcome,
-    diagnostics,
-    reportWritten: result.reportWritten,
-    exhaustiveReport: exhaustiveReportHint(result.reportWritten),
-    next: diagnostics.counts.total === 0
-      ? "No deterministic finding remains; continue only to the separately required gate. Add --json for the complete local report."
-      : result.reportWritten === null
-        ? "Resolve the primary root causes, then rerun check; add --json for every finding."
-        : `Resolve the primary root causes in ${result.reportWritten.path}, then rerun check; add --json for the complete inline report.`
-  };
-}
-
-function summarizeV2Check(result) {
-  const diagnostics = summarizeFindings(result.report?.findings);
-  return {
-    submissionFormat: "open-world-v2",
-    package: result.package,
-    status: result.report?.status ?? (result.valid === true ? "VALID" : "INVALID"),
-    valid: result.valid === true,
-    ideaEligibility: result.report?.ideaEligibility ?? null,
-    commandOutcome: result.commandOutcome,
-    diagnostics,
-    reportWritten: null,
-    exhaustiveReport: exhaustiveReportHint(null),
-    safety: {
-      readOnly: result.readOnly === true,
-      networkAccessed: result.networkAccessed === true,
-      writePerformed: result.writePerformed === true,
-      externalActionsPerformed: Array.isArray(result.externalActionsPerformed)
-        ? result.externalActionsPerformed.length
-        : null
-    },
-    next: diagnostics.counts.total === 0
-      ? "No deterministic finding remains; continue only to the separately required review gate. Add --json for the complete package report."
-      : "Resolve the primary root causes, then rerun check; add --json for the complete package report."
-  };
-}
-
-function summarizeFindings(input) {
-  const findings = Array.isArray(input) ? input.filter((finding) => finding && typeof finding === "object") : [];
-  const severityCounts = {
-    hard: 0,
-    blocker: 0,
-    review: 0,
-    splitReview: 0,
-    warning: 0,
-    info: 0,
-    other: 0
-  };
-  const groups = new Map();
-  for (const finding of findings) {
-    const severityKey = finding.severity === "split-review"
-      ? "splitReview"
-      : Object.hasOwn(severityCounts, finding.severity)
-        ? finding.severity
-        : "other";
-    severityCounts[severityKey] += 1;
-    const code = typeof finding.code === "string" && finding.code.length > 0
-      ? finding.code
-      : "UNCLASSIFIED_FINDING";
-    const group = groups.get(code);
-    if (group) {
-      group.occurrences += 1;
-      continue;
-    }
-    groups.set(code, {
-      severity: typeof finding.severity === "string" ? finding.severity : "unknown",
-      code,
-      path: typeof finding.path === "string" ? finding.path : null,
-      message: typeof finding.message === "string" ? finding.message : "See the complete report for this finding.",
-      recovery: typeof finding.remediation === "string"
-        ? finding.remediation
-        : typeof finding.details?.remediation === "string"
-          ? finding.details.remediation
-          : "Inspect this root cause in the complete report and update the exact bound input.",
-      occurrences: 1
-    });
-  }
-  const primary = [...groups.values()].slice(0, 3).map((finding) => ({
-    ...finding,
-    additionalLocations: finding.occurrences - 1
-  }));
-  const displayedFindingCount = primary.reduce((total, finding) => total + finding.occurrences, 0);
-  return {
-    counts: {
-      total: findings.length,
-      bySeverity: severityCounts,
-      distinctRootCauses: groups.size,
-      displayedRootCauses: primary.length,
-      omittedRootCauses: Math.max(0, groups.size - primary.length),
-      omittedFindings: Math.max(0, findings.length - displayedFindingCount)
-    },
-    primary
-  };
-}
-
-function exhaustiveReportHint(reportWritten) {
-  return reportWritten === null
-    ? {
-        available: true,
-        source: "cli-opt-in",
-        option: "--json"
-      }
-    : {
-        available: true,
-        source: "artifact-and-cli-opt-in",
-        path: reportWritten.path,
-        submissionHash: reportWritten.submissionHash,
-        option: "--json"
-      };
-}
-
-function detectSubmissionFormat(submissionPath) {
-  let value;
-  try {
-    value = parseBoundedStrictJsonBytes(fs.readFileSync(submissionPath), {
-      maxSourceBytes: MAX_CHECK_INPUT_BYTES
-    });
-  } catch {
-    return "v1-or-unknown";
-  }
-  if (
-    value?.$schema === "urn:programmable:v4-hook-submission:2.0.0"
-    || (value?.schemaVersion === 2 && value?.standardVersion === "2.0.0")
-  ) return "open-world-v2";
-  return "v1-or-unknown";
-}
-
-function executeOpenWorldV2Check({ submission, repositoryRoot, options }) {
-  if (path.basename(submission) !== "submission.v2.json") {
-    throw new CliFailure(
-      "CHECK_V2_PACKAGE_REQUIRED",
-      "open-world v2 uses a package: name this file submission.v2.json, keep its bound companion records beside it, then rerun check"
-    );
-  }
-  if (options.reportPath !== null) {
-    throw new CliFailure(
-      "CHECK_V2_REPORT_PATH_UNSUPPORTED",
-      "open-world v2 validation is read-only and does not write a V1 compatibility report; remove --write-report and rerun check"
-    );
-  }
-  if (
-    options.requireDesignReady
-    || options.requireIntakeReady
-    || options.requireReady
-    || options.requirePrototypeValidated
-  ) {
-    throw new CliFailure(
-      "CHECK_V2_GATE_UNSUPPORTED",
-      "open-world v2 has its own package validity and review states; remove the V1 --require-* flag and rerun check"
-    );
-  }
-  const packageRoot = path.dirname(submission);
-  let delegated;
-  try {
-    delegated = requireJsonResult(
-      runBundledCommand(
-        "open-world.mjs",
-        ["validate", packageRoot, "--repository-root", repositoryRoot],
-        { cwd: repositoryRoot, failureCode: "OPEN_WORLD_V2_PACKAGE_INVALID" }
-      ),
-      "open-world.mjs"
-    );
-  } catch (error) {
-    if (error instanceof CliFailure && error.code === "OPEN_WORLD_V2_PACKAGE_INVALID") {
-      throw new CliFailure(
-        "OPEN_WORLD_V2_PACKAGE_INVALID",
-        "the detected open-world v2 submission must be checked with its complete bound package",
-        {
-          exitCode: error.exitCode,
-          details: {
-            submissionFormat: "open-world-v2",
-            package: relative(repositoryRoot, packageRoot),
-            recoveryCommand: `node $SKILL_ROOT/scripts/cli.mjs open-world validate ${relative(repositoryRoot, packageRoot)} --repository-root $REPOSITORY_ROOT`,
-            validatorResult: error.details
-          }
-        }
-      );
-    }
-    throw error;
-  }
-  const completed = {
-    ...delegated.result,
-    submissionFormat: "open-world-v2",
-    validatorCommand: "open-world validate",
-    reportWritten: null,
-    commandOutcome: {
-      reportGenerated: true,
-      enforcedGate: "open-world-v2-package-valid",
-      selectedGatePassed: delegated.result?.valid === true,
-      zeroExitMeaning: "OPEN_WORLD_V2_PACKAGE_VALIDATED_NOT_APPROVAL"
-    }
-  };
-  return options.fullJson ? completed : summarizeV2Check(completed);
-}
 function runDelegatedCommand(command, args) {
   const delegated = delegatedCommands.get(command);
   const scriptPath = path.join(scriptDirectory, delegated.script);

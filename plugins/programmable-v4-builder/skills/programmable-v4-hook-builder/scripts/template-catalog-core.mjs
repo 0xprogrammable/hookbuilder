@@ -13,8 +13,6 @@ export {
   buildDirectCapabilityLegos,
   buildImplementationFeePolicy,
   buildImplementationLegoSelection,
-  CHAINLINK_PRODUCT_CAPABILITY_IDS,
-  chainlinkProductCapabilities,
   composeTemplate,
   parseCustomCapability,
   parseLocalTag

@@ -102,10 +102,10 @@
         {
           "path": "skills/programmable-v4-hook-builder/scripts/cli.mjs",
           "observedLines": 544,
-          "observedBytes": 26084,
-          "observedComplexityScore": 103,
+          "observedBytes": 26235,
+          "observedComplexityScore": 105,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.5.1 fail-closed Node 24 portable CLI runtime gate"
+          "reviewRef": "v0.6.0 reviewed open-world-v2 dispatch and concise-or-full diagnostic selection"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/companion-manifest-contract.mjs",
@@ -344,7 +344,7 @@
     "path": "skills/programmable-v4-hook-builder",
     "observedFiles": 640,
     "observedBytes": 9619846,
-    "maxFiles": 654,
+    "maxFiles": 662,
     "maxBytes": 12000000
   }
 }

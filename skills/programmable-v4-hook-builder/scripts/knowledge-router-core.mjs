@@ -10,13 +10,13 @@ import {
   MAX_TEMPLATE_PLAN_BYTES,
   addDeferredReference,
   addReference,
-  assertCatalogSurfaceRoutingComplete,
   attachMeasuredContextBudget,
   buildDirectCapabilityLegos,
   buildKnowledgeSelectorInventory,
   chunkIds,
   compareUtf8,
   fail,
+  loadRoutedCatalog,
   normalizeIds,
   normalizeRegistryProjectSplitReview,
   normalizeRegistryProjects,
@@ -25,11 +25,10 @@ import {
   selectReviewRoute,
   validateRouting
 } from "./knowledge-router-support-core.mjs";
-import { canonicalJson, loadTemplateCatalog } from "./template-catalog-core.mjs";
+import { canonicalJson } from "./template-catalog-core.mjs";
 import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
 
-const coreDirectory = path.dirname(fileURLToPath(import.meta.url));
-const defaultSkillRoot = path.resolve(coreDirectory, "..");
+const defaultSkillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export { KnowledgeRouterError };
 
@@ -55,8 +54,7 @@ export function loadKnowledgeRouting({ skillRoot = defaultSkillRoot } = {}) {
 export function describeKnowledgeSelectors({ skillRoot = defaultSkillRoot } = {}) {
   const resolvedSkillRoot = path.resolve(skillRoot);
   const routing = loadKnowledgeRouting({ skillRoot: resolvedSkillRoot });
-  const catalog = loadTemplateCatalog({ skillRoot: resolvedSkillRoot });
-  assertCatalogSurfaceRoutingComplete({ routing, catalog });
+  const catalog = loadRoutedCatalog(resolvedSkillRoot, routing);
   return buildKnowledgeSelectorInventory({ routing, catalog });
 }
 
@@ -83,8 +81,7 @@ export function planKnowledge({
     templatePlanSplitReview
   });
 
-  const catalog = loadTemplateCatalog({ skillRoot: resolvedSkillRoot });
-  assertCatalogSurfaceRoutingComplete({ routing, catalog });
+  const catalog = loadRoutedCatalog(resolvedSkillRoot, routing);
   // Catalog definitions and the routing contract are independent canonical
   // vocabularies. A route-only id is known to the knowledge router even when
   // it does not select a catalog Lego. Registry discovery metadata remains

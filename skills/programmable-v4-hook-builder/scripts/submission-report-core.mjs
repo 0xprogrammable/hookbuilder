@@ -296,6 +296,130 @@ function submissionHash(submission) {
   return `sha256:${crypto.createHash("sha256").update(canonicalJson(submission)).digest("hex")}`;
 }
 
+export function summarizeV1Check(result) {
+  const diagnostics = summarizeFindings(result.findings);
+  return {
+    submissionFormat: "v1",
+    submissionHash: result.submissionHash,
+    status: result.decision,
+    readiness: {
+      design: result.readiness?.design ?? null,
+      implementation: result.readiness?.implementation ?? null,
+      repositoryClosure: result.closure?.status ?? null
+    },
+    gatePassed: result.gatePassed,
+    commandOutcome: result.commandOutcome,
+    diagnostics,
+    reportWritten: result.reportWritten,
+    exhaustiveReport: exhaustiveReportHint(result.reportWritten),
+    next: diagnostics.counts.total === 0
+      ? "No deterministic finding remains; continue only to the separately required gate. Add --json for the complete local report."
+      : result.reportWritten === null
+        ? "Resolve the primary root causes, then rerun check; add --json for every finding."
+        : `Resolve the primary root causes in ${result.reportWritten.path}, then rerun check; add --json for the complete inline report.`
+  };
+}
+
+export function summarizeV2Check(result) {
+  const diagnostics = summarizeFindings(result.report?.findings);
+  return {
+    submissionFormat: "open-world-v2",
+    package: result.package,
+    status: result.report?.status ?? (result.valid === true ? "VALID" : "INVALID"),
+    valid: result.valid === true,
+    ideaEligibility: result.report?.ideaEligibility ?? null,
+    commandOutcome: result.commandOutcome,
+    diagnostics,
+    reportWritten: null,
+    exhaustiveReport: exhaustiveReportHint(null),
+    safety: {
+      readOnly: result.readOnly === true,
+      networkAccessed: result.networkAccessed === true,
+      writePerformed: result.writePerformed === true,
+      externalActionsPerformed: Array.isArray(result.externalActionsPerformed)
+        ? result.externalActionsPerformed.length
+        : null
+    },
+    next: diagnostics.counts.total === 0
+      ? "No deterministic finding remains; continue only to the separately required review gate. Add --json for the complete package report."
+      : "Resolve the primary root causes, then rerun check; add --json for the complete package report."
+  };
+}
+
+function summarizeFindings(input) {
+  const findings = Array.isArray(input) ? input.filter((finding) => finding && typeof finding === "object") : [];
+  const severityCounts = {
+    hard: 0,
+    blocker: 0,
+    review: 0,
+    splitReview: 0,
+    warning: 0,
+    info: 0,
+    other: 0
+  };
+  const groups = new Map();
+  for (const finding of findings) {
+    const severityKey = finding.severity === "split-review"
+      ? "splitReview"
+      : Object.hasOwn(severityCounts, finding.severity)
+        ? finding.severity
+        : "other";
+    severityCounts[severityKey] += 1;
+    const code = typeof finding.code === "string" && finding.code.length > 0
+      ? finding.code
+      : "UNCLASSIFIED_FINDING";
+    const group = groups.get(code);
+    if (group) {
+      group.occurrences += 1;
+      continue;
+    }
+    groups.set(code, {
+      severity: typeof finding.severity === "string" ? finding.severity : "unknown",
+      code,
+      path: typeof finding.path === "string" ? finding.path : null,
+      message: typeof finding.message === "string" ? finding.message : "See the complete report for this finding.",
+      recovery: typeof finding.remediation === "string"
+        ? finding.remediation
+        : typeof finding.details?.remediation === "string"
+          ? finding.details.remediation
+          : "Inspect this root cause in the complete report and update the exact bound input.",
+      occurrences: 1
+    });
+  }
+  const primary = [...groups.values()].slice(0, 3).map((finding) => ({
+    ...finding,
+    additionalLocations: finding.occurrences - 1
+  }));
+  const displayedFindingCount = primary.reduce((total, finding) => total + finding.occurrences, 0);
+  return {
+    counts: {
+      total: findings.length,
+      bySeverity: severityCounts,
+      distinctRootCauses: groups.size,
+      displayedRootCauses: primary.length,
+      omittedRootCauses: Math.max(0, groups.size - primary.length),
+      omittedFindings: Math.max(0, findings.length - displayedFindingCount)
+    },
+    primary
+  };
+}
+
+function exhaustiveReportHint(reportWritten) {
+  return reportWritten === null
+    ? {
+        available: true,
+        source: "cli-opt-in",
+        option: "--json"
+      }
+    : {
+        available: true,
+        source: "artifact-and-cli-opt-in",
+        path: reportWritten.path,
+        submissionHash: reportWritten.submissionHash,
+        option: "--json"
+      };
+}
+
 function deduplicate(findings) {
   const seen = new Set();
   return findings.filter((finding) => {

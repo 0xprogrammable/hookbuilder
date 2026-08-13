@@ -13,7 +13,6 @@ import {
 import {
   TemplateCatalogError,
   buildImplementationLegoSelection,
-  chainlinkProductCapabilities,
   composeTemplate,
   listImplementationLegos,
   listTemplateCatalog,
@@ -25,6 +24,7 @@ import {
   showImplementationLego,
   showTemplateDefinition
 } from "../template-catalog-core.mjs";
+import { chainlinkProductCapabilities } from "../template-catalog-composition.mjs";
 import { planKnowledge } from "../knowledge-router-core.mjs";
 import { validateAgainstSchema } from "../submission-core.mjs";
 

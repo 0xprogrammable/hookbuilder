@@ -45,6 +45,18 @@ const CHAINLINK_PRODUCT_ALIASES = new Map([
   ["vrf-v2-5", "chainlink-vrf-v2-5"],
   ["vrf-v2.5", "chainlink-vrf-v2-5"]
 ]);
+export const TEMPLATE_BASELINE_TRIGGERS = Object.freeze({
+  authority: true,
+  valueFlow: false,
+  sourceOfTruth: true,
+  signaturesReplay: false,
+  externalCalls: false,
+  custody: false,
+  piiGeolocation: false,
+  secretBoundary: false,
+  sourceTestSchema: true,
+  failureRecovery: true
+});
 
 export function chainlinkProductCapabilities(value) {
   const exact = new Map([
@@ -72,6 +84,70 @@ export function chainlinkProductCapabilities(value) {
     "chainlink-provider",
     CHAINLINK_GENERIC_CAPABILITY_BY_PRODUCT[productId]
   ].sort(compareUtf8);
+}
+
+export function collectChainlinkPlanSurfaces(plan, activeSurfaceSlugs) {
+  const selectedCapabilities = new Set(plan.machineCapabilities.allCapabilityIds);
+  const surfacesByCapability = new Map();
+  for (const capabilityId of ["chainlink-provider", ...CHAINLINK_PRODUCT_IDS]) {
+    if (!selectedCapabilities.has(capabilityId)) continue;
+    const entry = plan.directCapabilityLegos?.entries?.find((candidate) => candidate.capabilityId === capabilityId);
+    if (
+      entry?.exactRequirementStatus !== "catalog-atomic"
+      || !Array.isArray(entry.projectSurfaces)
+      || entry.projectSurfaces.length === 0
+    ) {
+      fail("CHAINLINK_PRODUCT_REQUIREMENTS_INCOMPLETE", `Chainlink capability ${capabilityId} lacks one atomic product-requirement surface closure.`);
+    }
+    surfacesByCapability.set(capabilityId, entry.projectSurfaces);
+    for (const surface of entry.projectSurfaces) activeSurfaceSlugs.add(surface);
+  }
+  return { selectedCapabilities, surfacesByCapability };
+}
+
+export function bindChainlinkPlanSurfaces({ selectedCapabilities, surfacesByCapability }, capabilitySurfaceSlugs) {
+  if (selectedCapabilities.has("chainlink-provider")) {
+    capabilitySurfaceSlugs.set("chainlink-provider", new Set(surfacesByCapability.get("chainlink-provider")));
+  }
+  for (const [productId, genericCapability] of Object.entries(CHAINLINK_GENERIC_CAPABILITY_BY_PRODUCT)) {
+    if (!selectedCapabilities.has(productId)) continue;
+    const surfaces = surfacesByCapability.get(productId);
+    capabilitySurfaceSlugs.set(productId, new Set(surfaces));
+    const assigned = capabilitySurfaceSlugs.get(genericCapability) ?? new Set();
+    for (const surface of surfaces) assigned.add(surface);
+    capabilitySurfaceSlugs.set(genericCapability, assigned);
+  }
+}
+
+function chainlinkCapabilityNeedsSecretBoundary(capabilityId) {
+  if (capabilityId === "chainlink-provider") return true;
+  return /(?:^|-)(?:keeper|oracle|randomness|signed)(?:-|$)/u.test(capabilityId);
+}
+
+export function templateCapabilityKind(capabilityId, surfaceIds, custom) {
+  if (custom) return capabilityId;
+  if (/reward|fee|claim|distribution|incentive|vesting/u.test(capabilityId)) return "reward-distribution";
+  if (/wallet|transaction/u.test(capabilityId)) return "wallet-transaction";
+  if (/game|threejs|loot/u.test(capabilityId)) return "gameplay";
+  if (/map|location/u.test(capabilityId)) return "map-interaction";
+  if (/keeper|automation|twamm/u.test(capabilityId)) return "scheduled-execution";
+  if (/index|discovery|metadata|disclosure|evidence|security-propert/u.test(capabilityId)) return "indexing";
+  if (/token|launch/u.test(capabilityId)) return "token-launch";
+  if (surfaceIds.some((id) => id === "service-surface")) return "api";
+  return "pool-interaction";
+}
+
+export function templateSecurityTriggers(capabilityId) {
+  const text = capabilityId.toLowerCase();
+  return {
+    ...TEMPLATE_BASELINE_TRIGGERS,
+    valueFlow: /accounting|asset|auction|claim|curve|fee|incentive|liquidity|order|pool|price|reward|staking|swap|token|twamm|vesting|wrapper|yield/u.test(text),
+    signaturesReplay: /signed|wallet-action|transaction/u.test(text),
+    externalCalls: /adapter|cross-chain|external|map|oracle|provider|randomness|service|wrapped|yield/u.test(text),
+    custody: /accumulator|custody|hook-owned|inventory|staking|vesting|yield/u.test(text),
+    piiGeolocation: /geolocation|location|map/u.test(text),
+    secretBoundary: chainlinkCapabilityNeedsSecretBoundary(text)
+  };
 }
 
 export function parseCustomCapability(value) {

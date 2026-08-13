@@ -218,16 +218,26 @@ function validateRequest(request) {
 
 function validateLauncher(launcher) {
   requireExactKeys(launcher, ["id", "version", "binarySha256", "configurationSha256"], "sandbox launcher");
-  if (!SLUG.test(launcher.id ?? "") || !boundedString(launcher.version, 1, 120)
-    || !SHA256.test(launcher.binarySha256 ?? "") || !SHA256.test(launcher.configurationSha256 ?? "")) {
+  const valid = [
+    SLUG.test(launcher.id ?? ""),
+    boundedString(launcher.version, 1, 120),
+    SHA256.test(launcher.binarySha256 ?? ""),
+    SHA256.test(launcher.configurationSha256 ?? "")
+  ].every(Boolean);
+  if (!valid) {
     fail("PROJECT_SANDBOX_LAUNCHER_INVALID", "sandbox launcher identity is invalid");
   }
 }
 
 function validateRuntime(runtime) {
   requireExactKeys(runtime, ["id", "version", "imageSha256", "isolation"], "sandbox runtime");
-  if (!SLUG.test(runtime.id ?? "") || !boundedString(runtime.version, 1, 120)
-    || !SHA256.test(runtime.imageSha256 ?? "") || !TRUSTED_ISOLATION.has(runtime.isolation)) {
+  const valid = [
+    SLUG.test(runtime.id ?? ""),
+    boundedString(runtime.version, 1, 120),
+    SHA256.test(runtime.imageSha256 ?? ""),
+    TRUSTED_ISOLATION.has(runtime.isolation)
+  ].every(Boolean);
+  if (!valid) {
     fail("PROJECT_SANDBOX_RUNTIME_INVALID", "sandbox runtime does not establish a separate authority boundary");
   }
 }

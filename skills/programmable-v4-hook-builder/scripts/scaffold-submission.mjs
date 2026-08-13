@@ -4,10 +4,8 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import {
-  builderTemplateFromPlan,
-  manualBuilderTemplate
-} from "./builder-template-contract.mjs";
+import { builderTemplateFromPlan, manualBuilderTemplate } from "./builder-template-contract.mjs";
+import { TEMPLATE_BASELINE_TRIGGERS as baselineTriggers, bindChainlinkPlanSurfaces, collectChainlinkPlanSurfaces, templateCapabilityKind, templateSecurityTriggers } from "./template-catalog-composition.mjs";
 import { parseCliOrExit } from "./cli-args.mjs";
 import { hasForbiddenInvisibleOrBidi } from "./metadata-core.mjs";
 import { PROJECT_PROFILE_IDS, requiredProjectProfiles } from "./project-surfaces-core.mjs";
@@ -22,18 +20,6 @@ const templateFiles = ["PROPOSAL.md", "THREAT_MODEL.md", "TEST_PLAN.md", "EVIDEN
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(scriptDirectory, "..");
 const templateRoot = path.join(skillRoot, "assets", "templates");
-const baselineTriggers = Object.freeze({
-  authority: true,
-  valueFlow: false,
-  sourceOfTruth: true,
-  signaturesReplay: false,
-  externalCalls: false,
-  custody: false,
-  piiGeolocation: false,
-  secretBoundary: false,
-  sourceTestSchema: true,
-  failureRecovery: true
-});
 const surfaceDescriptors = Object.freeze({
   application: ["web-app", "browser", "Application", "The browser application through which users create, inspect or use the selected product capabilities."],
   contract: ["onchain-contract", "onchain", "Onchain contracts", "The launch token, Uniswap v4 pool, hook and related onchain accounting boundary."],
@@ -54,13 +40,6 @@ const narrowedPackSurfaces = Object.freeze({
   "metadata-disclosures": ["metadata"],
   "programmable-volume-fee": ["contract", "indexer", "metadata"],
   "test-evidence-threat-model": []
-});
-const chainlinkGenericCapabilityByProduct = Object.freeze({
-  "chainlink-ccip": "cross-chain-messaging",
-  "chainlink-cre": "keeper-automation",
-  "chainlink-data-feeds": "oracle-data",
-  "chainlink-data-streams": "oracle-data",
-  "chainlink-vrf-v2-5": "randomness"
 });
 const { options, positionals } = parseCliOrExit({
   command: "scaffold-submission.mjs",
@@ -212,14 +191,7 @@ function applyTemplateArchitecturePlan(submission, plan) {
     if (!pack || planningOnlyPackIds.has(packId)) continue;
     for (const slug of surfacesForDefinition(pack)) activeSurfaceSlugs.add(slug);
   }
-  const selectedCapabilities = new Set(plan.machineCapabilities.allCapabilityIds);
-  const chainlinkCapabilitySurfaces = new Map();
-  for (const capabilityId of ["chainlink-provider", ...Object.keys(chainlinkGenericCapabilityByProduct)]) {
-    if (!selectedCapabilities.has(capabilityId)) continue;
-    const surfaces = requireAtomicCapabilitySurfaces(plan, capabilityId);
-    chainlinkCapabilitySurfaces.set(capabilityId, surfaces);
-    for (const slug of surfaces) activeSurfaceSlugs.add(slug);
-  }
+  const chainlinkSelection = collectChainlinkPlanSurfaces(plan, activeSurfaceSlugs);
   for (const slug of [...activeSurfaceSlugs]) {
     if (!surfaceDescriptors[slug]) activeSurfaceSlugs.delete(slug);
   }
@@ -239,28 +211,18 @@ function applyTemplateArchitecturePlan(submission, plan) {
     const slug = activeSurfaceSlugs.has("other") ? "other" : (activeSurfaceSlugs.has("contract") ? "contract" : [...activeSurfaceSlugs][0]);
     capabilitySurfaceSlugs.set(custom.id, new Set([slug]));
   }
-  if (selectedCapabilities.has("chainlink-provider")) {
-    capabilitySurfaceSlugs.set("chainlink-provider", new Set(chainlinkCapabilitySurfaces.get("chainlink-provider")));
-  }
-  for (const [productId, genericCapability] of Object.entries(chainlinkGenericCapabilityByProduct)) {
-    if (!selectedCapabilities.has(productId)) continue;
-    const surfaces = chainlinkCapabilitySurfaces.get(productId);
-    capabilitySurfaceSlugs.set(productId, new Set(surfaces));
-    const assigned = capabilitySurfaceSlugs.get(genericCapability) ?? new Set();
-    for (const surface of surfaces) assigned.add(surface);
-    capabilitySurfaceSlugs.set(genericCapability, assigned);
-  }
+  bindChainlinkPlanSurfaces(chainlinkSelection, capabilitySurfaceSlugs);
 
   const projectCapabilities = [];
   const customIds = new Set(plan.customCapabilities.map(({ id }) => id));
   for (const capabilityId of plan.machineCapabilities.allCapabilityIds) {
-    const triggers = inferSecurityTriggers(capabilityId);
+    const triggers = templateSecurityTriggers(capabilityId);
     const surfaceIds = [...(capabilitySurfaceSlugs.get(capabilityId) ?? new Set(["contract"]))]
       .sort()
       .map(surfaceIdForSlug);
     projectCapabilities.push({
       id: capabilityId,
-      kind: capabilityKind(capabilityId, surfaceIds, customIds.has(capabilityId)),
+      kind: templateCapabilityKind(capabilityId, surfaceIds, customIds.has(capabilityId)),
       summary: customIds.has(capabilityId)
         ? `Owner-defined capability ${capabilityId} is preserved as an explicit architecture boundary for review.`
         : `Selected template capability ${capabilityId} is bound to the generated project architecture and must be verified by source, tests and evidence.`,
@@ -301,51 +263,8 @@ function surfacesForDefinition(definition) {
   return narrowedPackSurfaces[definition.id] ?? definition.projectSurfaces;
 }
 
-function requireAtomicCapabilitySurfaces(plan, capabilityId) {
-  const entry = plan.directCapabilityLegos?.entries?.find((candidate) => candidate.capabilityId === capabilityId);
-  if (
-    entry?.exactRequirementStatus !== "catalog-atomic"
-    || !Array.isArray(entry.projectSurfaces)
-    || entry.projectSurfaces.length === 0
-  ) {
-    throw new Error(`Chainlink capability ${capabilityId} lacks one atomic product-requirement surface closure.`);
-  }
-  return entry.projectSurfaces;
-}
-
 function surfaceIdForSlug(slug) {
   return `${slug}-surface`;
-}
-
-function capabilityKind(capabilityId, surfaceIds, custom) {
-  if (custom) return capabilityId;
-  if (/reward|fee|claim|distribution|incentive|vesting/u.test(capabilityId)) return "reward-distribution";
-  if (/wallet|transaction/u.test(capabilityId)) return "wallet-transaction";
-  if (/game|threejs|loot/u.test(capabilityId)) return "gameplay";
-  if (/map|location/u.test(capabilityId)) return "map-interaction";
-  if (/keeper|automation|twamm/u.test(capabilityId)) return "scheduled-execution";
-  if (/index|discovery|metadata|disclosure|evidence|security-propert/u.test(capabilityId)) return "indexing";
-  if (/token|launch/u.test(capabilityId)) return "token-launch";
-  if (surfaceIds.some((id) => id === "service-surface")) return "api";
-  return "pool-interaction";
-}
-
-function inferSecurityTriggers(capabilityId) {
-  const text = capabilityId.toLowerCase();
-  return {
-    ...baselineTriggers,
-    valueFlow: /accounting|asset|auction|claim|curve|fee|incentive|liquidity|order|pool|price|reward|staking|swap|token|twamm|vesting|wrapper|yield/u.test(text),
-    signaturesReplay: /signed|wallet-action|transaction/u.test(text),
-    externalCalls: /adapter|cross-chain|external|map|oracle|provider|randomness|service|wrapped|yield/u.test(text),
-    custody: /accumulator|custody|hook-owned|inventory|staking|vesting|yield/u.test(text),
-    piiGeolocation: /geolocation|location|map/u.test(text),
-    secretBoundary: capabilityNeedsSecretBoundary(text)
-  };
-}
-
-function capabilityNeedsSecretBoundary(capabilityId) {
-  if (capabilityId === "chainlink-provider") return true;
-  return /(?:^|-)(?:keeper|oracle|randomness|signed)(?:-|$)/u.test(capabilityId);
 }
 
 function makeProjectSurface(surfaceId, linkedCapabilities) {
