@@ -73,11 +73,16 @@ const commit = git(["rev-parse", "HEAD"]).trim();
 const tree = git(["rev-parse", `${commit}^{tree}`]).trim();
 const skillTree = git(["rev-parse", `${commit}:skills/${skillName}`]).trim();
 const commitTime = new Date(git(["show", "-s", "--format=%cI", commit]).trim()).toISOString();
+const versionAuthority = parseJsonBytes(
+  git(["show", `${commit}:config/plugin.json`], { encoding: null }),
+  "committed config/plugin.json"
+);
 const packageDocument = parseJsonBytes(
   git(["show", `${commit}:package.json`], { encoding: null }),
   "committed package.json"
 );
-const expectedTag = `v${packageDocument.version}`;
+const candidateVersion = requireCanonicalCandidateVersion(versionAuthority, packageDocument);
+const expectedTag = `v${candidateVersion}`;
 if (options.tag !== expectedTag) fail(`expected --tag ${expectedTag}`);
 let externalEvidenceVerification;
 try {
@@ -230,7 +235,7 @@ try {
     status: localRehearsalStatus,
     releaseCandidate: false,
     product: "Programmable v4 Builder",
-    version: packageDocument.version,
+    version: candidateVersion,
     tag: options.tag,
     commit,
     tree,
@@ -539,6 +544,17 @@ function parseJsonBytes(bytes, label) {
     const code = typeof error?.code === "string" ? ` (${error.code})` : "";
     throw new Error(`${label} is not strict bounded JSON${code}: ${error instanceof Error ? error.message : String(error)}`);
   }
+}
+
+function requireCanonicalCandidateVersion(metadata, packageDocument) {
+  const version = metadata?.version;
+  if (typeof version !== "string" || !/^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/u.test(version)) {
+    fail("committed config/plugin.json version authority must be stable semver");
+  }
+  if (packageDocument?.version !== version) {
+    fail("committed package.json version must match canonical config/plugin.json version");
+  }
+  return version;
 }
 
 function sha256(contents) {

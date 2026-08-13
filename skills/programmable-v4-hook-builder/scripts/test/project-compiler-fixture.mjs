@@ -11,7 +11,7 @@ import { canonicalJsonSha256V2, canonicalJsonV2 } from "../canonical-json-core.m
 import { keccak256Hex } from "../evm-encoding-core.mjs";
 import { PROJECT_COMMAND_MAXIMUM_OUTPUT_BYTES, PROJECT_TRADE_COMMAND_MAXIMUM_OUTPUT_BYTES,
   createProjectCommandReceipt, executeProjectCommands, projectCommandEnvironmentSha256,
-  projectCommandMaximumOutputBytes, sha256Bytes } from "../project-command-executor-core.mjs";
+  projectCommandMaximumOutputBytes, resolveProjectCommandCwd, resolveProjectCommandTool, sha256Bytes } from "../project-command-executor-core.mjs";
 import { compileProjectBundle, preflightProjectOutput, validateProjectOutput } from "../project-compiler-core.mjs";
 import { TRADABLE_REFERENCE_PROFILE_ID, bindTradableReferenceIntent } from "../project-tradable-authoring-core.mjs";
 import {
@@ -29,6 +29,7 @@ import { validateAgainstSchema } from "../submission-core.mjs";
 import { architectureSnapshotSha256, createOpenWorldDraftPackage } from "../open-world-v2-core.mjs";
 import { expectedTradeRunnerCallsV1, inspectForgeTradeTestRunnerOutputV1, validateV4DeploymentEvidence } from "../v4-deployment-evidence-core.mjs";
 import { canonicalV4PermissionMask } from "../v4-hook-semantic-contract-core.mjs";
+import { TRADE_TEST_SEMANTIC_ADEQUACY_V1, tradeCapabilityManifestSha256V1 } from "../trade-capability-manifest-core.mjs";
 import {
   TRADE_TEST_EXECUTION_CALLDATA_FIXTURE_V1,
   TRADE_TEST_QUOTE_CALLDATA_FIXTURE_V1,
@@ -60,6 +61,7 @@ export {
   sealProjectState, validateProjectState, validateRepositoryPlan, validateAgainstSchema,
   architectureSnapshotSha256, createOpenWorldDraftPackage, expectedTradeRunnerCallsV1,
   inspectForgeTradeTestRunnerOutputV1, validateV4DeploymentEvidence, canonicalV4PermissionMask,
+  TRADE_TEST_SEMANTIC_ADEQUACY_V1, tradeCapabilityManifestSha256V1,
   TRADE_TEST_EXECUTION_CALLDATA_FIXTURE_V1, TRADE_TEST_QUOTE_CALLDATA_FIXTURE_V1,
   TRADE_TEST_QUOTE_RETURN_DATA_FIXTURE_V1, createApplicableOpenWorldV2PrototypeFixture,
   createNoMarketOpenWorldV2PrototypeFixture, createStandardTradeCapabilityManifestFixtureV1,
@@ -533,14 +535,129 @@ export function createMaterializedTradableRepository(t, {
   return { root, bundle, plan, manifest };
 }
 
+// Static completion fixtures deliberately exercise only receipt validation.
+// They never run repository or candidate bytes and remain explicitly
+// unauthenticated (`UNTRUSTED_DETERMINISTIC_RECEIPT_CONTENT_MATCH`).
+export function materializeStaticUntrustedEvidenceFixture(repositoryRoot, repositoryPlan, { manifest = null } = {}) {
+  const planned = structuredClone(repositoryPlan);
+  const source = {
+    headCommit: git(repositoryRoot, ["rev-parse", "HEAD"]),
+    tree: git(repositoryRoot, ["rev-parse", "HEAD^{tree}"]),
+    branch: git(repositoryRoot, ["branch", "--show-current"]),
+    gitStatusSha256: sha256Bytes(Buffer.alloc(0))
+  };
+  const artifacts = Object.values(planned.artifacts).flat();
+  const artifactsById = new Map(artifacts.map((artifact) => [artifact.id, artifact]));
+  const declarationsByCommand = manifest === null ? new Map() : new Map([
+    ...manifest.testEvidence.quoteTests,
+    ...manifest.testEvidence.executionTests
+  ].map((declaration) => [declaration.commandId, declaration]));
+  const emitted = [];
+
+  for (const command of planned.commands) {
+    const receiptArtifact = artifactsById.get(`${command.id}-receipt`);
+    assert.equal(receiptArtifact?.kind, "command-receipt");
+    const declaration = declarationsByCommand.get(command.id) ?? null;
+    let domainEvidence = null;
+    let resultRecord = null;
+    const stdout = `STATIC_UNTRUSTED_FIXTURE_ONLY:${command.id}\n`;
+    if (declaration !== null) {
+      const resultArtifact = artifactsById.get(`${command.id}-result`);
+      assert.equal(resultArtifact?.kind, "trade-test-result");
+      const result = JSON.parse(fs.readFileSync(path.join(repositoryRoot, `fixtures/trade/${command.id}.v1.json`), "utf8"));
+      const resultBytes = Buffer.from(`${canonicalJsonV2(result)}\n`, "utf8");
+      const calls = expectedTradeRunnerCallsV1(result, declaration).map((call) => ({
+        ...call,
+        outputSha256: call.outputSha256 ?? sha256Bytes(Buffer.alloc(0)),
+        occurrences: 1
+      }));
+      const stdoutBytes = Buffer.from(stdout, "utf8");
+      const runnerEvidence = {
+        contract: "forge-test-json-v1",
+        matchPath: declaration.command.argv[declaration.command.argv.indexOf("--match-path") + 1],
+        testSignature: declaration.runnerTestSignature,
+        sourcePath: declaration.testSourceArtifact.path,
+        sourceArtifactSha256: declaration.testSourceArtifact.sha256,
+        sourceArtifactByteLength: declaration.testSourceArtifact.byteLength,
+        suitesObserved: 1,
+        testsObserved: 1,
+        passedTests: 1,
+        failedTests: 0,
+        resultLogsObserved: 1,
+        unitGas: 1,
+        callEvidence: calls,
+        runnerOutputSha256: sha256Bytes(stdoutBytes),
+        runnerOutputByteLength: stdoutBytes.length
+      };
+      domainEvidence = {
+        contract: "trade-command-domain-evidence-v1",
+        manifestArtifactId: manifest.manifestId,
+        manifestSha256: tradeCapabilityManifestSha256V1(manifest),
+        marketRef: manifest.marketRef,
+        testId: declaration.id,
+        modeRef: declaration.modeRef,
+        semanticAdequacy: TRADE_TEST_SEMANTIC_ADEQUACY_V1,
+        runnerEvidence,
+        resultContract: declaration.resultContract,
+        resultArtifactId: resultArtifact.id,
+        resultArtifactPath: resultArtifact.path,
+        resultArtifactSha256: sha256(resultBytes),
+        resultArtifactByteLength: resultBytes.length
+      };
+      resultRecord = { artifact: resultArtifact, value: result, bytes: resultBytes };
+    }
+    const commandCwd = resolveProjectCommandCwd(repositoryRoot, command.cwd);
+    const receipt = createProjectCommandReceipt({
+      repositoryPlan: planned,
+      command,
+      source,
+      tool: resolveProjectCommandTool(command.argv[0], commandCwd),
+      executionResult: { stdout, stderr: "" },
+      maximumOutputBytes: projectCommandMaximumOutputBytes(command),
+      domainEvidence,
+      tradeExecution: null
+    });
+    emitted.push({ command, receiptArtifact, receipt, resultRecord });
+  }
+
+  const completed = structuredClone(planned);
+  completed.completionStatus = "COMPLETE";
+  const completedById = new Map(Object.values(completed.artifacts).flat().map((artifact) => [artifact.id, artifact]));
+  for (const { receiptArtifact, receipt, resultRecord } of emitted) {
+    const receiptBytes = Buffer.from(`${canonicalJsonV2(receipt)}\n`, "utf8");
+    writeFile(repositoryRoot, receiptArtifact.path, receiptBytes);
+    Object.assign(completedById.get(receiptArtifact.id), { status: "verified", sha256: sha256(receiptBytes), byteLength: receiptBytes.length });
+    if (resultRecord !== null) {
+      writeFile(repositoryRoot, resultRecord.artifact.path, resultRecord.bytes);
+      Object.assign(completedById.get(resultRecord.artifact.id), {
+        status: "verified",
+        sha256: sha256(resultRecord.bytes),
+        byteLength: resultRecord.bytes.length
+      });
+    }
+  }
+  completed.commandResults = emitted.map(({ command, receiptArtifact, receipt }) => ({
+    commandId: command.id,
+    argvSha256: receipt.argvSha256,
+    status: "passed",
+    exitCode: 0,
+    stdoutSha256: receipt.stdoutSha256,
+    stderrSha256: receipt.stderrSha256,
+    evidenceArtifactId: receiptArtifact.id
+  }));
+  writeFile(repositoryRoot, ".programmable/repository-plan.v1.json", `${canonicalJsonV2(completed)}\n`);
+  return {
+    status: "UNTRUSTED_STATIC_FIXTURE_MATERIALIZED",
+    repositoryPlan: completed,
+    receiptPaths: emitted.map(({ receiptArtifact }) => receiptArtifact.path),
+    tradeResultPaths: emitted.flatMap(({ resultRecord }) => resultRecord === null ? [] : [resultRecord.artifact.path])
+  };
+}
+
 export async function createCompleteRepository(t, options = {}) {
   const ready = createMaterializedRepository(t, options);
-  const execution = await executeProjectCommands({
-    repositoryRoot: ready.root,
-    repositoryPlan: ready.plan,
-    outputPlanPath: ".programmable/repository-plan.v1.json"
-  });
-  assert.equal(execution.status, "PROJECT_COMMAND_EVIDENCE_READY_TO_COMMIT");
+  const execution = materializeStaticUntrustedEvidenceFixture(ready.root, ready.plan);
+  assert.equal(execution.status, "UNTRUSTED_STATIC_FIXTURE_MATERIALIZED");
   const plan = execution.repositoryPlan;
   const first = makeState({ projectSpec: ready.bundle.projectSpec }, "project-spec", 1, null);
   const second = makeState({ projectSpec: ready.bundle.projectSpec, productGraph: ready.bundle.productGraph }, "product-graphs", 2, first);
@@ -668,12 +785,8 @@ export async function createTradableOutputFixture(t) {
     feeReceiptBytes: prototype.files.get(feeReceiptPath),
     preserveFeeBinding: true
   });
-  const execution = await executeProjectCommands({
-    repositoryRoot: project.root,
-    repositoryPlan: project.plan,
-    outputPlanPath: ".programmable/repository-plan.v1.json"
-  });
-  assert.equal(execution.status, "PROJECT_COMMAND_EVIDENCE_READY_TO_COMMIT");
+  const execution = materializeStaticUntrustedEvidenceFixture(project.root, project.plan, { manifest: project.manifest });
+  assert.equal(execution.status, "UNTRUSTED_STATIC_FIXTURE_MATERIALIZED");
   const repositoryPlan = execution.repositoryPlan;
   const first = makeState({ projectSpec: project.bundle.projectSpec }, "project-spec", 1, null);
   const second = makeState({ projectSpec: project.bundle.projectSpec, productGraph: project.bundle.productGraph }, "product-graphs", 2, first);

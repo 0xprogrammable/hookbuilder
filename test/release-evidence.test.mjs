@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import {
+  evaluateSizeBudget,
+  loadSizeBudget
+} from "../scripts/quality/size-budget.mjs";
+import {
   buildReleaseSpdx,
   createLogRecord,
+  inventorySolidityTests,
   RELEASE_KERNEL_CHECKS,
   RELEASE_KERNEL_EVIDENCE_KIND,
   RELEASE_KERNEL_EVIDENCE_SCHEMA_VERSION,
@@ -15,6 +21,11 @@ import {
   sha256,
   validateReleaseKernelEvidence
 } from "../scripts/release-evidence-core.mjs";
+import {
+  BUNDLED_BUILDER_CHANNEL,
+  BUNDLED_BUILDER_PUBLICATION_STATE,
+  BUNDLED_BUILDER_VERSION
+} from "../skills/programmable-v4-hook-builder/scripts/builder-lifecycle-shared.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(testDirectory, "..");
@@ -33,6 +44,177 @@ const expected = {
   createdFromCommitTime: "2026-08-03T00:00:00.000Z",
   lockfiles: Object.fromEntries(kernelLocks.map(({ id, path: lockPath, bytes }) => [id, { path: lockPath, bytes }]))
 };
+
+function readText(relativePath) {
+  return fs.readFileSync(path.join(repositoryRoot, relativePath), "utf8");
+}
+
+function readJson(relativePath) {
+  return JSON.parse(readText(relativePath));
+}
+
+function sha256Text(value) {
+  assert.equal(typeof value, "string");
+  return crypto.createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function markdownFiles(root) {
+  const found = [];
+  const visit = (directory) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      if ([".git", "node_modules"].includes(entry.name)) continue;
+      const absolutePath = path.join(directory, entry.name);
+      if (entry.isDirectory()) visit(absolutePath);
+      else if (entry.isFile() && entry.name.endsWith(".md")) found.push(absolutePath);
+    }
+  };
+  visit(root);
+  return found.sort();
+}
+
+function continuedCommands(source, prefix) {
+  const lines = source.split("\n");
+  const commands = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!lines[index].includes(prefix)) continue;
+    let command = lines[index];
+    while (command.trimEnd().endsWith("\\") && index + 1 < lines.length) {
+      index += 1;
+      command += `\n${lines[index]}`;
+    }
+    commands.push(command);
+  }
+  return commands;
+}
+
+test("public Markdown installs resolve only the immutable v0.6.0 stable release", () => {
+  const documents = markdownFiles(repositoryRoot).map((absolutePath) => ({
+    path: path.relative(repositoryRoot, absolutePath),
+    source: fs.readFileSync(absolutePath, "utf8")
+  }));
+  const installs = documents.flatMap((document) => continuedCommands(
+    document.source,
+    "gh skill install 0xprogrammable/hookbuilder"
+  ).map((command) => ({ ...document, command })));
+  const previews = documents.flatMap((document) => continuedCommands(
+    document.source,
+    "gh skill preview 0xprogrammable/hookbuilder"
+  ).map((command) => ({ ...document, command })));
+
+  assert.ok(installs.length > 0);
+  assert.ok(previews.length > 0);
+  for (const { path: documentPath, command } of installs) {
+    assert.match(command, /(?:@v0\.6\.0\b|--pin\s+v0\.6\.0\b)/u, documentPath);
+  }
+  for (const { path: documentPath, command } of previews) {
+    assert.match(command, /@v0\.6\.0\b/u, documentPath);
+  }
+
+  const forbiddenActiveClaims = [
+    /\bv(?!0\.6\.0\b)\d+\.\d+(?:\.\d+)?\b[^\n]{0,96}\b(?:is|remains)\s+(?:the\s+)?(?:current|latest|stable|live|published)\b/iu,
+    /\b(?:current|latest|stable|published)\s+(?:public\s+)?(?:release|version|identity|guidance)?[^\n]{0,80}\bv(?!0\.6\.0\b)\d+\.\d+(?:\.\d+)?\b/iu,
+    /\bv(?!0\.6\.0\b)\d+\.\d+(?:\.\d+)?\b[^\n]{0,96}\badds?\s+(?:a\s+)?live\b/iu
+  ];
+  for (const { path: documentPath, source } of documents) {
+    for (const line of source.split("\n")) {
+      if (/\b(?:historical|unreleased|not released|not published|predecessor|compatibility)\b/iu.test(line)) continue;
+      for (const pattern of forbiddenActiveClaims) assert.doesNotMatch(line, pattern, documentPath);
+    }
+  }
+});
+
+test("stable v0.5.1 history is immutable and v0.6.0 is the release package", () => {
+  const versionAuthority = readJson("config/plugin.json");
+  const packageDocument = readJson("package.json");
+  const packageLock = readJson("package-lock.json");
+  const candidate = readJson("skills/programmable-v4-hook-builder/assets/templates/release-candidate.example.json");
+  const readme = readText("README.md");
+  const changelog = readText("CHANGELOG.md");
+  const releasing = readText("docs/RELEASING.md");
+  const candidateNotes = readText("docs/releases/v0.6.0.md");
+  const stableNotes = readText("docs/releases/v0.5.1.md");
+  const artifactGenerator = readText("scripts/generate-release-artifacts.mjs");
+  const rehearsal = readText("scripts/prepare-release-candidate.mjs");
+  const stableSection = changelog.match(/^## 0\.5\.1[^\n]*\n[\s\S]*?(?=^## 0\.5\.0)/mu)?.[0];
+
+  assert.equal(versionAuthority.version, "0.6.0");
+  assert.equal(packageDocument.version, versionAuthority.version);
+  assert.equal(packageLock.version, versionAuthority.version);
+  assert.equal(packageLock.packages[""].version, versionAuthority.version);
+  assert.equal(BUNDLED_BUILDER_VERSION, versionAuthority.version);
+  assert.equal(BUNDLED_BUILDER_CHANNEL, "stable");
+  assert.equal(BUNDLED_BUILDER_PUBLICATION_STATE, "release-package");
+  assert.equal(candidate.releaseVersion, versionAuthority.version);
+  assert.equal(candidate.channel, "canary");
+  assert.equal(candidate.publicState, "not-published");
+  assert.equal(candidate.changeSetComplete, false);
+  assert.deepEqual(candidate.plannedRelease.builder, {
+    fromVersion: "0.5.1",
+    toVersion: "0.6.0",
+    semanticClassification: "minor"
+  });
+
+  assert.equal(sha256Text(stableNotes), "e141136b2f5da9a4140912361c618883342e013c465f567930014a7e5a9415db");
+  assert.equal(sha256Text(stableSection), "240e28d7a04e4e55bc81648c30d6ff4bcd78fc393eec16d516804be5224bfbf2");
+  assert.match(readme, /Stable release `v0\.6\.0`/u);
+  assert.match(readme, /--pin v0\.6\.0/u);
+  assert.match(changelog, /^## 0\.6\.0 - 2026-08-13$/mu);
+  assert.match(candidateNotes, /^# Programmable v4 Builder v0\.6\.0$/mu);
+  assert.match(candidateNotes, /This release publishes the exact portable Builder package/u);
+  assert.match(candidateNotes, /releaseCandidate: false/u);
+  assert.match(releasing, /Stable public and installation identity: `v0\.6\.0`/u);
+  assert.match(releasing, /Prior immutable release: `v0\.5\.1`/u);
+  assert.match(releasing, /Canonical version authority: `config\/plugin\.json`/u);
+  assert.doesNotMatch(releasing, /git tag -a "?v0\.5\.1/u);
+  assert.doesNotMatch(releasing, /gh release create "?v0\.5\.1/u);
+  for (const releaseSource of [artifactGenerator, rehearsal]) {
+    assert.match(releaseSource, /config\/plugin\.json/u);
+    assert.match(releaseSource, /package\.json version must match canonical config\/plugin\.json version/u);
+    assert.doesNotMatch(releaseSource, /v0\.5\.1/u);
+  }
+});
+
+test("candidate quantitative docs match generator-backed source inventories", () => {
+  const maturity = readText("docs/CODE_MATURITY.md");
+  const readiness = readText("docs/SECURITY_AUDIT_READINESS.md");
+  const candidateNotes = readText("docs/releases/v0.6.0.md");
+  const registry = readJson("skills/programmable-v4-hook-builder/references/contract-registry-v1.json");
+  const sizeReport = evaluateSizeBudget({ repositoryRoot, budget: loadSizeBudget(repositoryRoot) });
+  const v2Inventory = inventorySolidityTests(path.join(
+    repositoryRoot,
+    RELEASE_KERNELS.find(({ id }) => id === "v2").sourcePath,
+    "test"
+  ));
+  const evalTestCount = fs.readdirSync(path.join(repositoryRoot, "evals", "tests"))
+    .filter((name) => name.endsWith(".test.mjs"))
+    .length;
+  const productionModuleCount = sizeReport.discovery.discoveredFiles;
+
+  assert.equal(sizeReport.status, "SIZE_BUDGET_PASSED");
+  assert.equal(productionModuleCount, 321);
+  assert.deepEqual(v2Inventory, { unit: 54, fuzz: 1, invariant: 3, invariantPolicy: "required-and-present" });
+  assert.equal(registry.inventory.contractCount, 50);
+  assert.equal(registry.inventory.validatorClosureCount, 25);
+  assert.equal(registry.inventory.validatorClosureModuleBindingCount, 1032);
+  assert.equal(registry.inventory.validatorClosureDistinctModuleCount, 174);
+  assert.equal(evalTestCount, 10);
+
+  for (const document of [maturity, candidateNotes]) {
+    assert.match(document, new RegExp(`${productionModuleCount} production`, "u"));
+    assert.match(document, new RegExp(`${registry.inventory.contractCount} (?:portable contracts|schema contracts)`, "u"));
+    assert.match(document, new RegExp(`${registry.inventory.validatorClosureCount} validator closures`, "u"));
+    assert.match(document, /1,032 transitive\s+(?:module\s+)?bindings/u);
+    assert.match(document, new RegExp(`${registry.inventory.validatorClosureDistinctModuleCount} distinct modules`, "u"));
+  }
+  for (const document of [maturity, readiness, candidateNotes]) {
+    assert.match(document, /54 unit, one fuzz and three invariant/u);
+    assert.ok([
+      `${evalTestCount} local test files`,
+      `${evalTestCount} local test source files`,
+      `${evalTestCount} \`evals/tests/*.test.mjs\` files`
+    ].some((value) => document.includes(value)));
+  }
+});
 
 test("release campaign makes high-confidence fuzz and invariant settings explicit", () => {
   const fuzz = RELEASE_KERNEL_CHECKS.find(({ id }) => id === "fuzz");

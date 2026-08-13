@@ -126,7 +126,7 @@ export function validateAgentResult(value) {
   if (!exactKeys(value, ['kind', 'providerReceipt', 'schemaVersion', 'status', 'telemetry', 'usage'])) {
     throw new E2ERunError('AGENT_RESULT_INVALID', 'agent result keys drift');
   }
-  if (value.schemaVersion !== '1.0.0' || value.kind !== 'programmable-e2e-agent-result' || value.status !== 'COMPLETED') {
+  if (value.schemaVersion !== '1.1.0' || value.kind !== 'programmable-e2e-agent-result' || value.status !== 'COMPLETED') {
     throw new E2ERunError('AGENT_RESULT_INVALID', 'agent result identity or status is invalid');
   }
   if (!exactKeys(value.usage, [
@@ -153,10 +153,14 @@ export function validateAgentResult(value) {
     throw new E2ERunError('AGENT_RESULT_INVALID', 'phase context tokens cannot exceed measured input tokens');
   }
   if (!exactKeys(value.telemetry, [
+    'activatedReferenceBytes',
+    'descendantSubagentCount',
+    'emittedBytes',
     'escalations',
     'manualInterventions',
     'questions',
     'retries',
+    'timeToUsefulMs',
     'toolCalls',
     'toolErrors',
   ])) {
@@ -399,6 +403,8 @@ export function runRepositoryStages({
   sandboxControlDirectory,
 }) {
   const records = [];
+  let verifierEmittedBytes = 0;
+  let verifierToolCalls = 0;
   let verifierToolErrors = 0;
   for (const stageId of E2E_STAGE_IDS) {
     if (records.some(({ status }) => status === 'FAIL' || status === 'EXTERNAL_BLOCKED')) {
@@ -427,6 +433,7 @@ export function runRepositoryStages({
     const started = Date.now();
     let execution;
     try {
+      verifierToolCalls += 1;
       execution = spawnIsolated({
         sandbox,
         role: `repository-stage:${stageId}`,
@@ -442,11 +449,15 @@ export function runRepositoryStages({
         timeout: specification.timeoutMs,
       });
     } catch (error) {
+      verifierEmittedBytes = null;
       verifierToolErrors += 1;
       records.push({ id: stageId, status: 'FAIL', reason: error.code ?? 'sandbox-receipt-invalid' });
       continue;
     }
     const { child, sandboxReceipt } = execution;
+    const stdout = logRecord(child.stdout);
+    const stderr = logRecord(`${child.stderr ?? ''}${child.error ? `\n${child.error.message}` : ''}`);
+    if (verifierEmittedBytes !== null) verifierEmittedBytes += stdout.bytes + stderr.bytes;
     const toolMissing = child.error?.code === 'ENOENT';
     let status = toolMissing
       ? 'EXTERNAL_BLOCKED'
@@ -484,8 +495,8 @@ export function runRepositoryStages({
       exitCode: child.status ?? (toolMissing ? null : 1),
       signal: child.signal ?? null,
       durationMs: Date.now() - started,
-      stdout: logRecord(child.stdout),
-      stderr: logRecord(`${child.stderr ?? ''}${child.error ? `\n${child.error.message}` : ''}`),
+      stdout,
+      stderr,
       evidence,
       sandboxReceipt,
       ...(reason ? { reason } : {}),
@@ -493,6 +504,8 @@ export function runRepositoryStages({
   }
   return {
     stages: records,
+    verifierEmittedBytes,
+    verifierToolCalls,
     verifierToolErrors,
     stageEvidenceQualification: records.some(({ status }) => status === 'PARTIAL_EVIDENCE')
       ? 'SEMANTIC_TEST_ADEQUACY_UNPROVEN'

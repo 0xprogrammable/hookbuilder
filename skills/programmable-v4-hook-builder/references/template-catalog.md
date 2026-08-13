@@ -62,146 +62,59 @@ are deterministic. The same catalog and selection produce byte-identical files.
 
 Resolve `SKILL_ROOT` to the directory containing the loaded `SKILL.md`.
 
-List the complete catalog:
+Start with the concise canonical inventory, then filter before loading detail:
 
 ```bash
-node "$SKILL_ROOT/scripts/template-catalog.mjs" list
+node "$SKILL_ROOT/scripts/cli.mjs" templates list
+node "$SKILL_ROOT/scripts/cli.mjs" templates list --kind pack --filter randomness
 ```
 
-List only starters or packs:
+Add `--json` only when labels, summaries, routes and definition digests are required. Inspect one selected definition
+instead of loading every definition:
 
 ```bash
-node "$SKILL_ROOT/scripts/template-catalog.mjs" list --kind starter
-node "$SKILL_ROOT/scripts/template-catalog.mjs" list --kind pack
+node "$SKILL_ROOT/scripts/cli.mjs" templates list --kind starter --json
+node "$SKILL_ROOT/scripts/cli.mjs" templates show verifiable-randomness
 ```
 
-Inspect one hash-bound definition:
+Create one deterministic plan with the host-neutral command:
 
 ```bash
-node "$SKILL_ROOT/scripts/template-catalog.mjs" show threejs-pvp-rewards
+node "$SKILL_ROOT/scripts/cli.mjs" start --starter blank-custom --capability randomness --target /absolute/path/to/new-plan
 ```
 
-Inspect the separate implementation-Lego layer:
-
-```bash
-node "$SKILL_ROOT/scripts/template-catalog.mjs" list-legos
-node "$SKILL_ROOT/scripts/template-catalog.mjs" list-legos --maturity experimental
-node "$SKILL_ROOT/scripts/template-catalog.mjs" show-lego zero-amm-fee-adapter
-```
-
-Materialize a conventional launch into a target that does not exist:
-
-```bash
-node "$SKILL_ROOT/scripts/template-catalog.mjs" materialize \
-  --starter ordinary-launch \
-  --target /absolute/path/to/new-project-plan
-```
-
-Materialize token-side transfer tax and tax-financed liquidity while keeping the standard fee hook:
-
-```bash
-node "$SKILL_ROOT/scripts/template-catalog.mjs" materialize \
-  --starter custom-token-standard-fee-hook \
-  --pack tax-financed-auto-liquidity \
-  --target /absolute/path/to/new-token-plan
-```
-
-Materialize an open-ended game with known and owner-defined capabilities:
-
-```bash
-node "$SKILL_ROOT/scripts/template-catalog.mjs" materialize \
-  --starter custom-hook \
-  --pack threejs-pvp-rewards \
-  --custom-capability moving-arena='Moving arena changes the next swap rule' \
-  --local-tag community-tournament \
-  --target /absolute/path/to/new-game-plan
-```
-
-Materialize only the known randomness Lego, without selecting loot or rewards:
-
-```bash
-node "$SKILL_ROOT/scripts/template-catalog.mjs" materialize \
-  --starter blank-custom \
-  --capability randomness \
-  --target /absolute/path/to/new-randomness-plan
-```
-
-The command performs local reads and creates only the new target. It does not initialize Git, fetch dependencies, run
-project code, connect a wallet, submit an application, deploy or publish.
+Use `templates list-legos`, `templates show-lego <id>` and command-specific `--help` only after a source accelerator is
+actually relevant. `start` creates only the new target. It does not initialize Git, fetch dependencies, run project code,
+connect a wallet, submit, deploy or publish.
 
 ## Starters
 
-| Starter | Use it for | Route |
-| --- | --- | --- |
-| `ordinary-launch` | Fixed-supply token, conventional price discovery and the smallest behavior surface | Standard review |
-| `custom-token-standard-fee-hook` | Token-side special behavior with the standard Programmable fee hook | Custom review |
-| `custom-hook` | One custom canonical-pool hook with integrated fee behavior | Custom review |
-| `blank-custom` | Any idea that does not fit a known foundation without distortion | Architecture review |
+The JSON catalog is the only current starter and pack inventory. Never copy its ids or summaries into this reference.
+Use `templates list --kind starter` and `templates show <id>` so the displayed selection stays bound to the catalog
+digest. The selection rules above explain when a foundation applies; the catalog owns its current definition.
 
-The ordinary starter cannot accept `custom-hook-behavior`, whether selected directly or pulled in by another pack. The
+The ordinary starter cannot accept `custom-hook-behavior`, whether selected directly or through a dependency. The
 command returns `CUSTOM_HOOK_STARTER_REQUIRED` with `recommendedStarterId: custom-hook`; preserve the idea and selected
-packs, then continue with `--starter custom-hook`. Token-side special packs instead return
-`CUSTOM_TOKEN_STARTER_REQUIRED` with `recommendedStarterId: custom-token-standard-fee-hook`.
+packs, then change only the foundation. Token-side special packs similarly redirect ordinary composition to
+`custom-token-standard-fee-hook`, while behavior requiring custom callbacks redirects that foundation to `custom-hook`.
 
-The custom-token starter accepts token-side packs without pulling in `custom-hook-behavior`. If a selected pack does
-need custom callbacks, it redirects to `custom-hook`, where the token-side pack remains composable. A permissioned or
-external asset does not conflict with `ordinary-launch` merely because it is external: record whether its PoolKey role
-is `launched`, `quote` or `both`, then derive the actual architecture and review obligations. Foundation routing is not
-a rejection or safety decision.
+A permissioned or external asset does not conflict with `ordinary-launch` merely because it is external. Record whether
+its PoolKey role is `launched`, `quote` or `both`, then derive the actual architecture and review obligations.
+Foundation routing is not a rejection or safety decision.
 
 ## Capability packs
 
-| Pack | Covers |
-| --- | --- |
-| `programmable-volume-fee` | Fee applicability and, for each canonical scope, the mandatory non-additive 0.1 percent share, exposed execution modes, claims and liabilities |
-| `custom-hook-behavior` | Callback purpose, PoolManager authentication, permission bits, deltas and settlement |
-| `dynamic-lp-fee` | Bounded LP-fee changes and input manipulation resistance |
-| `hook-owned-project-fee` | Disclosed project share inside the selected total fee |
-| `automatic-liquidity` | Hook-owned proceeds, callback execution, LP custody, removal and exits |
-| `token-managed-automatic-liquidity` | Token-owned inventory, router or PoolManager execution and standard-hook separation |
-| `token-transfer-tax` | Token-level tax scope, exemptions, gross/net accounting, authority and pool compatibility |
-| `tax-financed-auto-liquidity` | Transfer-tax accumulator feeding token-managed liquidity, solvency and LP custody |
-| `launch-distribution-vesting-lp-custody` | Conserved allocations, vesting claims, LP ownership, locks and exits |
-| `continuous-clearing-auction` | Clearing-price math, bids, fills, refunds, finalization and pool transition |
-| `contract-priced-sell-and-burn` | Standalone contract-priced sales, payment settlement, irreversible burn and supply accounting without assuming a pool or hook |
-| `contract-priced-sell-and-burn-v4-custom-accounting` | Optional canonical v4 custom-accounting adapter for the standalone sell-and-burn mechanism |
-| `limit-orders-twamm` | Escrowed price-triggered and long-term orders, virtual execution and liveness |
-| `mev-protection` | Named MEV adversary, protection mechanism, bypass, outage and trust boundaries |
-| `staking-liquidity-incentives` | Reward funding, accrual, custody, claims and emergency exits |
-| `verifiable-randomness` | Entropy lifecycle, provider failure, replay, manipulation and fixed-seed evidence without assuming loot or rewards |
-| `randomness-loot-rewards` | Loot odds, reward reservation, replay and solvency on top of verifiable randomness |
-| `multi-pool-hooks` | Pool registration, PoolKey domain separation, isolation and cross-pool actions |
-| `threejs-pvp-rewards` | Game outcome authority, anti-cheat, replay, disputes and reward solvency without assuming a signer architecture |
-| `maps-location-quest` | Location evidence, spoofing, privacy, retention and provider failure without assuming a signer architecture |
-| `wallet-transaction-quest` | EOA and smart-account attribution, reorgs, replay and one-time claims |
-| `v4-claim-client` | ERC-6909 claim ownership, operator authority, mint/burn preparation and confirmed reconciliation |
-| `v4-swap-client` | Hooked quote simulation, explicit router generation, per-hop hookData, price bounds and final slippage |
-| `v4-liquidity-position-client` | Safe explicit PositionManager actions, deprecated-action exclusion, discovery, fee collection and reconciliation |
-| `position-subscriber-automation` | Subscriber callback trust, donation-inflated fees, keeper liveness, unsubscribe and user exit |
-| `hook-owned-idle-yield` | ERC-4626-style idle inventory, share math, losses, liquidity recall and withdrawal liveness |
-| `wrapped-asset-conversion` | Underlying/wrapped conversion rates, rounding, external controls, solvency and exits |
-| `external-liquidity-aggregator` | Exact protocol adapters, cross-protocol quote/settlement parity, reserves and failure isolation |
-| `active-liquidity-market` | Orderbook/bin/inventory pricing, vault shares, dedicated quoter, maker and keeper liveness |
-| `signed-outcome-service` | Domain-separated signatures, nonce, expiry, rotation and compromise |
-| `oracle-keeper` | Data provenance, freshness, automation, idempotency and outages |
-| `async-swap` | Deferred liabilities, partial fills, fulfillment, cancellation and exits |
-| `custom-curve` | Invariant, rounding, boundary, differential and provider-parity evidence |
-| `permissioned-external-asset` | Issuer controls, redemption, restrictions, trust and legal disclosures |
-| `multi-repo-app-service-indexer` | Primary lineage, companion commits, services and reconstruction |
-| `metadata-disclosures` | Names, tags, URIs, media hashes, affiliations, fees and provider states |
-| `test-evidence-threat-model` | Project-specific properties, commands, results and evidence separation |
+The canonical inventory, summaries, requirements, surfaces, risks and definition hashes live in
+`assets/starter-catalog/catalog.json` and its bound definition files. Query them through `templates list --filter <text>`
+and `templates show <id>`. This reference intentionally contains no hand-maintained pack table.
 
-Selecting `token-transfer-tax`, `token-managed-automatic-liquidity`, or `tax-financed-auto-liquidity` requires matching
-Submission V2 assets, components, value flows, authorities and capability-profile records. The standard-fee-hook
-custom-token starter keeps those mechanics token-side; it does not force `custom-hook-behavior`. Historical V1
-`tokenMechanics` and `noHookArchitecture` fields belong only to explicit V1 reproduction or migration and are not fields
-in a new Submission V2 graph.
+Packs are composable planning contracts, not code mixins. Selecting one still requires a project-specific implementation
+and the main compatibility, security, source-binding and review gates. Add an optional trust-model pack only after the
+owner chooses that model; do not infer a signer, oracle, provider, keeper, market, pool or hook from an adjacent feature.
 
-Packs are composable prompts and output templates, not code mixins. A selected pack still requires an implementation
-that matches the project, plus the main skill's compatibility, security, source-binding and review gates.
-The game and location packs deliberately do not auto-select `signed-outcome-service`: physical markers, onchain or
-zero-knowledge attestations, and other reviewed proof systems remain possible. Add the signed-service pack only after
-the owner chooses that trust model.
+Token-side tax or liquidity packs require matching Submission V2 assets, components, value flows, authorities and
+capability-profile records. Historical V1 `tokenMechanics` and `noHookArchitecture` fields are only for identified V1
+reproduction or migration.
 
 ## Implementation Legos
 
@@ -301,22 +214,10 @@ A composition conflict means only that the selected templates cannot describe on
 
 ## Materialized files
 
-The target contains the fixed planning files plus zero or more exact-trigger implementation sources:
-
-- `programmable-template.json` — catalog and selection digests, selected definitions, separated machine capabilities,
-  custom capabilities and owner-provided local tags;
-- `PROPOSAL.md` — outcome, architecture facts, lifecycle, value and authority questions;
-- `CAPABILITY_CHECKLIST.md` — selected known and owner-defined capabilities;
-- `THREAT_MODEL.md` — capability-specific risk prompts and security-property section;
-- `TEST_PLAN.md` — required scenarios, adversarial checks and reproducibility section;
-- `EVIDENCE.md` — required artifacts and separate evidence states;
-- `TAGS.md` — only owner-provided local slug suggestions plus a separate provider-evidence table;
-- `METADATA_AND_DISCLOSURES.md` — public identity, fees, controls, tags and per-provider evidence;
-- `IMPLEMENTATION_LEGOS.md` — selected source receipts, maturity boundary, integration boundary and fee applicability;
-- `programmable-code-legos.json` — machine-readable pinned Lego selection and fee-policy receipt;
-- `implementation/<lego-id>/...` — byte-identical packaged source selected by exact starter, pack or capability triggers.
-
-Replace prompts with project-specific facts. Leaving template text unchanged is not implementation or evidence.
+The materializer is the only current file-inventory owner. Its result reports every created path and its receipts; do
+not duplicate that list in documentation. The target groups a machine selection contract, human planning/evidence
+prompts, metadata/disclosures and any exact-trigger implementation sources. Replace every prompt with project-specific
+facts. Unchanged template text is neither implementation nor evidence.
 
 ## Adding a catalog entry
 

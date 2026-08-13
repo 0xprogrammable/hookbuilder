@@ -994,7 +994,9 @@ async function main() {
     process.stdout.write(`${JSON.stringify({ status: receipt.status, output: outputRoot, source: receipt.source, lanes: lanes.map(({ lane, passed: lanePassed, repository }) => ({ lane, passed: lanePassed, repository })) }, null, 2)}\n`);
     if (!passed) process.exitCode = 1;
   } catch (error) {
-    process.stderr.write(`${JSON.stringify({ status: "BLIND_FORWARD_ERROR", code: error.code ?? "UNEXPECTED", message: error.message })}\n`);
+    const diagnostic = { status: "BLIND_FORWARD_ERROR", code: error.code ?? "UNEXPECTED", message: error.message };
+    if (error?.execution !== undefined) diagnostic.execution = error.execution;
+    process.stderr.write(`${JSON.stringify(diagnostic)}\n`);
     process.exitCode = 2;
   }
 }

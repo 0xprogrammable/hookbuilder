@@ -4,6 +4,7 @@ import {
 } from "./submission-core.mjs";
 import {
   BUILDER_LIFECYCLE_SCHEMA_VERSION,
+  BUNDLED_BUILDER_CHANNEL,
   BUNDLED_BUILDER_PUBLICATION_STATE,
   BUNDLED_BUILDER_VERSION,
   assertPlainObject,
@@ -39,7 +40,7 @@ export function bundledVersionStatus() {
     kind: "builder-version-status",
     schemaVersion: BUILDER_LIFECYCLE_SCHEMA_VERSION,
     installed: {
-      channel: "stable",
+      channel: BUNDLED_BUILDER_CHANNEL,
       publicationState: BUNDLED_BUILDER_PUBLICATION_STATE,
       releaseSequence: null,
       releaseVersion: BUNDLED_BUILDER_VERSION,

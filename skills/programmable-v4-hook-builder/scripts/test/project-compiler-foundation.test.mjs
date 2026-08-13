@@ -78,8 +78,9 @@ test("tradable local handoff replaces the stale README boundary with exact NOT_A
   assert.doesNotMatch(readme, /not RPC-backed `eth_call` evidence, fork evidence|placeholder checklist, not a complete receipt/u); assert.match(readme, /## Materialized local evidence[\s\S]*Status: \*\*NOT_APPROVED\*\*/u);
   for (const binding of [tradeEvidence.manifest, { path: tradeEvidence.feeConformance.receiptPath, sha256: tradeEvidence.feeConformance.receiptSha256 }, { path: tradeEvidence.feeConformance.vectorSetPath, sha256: tradeEvidence.feeConformance.vectorSetSha256 }, tradeEvidence.forkEvidence, ...evidenceFiles]) { assert.match(readme, new RegExp(binding.path.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u")); assert.match(readme, new RegExp(binding.sha256, "u")); }
   assert.match(readme, /no audit, approval, production deployment, transaction broadcast, GitHub publication or launch is claimed/u);
-  const compilerSource = fs.readFileSync(compilerCli, "utf8"), createIndex = compilerSource.indexOf("const authored = createTradableProjectAuthoring"), bindIndex = compilerSource.indexOf("bindLocalReleaseHandoffV1({ authored"), writeIndex = compilerSource.indexOf('writeOutputJson(repositoryRoot, ".programmable/project-spec.v1.json"', createIndex);
-  assert.ok(createIndex >= 0 && createIndex < bindIndex && bindIndex < writeIndex);
+  const compilerSource = fs.readFileSync(compilerCli, "utf8");
+  assert.match(compilerSource, /tradable source generation requires candidate dependency and test execution/u);
+  assert.doesNotMatch(compilerSource, /createTradableProjectAuthoring|installProjectDependencies/u);
   assert.throws(() => bindLocalReleaseHandoffV1({ authored, applicationId: "tradable-handoff", classification: "tradable", marketRef: "primary-market", ideaSha256: digest("different-idea"), repositoryRoot: root, tradeEvidence }), /identity mismatch/u);
 });
 
@@ -191,6 +192,10 @@ test("tradable materialize profile mismatch fails before output and aligned dry-
   fs.writeFileSync(idea, "Build a Uniswap v4 hook that charges a fixed fee on executed gross quote volume. Keep buy and sell rates immutable after registration.\n");
   const dry = childProcess.spawnSync(process.execPath, base, { encoding: "utf8", shell: false });
   assert.equal(dry.status, 0, dry.stderr || dry.stdout); assert.equal(JSON.parse(dry.stdout).status, "PROJECT_MATERIALIZATION_DRY_RUN_READY"); assert.equal(fs.existsSync(output), false);
+  const blockedWrite = childProcess.spawnSync(process.execPath, [...base, "--write"], { encoding: "utf8", shell: false });
+  assert.equal(blockedWrite.status, 2, blockedWrite.stderr || blockedWrite.stdout);
+  assert.match(blockedWrite.stderr, /PROJECT_EXTERNAL_SANDBOX_REQUIRED/u);
+  assert.equal(fs.existsSync(output), false);
 });
 
 

@@ -57,7 +57,7 @@ test("Autopilot starts from the compact compiler with the productive completion 
   assert.match(coldContext, /require authority for secrets, cost, signing, deploy, publish, submit, merge or Registry writes/u);
   assert.match(skill, /project require-output --repository-root "\$NEW_REPOSITORY" --state \.programmable\/project-states\/000006-submission-evidence\.v1\.json --previous-state \.programmable\/project-states\/000005-verification\.v1\.json --submission-root submission/u);
   assert.match(compiler, /project materialize/u);
-  assert.match(compiler, /project require-output/u);
+  assert.match(compiler, /project\s+require-output/u);
   assert.match(compiler, /PROJECT_PREFLIGHT_VALID/u);
   assert.match(compiler, /NOT_SUBMITTED/u);
   assert.ok(deferred(result, "references/intent-contract.md"));
@@ -330,6 +330,111 @@ test("canonical external-provider surfaces use their minimal route while novel s
   assert.equal(novel.automaticAdverseDecision, false);
   assert.ok(deferred(novel, "references/project-surfaces-and-capabilities.md"));
   assert.ok(deferred(novel, "references/security-and-evidence.md"));
+});
+
+test("Chainlink routing is explicit while generic production invariants remain provider-neutral", (t) => {
+  const selected = planKnowledge({
+    mode: "prototype",
+    packs: ["chainlink-provider"],
+    skillRoot
+  });
+  assert.equal(selected.capabilities.includes("chainlink-provider"), true);
+  assert.equal(selected.surfaces.includes("external-provider"), true);
+  assert.equal(selected.surfaces.includes("oracle"), false);
+  assert.equal(selected.reviewRoute, "architecture-review-required");
+  assert.equal(selected.networkAccessed, false);
+  for (const reference of [
+    "references/chainlink-provider-integration.md",
+    "references/project-surfaces-and-capabilities.md",
+    "references/companion-manifests.md"
+  ]) {
+    const route = deferred(selected, reference);
+    assert.ok(route, reference);
+    assert.equal(route.reasons.includes("capability:chainlink-provider"), true, reference);
+  }
+
+  for (const processedOutsideContext of [
+    "references/chainlink-provider-profile-v1.schema.json",
+    "references/provider-knowledge-source-receipt-2026-08-13.json"
+  ]) assert.equal(paths(selected).includes(processedOutsideContext), false, processedOutsideContext);
+
+  for (const productCapability of [
+    "chainlink-ccip",
+    "chainlink-cre",
+    "chainlink-data-feeds",
+    "chainlink-data-streams",
+    "chainlink-vrf-v2-5"
+  ]) {
+    const direct = planKnowledge({
+      mode: "prototype",
+      capabilities: [productCapability],
+      skillRoot
+    });
+    assert.deepEqual(direct.unknownCapabilities, [], productCapability);
+    const route = deferred(direct, "references/chainlink-provider-integration.md");
+    assert.ok(route, productCapability);
+    assert.equal(route.reasons.includes(`capability:${productCapability}`), true, productCapability);
+  }
+
+  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "programmable-chainlink-route-closure-")));
+  t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const copiedSkill = path.join(temporary, "skill");
+  fs.cpSync(skillRoot, copiedSkill, { recursive: true });
+  const copiedRoutingPath = path.join(copiedSkill, "references", "knowledge-routing.json");
+  const copiedRouting = JSON.parse(fs.readFileSync(copiedRoutingPath, "utf8"));
+  copiedRouting.capabilityRoutes
+    .find(({ id }) => id === "chainlink-provider")
+    .matches = copiedRouting.capabilityRoutes
+      .find(({ id }) => id === "chainlink-provider")
+      .matches.filter((id) => id !== "chainlink-cre");
+  fs.writeFileSync(copiedRoutingPath, `${JSON.stringify(copiedRouting, null, 2)}\n`);
+  assert.throws(
+    () => planKnowledge({ mode: "prototype", capabilities: ["chainlink-cre"], skillRoot: copiedSkill }),
+    (error) => error instanceof KnowledgeRouterError
+      && error.code === "KNOWLEDGE_ROUTING_INVALID"
+      && /every exact supported product capability/u.test(error.message)
+  );
+
+  for (const capability of ["cross-chain-messaging", "randomness", "oracle-data", "keeper-automation"]) {
+    const generic = planKnowledge({ mode: "prototype", capabilities: [capability], skillRoot });
+    assert.equal(
+      generic.loadLater.some(({ path: reference }) => reference === "references/chainlink-provider-integration.md"),
+      false,
+      capability
+    );
+    assert.ok(deferred(generic, "references/ethereum-production-invariants.md"), capability);
+  }
+
+  for (const surface of ["external-provider", "indexer", "keeper", "service"]) {
+    const generic = planKnowledge({ mode: "prototype", surfaces: [surface], skillRoot });
+    assert.ok(deferred(generic, "references/ethereum-production-invariants.md"), surface);
+  }
+
+  const contractOnly = planKnowledge({ mode: "prototype", surfaces: ["contract"], skillRoot });
+  assert.equal(paths(contractOnly).includes("references/ethereum-production-invariants.md"), false);
+});
+
+test("every canonical catalog surface has an explicit route and route drift fails closed", (t) => {
+  const routing = JSON.parse(fs.readFileSync(path.join(skillRoot, "references", "knowledge-routing.json"), "utf8"));
+  const routedSurfaces = new Set(routing.surfaceRoutes.flatMap(({ matches }) => matches));
+  const catalogSurfaces = [...new Set(catalog.definitions.flatMap(({ projectSurfaces }) => projectSurfaces))].sort();
+  assert.deepEqual(catalogSurfaces.filter((surface) => !routedSurfaces.has(surface)), []);
+
+  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "programmable-routing-surface-closure-")));
+  t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const copiedSkill = path.join(temporary, "skill");
+  fs.cpSync(skillRoot, copiedSkill, { recursive: true });
+  const copiedRoutingPath = path.join(copiedSkill, "references", "knowledge-routing.json");
+  const copiedRouting = JSON.parse(fs.readFileSync(copiedRoutingPath, "utf8"));
+  copiedRouting.surfaceRoutes = copiedRouting.surfaceRoutes.filter(({ id }) => id !== "external-provider");
+  fs.writeFileSync(copiedRoutingPath, `${JSON.stringify(copiedRouting, null, 2)}\n`);
+
+  assert.throws(
+    () => planKnowledge({ mode: "prototype", packs: ["chainlink-provider"], skillRoot: copiedSkill }),
+    (error) => error instanceof KnowledgeRouterError
+      && error.code === "KNOWLEDGE_ROUTING_INVALID"
+      && /external-provider/u.test(error.message)
+  );
 });
 
 test("every routing-contract match is known and genuinely unlisted ids remain exact", (t) => {
@@ -1115,19 +1220,27 @@ test("context command rejects symbolic template plans and invalid ids", () => {
   }
 });
 
-test("context help enumerates selectors and ambiguous family input returns typed guidance", () => {
+test("context help stays concise while opt-in JSON preserves every selector", () => {
   const help = childProcess.spawnSync(process.execPath, [cli, "context", "--help"], {
     encoding: "utf8",
     shell: false
   });
   assert.equal(help.status, 0, help.stdout || help.stderr);
   assert.equal(help.stderr, "");
-  assert.match(help.stdout, /Selectable capability ids:/u);
-  assert.match(help.stdout, /dynamic-lp-fee/u);
-  assert.match(help.stdout, /Selectable surface ids:/u);
-  assert.match(help.stdout, /\bgame\b/u);
-  assert.match(help.stdout, /capability hook-implementation ->/u);
-  assert.match(help.stdout, /owner-defined kebab-case id/u);
+  assert.ok(Buffer.byteLength(help.stdout) < 1_500);
+  assert.match(help.stdout, /--help --json/u);
+  assert.match(help.stdout, /owner-defined kebab-case capabilities/u);
+
+  const detail = childProcess.spawnSync(process.execPath, [cli, "context", "--help", "--json"], {
+    encoding: "utf8",
+    shell: false
+  });
+  assert.equal(detail.status, 0, detail.stdout || detail.stderr);
+  const selectorInventory = JSON.parse(detail.stdout).result;
+  assert.ok(selectorInventory.capabilityIds.includes("dynamic-lp-fee"));
+  assert.ok(selectorInventory.surfaceIds.includes("game"));
+  assert.ok(selectorInventory.routeFamilies.some(({ id }) => id === "hook-implementation"));
+  assert.deepEqual(selectorInventory.packIds, catalog.definitions.filter(({ kind }) => kind === "pack").map(({ id }) => id));
 
   const ambiguous = childProcess.spawnSync(process.execPath, [
     cli,
@@ -1257,7 +1370,7 @@ test("context CLI emits the complete typed split-review plan for 257 capabilitie
     shell: false
   });
   assert.equal(help.status, 0, help.stdout || help.stderr);
-  assert.match(help.stdout, /256 direct capability or surface ids/u);
+  assert.match(help.stdout, /Over 256 direct ids/u);
   assert.match(help.stdout, /HOLD_SPLIT_REVIEW/u);
 });
 

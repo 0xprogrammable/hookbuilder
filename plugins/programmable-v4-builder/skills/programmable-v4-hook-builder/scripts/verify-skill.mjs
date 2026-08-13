@@ -10,8 +10,8 @@ import { validateReviewedDriftReceipt } from "./reviewed-drift-receipt-core.mjs"
 import { validateAgainstSchema } from "./submission-core.mjs";
 import { validateStarterCatalogClosure, validateTemplateCatalogHistory } from "./verify-skill-catalog-core.mjs";
 import { scanPins, validateKnowledgeRoutingClosure, validateLocalModuleClosure } from "./verify-skill-closure-core.mjs";
-import { validateScriptsAndTests } from "./verify-skill-execution-core.mjs";
-import { createPortableFilesystem, isForbiddenPortableDirectory, isInside, resolveSkillRootWithoutSymlinks, writeDiagnostics } from "./verify-skill-filesystem-core.mjs";
+import { REQUIRED_PORTABLE_TESTS, validateScriptsAndTests } from "./verify-skill-execution-core.mjs";
+import { MAX_PORTABLE_FILES, createPortableFilesystem, isForbiddenPortableDirectory, isInside, resolveSkillRootWithoutSymlinks, writeDiagnostics } from "./verify-skill-filesystem-core.mjs";
 import { validateInstalledProvenance } from "./verify-skill-provenance-core.mjs";
 import { markdownHeadingAnchors, parseCanonicalYamlMapping, redactInstalledLocalPathForPortableScan } from "./verify-skill-yaml-core.mjs";
 
@@ -22,32 +22,8 @@ if (!Number.isInteger(nodeMajor) || nodeMajor < 24) {
   console.error("verify-skill.mjs: NODE_24_OR_NEWER_REQUIRED");
   process.exit(1);
 }
-const MAX_PORTABLE_FILES = 646;
 const MAX_PORTABLE_BYTES = 12_000_000;
 const MAX_PORTABLE_FILE_BYTES = 1_000_000;
-const REQUIRED_PORTABLE_TESTS = Object.freeze(`
-application-api-schema application-dependency-core application-v3-prepare-revision-core build-info
-build-profile builder-lifecycle canonical-json-core cli
-cli-central-base cli-central-package cli-entry cli-open-world
-cli-open-world-github cli-output-dir cli-prepare-pr companion-manifest-v2
-composition-checker contract-registry cross-chain-policy dependency-pointer-core
-example-materializer fee-conformance fee-conformance-receipt-v1 fee-conformance-vector-set-v1
-fee-policy-v2 fee-policy-v2-vector-parity github-application github-exact-object-resolver
-github-public-source-core golden-scenarios historical-v1-freeze implementation-legos-runtime
-knowledge-router launch-bundle launch-bundle-v2 launch-bundle-v2-cli
-launch-plan-graph legacy-strict-json-boundaries official-launchpad open-world-migration
-open-world-regressions open-world-runtime open-world-security open-world-source-signals
-open-world-v2 open-world-v2-module-boundaries ordinary-launch-cli package-dependency-contract
-policy-bundle project-compiler-foundation project-compiler-materialization
-project-compiler-output project-compiler-plan project-compiler-receipts
-project-compiler-v4-deployment project-surfaces public-claims
-raw-git-integrity-core registry-acceptance-v3-github registry-discovery residual-json-boundaries
-resolve-contract-core review-target review-target-contract reviewed-drift-receipt
-runtime-assets-core schema-security semantic-rule-registry source-closure-verifier
-source-evidence-workflow source-manifest strict-json-core submission
-template-catalog trade-capability-manifest typed-launch-contracts-v1 upstream-drift
-v4-hook-semantic-contract verify-package-build-info verify-skill-static
-`.trim().split(/\s+/u).map((stem) => `scripts/test/${stem}.test.mjs`));
 const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
 const errors = [];
 const { options } = parseCliOrExit({
@@ -171,6 +147,7 @@ const required = [
   "references/programmable-trade-execution-v1.schema.json",
   "references/product-graph-v1.schema.json",
   "references/project-spec-v1.schema.json",
+  "references/project-sandbox-receipt-v1.schema.json",
   "references/project-state-v1.schema.json",
   "references/project-toolchain-lock-v1.schema.json",
   "references/repository-plan-v1.schema.json",
@@ -363,6 +340,7 @@ const required = [
   "scripts/package-dependency-contract.mjs",
   "scripts/project-surfaces-core.mjs",
   "scripts/project-command-executor-core.mjs",
+  "scripts/project-sandbox-receipt-core.mjs",
   "scripts/project-compiler-core.mjs",
   "scripts/project-compiler.mjs",
   "scripts/project-tradable-authoring-core.mjs",

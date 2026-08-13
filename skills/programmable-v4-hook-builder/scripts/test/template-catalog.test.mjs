@@ -24,6 +24,7 @@ import {
   showImplementationLego,
   showTemplateDefinition
 } from "../template-catalog-core.mjs";
+import { chainlinkProductCapabilities } from "../template-catalog-composition.mjs";
 import { planKnowledge } from "../knowledge-router-core.mjs";
 import { validateAgainstSchema } from "../submission-core.mjs";
 
@@ -49,8 +50,8 @@ test("loads one hash-bound, closed and explicitly non-allowlisting catalog", () 
   const catalog = loadTemplateCatalog({ skillRoot });
   const entries = listTemplateCatalog(catalog);
 
-  assert.equal(catalog.catalogDigest, "56ce5b0bad83a85c99222df1a2e298db814ca7b907817ce6545f95d57b3dbf9f");
-  assert.equal(entries.length, 41);
+  assert.equal(catalog.catalogDigest, "27a069da4cdc2e2296a199a58373c9f112cd0e1e0c21d836700af6fad505ea23");
+  assert.equal(entries.length, 48);
   assert.deepEqual(entries.map(({ id }) => id), [...entries.map(({ id }) => id)].sort());
   assert.deepEqual(
     entries.filter(({ kind }) => kind === "starter").map(({ id }) => id),
@@ -81,10 +82,14 @@ test("loads one hash-bound, closed and explicitly non-allowlisting catalog", () 
 
 test("SKILL delegates starter identity to the catalog and keeps packs at planning semantics", () => {
   const skill = fs.readFileSync(path.join(skillRoot, "SKILL.md"), "utf8");
+  const reference = fs.readFileSync(path.join(skillRoot, "references", "template-catalog.md"), "utf8");
   assert.match(skill, /Choose the smallest composition that preserves intent, or use a custom architecture/u);
   assert.doesNotMatch(skill, /ordinary-launch.*custom-hook.*blank-custom/su);
   assert.match(skill, /Templates are hash-bound Legos, never assurance/u);
   assert.match(skill, /Missing tools are `INTEGRATION_PENDING`, not completion/u);
+  assert.match(reference, /JSON catalog is the only current starter and pack inventory/u);
+  assert.match(reference, /templates list --filter <text>/u);
+  assert.doesNotMatch(reference, /^\| Pack \| Covers \|$/mu);
 });
 
 test("builder template provenance passes a 256-item materialized aggregate and holds the 257th", () => {
@@ -357,6 +362,7 @@ test("catalog covers the requested broad starter and capability families", () =>
     "custom-hook-behavior",
     "custom-token-standard-fee-hook",
     "continuous-clearing-auction",
+    "cross-chain-messaging",
     "contract-priced-sell-and-burn",
     "contract-priced-sell-and-burn-v4-custom-accounting",
     "dynamic-lp-fee",
@@ -545,16 +551,76 @@ test("known capabilities materialize atomically without pack expansion", () => {
   }
 });
 
+test("every Chainlink selector composes one atomic product definition, the shared provider closure and its generic capability", () => {
+  const catalog = loadTemplateCatalog({ skillRoot });
+  const cases = [
+    ["ccip", "chainlink-ccip", "cross-chain-messaging", ["contract", "service"]],
+    ["cre", "chainlink-cre", "keeper-automation", ["keeper", "service"]],
+    ["data-feeds", "chainlink-data-feeds", "oracle-data", ["contract", "external-provider"]],
+    ["data-streams", "chainlink-data-streams", "oracle-data", ["contract", "external-provider", "service"]],
+    ["vrf-v2-5", "chainlink-vrf-v2-5", "randomness", ["contract", "external-provider"]]
+  ];
+
+  for (const [selector, productId, genericCapabilityId, productSurfaces] of cases) {
+    const capabilities = chainlinkProductCapabilities(selector);
+    const plan = composeTemplate({
+      catalog,
+      starterId: "ordinary-launch",
+      capabilityIds: capabilities
+    });
+    const entries = new Map(plan.directCapabilityLegos.entries.map((entry) => [entry.capabilityId, entry]));
+    const product = entries.get(productId);
+    const provider = entries.get("chainlink-provider");
+
+    assert.deepEqual(plan.selection.requestedCapabilityIds, capabilities, selector);
+    assert.equal(plan.selection.selectedPackIds.some((id) => id.startsWith("chainlink-")), false, selector);
+    assert.equal(entries.has(genericCapabilityId), true, selector);
+    assert.equal(product.exactRequirementStatus, "catalog-atomic", selector);
+    assert.deepEqual(product.projectSurfaces, productSurfaces, selector);
+    assert.deepEqual(product.atomicDefinitionReceipts.map(({ definitionId }) => definitionId), [productId], selector);
+    assert.ok(product.requiredFacts.length > 0, selector);
+    assert.ok(product.requiredFiles.length > 0, selector);
+    assert.ok(product.requiredTests.length > 0, selector);
+    assert.ok(product.risks.length > 0, selector);
+    assert.equal(provider.exactRequirementStatus, "catalog-atomic", selector);
+    assert.deepEqual(provider.projectSurfaces, ["contract", "external-provider"], selector);
+    assert.deepEqual(provider.atomicDefinitionReceipts.map(({ definitionId }) => definitionId), ["chainlink-provider"], selector);
+    assert.ok(provider.requiredFacts.length > 0, selector);
+  }
+
+  for (const [selector, productId] of cases) {
+    assert.throws(
+      () => composeTemplate({ catalog, starterId: "ordinary-launch", packIds: [productId] }),
+      (error) => error.code === "CHAINLINK_PRODUCT_ALIAS_INVALID"
+        && error.message.includes(`--chainlink-product ${selector}`),
+      selector
+    );
+  }
+});
+
 test("CLI list and show expose deterministic local JSON", () => {
   const listed = runCli("list", "--kind", "starter");
   assert.equal(listed.status, 0, listed.stderr);
   assert.equal(listed.stderr, "");
   const listOutput = JSON.parse(listed.stdout);
   assert.equal(listOutput.ok, true);
+  assert.equal(listOutput.result.count, 4);
+  assert.deepEqual(Object.keys(listOutput.result.entries[0]), ["id", "kind"]);
   assert.deepEqual(
     listOutput.result.entries.map(({ id }) => id),
     ["blank-custom", "custom-hook", "custom-token-standard-fee-hook", "ordinary-launch"]
   );
+
+  const detailed = runCli("list", "--kind", "starter", "--json");
+  assert.equal(detailed.status, 0, detailed.stderr);
+  assert.equal(typeof JSON.parse(detailed.stdout).result.entries[0].summary, "string");
+
+  const filtered = runCli("list", "--kind", "pack", "--filter", "randomness");
+  assert.equal(filtered.status, 0, filtered.stderr);
+  assert.deepEqual(JSON.parse(filtered.stdout).result.entries.map(({ id }) => id), [
+    "randomness-loot-rewards",
+    "verifiable-randomness"
+  ]);
 
   const shown = runCli("show", "maps-location-quest");
   assert.equal(shown.status, 0, shown.stderr);

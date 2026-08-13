@@ -73,6 +73,8 @@ test('missing external execution configuration writes an explicit non-green scor
     assert.equal(summary.status, 'EXTERNAL_BLOCKED');
     assert.equal(summary.releaseGateSatisfied, false);
     assert.equal(summary.resultArtifact, output);
+    assert.equal(summary.exhaustiveDiagnosticsArtifact, output);
+    assert.ok(summary.primaryDiagnostics.length > 0 && summary.primaryDiagnostics.length <= 3);
     const scorecard = JSON.parse(fs.readFileSync(output, 'utf8'));
     assert.equal(scorecard.status, 'EXTERNAL_BLOCKED');
     assert.deepEqual(scorecard.blockers, [
@@ -85,6 +87,8 @@ test('missing external execution configuration writes an explicit non-green scor
       'PROGRAMMABLE_E2E_SUBJECT_SANDBOX_WRAPPER',
     ]);
     assert.equal(scorecard.metrics, null);
+    assert.equal(scorecard.diagnostics.primaryLimit, 3);
+    assert.ok(scorecard.diagnostics.primary.length <= 3);
     assert.equal(scorecard.releaseGates.releaseCandidate, false);
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });

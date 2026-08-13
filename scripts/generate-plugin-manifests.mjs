@@ -57,7 +57,7 @@ function loadMetadata() {
     throw new Error("plugin version must be stable semver");
   }
   if (metadata.version !== packageDocument.version) {
-    throw new Error("plugin metadata version must match package.json");
+    throw new Error("package.json version must match canonical config/plugin.json version");
   }
   for (const key of ["displayName", "description", "shortDescription", "longDescription", "developerName", "category", "license", "repository"]) {
     if (typeof metadata[key] !== "string" || metadata[key].length === 0) throw new Error(`plugin ${key} is missing`);

@@ -7,11 +7,16 @@ import { SUBMIT_LAUNCH_REPOSITORY } from "../skills/programmable-v4-hook-builder
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 export const repositoryRoot = path.resolve(moduleDirectory, "..");
-const packageVersion = JSON.parse(
-  fs.readFileSync(path.join(repositoryRoot, "package.json"), "utf8")
-).version;
-if (typeof packageVersion !== "string" || !/^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/u.test(packageVersion)) {
-  throw new Error("package.json version must be stable semver");
+const pluginIdentity = JSON.parse(
+  fs.readFileSync(path.join(repositoryRoot, ".codex-plugin", "plugin.json"), "utf8")
+);
+const pluginVersion = pluginIdentity?.version;
+if (
+  pluginIdentity?.name !== "programmable-v4-builder"
+  || typeof pluginVersion !== "string"
+  || !/^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/u.test(pluginVersion)
+) {
+  throw new Error(".codex-plugin/plugin.json must identify programmable-v4-builder with a stable semver version");
 }
 const cliPath = path.join(
   repositoryRoot,
@@ -475,7 +480,7 @@ export async function handleRequest(message, options = {}) {
           result: {
             protocolVersion: "2025-11-25",
             capabilities: { tools: { listChanged: false } },
-            serverInfo: { name: "programmable-v4-builder", version: packageVersion },
+            serverInfo: { name: pluginIdentity.name, version: pluginVersion },
             instructions: "Use read-only discovery and planning first. Execute an Application action only after the owner accepts the exact freshly returned digest. No tool approves, merges, deploys, launches, signs, or moves funds."
           }
         };
