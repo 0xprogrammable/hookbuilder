@@ -21,6 +21,7 @@ import {
   makeProjectSpec, facetEntry, sourceSpan, makeProductGraph, makeArchitectures,
   makeTradablePlanningBundle, makeArchitectureBundle, makeState, statePayload,
   makePlanningRepositoryPlan, createMaterializedTradableRepository, createCompleteRepository,
+  materializeStaticUntrustedEvidenceFixture,
   createMaterializedRepository, createUnresolvedOutputFixture, createTradableOutputFixture,
   structuredCloneProjectOutputInput, deterministicTarget, deterministicCallData,
   deterministicReturnData, deterministicSuite, deterministicResult, deterministicResultLog,
@@ -29,7 +30,7 @@ import {
   deterministicRelevantTrace, disabledReleaseActions, writeFile, artifactRecord, git, sha256, slug
 } from "./project-compiler-fixture.mjs";
 
-test("tradable execution authors distinct typed quote and execution results with closed receipt bindings", async (t) => {
+test("static tradable fixtures retain distinct typed result bindings without executing candidate bytes", async (t) => {
   const fixture = createMaterializedTradableRepository(t);
   assert.deepEqual(validateRepositoryPlan(
     fixture.bundle.projectSpec,
@@ -38,14 +39,8 @@ test("tradable execution authors distinct typed quote and execution results with
     fixture.plan
   ), []);
 
-  const execution = await executeProjectCommands({
-    repositoryRoot: fixture.root,
-    repositoryPlan: fixture.plan,
-    outputPlanPath: ".programmable/repository-plan.v1.json"
-  });
-  assert.equal(execution.status, "PROJECT_COMMAND_EVIDENCE_READY_TO_COMMIT");
-  assert.equal(execution.approvalCreated, false);
-  assert.equal(execution.externalActionsPerformed.length, 0);
+  const execution = materializeStaticUntrustedEvidenceFixture(fixture.root, fixture.plan, { manifest: fixture.manifest });
+  assert.equal(execution.status, "UNTRUSTED_STATIC_FIXTURE_MATERIALIZED");
   assert.equal(execution.tradeResultPaths.length, fixture.manifest.testEvidence.quoteTests.length + fixture.manifest.testEvidence.executionTests.length);
   assert.equal(new Set([...execution.receiptPaths, ...execution.tradeResultPaths]).size, execution.receiptPaths.length + execution.tradeResultPaths.length);
 
@@ -306,7 +301,7 @@ test("executor receipts survive an evidence-only commit while static completion 
 });
 
 
-test("executor and COMPLETE validation reject repeated, no-op, symlinked, timed-out, drifted, and fabricated evidence", async (t) => {
+test("executor fails closed before candidate execution and COMPLETE validation rejects fabricated evidence", async (t) => {
   const cliFixture = createMaterializedRepository(t);
   const materializingPlanPath = ".programmable/repository-plan.materializing.v1.json";
   writeFile(cliFixture.root, materializingPlanPath, `${canonicalJsonV2(cliFixture.plan)}\n`);
@@ -320,8 +315,9 @@ test("executor and COMPLETE validation reject repeated, no-op, symlinked, timed-
     "--output-plan",
     ".programmable/repository-plan.v1.json"
   ], { encoding: "utf8", shell: false, timeout: 30000 });
-  assert.equal(executed.status, 0, executed.stderr || executed.stdout);
-  assert.equal(JSON.parse(executed.stdout).status, "PROJECT_COMMAND_EVIDENCE_READY_TO_COMMIT");
+  assert.equal(executed.status, 2, executed.stderr || executed.stdout);
+  assert.match(executed.stderr, /PROJECT_EXTERNAL_SANDBOX_REQUIRED/u);
+  assert.equal(fs.existsSync(path.join(cliFixture.root, ".programmable/repository-plan.v1.json")), false);
 
   const repeated = createMaterializedRepository(t, { mutatePlan: (plan) => { plan.commands[1].argv = [...plan.commands[0].argv]; } });
   await assert.rejects(
@@ -349,17 +345,19 @@ test("executor and COMPLETE validation reject repeated, no-op, symlinked, timed-
   });
   await assert.rejects(
     executeProjectCommands({ repositoryRoot: timedOut.root, repositoryPlan: timedOut.plan, outputPlanPath: ".programmable/repository-plan.v1.json" }),
-    ({ code }) => code === "PROJECT_COMMAND_TIMEOUT"
+    ({ code, commandsExecuted, networkAccessed, externalWritesPerformed }) => code === "PROJECT_EXTERNAL_SANDBOX_REQUIRED"
+      && commandsExecuted === false && networkAccessed === false && externalWritesPerformed === false
   );
 
   const drifted = createMaterializedRepository(t, {
-    extraFiles: [["tools/drift-stage.mjs", "import fs from 'node:fs';\nfs.appendFileSync('src/app.mjs', '// changed\\n');\n"]],
+    extraFiles: [["tools/drift-stage.mjs", "import fs from 'node:fs';\nfs.appendFileSync('src/app.mjs', '// candidate-ran\\n');\n"]],
     mutatePlan: (plan) => { plan.commands[0].argv = [process.execPath, "tools/drift-stage.mjs"]; }
   });
   await assert.rejects(
     executeProjectCommands({ repositoryRoot: drifted.root, repositoryPlan: drifted.plan, outputPlanPath: ".programmable/repository-plan.v1.json" }),
-    ({ code }) => ["PROJECT_SOURCE_DIRTY", "PROJECT_SOURCE_DRIFT"].includes(code)
+    ({ code }) => code === "PROJECT_EXTERNAL_SANDBOX_REQUIRED"
   );
+  assert.doesNotMatch(fs.readFileSync(path.join(drifted.root, "src/app.mjs"), "utf8"), /candidate-ran/u);
 
   const fabricated = await createCompleteRepository(t);
   const forgedPlan = structuredClone(fabricated.bundle.repositoryPlan);
@@ -385,31 +383,26 @@ test("executor and COMPLETE validation reject repeated, no-op, symlinked, timed-
 });
 
 
-test("executor resolves portable node argv through sanitized PATH and binds the exact runtime identity", async (t) => {
+test("executor never resolves or executes a PATH-substituted candidate tool", async (t) => {
   const fixture = createMaterializedRepository(t);
   const shimRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-node-path-shim-"));
   t.after(() => fs.rmSync(shimRoot, { recursive: true, force: true }));
-  fs.symlinkSync(process.execPath, path.join(shimRoot, process.platform === "win32" ? "node.exe" : "node"));
+  const marker = path.join(shimRoot, "candidate-ran");
+  const shim = path.join(shimRoot, process.platform === "win32" ? "node.exe" : "node");
+  fs.writeFileSync(shim, `#!/bin/sh\nprintf unsafe > ${JSON.stringify(marker)}\n`);
+  fs.chmodSync(shim, 0o700);
   const previousPath = process.env.PATH;
   process.env.PATH = [shimRoot, previousPath].filter(Boolean).join(path.delimiter);
-  let execution;
   try {
-    execution = await executeProjectCommands({ repositoryRoot: fixture.root, repositoryPlan: fixture.plan, outputPlanPath: ".programmable/repository-plan.v1.json" });
+    await assert.rejects(
+      executeProjectCommands({ repositoryRoot: fixture.root, repositoryPlan: fixture.plan, outputPlanPath: ".programmable/repository-plan.v1.json" }),
+      ({ code }) => code === "PROJECT_EXTERNAL_SANDBOX_REQUIRED"
+    );
   } finally {
     if (previousPath === undefined) delete process.env.PATH;
     else process.env.PATH = previousPath;
   }
-  assert.equal(execution.status, "PROJECT_COMMAND_EVIDENCE_READY_TO_COMMIT");
-  assert.ok(execution.repositoryPlan.commands.every(({ argv }) => argv[0] === "node"));
-  const nodeBytes = fs.readFileSync(process.execPath);
-  for (const receiptPath of execution.receiptPaths) {
-    const receipt = JSON.parse(fs.readFileSync(path.join(fixture.root, receiptPath), "utf8"));
-    assert.equal(receipt.tool.requested, "node");
-    assert.equal(receipt.tool.resolvedPath, fs.realpathSync(process.execPath));
-    assert.equal(receipt.tool.byteLength, nodeBytes.length);
-    assert.equal(receipt.tool.sha256, sha256(nodeBytes));
-    assert.equal(childProcess.spawnSync(receipt.tool.resolvedPath, ["--version"], { encoding: "utf8", shell: false }).stdout.trim(), process.version);
-  }
+  assert.equal(fs.existsSync(marker), false);
 });
 
 

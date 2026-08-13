@@ -33,10 +33,11 @@ the maturity of Fee V2, routing, or generated projects.
   source inventory contains 54 unit, one fuzz and three invariant functions; only an exact receipt can claim execution.
 - Trade capability: each selected tradable market binds a machine-readable `NOT_APPROVED` standard-v4 or canonical
   adapter manifest plus typed quote/execution contracts; `no-market` emits none and `unresolved` cannot complete.
-- Project Compiler: bounded `shell:false` local command execution exists, while static receipt validation deliberately
-  reports `repositoryCompletion: NOT_PROVEN`, `commandsReexecuted: false`, and `receiptIssuerAuthenticated: false`.
-  Its in-process lane requires one exact Forge test and source-/target-/calldata-/revert-bound trace evidence, still
-  labeled `PARTIAL_EVIDENCE` rather than audit or execution approval.
+- Project Compiler: the portable path never executes candidate commands under the host UID. No-market authoring writes
+  inert source/test bytes plus a source-bound materializing plan; tradable write and `project execute` fail closed with
+  `PROJECT_EXTERNAL_SANDBOX_REQUIRED`. The external receipt contract binds source/plan/input, launcher/runtime,
+  enforced filesystem/network/secret/write/process policy and result hashes to an independently trusted Ed25519 signer.
+  No production trust root is configured, so local receipts remain `NOT_PROVEN` and unauthenticated.
 - E2E harness: the repository gate dynamically discovers 9 local test files covering encrypted sealed-after-design
   cases, hard gates, fresh checkouts, immutable
   judge evidence, workspace/symlink mutation, wrapper closure and external-evidence trust. These are harness tests; all

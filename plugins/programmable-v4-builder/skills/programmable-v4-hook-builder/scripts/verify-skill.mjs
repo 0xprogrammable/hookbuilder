@@ -22,7 +22,9 @@ if (!Number.isInteger(nodeMajor) || nodeMajor < 24) {
   console.error("verify-skill.mjs: NODE_24_OR_NEWER_REQUIRED");
   process.exit(1);
 }
-const MAX_PORTABLE_FILES = 654;
+// External execution safety adds one exact receipt schema, one verifier, and
+// one adversarial test lane. Keep all other portable growth fail-closed.
+const MAX_PORTABLE_FILES = 657;
 const MAX_PORTABLE_BYTES = 12_000_000;
 const MAX_PORTABLE_FILE_BYTES = 1_000_000;
 const REQUIRED_PORTABLE_TESTS = Object.freeze(`
@@ -39,7 +41,7 @@ launch-plan-graph legacy-strict-json-boundaries official-launchpad open-world-mi
 open-world-regressions open-world-runtime open-world-security open-world-source-signals
 open-world-v2 open-world-v2-module-boundaries ordinary-launch-cli package-dependency-contract
 policy-bundle project-compiler-foundation project-compiler-materialization
-project-compiler-output project-compiler-plan project-compiler-receipts
+project-compiler-output project-compiler-plan project-compiler-receipts project-executor-safety
 project-compiler-v4-deployment project-surfaces public-claims
 raw-git-integrity-core registry-acceptance-v3-github registry-discovery residual-json-boundaries
 resolve-contract-core review-target review-target-contract reviewed-drift-receipt
@@ -171,6 +173,7 @@ const required = [
   "references/programmable-trade-execution-v1.schema.json",
   "references/product-graph-v1.schema.json",
   "references/project-spec-v1.schema.json",
+  "references/project-sandbox-receipt-v1.schema.json",
   "references/project-state-v1.schema.json",
   "references/project-toolchain-lock-v1.schema.json",
   "references/repository-plan-v1.schema.json",
@@ -363,6 +366,7 @@ const required = [
   "scripts/package-dependency-contract.mjs",
   "scripts/project-surfaces-core.mjs",
   "scripts/project-command-executor-core.mjs",
+  "scripts/project-sandbox-receipt-core.mjs",
   "scripts/project-compiler-core.mjs",
   "scripts/project-compiler.mjs",
   "scripts/project-tradable-authoring-core.mjs",

@@ -65,10 +65,11 @@ set twice and requires identical filenames, byte counts, SHA-256 digests and byt
 output directory and performs no external write.
 
 The two routing canaries are CLI context and preflight checks, not trade execution. Separate repository tests enforce
-that `no-market` projects emit no route, that each tradable market selects either standard Uniswap v4 or the canonical
-Programmable adapter contract, and that declared quote/execution commands produce source-bound local Forge call or
-revert traces. Those results remain `PARTIAL_EVIDENCE` and every manifest remains `NOT_APPROVED`; they are not a
-provider quote, pinned-fork receipt, deployed-market execution, host invocation, broadcast transaction or approval.
+that `no-market` projects emit no route and that each tradable market selects either standard Uniswap v4 or the
+canonical Programmable adapter contract. Static Project Compiler fixtures validate legacy receipt/result bindings but
+execute no candidate bytes and remain `NOT_PROVEN`; reference-kernel Forge evidence remains a separate local
+`PARTIAL_EVIDENCE` lane. Every manifest remains `NOT_APPROVED`; none of these are a provider quote, pinned-fork
+receipt, deployed-market execution, host invocation, broadcast transaction or approval.
 
 The output contains `local-release-verification.json`, `kernel-release-evidence.json` and an `artifacts/` directory.
 The artifact set embeds the exact kernel evidence and its digest. The SPDX 2.3 SBOM names both V1 and V2 kernel

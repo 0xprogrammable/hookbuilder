@@ -29,7 +29,7 @@ import {
   deterministicRelevantTrace, disabledReleaseActions, writeFile, artifactRecord, git, sha256, slug
 } from "./project-compiler-fixture.mjs";
 
-test("project materialize authors a complete idea-specific no-market repository and require-output fails closed", (t) => {
+test("project materialize writes an idea-specific no-market source plan without executing candidate bytes", (t) => {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-no-market-authoring-"));
   t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
   const ideaPath = path.join(parent, "idea.txt");
@@ -48,85 +48,54 @@ test("project materialize authors a complete idea-specific no-market repository 
   const written = childProcess.spawnSync(process.execPath, [...args, "--write"], { encoding: "utf8", shell: false, timeout: 60000 });
   assert.equal(written.status, 0, written.stderr || written.stdout);
   const materialization = JSON.parse(written.stdout);
-  assert.equal(materialization.status, "PROJECT_PREFLIGHT_VALID");
-  assert.equal(materialization.canonicalOutput, true);
+  assert.equal(materialization.status, "PROJECT_MATERIALIZATION_PLAN_WRITTEN");
+  assert.equal(materialization.executionStatus, "EXTERNAL_SANDBOX_REQUIRED");
+  assert.equal(materialization.canonicalOutput, false);
   assert.equal(materialization.evidenceBoundary.approvalCreated, false);
-  assert.equal(materialization.evidenceBoundary.networkAccessed, null);
-  assert.equal(materialization.evidenceBoundary.externalWritesObserved, null);
+  assert.equal(materialization.evidenceBoundary.planCreated, true);
+  assert.equal(materialization.evidenceBoundary.executionCompleted, false);
+  assert.equal(materialization.evidenceBoundary.commandsExecuted, false);
+  assert.equal(materialization.evidenceBoundary.networkAccessed, false);
+  assert.equal(materialization.evidenceBoundary.externalWritesObserved, false);
   assert.equal(materialization.evidenceBoundary.executionIsolationEnforced, false);
-  const authoredPlan = JSON.parse(fs.readFileSync(path.join(output, ".programmable/repository-plan.v1.json"), "utf8"));
+  const authoredPlan = JSON.parse(fs.readFileSync(path.join(output, ".programmable/repository-plan.materializing.v1.json"), "utf8"));
+  assert.equal(authoredPlan.completionStatus, "materializing");
   assert.ok(authoredPlan.commands.every(({ argv }) => argv[0] === "node"));
-  for (const artifact of authoredPlan.artifacts.evidence.filter(({ kind }) => kind === "command-receipt")) {
-    const receipt = JSON.parse(fs.readFileSync(path.join(output, artifact.path), "utf8"));
-    assert.equal(receipt.tool.requested, "node");
-    assert.equal(receipt.tool.resolvedPath, fs.realpathSync(process.execPath));
-    assert.equal(receipt.tool.sha256, sha256(fs.readFileSync(process.execPath)));
-  }
-  const stateDirectory = path.join(output, ".programmable/project-states");
-  assert.equal(fs.readdirSync(stateDirectory).length, 6);
-  assert.equal(git(output, ["rev-list", "--count", "HEAD"]), "2");
+  assert.equal(fs.existsSync(path.join(output, ".programmable/repository-plan.v1.json")), false);
+  assert.equal(fs.existsSync(path.join(output, ".programmable/command-receipts")), false);
+  assert.equal(fs.existsSync(path.join(output, ".programmable/project-states")), false);
+  assert.equal(git(output, ["rev-list", "--count", "HEAD"]), "1");
   assert.equal(git(output, ["status", "--porcelain"]), "");
-  const tracked = git(output, ["ls-files"]).split("\n");
-  assert.ok(tracked.includes("submission/submission.v2.json"));
-  assert.ok(tracked.includes("GITHUB-SUBMISSION.md"));
-  const githubHandoff = JSON.parse(fs.readFileSync(path.join(output, "GITHUB-SUBMISSION.md"), "utf8").split("\n\n")[1]);
-  assert.equal(githubHandoff.status, "NOT_SUBMITTED"); assert.equal(githubHandoff.requiresHumanConfirmation, true);
-  assert.equal(githubHandoff.submission.sha256, sha256Bytes(fs.readFileSync(path.join(output, githubHandoff.submission.path))));
-  assert.equal(tracked.some((filePath) => filePath.includes("trade-capabilit")), false);
-  const npmTest = childProcess.spawnSync("npm", ["test", "--silent"], { cwd: output, encoding: "utf8", shell: false, timeout: 30000 });
-  assert.equal(npmTest.status, 0, npmTest.stderr || npmTest.stdout);
-  const strictArgs = ["--repository-root", output, "--state", ".programmable/project-states/000006-submission-evidence.v1.json", "--previous-state", ".programmable/project-states/000005-verification.v1.json", "--submission-root", "submission"];
-  for (const command of ["validate-output", "require-output"]) {
-    const result = childProcess.spawnSync(process.execPath, [unifiedCli, "project", command, ...strictArgs], { encoding: "utf8", shell: false, timeout: 30000 });
-    assert.equal(result.status, 0, result.stderr || result.stdout);
-    assert.equal(JSON.parse(result.stdout).status, command === "validate-output" ? "PROJECT_OUTPUT_VALID" : "PROJECT_PREFLIGHT_VALID");
-  }
+  assert.equal(git(output, ["check-ignore", ".programmable/repository-plan.materializing.v1.json"]), ".programmable/repository-plan.materializing.v1.json");
+});
 
-  const reproducedOutput = path.join(parent, "riddle-circle-reproduced");
-  const reproducedArgs = [...args];
-  reproducedArgs[reproducedArgs.indexOf(output)] = reproducedOutput;
-  const reproduced = childProcess.spawnSync(process.execPath, [...reproducedArgs, "--write"], { encoding: "utf8", shell: false, timeout: 60000 });
-  assert.equal(reproduced.status, 0, reproduced.stderr || reproduced.stdout);
-  assert.deepEqual(JSON.parse(reproduced.stdout), materialization);
-  const blobs = (root) => new Map(git(root, ["ls-files", "-s"]).split("\n").map((line) => { const [metadata, filePath] = line.split("\t"); return [filePath, metadata.split(" ")[1]]; }));
-  const originalBlobs = blobs(output);
-  const reproducedBlobs = blobs(reproducedOutput);
-  assert.deepEqual([...new Set([...originalBlobs.keys(), ...reproducedBlobs.keys()])].filter((filePath) => originalBlobs.get(filePath) !== reproducedBlobs.get(filePath)), []);
-  assert.equal(git(reproducedOutput, ["rev-parse", "HEAD^{tree}"]), git(output, ["rev-parse", "HEAD^{tree}"]));
-  assert.equal(JSON.parse(reproduced.stdout).evidenceCommit, materialization.evidenceCommit);
-  const physical = (root) => {
-    const files = [];
-    const visit = (directory, prefix = "") => fs.readdirSync(directory, { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name)).forEach((entry) => {
-      if (prefix === "" && entry.name === ".git") return;
-      const relativePath = path.posix.join(prefix, entry.name);
-      const absolutePath = path.join(directory, entry.name);
-      if (entry.isDirectory()) visit(absolutePath, relativePath);
-      else files.push({ path: relativePath, sha256: sha256(fs.readFileSync(absolutePath)) });
-    });
-    return files;
-  };
-  assert.deepEqual(physical(reproducedOutput), physical(output));
-
-  writeFile(output, "config/trade-capability.json", `${canonicalJsonV2({ status: "NOT_APPROVED", classification: "tradable", market: {}, quote: "invented", execution: "invented", permit2: "invented", hookData: "0x", modes: [], limits: {}, fee: {}, claims: {} })}\n`);
-  const mutated = childProcess.spawnSync(process.execPath, [unifiedCli, "project", "require-output", ...strictArgs], { encoding: "utf8", shell: false, timeout: 30000 });
-  assert.equal(mutated.status, 1, mutated.stderr || mutated.stdout);
-  assert.equal(JSON.parse(mutated.stdout).status, "PROJECT_PREFLIGHT_BLOCKED");
-
-  const dustyTestPath = path.join(parent, "dusty-riddle.test.mjs");
-  fs.writeFileSync(dustyTestPath, `import fs from "node:fs";\nimport test from "node:test";\ntest("writes ignored nondeterministic dust", () => { fs.mkdirSync("node_modules", { recursive: true }); fs.writeFileSync("node_modules/nondeterministic-dust.txt", String(Date.now())); });\n`);
-  const dustyOutput = path.join(parent, "dusty-riddle");
-  const dusty = childProcess.spawnSync(process.execPath, [unifiedCli, "project", "materialize", "--idea-file", ideaPath, "--application-id", "dusty-riddle", "--classification", "no-market", "--source-contract", sourcePath, "--test-source", dustyTestPath, "--output", dustyOutput, "--write"], { encoding: "utf8", shell: false, timeout: 60000 });
-  assert.equal(dusty.status, 0, dusty.stderr || dusty.stdout);
-  assert.equal(JSON.parse(dusty.stdout).status, "PROJECT_PREFLIGHT_VALID");
-  assert.equal(fs.existsSync(path.join(dustyOutput, "node_modules")), false);
-  assert.equal(git(dustyOutput, ["status", "--porcelain", "--untracked-files=all"]), "");
-
-  const failingTestPath = path.join(parent, "failing-riddle.test.mjs");
-  fs.writeFileSync(failingTestPath, `import assert from "node:assert/strict";\nimport test from "node:test";\ntest("fails", () => assert.fail("expected failure"));\n`);
-  const failedOutput = path.join(parent, "failed-riddle");
-  const failed = childProcess.spawnSync(process.execPath, [unifiedCli, "project", "materialize", "--idea-file", ideaPath, "--application-id", "failed-riddle", "--classification", "no-market", "--source-contract", sourcePath, "--test-source", failingTestPath, "--output", failedOutput, "--write"], { encoding: "utf8", shell: false, timeout: 60000 });
-  assert.equal(failed.status, 2, failed.stderr || failed.stdout);
-  assert.equal(fs.existsSync(failedOutput), false);
+test("no-market write treats supplied source and tests as bytes and never imports them", (t) => {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-plan-only-authoring-"));
+  t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
+  const ideaPath = path.join(parent, "idea.txt");
+  const sourcePath = path.join(parent, "hostile-source.mjs");
+  const testPath = path.join(parent, "hostile-source.test.mjs");
+  const marker = path.join(parent, "candidate-executed");
+  const output = path.join(parent, "output");
+  fs.writeFileSync(ideaPath, "A local no-market state machine with a deterministic transition.\n");
+  fs.writeFileSync(sourcePath, `import fs from "node:fs"; fs.writeFileSync(${JSON.stringify(marker)}, "source-ran"); export const state = true;\n`);
+  fs.writeFileSync(testPath, `import fs from "node:fs"; import test from "node:test"; fs.writeFileSync(${JSON.stringify(marker)}, "test-ran"); test("fails if run", () => { throw new Error("must not run"); });\n`);
+  const result = childProcess.spawnSync(process.execPath, [
+    unifiedCli, "project", "materialize",
+    "--idea-file", ideaPath,
+    "--application-id", "plan-only-state-machine",
+    "--classification", "no-market",
+    "--source-contract", sourcePath,
+    "--test-source", testPath,
+    "--output", output,
+    "--write"
+  ], { encoding: "utf8", shell: false, timeout: 30000 });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.equal(JSON.parse(result.stdout).status, "PROJECT_MATERIALIZATION_PLAN_WRITTEN");
+  assert.equal(fs.existsSync(marker), false);
+  assert.equal(fs.existsSync(path.join(output, "src/hostile-source.mjs")), true);
+  assert.equal(fs.existsSync(path.join(output, "test/hostile-source.test.mjs")), true);
+  assert.equal(git(output, ["status", "--porcelain", "--untracked-files=all"]), "");
 });
 
 

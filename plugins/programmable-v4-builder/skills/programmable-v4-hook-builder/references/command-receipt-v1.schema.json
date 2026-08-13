@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:programmable:project-command-receipt:1.0.0",
   "title": "Programmable project command receipt",
-  "description": "A deterministic bounded local execution-record format emitted by the portable executor. Without re-execution or an authenticated signer, later static validation proves only content consistency, not issuer provenance, functional completion, approval, audit, deployment, production, or an external service.",
+  "description": "Legacy deterministic local execution-record format retained for static compatibility fixtures. The portable executor no longer emits this same-UID receipt. Static validation proves only content consistency, never issuer provenance, sandbox isolation, functional completion, approval, audit, deployment, production, or an external service; use an authenticated project-sandbox-receipt-v1 with an independently trusted signer for execution evidence.",
   "type": "object",
   "additionalProperties": false,
   "required": [

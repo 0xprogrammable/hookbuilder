@@ -351,6 +351,18 @@
       }
     },
     {
+      "contractId": "project-sandbox-receipt-v1",
+      "schemaPath": "references/project-sandbox-receipt-v1.schema.json",
+      "schemaId": "urn:programmable:project-external-sandbox-receipt:1.0.0",
+      "lifecycle": "active",
+      "payloadDigestProfile": "contract-defined",
+      "validator": {
+        "modulePath": "scripts/project-sandbox-receipt-core.mjs",
+        "exportName": "validateProjectSandboxReceiptV1",
+        "mode": "direct"
+      }
+    },
+    {
       "contractId": "project-spec-v1",
       "schemaPath": "references/project-spec-v1.schema.json",
       "schemaId": "urn:programmable:project-spec:1.0.0",
