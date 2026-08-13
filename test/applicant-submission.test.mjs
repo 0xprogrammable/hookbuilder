@@ -168,8 +168,26 @@ test("released and candidate transports keep the canonical Submit a Launch targe
     "cli.mjs"
   ), "utf8");
   assert.match(cli, /Prepare Submit a Launch PR metadata without a GitHub write\./u);
-  assert.match(cli, /Create a draft-only Submit a Launch PR\./u);
+  assert.match(cli, /\["submit", \{ script: "github-application\.mjs", prefix: \["submit"\] \}\]/u);
   assert.doesNotMatch(cli, /Historical V1 GitHub transport/u);
+
+  const submitTransport = fs.readFileSync(path.join(
+    repositoryRoot,
+    "skills",
+    "programmable-v4-hook-builder",
+    "scripts",
+    "github-application.mjs"
+  ), "utf8");
+  const submitFlow = fs.readFileSync(path.join(
+    repositoryRoot,
+    "skills",
+    "programmable-v4-hook-builder",
+    "scripts",
+    "github-application-flow-core.mjs"
+  ), "utf8");
+  assert.match(submitTransport, /draft pull request/u);
+  assert.match(submitFlow, /draft: true/u);
+  assert.match(submitFlow, /maintainerCanModify: false/u);
 });
 
 test("schema rejects intake drift, mutable source refs, missing versions, and direct-write requests", () => {
