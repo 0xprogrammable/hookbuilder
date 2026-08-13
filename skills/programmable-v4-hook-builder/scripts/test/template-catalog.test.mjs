@@ -81,10 +81,14 @@ test("loads one hash-bound, closed and explicitly non-allowlisting catalog", () 
 
 test("SKILL delegates starter identity to the catalog and keeps packs at planning semantics", () => {
   const skill = fs.readFileSync(path.join(skillRoot, "SKILL.md"), "utf8");
+  const reference = fs.readFileSync(path.join(skillRoot, "references", "template-catalog.md"), "utf8");
   assert.match(skill, /Choose the smallest composition that preserves intent, or use a custom architecture/u);
   assert.doesNotMatch(skill, /ordinary-launch.*custom-hook.*blank-custom/su);
   assert.match(skill, /Templates are hash-bound Legos, never assurance/u);
   assert.match(skill, /Missing tools are `INTEGRATION_PENDING`, not completion/u);
+  assert.match(reference, /JSON catalog is the only current starter and pack inventory/u);
+  assert.match(reference, /templates list --filter <text>/u);
+  assert.doesNotMatch(reference, /^\| Pack \| Covers \|$/mu);
 });
 
 test("builder template provenance passes a 256-item materialized aggregate and holds the 257th", () => {
@@ -552,10 +556,23 @@ test("CLI list and show expose deterministic local JSON", () => {
   assert.equal(listed.stderr, "");
   const listOutput = JSON.parse(listed.stdout);
   assert.equal(listOutput.ok, true);
+  assert.equal(listOutput.result.count, 4);
+  assert.deepEqual(Object.keys(listOutput.result.entries[0]), ["id", "kind"]);
   assert.deepEqual(
     listOutput.result.entries.map(({ id }) => id),
     ["blank-custom", "custom-hook", "custom-token-standard-fee-hook", "ordinary-launch"]
   );
+
+  const detailed = runCli("list", "--kind", "starter", "--json");
+  assert.equal(detailed.status, 0, detailed.stderr);
+  assert.equal(typeof JSON.parse(detailed.stdout).result.entries[0].summary, "string");
+
+  const filtered = runCli("list", "--kind", "pack", "--filter", "randomness");
+  assert.equal(filtered.status, 0, filtered.stderr);
+  assert.deepEqual(JSON.parse(filtered.stdout).result.entries.map(({ id }) => id), [
+    "randomness-loot-rewards",
+    "verifiable-randomness"
+  ]);
 
   const shown = runCli("show", "maps-location-quest");
   assert.equal(shown.status, 0, shown.stderr);

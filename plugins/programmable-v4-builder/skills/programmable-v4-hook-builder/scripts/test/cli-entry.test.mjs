@@ -26,10 +26,19 @@ test("CLI argument parser preserves repeated companion manifests in caller order
   assert.deepEqual(parsed.options.companionManifests, ["a.json", "b.json"]);
 });
 
-test("doctor delegates to the existing readiness command and emits JSON", () => {
+test("doctor defaults to a concise readiness result and preserves full JSON on request", () => {
   const fixture = createRepository();
   try {
-    const result = runCli(["doctor", "--repository-root", fixture.repository]);
+    const summary = runCli(["doctor", "--repository-root", fixture.repository]);
+    assert.equal(summary.status, 0, summary.stdout || summary.stderr);
+    assert.ok(Buffer.byteLength(summary.stdout) < 900);
+    const summaryOutput = JSON.parse(summary.stdout);
+    assert.equal(summaryOutput.result.status, "LOCAL_REPOSITORY_READY");
+    assert.equal(summaryOutput.result.ready.repositoryWork, true);
+    assert.equal(summaryOutput.result.ready.publicBeta, false);
+    assert.equal(Object.hasOwn(summaryOutput.result, "tools"), false);
+
+    const result = runCli(["doctor", "--json", "--repository-root", fixture.repository]);
     assert.equal(result.status, 0, result.stdout || result.stderr);
     assert.equal(result.stderr, "");
     const output = JSON.parse(result.stdout);
@@ -118,7 +127,7 @@ test("doctor defaults to the installed plugin root when the host cwd is not a Gi
 
   const result = childProcess.spawnSync(
     process.execPath,
-    [path.join(installedSkillRoot, "scripts", "cli.mjs"), "doctor"],
+    [path.join(installedSkillRoot, "scripts", "cli.mjs"), "doctor", "--json"],
     { cwd: hostCwd, encoding: "utf8", shell: false }
   );
   assert.equal(result.status, 0, result.stdout || result.stderr);

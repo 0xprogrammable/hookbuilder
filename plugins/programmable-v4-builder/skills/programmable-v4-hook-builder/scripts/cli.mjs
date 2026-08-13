@@ -38,9 +38,9 @@ const delegatedCommands = new Map([
 ]);
 const commandSpecs = new Map([
   ["doctor", {
-    usage: "cli.mjs doctor [--repository-root <path>]",
-    summary: "Inspect local builder readiness and emit one JSON result.",
-    options: [repositoryOption()],
+    usage: "cli.mjs doctor [--json] [--repository-root <path>]",
+    summary: "Inspect local readiness; --json adds complete diagnostics.",
+    options: [repositoryOption(), { name: "--json", key: "fullJson", type: "boolean", description: "Include complete diagnostics." }],
     positionals: { min: 0, max: 0 }
   }],
   ["scaffold", {
@@ -110,7 +110,8 @@ const commandSpecs = new Map([
 ]);
 const argv = process.argv.slice(2);
 if (argv.length === 0 || argv[0] === "--help" || argv[0] === "-h") {
-  process.stdout.write(`${globalHelp()}\n`);
+  const helpRenderer = new Map([[false, globalHelp], [true, globalHelpJson]]).get(argv.includes("--json"));
+  process.stdout.write(`${helpRenderer()}\n`);
   process.exit(0);
 }
 const command = argv[0];
@@ -191,7 +192,7 @@ async function execute(command, options, positionals) {
       "doctor.mjs"
     );
     const publicBetaGit = inspectLocalGitReadiness(repositoryRoot);
-    return {
+    const report = {
       ...tooling,
       publicBetaGit,
       readyForPublicBeta: false,
@@ -199,6 +200,16 @@ async function execute(command, options, positionals) {
         ? "Local Git gates are ready; public GitHub repository, commit and tree reachability remain notChecked until prepare-pr."
         : "One or more local Git gates block prepare-pr; public reachability remains notChecked."
     };
+    const blockers = report.publicBetaBlockers.slice(0, 3);
+    return new Map([[false, {
+      status: ["LOCAL_TOOLING_BLOCKED", "IDEA_WORK_READY", "LOCAL_REPOSITORY_READY"][Number(report.readyForDeterministicPreflight) + Number(report.readyForRepositoryWork)],
+      ready: { ideaWork: report.readyForIdeaWork, deterministicPreflight: report.readyForDeterministicPreflight, repositoryWork: report.readyForRepositoryWork, publicBeta: false },
+      repository: { root: report.repositoryRoot, cleanWorktree: report.cleanWorktree, preparePrLocal: publicBetaGit.readyForPreparePrLocal },
+      node: report.runtimeCompatibility.node,
+      blockers,
+      omittedBlockers: report.publicBetaBlockers.length - blockers.length,
+      next: "If repositoryWork is true, run context --mode autopilot; otherwise rerun doctor --json."
+    }], [true, report]]).get(options.fullJson);
   }
   if (command === "scaffold") {
     const [modelId] = positionals;
@@ -446,36 +457,23 @@ function globalHelp() {
   return [
     "Usage: cli.mjs <command> [options]",
     "",
-    "Programmable v4 Builder JSON entry point.",
+    "Programmable v4 Builder. Local checks are not approval.",
     "",
-    "Commands:",
-    "  open-world    Prepare open-world v2/Application V3 locally (candidate).",
-    "  application-recheck  Recheck immutable application evidence.",
-    "  context       Select the smallest local knowledge profile for this task.",
-    "  templates     List, inspect or materialize open starter packs.",
-    "  discover      Search, inspect, or compare the live Programmable project Registry.",
-    "  resolve-contract  Resolve exact public default-branch contract evidence; never infer approval.",
-    "  start         Materialize one starter plus capability packs.",
-    "  profile       Detect build profiles without executing code.", "  project       Validate or execute canonical project output.",
-    "  doctor        Inspect local tooling and repository readiness.",
-    "  scaffold      Create one isolated proposal package.",
-    "  check         Generate a compatibility report; readiness gates are opt-in.",
-    "  fee           Create or check structural fee-conformance evidence.",
-    "  launch-bundle Build an unsigned DeploymentSpec candidate from exact local bytes.",
-    "  launch-bundle-v2  Check exact multi-repository V2 bytes read-only; never authorize.",
-    "  package       Validate the released V1 package.",
-    "  companion     Validate or canonicalize one companion manifest.",
-    "  prepare-pr    Prepare Submit a Launch PR metadata.",
-    "  submit        Create a draft-only Submit a Launch PR.",
-    "  status        Read Submit a Launch status.",
-    "  update        Update an existing Submit a Launch draft.",
-    "  version       Report bundled versions or an explicit installed-state override.",
-    "  update-check  Verify a supplied signed and pinned update.",
-    "  migrate       Produce a migration dry-run; never write it.",
-    "  plan-release  Plan one private daily release candidate.",
+    "Golden path:",
+    "  doctor        Check local readiness.",
+    "  context       Route the confirmed task.",
+    "  project       Materialize and verify output.",
+    "  prepare-pr    Prepare read-only PR metadata.",
     "",
-    "Run 'cli.mjs <command> --help' for command options."
+    "Start: cli.mjs doctor -> cli.mjs context --mode autopilot -> cli.mjs project --help",
+    "Optional templates: cli.mjs templates list",
+    "All commands: cli.mjs --help --json"
   ].join("\n");
+}
+function globalHelpJson() {
+  const commands = [...new Set(["launch-bundle-v2", ...delegatedCommands.keys(), ...commandSpecs.keys()])]
+    .sort().map((id) => ({ id, help: `cli.mjs ${id} --help` }));
+  return canonicalJson({ schemaVersion: "1.0.0", ok: true, command: "help", result: { goldenPath: ["doctor", "context", "project", "prepare-pr"], commands } });
 }
 function startHelp() {
   return [

@@ -1183,19 +1183,27 @@ test("context command rejects symbolic template plans and invalid ids", () => {
   }
 });
 
-test("context help enumerates selectors and ambiguous family input returns typed guidance", () => {
+test("context help stays concise while opt-in JSON preserves every selector", () => {
   const help = childProcess.spawnSync(process.execPath, [cli, "context", "--help"], {
     encoding: "utf8",
     shell: false
   });
   assert.equal(help.status, 0, help.stdout || help.stderr);
   assert.equal(help.stderr, "");
-  assert.match(help.stdout, /Selectable capability ids:/u);
-  assert.match(help.stdout, /dynamic-lp-fee/u);
-  assert.match(help.stdout, /Selectable surface ids:/u);
-  assert.match(help.stdout, /\bgame\b/u);
-  assert.match(help.stdout, /capability hook-implementation ->/u);
-  assert.match(help.stdout, /owner-defined kebab-case id/u);
+  assert.ok(Buffer.byteLength(help.stdout) < 1_500);
+  assert.match(help.stdout, /--help --json/u);
+  assert.match(help.stdout, /owner-defined kebab-case capabilities/u);
+
+  const detail = childProcess.spawnSync(process.execPath, [cli, "context", "--help", "--json"], {
+    encoding: "utf8",
+    shell: false
+  });
+  assert.equal(detail.status, 0, detail.stdout || detail.stderr);
+  const selectorInventory = JSON.parse(detail.stdout).result;
+  assert.ok(selectorInventory.capabilityIds.includes("dynamic-lp-fee"));
+  assert.ok(selectorInventory.surfaceIds.includes("game"));
+  assert.ok(selectorInventory.routeFamilies.some(({ id }) => id === "hook-implementation"));
+  assert.deepEqual(selectorInventory.packIds, catalog.definitions.filter(({ kind }) => kind === "pack").map(({ id }) => id));
 
   const ambiguous = childProcess.spawnSync(process.execPath, [
     cli,
@@ -1325,7 +1333,7 @@ test("context CLI emits the complete typed split-review plan for 257 capabilitie
     shell: false
   });
   assert.equal(help.status, 0, help.stdout || help.stderr);
-  assert.match(help.stdout, /256 direct capability or surface ids/u);
+  assert.match(help.stdout, /Over 256 direct ids/u);
   assert.match(help.stdout, /HOLD_SPLIT_REVIEW/u);
 });
 
