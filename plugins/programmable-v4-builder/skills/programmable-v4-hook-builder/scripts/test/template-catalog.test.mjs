@@ -49,7 +49,7 @@ test("loads one hash-bound, closed and explicitly non-allowlisting catalog", () 
   const catalog = loadTemplateCatalog({ skillRoot });
   const entries = listTemplateCatalog(catalog);
 
-  assert.equal(catalog.catalogDigest, "8c65b1a9a4f20415458be778959f632890cf76aa8da6ae3b6e768e8c6270fb50");
+  assert.equal(catalog.catalogDigest, "fbd8f7f574b2c884f1e2d3adb381630b0ba3ba9895526ed50485da2e51ae7e1f");
   assert.equal(entries.length, 43);
   assert.deepEqual(entries.map(({ id }) => id), [...entries.map(({ id }) => id)].sort());
   assert.deepEqual(

@@ -44,7 +44,7 @@
       "id": "chainlink-provider",
       "kind": "pack",
       "path": "packs/chainlink-provider.json",
-      "sha256": "7fd81ce4056d6c1158e04a7847c93fdb405e778705c9f24f3b89f1ab278846bf"
+      "sha256": "ce8851f091ed8b4774881eb45afda6337d4eef1b79404115e444ee5bc4d8dfbd"
     },
     {
       "id": "continuous-clearing-auction",

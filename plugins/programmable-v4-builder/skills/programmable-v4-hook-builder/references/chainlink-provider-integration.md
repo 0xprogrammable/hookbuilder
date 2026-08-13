@@ -8,6 +8,19 @@ Validate a project-owned profile from any candidate repository with:
 
 `node "$SKILL_ROOT/scripts/chainlink-provider-profile.mjs" check --root "$REPOSITORY_ROOT" --profile <profile.json>`
 
+Select the exact product before materialization with `--chainlink-product ccip`, `cre`, `data-feeds`, `data-streams`,
+or `vrf-v2-5`. The generic `--pack chainlink-provider` path intentionally fails before materialization because it would
+expand every product label. Product aliases fail with the exact replacement while unknown project capabilities remain
+eligible through the ordinary owner-defined architecture-review path.
+
+For the smallest closed VRF starting point, create a planning-only example in one new local directory, then run its
+reported check command:
+
+`node "$SKILL_ROOT/scripts/chainlink-provider-profile.mjs" init --root "$REPOSITORY_ROOT" --output chainlink-vrf-plan --product vrf-v2-5 --chain-id 1`
+
+The initializer uses explicit planning values and placeholder source, writes no existing path, and claims no
+implementation, deployment, provider availability, audit, approval, transaction authority, or launch readiness.
+
 The command is offline. It verifies the profile shape, semantic composition, the installed source-receipt digest and every declared candidate artifact path/digest. `CHAINLINK_PROFILE_STRUCTURALLY_VALID` still does not verify provider availability, a remote deployment, DON execution, funding, an audit, a transaction or launch approval.
 
 ## Common boundary

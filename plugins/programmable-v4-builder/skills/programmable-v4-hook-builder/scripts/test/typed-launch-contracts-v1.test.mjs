@@ -966,8 +966,18 @@ test("provider CLI validates the exact profile offline and reports no authority"
     const projectPlan = composeTemplate({
       catalog: loadTemplateCatalog({ skillRoot }),
       starterId: "blank-custom",
-      packIds: ["chainlink-provider"],
-      capabilityIds: ["cross-chain-messaging", "keeper-automation", "oracle-data", "randomness"]
+      capabilityIds: [
+        "chainlink-ccip",
+        "chainlink-cre",
+        "chainlink-data-feeds",
+        "chainlink-data-streams",
+        "chainlink-provider",
+        "chainlink-vrf-v2-5",
+        "cross-chain-messaging",
+        "keeper-automation",
+        "oracle-data",
+        "randomness"
+      ]
     });
     const projectPlanBytes = `${JSON.stringify(projectPlan, null, 2)}\n`;
     fs.writeFileSync(projectPlanPath, projectPlanBytes);
@@ -991,7 +1001,7 @@ test("provider CLI validates the exact profile offline and reports no authority"
     const incompletePlan = composeTemplate({
       catalog: loadTemplateCatalog({ skillRoot }),
       starterId: "blank-custom",
-      packIds: ["chainlink-provider"]
+      capabilityIds: ["chainlink-provider", "chainlink-vrf-v2-5", "randomness"]
     });
     fs.writeFileSync(projectPlanPath, `${JSON.stringify(incompletePlan, null, 2)}\n`);
     const missingComposition = structuredClone(validProfile);
@@ -1044,6 +1054,17 @@ test("provider CLI validates the exact profile offline and reports no authority"
     });
     assert.equal(missingResult.status, 1, missingResult.stderr || missingResult.stdout);
     assert.match(JSON.parse(missingResult.stdout).findings.map(({ code }) => code).join("\n"), /CHAINLINK_ARTIFACT_BINDING_INVALID/);
+
+    fs.writeFileSync(profile, `${JSON.stringify({ schemaVersion: 2, standardVersion: "2.0.0" }, null, 2)}\n`);
+    const wrongRootResult = childProcess.spawnSync(process.execPath, [script, "check", "--root", directory, "--profile", "profile.json"], {
+      encoding: "utf8",
+      env: { ...process.env, NO_PROXY: "*", HTTPS_PROXY: "http://127.0.0.1:1" },
+      shell: false
+    });
+    assert.equal(wrongRootResult.status, 1, wrongRootResult.stderr || wrongRootResult.stdout);
+    const wrongRootOutput = JSON.parse(wrongRootResult.stdout);
+    assert.equal(wrongRootOutput.findings.length, 1);
+    assert.equal(wrongRootOutput.findings[0].code, "CHAINLINK_PROFILE_IDENTITY_INVALID");
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
@@ -1054,6 +1075,60 @@ test("provider validation plan closure excludes materialization and child-proces
   assert.doesNotMatch(profileCli, /node:child_process|template-catalog-materializer/u);
   assert.match(profileCli, /template-catalog-composition\.mjs/u);
   assert.match(profileCli, /template-catalog-loader\.mjs/u);
+});
+
+test("provider initializer creates one closed VRF planning example that passes the offline structural check", () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-chainlink-init-"));
+  const script = path.join(skillRoot, "scripts", "chainlink-provider-profile.mjs");
+  try {
+    const initialized = childProcess.spawnSync(process.execPath, [
+      script,
+      "init",
+      "--root", directory,
+      "--output", "vrf-plan",
+      "--product", "vrf-v2-5",
+      "--chain-id", "1"
+    ], {
+      encoding: "utf8",
+      env: { ...process.env, NO_PROXY: "*", HTTPS_PROXY: "http://127.0.0.1:1" },
+      shell: false
+    });
+    assert.equal(initialized.status, 0, initialized.stderr || initialized.stdout);
+    const initializedOutput = JSON.parse(initialized.stdout);
+    assert.equal(initializedOutput.status, "CHAINLINK_VRF_PLANNING_EXAMPLE_CREATED");
+    assert.equal(initializedOutput.planningOnly, true);
+    assert.equal(initializedOutput.deploymentOrRuntimeVerified, false);
+
+    const exampleRoot = path.join(directory, "vrf-plan");
+    const plan = JSON.parse(fs.readFileSync(path.join(exampleRoot, "programmable-template.json"), "utf8"));
+    assert.deepEqual(
+      plan.selection.requestedCapabilityIds,
+      ["chainlink-provider", "chainlink-vrf-v2-5", "randomness"]
+    );
+    assert.equal(plan.selection.selectedPackIds.includes("chainlink-provider"), false);
+    assert.deepEqual(
+      plan.machineCapabilities.knownCapabilityIds.filter((id) => ["cross-chain-messaging", "keeper-automation", "oracle-data", "randomness"].includes(id)),
+      ["randomness"]
+    );
+
+    const checked = childProcess.spawnSync(process.execPath, [
+      script,
+      "check",
+      "--root", exampleRoot,
+      "--profile", "profile.json"
+    ], {
+      encoding: "utf8",
+      env: { ...process.env, NO_PROXY: "*", HTTPS_PROXY: "http://127.0.0.1:1" },
+      shell: false
+    });
+    assert.equal(checked.status, 0, checked.stderr || checked.stdout);
+    const checkedOutput = JSON.parse(checked.stdout);
+    assert.equal(checkedOutput.status, "CHAINLINK_PROFILE_STRUCTURALLY_VALID");
+    assert.equal(checkedOutput.findings.length, 0);
+    assert.equal(checkedOutput.deploymentOrRuntimeVerified, false);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("typed A1-A11 and P1-P9 decision derives verdict but never authority from GitHub projection state", () => {

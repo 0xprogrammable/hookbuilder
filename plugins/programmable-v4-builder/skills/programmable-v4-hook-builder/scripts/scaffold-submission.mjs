@@ -47,13 +47,27 @@ const surfaceDescriptors = Object.freeze({
   mobile: ["mobile-app", "mobile-client", "Mobile application", "The mobile-client boundary used by the selected product."],
   monitoring: ["monitoring", "worker", "Monitoring", "The operational monitoring and alerting boundary used by the selected product."],
   database: ["database", "database", "Database", "The persistent offchain state boundary used by the selected product."],
-  oracle: ["external-provider", "external-provider", "External data provider", "The external data source or provider boundary used by the selected product."]
+  "external-provider": ["external-provider", "external-provider", "External data provider", "The external data source or provider boundary used by the selected product."]
 });
 const planningOnlyPackIds = new Set(["test-evidence-threat-model"]);
 const narrowedPackSurfaces = Object.freeze({
   "metadata-disclosures": ["metadata"],
   "programmable-volume-fee": ["contract", "indexer", "metadata"],
   "test-evidence-threat-model": []
+});
+const chainlinkProductSurfaces = Object.freeze({
+  "chainlink-ccip": ["contract", "service"],
+  "chainlink-cre": ["keeper", "service"],
+  "chainlink-data-feeds": ["contract", "external-provider"],
+  "chainlink-data-streams": ["contract", "external-provider", "service"],
+  "chainlink-vrf-v2-5": ["contract", "external-provider"]
+});
+const chainlinkGenericCapabilityByProduct = Object.freeze({
+  "chainlink-ccip": "cross-chain-messaging",
+  "chainlink-cre": "keeper-automation",
+  "chainlink-data-feeds": "oracle-data",
+  "chainlink-data-streams": "oracle-data",
+  "chainlink-vrf-v2-5": "randomness"
 });
 const { options, positionals } = parseCliOrExit({
   command: "scaffold-submission.mjs",
@@ -205,6 +219,11 @@ function applyTemplateArchitecturePlan(submission, plan) {
     if (!pack || planningOnlyPackIds.has(packId)) continue;
     for (const slug of surfacesForDefinition(pack)) activeSurfaceSlugs.add(slug);
   }
+  const selectedCapabilities = new Set(plan.machineCapabilities.allCapabilityIds);
+  for (const [productId, surfaces] of Object.entries(chainlinkProductSurfaces)) {
+    if (!selectedCapabilities.has(productId)) continue;
+    for (const slug of surfaces) activeSurfaceSlugs.add(slug);
+  }
   for (const slug of [...activeSurfaceSlugs]) {
     if (!surfaceDescriptors[slug]) activeSurfaceSlugs.delete(slug);
   }
@@ -223,6 +242,17 @@ function applyTemplateArchitecturePlan(submission, plan) {
   for (const custom of plan.customCapabilities) {
     const slug = activeSurfaceSlugs.has("other") ? "other" : (activeSurfaceSlugs.has("contract") ? "contract" : [...activeSurfaceSlugs][0]);
     capabilitySurfaceSlugs.set(custom.id, new Set([slug]));
+  }
+  if (selectedCapabilities.has("chainlink-provider")) {
+    capabilitySurfaceSlugs.set("chainlink-provider", new Set(["contract"]));
+  }
+  for (const [productId, surfaces] of Object.entries(chainlinkProductSurfaces)) {
+    if (!selectedCapabilities.has(productId)) continue;
+    capabilitySurfaceSlugs.set(productId, new Set(surfaces));
+    const genericCapability = chainlinkGenericCapabilityByProduct[productId];
+    const assigned = capabilitySurfaceSlugs.get(genericCapability) ?? new Set();
+    for (const surface of surfaces) assigned.add(surface);
+    capabilitySurfaceSlugs.set(genericCapability, assigned);
   }
 
   const projectCapabilities = [];
@@ -301,8 +331,13 @@ function inferSecurityTriggers(capabilityId) {
     externalCalls: /adapter|cross-chain|external|map|oracle|provider|randomness|service|wrapped|yield/u.test(text),
     custody: /accumulator|custody|hook-owned|inventory|staking|vesting|yield/u.test(text),
     piiGeolocation: /geolocation|location|map/u.test(text),
-    secretBoundary: /keep|oracl|provid|random|servic|signed/u.test(text)
+    secretBoundary: capabilityNeedsSecretBoundary(text)
   };
+}
+
+function capabilityNeedsSecretBoundary(capabilityId) {
+  if (capabilityId === "chainlink-provider") return true;
+  return /(?:^|-)(?:keeper|oracle|randomness|signed)(?:-|$)/u.test(capabilityId);
 }
 
 function makeProjectSurface(surfaceId, linkedCapabilities) {

@@ -13,6 +13,7 @@ export {
   buildDirectCapabilityLegos,
   buildImplementationFeePolicy,
   buildImplementationLegoSelection,
+  chainlinkProductCapabilities,
   composeTemplate,
   parseCustomCapability,
   parseLocalTag

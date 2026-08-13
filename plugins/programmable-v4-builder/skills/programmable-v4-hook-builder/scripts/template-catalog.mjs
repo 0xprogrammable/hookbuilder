@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import {
   TemplateCatalogError,
   canonicalJson,
+  chainlinkProductCapabilities,
   listImplementationLegos,
   listTemplateCatalog,
   loadTemplateCatalog,
@@ -136,6 +137,7 @@ function parseMaterialize(args) {
     starterId: null,
     packIds: [],
     capabilityIds: [],
+    chainlinkProducts: [],
     customCapabilities: [],
     localTags: [],
     targetDirectory: null
@@ -157,6 +159,15 @@ function parseMaterialize(args) {
     }
     if (argument === "--capability") {
       options.capabilityIds.push(requireValue(args, ++index, "--capability"));
+      continue;
+    }
+    if (argument === "--chainlink-product") {
+      const product = requireValue(args, ++index, "--chainlink-product");
+      if (options.chainlinkProducts.includes(product)) usageError(`Duplicate Chainlink product: ${product}.`);
+      options.chainlinkProducts.push(product);
+      for (const capability of chainlinkProductCapabilities(product)) {
+        if (!options.capabilityIds.includes(capability)) options.capabilityIds.push(capability);
+      }
       continue;
     }
     if (argument === "--custom-capability") {
@@ -250,11 +261,13 @@ function materializeHelp() {
   return [
     "Usage: template-catalog.mjs materialize --starter <id> --target <new-directory>",
     "       [--pack <id>]... [--capability <known-id>]... [--custom-capability <id>=<visible-label>]...",
+    "       [--chainlink-product ccip|cre|data-feeds|data-streams|vrf-v2-5]...",
     "       [--local-tag <slug>]...",
     "",
     "Create planning artifacts and exact-trigger source accelerators in one new target directory.",
     "--target names the new plan directory itself, not a parent into which another folder is added.",
     "Dependencies and mandatory packs are included automatically.",
+    "Chainlink requires --chainlink-product with one exact product; --pack chainlink-provider is intentionally incomplete.",
     "Known --capability selections are exact Legos and never expand sibling capabilities from a pack.",
     "Implementation Lego maturity never implies integration, fee conformance, audit, deployment or production readiness.",
     "Unknown capabilities remain owner-defined and route to architecture review.",

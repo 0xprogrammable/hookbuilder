@@ -15,6 +15,7 @@ import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
 import { SUBMIT_LAUNCH_INTAKE_CONTRACT as INTAKE } from "./registry-intake-contract.mjs";
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const launchTarget = INTAKE.repository;
+const MAX_CHECK_INPUT_BYTES = 32 * 1024 * 1024;
 const delegatedCommands = new Map([
   ["open-world", { script: "open-world.mjs", prefix: [] }],
   ["application-recheck", { script: "application-recheck.mjs", prefix: [] }],
@@ -221,6 +222,9 @@ async function execute(command, options, positionals) {
   }
   if (command === "check") {
     const submission = resolveRegularFile(repositoryRoot, positionals[0]);
+    if (detectSubmissionFormat(submission) === "open-world-v2") {
+      return executeOpenWorldV2Check({ submission, repositoryRoot, options });
+    }
     const args = [submission, "--repository-root", repositoryRoot];
     const result = requireJsonResult(
       runBundledCommand("validate-submission.mjs", args, {
@@ -477,12 +481,14 @@ function startHelp() {
   return [
     "Usage: cli.mjs start --starter <id> --target <new-directory>",
     "       [--pack <id>]... [--capability <known-id>]... [--custom-capability <id>=<visible-label>]...",
+    "       [--chainlink-product ccip|cre|data-feeds|data-streams|vrf-v2-5]...",
     "       [--local-tag <slug>]...",
     "",
     "Create one deterministic planning directory from a starter and capability packs.",
     "--target names the new directory itself; its parent must already exist.",
     "Keep the plan inside the project repository when it will later be passed to cli.mjs scaffold.",
     "Dependencies and mandatory packs are included automatically.",
+    "Chainlink requires --chainlink-product with one exact product; --pack chainlink-provider is intentionally incomplete.",
     "Known --capability selections are exact Legos and never expand sibling capabilities from a pack.",
     "Unknown capabilities stay eligible and route to architecture review.",
     "No Git, network, submission, deployment or publication action occurs."
@@ -519,6 +525,89 @@ function checkCommandOutcome(result, options) {
       ? "REPORT_GENERATED_ONLY_NOT_READINESS"
       : "SELECTED_READINESS_GATE_PASSED",
     readinessFlags: ["--require-design-ready", "--require-intake-ready", "--require-prototype-validated"]
+  };
+}
+
+function detectSubmissionFormat(submissionPath) {
+  let value;
+  try {
+    value = parseBoundedStrictJsonBytes(fs.readFileSync(submissionPath), {
+      maxSourceBytes: MAX_CHECK_INPUT_BYTES
+    });
+  } catch {
+    return "v1-or-unknown";
+  }
+  if (
+    value?.$schema === "urn:programmable:v4-hook-submission:2.0.0"
+    || (value?.schemaVersion === 2 && value?.standardVersion === "2.0.0")
+  ) return "open-world-v2";
+  return "v1-or-unknown";
+}
+
+function executeOpenWorldV2Check({ submission, repositoryRoot, options }) {
+  if (path.basename(submission) !== "submission.v2.json") {
+    throw new CliFailure(
+      "CHECK_V2_PACKAGE_REQUIRED",
+      "open-world v2 uses a package: name this file submission.v2.json, keep its bound companion records beside it, then rerun check"
+    );
+  }
+  if (options.reportPath !== null) {
+    throw new CliFailure(
+      "CHECK_V2_REPORT_PATH_UNSUPPORTED",
+      "open-world v2 validation is read-only and does not write a V1 compatibility report; remove --write-report and rerun check"
+    );
+  }
+  if (
+    options.requireDesignReady
+    || options.requireIntakeReady
+    || options.requireReady
+    || options.requirePrototypeValidated
+  ) {
+    throw new CliFailure(
+      "CHECK_V2_GATE_UNSUPPORTED",
+      "open-world v2 has its own package validity and review states; remove the V1 --require-* flag and rerun check"
+    );
+  }
+  const packageRoot = path.dirname(submission);
+  let delegated;
+  try {
+    delegated = requireJsonResult(
+      runBundledCommand(
+        "open-world.mjs",
+        ["validate", packageRoot, "--repository-root", repositoryRoot],
+        { cwd: repositoryRoot, failureCode: "OPEN_WORLD_V2_PACKAGE_INVALID" }
+      ),
+      "open-world.mjs"
+    );
+  } catch (error) {
+    if (error instanceof CliFailure && error.code === "OPEN_WORLD_V2_PACKAGE_INVALID") {
+      throw new CliFailure(
+        "OPEN_WORLD_V2_PACKAGE_INVALID",
+        "the detected open-world v2 submission must be checked with its complete bound package",
+        {
+          exitCode: error.exitCode,
+          details: {
+            submissionFormat: "open-world-v2",
+            package: relative(repositoryRoot, packageRoot),
+            recoveryCommand: `node $SKILL_ROOT/scripts/cli.mjs open-world validate ${relative(repositoryRoot, packageRoot)} --repository-root $REPOSITORY_ROOT`,
+            validatorResult: error.details
+          }
+        }
+      );
+    }
+    throw error;
+  }
+  return {
+    ...delegated.result,
+    submissionFormat: "open-world-v2",
+    validatorCommand: "open-world validate",
+    reportWritten: null,
+    commandOutcome: {
+      reportGenerated: true,
+      enforcedGate: "open-world-v2-package-valid",
+      selectedGatePassed: delegated.result?.valid === true,
+      zeroExitMeaning: "OPEN_WORLD_V2_PACKAGE_VALIDATED_NOT_APPROVAL"
+    }
   };
 }
 function runDelegatedCommand(command, args) {

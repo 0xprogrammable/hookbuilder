@@ -230,6 +230,47 @@ test("check can diagnose without writing and rejects conflicting report options"
   }
 });
 
+test("check detects an open-world v2 submission and routes the complete package to the v2 validator", () => {
+  const fixture = createRepository();
+  try {
+    const packageRoot = path.join(fixture.repository, "open-world-v2");
+    fs.cpSync(path.join(skillRoot, "assets", "templates", "open-world-v2", "new-idea"), packageRoot, {
+      recursive: true
+    });
+    const submission = path.join(packageRoot, "submission.v2.json");
+    const result = runCli(["check", submission, "--no-write", "--repository-root", fixture.repository]);
+    assert.equal(result.status, 0, result.stdout || result.stderr);
+    assert.equal(result.stderr, "");
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.ok, true);
+    assert.equal(output.result.submissionFormat, "open-world-v2");
+    assert.equal(output.result.validatorCommand, "open-world validate");
+    assert.equal(output.result.valid, true);
+    assert.equal(output.result.reportWritten, null);
+    assert.equal(output.result.commandOutcome.zeroExitMeaning, "OPEN_WORLD_V2_PACKAGE_VALIDATED_NOT_APPROVAL");
+    assert.ok(output.result.report.findings.length < 10);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("check returns one recovery response when a v2 file is not a canonical package entry", () => {
+  const fixture = createRepository();
+  try {
+    const source = path.join(skillRoot, "assets", "templates", "open-world-v2", "new-idea", "submission.v2.json");
+    const renamed = path.join(fixture.repository, "submission.json");
+    fs.copyFileSync(source, renamed);
+    const result = runCli(["check", renamed, "--no-write", "--repository-root", fixture.repository]);
+    assert.equal(result.status, 2, result.stdout || result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.error.code, "CHECK_V2_PACKAGE_REQUIRED");
+    assert.match(output.error.message, /name this file submission\.v2\.json/u);
+    assert.equal(output.error.details, undefined);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
 test("fresh scaffold, check and package reaches content gates without a hidden report flag", () => {
   const fixture = createRepository();
   try {

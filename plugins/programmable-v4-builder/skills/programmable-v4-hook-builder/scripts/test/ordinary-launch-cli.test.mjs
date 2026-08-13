@@ -63,17 +63,25 @@ test("fresh ordinary launch scaffolds a permissionless token with the mandatory 
     assert.equal(codes.has("HOOK_USAGE_UNRESOLVED"), false);
     assert.equal(output.result.commandOutcome.zeroExitMeaning, "REPORT_GENERATED_ONLY_NOT_READINESS");
     assert.equal(output.result.reportWritten, null);
+
+    const providerDisclosures = submission.projectCapabilities.find(({ id }) => id === "provider-disclosures");
+    const publicMetadata = submission.projectCapabilities.find(({ id }) => id === "public-metadata");
+    const metadataSurface = submission.projectSurfaces.find(({ id }) => id === "metadata-surface");
+    assert.equal(providerDisclosures.securityTriggers.secretBoundary, false);
+    assert.equal(publicMetadata.securityTriggers.secretBoundary, false);
+    assert.equal(metadataSurface.exposure.usesSecrets, false);
+    assert.equal(metadataSurface.profiles.secretBoundary.status, "not-applicable");
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
-test("Chainlink provider pack preserves the canonical external-provider surface through scaffold", () => {
+test("Chainlink VRF selection materializes only the product-required provider surfaces", () => {
   const repository = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-chainlink-surface-"));
   try {
     assert.equal(childProcess.spawnSync("git", ["init", "--quiet", repository], { encoding: "utf8", shell: false }).status, 0);
     const planDirectory = path.join(repository, "chainlink-plan");
-    const started = run(["start", "--starter", "ordinary-launch", "--pack", "chainlink-provider", "--target", planDirectory], repository);
+    const started = run(["start", "--starter", "ordinary-launch", "--chainlink-product", "vrf-v2-5", "--target", planDirectory], repository);
     assert.equal(started.status, 0, started.stdout || started.stderr);
     const scaffolded = run([
       "scaffold",
@@ -85,13 +93,45 @@ test("Chainlink provider pack preserves the canonical external-provider surface 
     ], repository);
     assert.equal(scaffolded.status, 0, scaffolded.stdout || scaffolded.stderr);
     const submission = JSON.parse(fs.readFileSync(path.join(repository, "submissions", "chainlink-provider-surface", "submission.json"), "utf8"));
-    const provider = submission.projectSurfaces.find(({ id }) => id === "oracle-surface");
+    const provider = submission.projectSurfaces.find(({ id }) => id === "external-provider-surface");
     assert.ok(provider, JSON.stringify(submission.projectSurfaces, null, 2));
     assert.equal(provider.kind, "external-provider");
     assert.equal(provider.executionBoundary, "external-provider");
     assert.equal(provider.exposure.usesSecrets, true);
     assert.equal(provider.profiles.secretBoundary.status, "applicable");
-    assert.equal(submission.builderTemplate.templateSelection.selectedPackIds.includes("chainlink-provider"), true);
+    assert.equal(submission.builderTemplate.templateSelection.selectedPackIds.includes("chainlink-provider"), false);
+    assert.equal(submission.builderTemplate.templateSelection.selectedCapabilityIds.includes("chainlink-provider"), true);
+    assert.equal(submission.builderTemplate.templateSelection.selectedCapabilityIds.includes("chainlink-vrf-v2-5"), true);
+    const surfaceIds = submission.projectSurfaces.map(({ id }) => id);
+    assert.equal(surfaceIds.includes("keeper-surface"), false);
+    assert.equal(surfaceIds.includes("service-surface"), false);
+    assert.equal(surfaceIds.includes("external-provider-surface"), true);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test("Chainlink foundation-only and product aliases fail early with one actionable recovery", () => {
+  const repository = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-chainlink-product-choice-"));
+  try {
+    assert.equal(childProcess.spawnSync("git", ["init", "--quiet", repository], { encoding: "utf8", shell: false }).status, 0);
+    const foundationOnly = run([
+      "start", "--starter", "ordinary-launch", "--pack", "chainlink-provider", "--target", path.join(repository, "foundation")
+    ], repository);
+    assert.equal(foundationOnly.status, 1, foundationOnly.stdout || foundationOnly.stderr);
+    const foundationOutput = JSON.parse(foundationOnly.stdout);
+    assert.equal(foundationOutput.error.code, "CHAINLINK_PRODUCT_REQUIRED");
+    assert.match(foundationOutput.error.message, /--chainlink-product vrf-v2-5/u);
+    assert.equal(foundationOutput.error.details.eligibilityEffect, "none");
+
+    const alias = run([
+      "start", "--starter", "ordinary-launch", "--pack", "vrf", "--target", path.join(repository, "alias")
+    ], repository);
+    assert.equal(alias.status, 1, alias.stdout || alias.stderr);
+    const aliasOutput = JSON.parse(alias.stdout);
+    assert.equal(aliasOutput.error.code, "CHAINLINK_PRODUCT_ALIAS_INVALID");
+    assert.match(aliasOutput.error.message, /--chainlink-product vrf-v2-5/u);
+    assert.equal(aliasOutput.error.details.eligibilityEffect, "none");
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
