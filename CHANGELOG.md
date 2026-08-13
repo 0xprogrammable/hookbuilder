@@ -200,8 +200,8 @@ repository gate, external evaluation, independent review, or owner-controlled re
 - Proposal-stage implementation files remain visible as unverified evidence without pretending the proposal has
   passed prototype gates.
 
-This candidate is local and unpublished. The public `v0.4.0` release remains current until the release cadence and all
-candidate gates are satisfied.
+Historical candidate note: this candidate was local and unpublished, and its public predecessor at preparation time
+was `v0.4.0`. Current stable public guidance is `v0.5.1`.
 
 Compatibility note: a package prepared by `v0.4.0` remains bound to its original platform-repository pull request.
 Continue its status and update journey with the pinned `v0.4.0` client; do not silently move its Git history or package

@@ -65,18 +65,6 @@ The canonical package is
 layout. `SKILL.md`, references, schemas, templates, scripts, tests and `LICENSE.txt` form one package; copying only the
 entry file is incomplete.
 
-For an interactive installation from this repository:
-
-```bash
-gh skill install 0xprogrammable/hookbuilder
-```
-
-To preselect the skill while keeping setup interactive:
-
-```bash
-gh skill install 0xprogrammable/hookbuilder programmable-v4-hook-builder
-```
-
 For reproducible public work, preview and pin the immutable current release:
 
 ```bash

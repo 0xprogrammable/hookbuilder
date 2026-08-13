@@ -58,6 +58,71 @@ function sha256Text(value) {
   return crypto.createHash("sha256").update(value, "utf8").digest("hex");
 }
 
+function markdownFiles(root) {
+  const found = [];
+  const visit = (directory) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      if ([".git", "node_modules"].includes(entry.name)) continue;
+      const absolutePath = path.join(directory, entry.name);
+      if (entry.isDirectory()) visit(absolutePath);
+      else if (entry.isFile() && entry.name.endsWith(".md")) found.push(absolutePath);
+    }
+  };
+  visit(root);
+  return found.sort();
+}
+
+function continuedCommands(source, prefix) {
+  const lines = source.split("\n");
+  const commands = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!lines[index].includes(prefix)) continue;
+    let command = lines[index];
+    while (command.trimEnd().endsWith("\\") && index + 1 < lines.length) {
+      index += 1;
+      command += `\n${lines[index]}`;
+    }
+    commands.push(command);
+  }
+  return commands;
+}
+
+test("public Markdown installs resolve only the immutable v0.5.1 stable release", () => {
+  const documents = markdownFiles(repositoryRoot).map((absolutePath) => ({
+    path: path.relative(repositoryRoot, absolutePath),
+    source: fs.readFileSync(absolutePath, "utf8")
+  }));
+  const installs = documents.flatMap((document) => continuedCommands(
+    document.source,
+    "gh skill install 0xprogrammable/hookbuilder"
+  ).map((command) => ({ ...document, command })));
+  const previews = documents.flatMap((document) => continuedCommands(
+    document.source,
+    "gh skill preview 0xprogrammable/hookbuilder"
+  ).map((command) => ({ ...document, command })));
+
+  assert.ok(installs.length > 0);
+  assert.ok(previews.length > 0);
+  for (const { path: documentPath, command } of installs) {
+    assert.match(command, /(?:@v0\.5\.1\b|--pin\s+v0\.5\.1\b)/u, documentPath);
+  }
+  for (const { path: documentPath, command } of previews) {
+    assert.match(command, /@v0\.5\.1\b/u, documentPath);
+  }
+
+  const forbiddenActiveClaims = [
+    /\bv(?!0\.5\.1\b)\d+\.\d+(?:\.\d+)?\b[^\n]{0,96}\b(?:is|remains)\s+(?:the\s+)?(?:current|latest|stable|live|published)\b/iu,
+    /\b(?:current|latest|stable|published)\s+(?:public\s+)?(?:release|version|identity|guidance)?[^\n]{0,80}\bv(?!0\.5\.1\b)\d+\.\d+(?:\.\d+)?\b/iu,
+    /\bv(?!0\.5\.1\b)\d+\.\d+(?:\.\d+)?\b[^\n]{0,96}\badds?\s+(?:a\s+)?live\b/iu
+  ];
+  for (const { path: documentPath, source } of documents) {
+    for (const line of source.split("\n")) {
+      if (/\b(?:historical|unreleased|not released|not published|predecessor|compatibility)\b/iu.test(line)) continue;
+      for (const pattern of forbiddenActiveClaims) assert.doesNotMatch(line, pattern, documentPath);
+    }
+  }
+});
+
 test("stable v0.5.1 history is immutable and v0.6.0 remains an unpublished local candidate", () => {
   const versionAuthority = readJson("config/plugin.json");
   const packageDocument = readJson("package.json");
