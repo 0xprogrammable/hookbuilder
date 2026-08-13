@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Explore what each part of the Programmable v4 Builder repository owns, how checks fit together and where external authority begins.">
+  <meta name="theme-color" content="#0b0c0b">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0c0b'/%3E%3Cpath d='M18 32h28M32 18v28' stroke='%23c8ff65' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
   <title>Programmable v4 Builder repository explorer</title>
   <style>
     :root {
@@ -16,7 +18,7 @@
       --panel-2: #181916;
       --panel-3: #20211d;
       --line: #2e302a;
-      --line-strong: #474a40;
+      --line-strong: #62665a;
       --lime: #c8ff65;
       --lime-ink: #172000;
       --gold: #f4c76b;
@@ -28,7 +30,6 @@
     }
 
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
     body {
       margin: 0;
       min-width: 20rem;
@@ -41,7 +42,7 @@
       -moz-osx-font-smoothing: grayscale;
     }
     button, select, input { font: inherit; }
-    button, a, select { -webkit-tap-highlight-color: transparent; }
+    button, a, select { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
     a { color: inherit; }
     code, .mono {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -115,8 +116,10 @@
     }
     .nav-inner { display: flex; gap: 0.35rem; overflow-x: auto; padding-block: 0.6rem; scrollbar-width: thin; }
     .nav-inner a {
+      display: inline-flex;
+      align-items: center;
       flex: 0 0 auto;
-      min-height: 2.5rem;
+      min-height: 2.75rem;
       padding: 0.58rem 0.9rem;
       border-radius: 0.7rem;
       color: var(--muted);
@@ -167,8 +170,9 @@
       font-weight: 700;
       transition-property: color, background-color, border-color, scale;
       transition-duration: 140ms;
+      transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
     }
-    .filter:hover, .shape-button:hover, .trace-button:hover, .copy-button:hover { color: var(--ink); border-color: #62665a; }
+    .filter:hover, .shape-button:hover, .trace-button:hover, .copy-button:hover { color: var(--ink); border-color: #777c6b; }
     .filter:active, .shape-button:active, .trace-button:active, .copy-button:active { scale: 0.96; }
     .filter[aria-pressed="true"], .shape-button[aria-pressed="true"] { border-color: var(--lime); background: var(--lime); color: var(--lime-ink); }
     .search-field { display: grid; gap: 0.35rem; min-width: min(100%, 18rem); color: var(--muted); font-size: 0.86rem; font-weight: 700; }
@@ -218,13 +222,14 @@
       cursor: pointer;
       box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.14);
       transition-property: border-color, background-color, opacity, scale, box-shadow;
-      transition-duration: 160ms;
+      transition-duration: 140ms;
+      transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
     }
     .node:hover { border-color: #777c6b; }
     .node:active { scale: 0.96; }
     .node.active { border-color: var(--lime); box-shadow: 0 0 0 1px var(--lime), 0 0.9rem 2.5rem rgb(200 255 101 / 0.09); }
     .node.related { border-color: #77964d; }
-    .node.dimmed { opacity: 0.24; }
+    .node.dimmed { border-color: #62665a; background: #151613; color: #d1cec5; }
     .node[hidden] { display: none; }
     .node-kicker { display: block; margin-block-end: 0.5rem; color: var(--muted); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
     .node-title { display: block; margin-block-end: 0.4rem; font-size: 0.98rem; font-weight: 800; }
@@ -255,12 +260,13 @@
     }
     .file-link:hover { text-decoration: underline; }
     .connection-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-block-start: 0.8rem; }
-    .connection-button { border: 0; border-radius: 999px; padding: 0.42rem 0.65rem; background: #2a2c26; color: #d8d5cc; cursor: pointer; }
+    .connection-button { min-height: 2.75rem; border: 1px solid #62665a; border-radius: 999px; padding: 0.5rem 0.75rem; background: #2a2c26; color: #e6e3da; cursor: pointer; }
     .connection-button:hover { background: #35382f; }
     .shape-switcher { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin-block-end: 1rem; }
     .shape-button { min-height: 4.5rem; text-align: start; }
     .lab-grid { display: grid; grid-template-columns: minmax(17rem, 0.75fr) minmax(0, 1.55fr); gap: 1rem; }
     .shape-card, .flow-panel, .change-card, .first-hour-card {
+      min-width: 0;
       padding: 1.35rem;
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -275,10 +281,10 @@
     .metric span { display: block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; opacity: 0.65; }
     .metric strong { display: block; margin-block-start: 0.2rem; font-size: 0.95rem; }
     .flow-list { display: grid; gap: 0.65rem; margin: 0; padding: 0; list-style: none; }
-    .flow-item { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; gap: 0.8rem; align-items: start; padding: 0.85rem; border-radius: 0.8rem; background: var(--panel-2); }
+    .flow-item { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; gap: 0.8rem; align-items: start; padding: 0.85rem; border: 1px solid transparent; border-radius: 0.8rem; background: var(--panel-2); }
     .flow-index { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 50%; background: #34372f; color: var(--muted); font-weight: 800; }
     .flow-item.required .flow-index { background: var(--lime); color: var(--lime-ink); }
-    .flow-item.optional { opacity: 0.5; }
+    .flow-item.optional { border-color: #62665a; border-style: dashed; background: #151613; }
     .flow-copy strong, .flow-copy span { display: block; }
     .flow-copy span { color: var(--muted); font-size: 0.82rem; }
     .flow-state { align-self: center; max-width: 12ch; color: var(--muted); font-size: 0.7rem; font-weight: 800; text-align: end; text-wrap: balance; }
@@ -301,14 +307,16 @@
     .boundary { margin-block: 0.2rem; padding: 0.65rem 1rem; border: 1px dashed var(--violet); border-radius: 999px; color: var(--violet); text-align: center; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
     .change-layout { display: grid; grid-template-columns: minmax(16rem, 0.65fr) minmax(0, 1.35fr); gap: 1rem; }
     .scenario-select { width: 100%; margin-block: 0.5rem 1rem; }
-    .change-stack { display: grid; gap: 0.7rem; }
-    .change-step { padding: 1rem; border-radius: 0.8rem; background: var(--panel-2); }
+    .change-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.7rem; }
+    .change-step { min-width: 0; padding: 1rem; border-radius: 0.8rem; background: var(--panel-2); }
     .change-step small { display: block; margin-block-end: 0.3rem; color: var(--lime); font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; }
     .change-step p { margin: 0; color: var(--muted); }
     .command {
       position: relative;
+      min-width: 0;
+      max-width: 100%;
       margin-block: 0.75rem;
-      padding: 1rem 3.5rem 1rem 1rem;
+      padding: 1rem 8.75rem 1rem 1rem;
       overflow-x: auto;
       border: 1px solid var(--line);
       border-radius: 0.8rem;
@@ -316,34 +324,37 @@
       color: #e6e3da;
       white-space: pre;
     }
-    .copy-button { position: absolute; inset-block-start: 0.45rem; inset-inline-end: 0.45rem; min-height: 2.35rem; padding: 0.35rem 0.65rem; font-size: 0.78rem; }
+    .copy-button { position: absolute; inset-block-start: 0.45rem; inset-inline-end: 0.45rem; min-width: 7.5rem; min-height: 2.75rem; padding: 0.5rem 0.75rem; font-size: 0.78rem; }
     .hour-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
     .first-hour-card { display: flex; flex-direction: column; }
     .first-hour-card .time { color: var(--lime); font: 800 0.8rem/1 ui-monospace, monospace; }
     .first-hour-card p { flex: 1; color: var(--muted); }
-    .first-hour-card a { color: var(--blue); }
+    .first-hour-card a { display: inline-flex; align-items: center; width: fit-content; max-width: 100%; min-height: 2.75rem; overflow-wrap: anywhere; color: var(--blue); }
     .guardrail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
     .guardrail { padding: 1.2rem; border-radius: var(--radius); background: var(--panel); }
     .guardrail strong { color: var(--lime); }
     .guardrail.no strong { color: var(--rose); }
     .guardrail p { margin: 0.4rem 0 0; color: var(--muted); }
     footer { padding-block: 2.5rem; border-block-start: 1px solid var(--line); color: var(--muted); }
+    .map-empty { margin: 0; padding: 2rem 1rem; color: var(--muted); text-align: center; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     [hidden] { display: none !important; }
 
     @media (max-width: 66rem) {
-      .map-layout, .lab-grid, .change-layout { grid-template-columns: 1fr; }
+      .map-layout, .lab-grid, .change-layout { grid-template-columns: minmax(0, 1fr); }
       .inspector { position: static; min-height: 0; }
       .hero-grid { grid-template-columns: 1fr; }
       .shape-switcher { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 46rem) {
       .shell { width: min(100% - 1.1rem, 92rem); }
+      .nav-inner { gap: 0.25rem; }
+      .nav-inner a { padding-inline: 0.75rem; }
       .node-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 0.65rem; min-height: 0; }
       .map-stage { min-height: 0; }
       #edgeLayer { display: none; }
       .node { min-height: 9.5rem; }
-      .hour-grid, .guardrail-grid { grid-template-columns: 1fr; }
+      .hour-grid, .guardrail-grid { grid-template-columns: minmax(0, 1fr); }
       .phase { grid-template-columns: auto 1fr; }
       .phase .owner { grid-column: 2; text-align: start; }
     }
@@ -353,9 +364,15 @@
       .flow-item { grid-template-columns: 2rem minmax(0, 1fr); }
       .flow-state { grid-column: 2; }
     }
+    @media (prefers-reduced-motion: no-preference) {
+      html { scroll-behavior: smooth; }
+    }
     @media (prefers-reduced-motion: reduce) {
-      html { scroll-behavior: auto; }
-      *, *::before, *::after { transition-duration: 0.01ms !important; }
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
     }
   </style>
 </head>
@@ -365,7 +382,7 @@
   <header class="shell">
     <div class="hero-grid">
       <div>
-        <p class="eyebrow">Interactive repository guide · v0.5.1 source</p>
+        <p class="eyebrow">Interactive repository guide · post v0.5.1 main candidate · base 381adbf</p>
         <h1>Understand the repository</h1>
         <p class="lede">Use this guide to see how an idea becomes a reviewable project. It explains what each repository part does and where local checks stop. It is not a validator, audit, approval or deployment tool.</p>
       </div>
@@ -424,10 +441,12 @@
         <div class="map-stage" id="mapStage" role="region" aria-label="Repository component map">
           <svg id="edgeLayer" aria-hidden="true"></svg>
           <div id="nodeGrid" class="node-grid" role="group" aria-label="Repository components"></div>
+          <p id="mapEmpty" class="map-empty" hidden>No components match this filter.</p>
         </div>
         <aside id="inspector" class="inspector" aria-live="polite" aria-label="Details for the selected component"></aside>
       </div>
       <p id="mapStatus" class="sr-only" role="status"></p>
+      <p id="copyStatus" class="sr-only" role="status"></p>
     </section>
 
     <section id="shape-lab" aria-labelledby="shape-title">
@@ -598,6 +617,8 @@
     const grid = document.querySelector("#nodeGrid");
     const inspector = document.querySelector("#inspector");
     const mapStatus = document.querySelector("#mapStatus");
+    const mapEmpty = document.querySelector("#mapEmpty");
+    const copyStatus = document.querySelector("#copyStatus");
     let activeId = "compiler";
     let activeFilter = "all";
 
@@ -641,7 +662,11 @@
         <div class="connection-list">${incoming.length ? incoming.map(connectionButton).join("") : '<span class="mono" style="color: var(--faint)">No repository input</span>'}</div>
         <h3 class="inspector-subhead">Outputs</h3>
         <div class="connection-list">${outgoing.length ? outgoing.map(connectionButton).join("") : '<span class="mono" style="color: var(--faint)">No repository output</span>'}</div>`;
-      inspector.querySelectorAll(".connection-button").forEach(button => button.addEventListener("click", () => selectComponent(button.dataset.target)));
+      inspector.querySelectorAll(".connection-button").forEach(button => button.addEventListener("click", () => {
+        const target = button.dataset.target;
+        selectComponent(target);
+        requestAnimationFrame(() => document.querySelector(`#node-${target}`)?.focus());
+      }));
       if (announce) mapStatus.textContent = `${item.title} selected. ${incoming.length} inputs and ${outgoing.length} outputs.`;
       drawEdges();
     }
@@ -678,6 +703,7 @@
         node.hidden = !(matchesType && matchesText);
         if (!node.hidden) count += 1;
       });
+      mapEmpty.hidden = count !== 0;
       mapStatus.textContent = `${count} components shown.`;
       requestAnimationFrame(drawEdges);
     }
@@ -767,6 +793,7 @@
           try {
             await navigator.clipboard.writeText(text);
             button.textContent = "Copied";
+            copyStatus.textContent = "Command copied to the clipboard.";
           } catch {
             const selection = window.getSelection();
             const range = document.createRange();
@@ -774,6 +801,7 @@
             selection.removeAllRanges();
             selection.addRange(range);
             button.textContent = "Selected";
+            copyStatus.textContent = "Clipboard access was unavailable. The command is selected for manual copy.";
           }
           window.setTimeout(() => { button.textContent = defaultLabel; }, 1400);
         });
