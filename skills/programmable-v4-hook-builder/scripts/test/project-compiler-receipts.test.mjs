@@ -91,6 +91,35 @@ test("tradable execution authors distinct typed quote and execution results with
 });
 
 
+test("executor batches tracking inspection across bounded artifact path groups", async (t) => {
+  const extraFiles = Array.from({ length: 129 }, (_, index) => [`evidence/batch-${index}.txt`, `batch ${index}\n`]);
+  const fixture = createMaterializedRepository(t, {
+    extraFiles,
+    setup: (root, plan) => {
+      for (const [index, [artifactPath]] of extraFiles.entries()) {
+        const bytes = fs.readFileSync(path.join(root, artifactPath));
+        plan.artifacts.evidence.push({
+          id: `batch-artifact-${index}`,
+          path: artifactPath,
+          kind: "batch-evidence",
+          systemRefs: ["service-component"],
+          required: true,
+          status: "verified",
+          sha256: sha256(bytes),
+          byteLength: bytes.length
+        });
+      }
+    }
+  });
+  const execution = await executeProjectCommands({
+    repositoryRoot: fixture.root,
+    repositoryPlan: fixture.plan,
+    outputPlanPath: ".programmable/repository-plan.v1.json"
+  });
+  assert.equal(execution.status, "PROJECT_COMMAND_EVIDENCE_READY_TO_COMMIT");
+});
+
+
 test("Forge runner evidence rejects zero tests and a one-PASS canonical result printer without route calls", () => {
   const manifest = createStandardTradeCapabilityManifestFixtureV1({ applicationId: "runner-regression", marketRef: "primary-market" });
   const declaration = manifest.testEvidence.quoteTests[0];
@@ -359,6 +388,14 @@ test("executor and COMPLETE validation reject repeated, no-op, symlinked, timed-
   await assert.rejects(
     executeProjectCommands({ repositoryRoot: drifted.root, repositoryPlan: drifted.plan, outputPlanPath: ".programmable/repository-plan.v1.json" }),
     ({ code }) => ["PROJECT_SOURCE_DIRTY", "PROJECT_SOURCE_DRIFT"].includes(code)
+  );
+
+  const ignoredEvidence = createMaterializedRepository(t, {
+    extraFiles: [[".gitignore", "node_modules/\n.programmable/repository-plan.materializing.v1.json\n.programmable/repository-plan.v1.json\n"]]
+  });
+  await assert.rejects(
+    executeProjectCommands({ repositoryRoot: ignoredEvidence.root, repositoryPlan: ignoredEvidence.plan, outputPlanPath: ".programmable/repository-plan.v1.json" }),
+    ({ code }) => code === "PROJECT_EXECUTION_OUTPUT_IGNORED"
   );
 
   const fabricated = await createCompleteRepository(t);

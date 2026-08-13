@@ -70,12 +70,12 @@ export function projectCommandExecutorIdentity() {
 }
 export function inspectCleanProjectSource(repositoryRoot) {
   const root = fs.realpathSync(repositoryRoot);
-  const topLevel = git(root, ["rev-parse", "--show-toplevel"]);
-  if (!topLevel.ok || fs.realpathSync(topLevel.output) !== root) {
+  const revision = git(root, ["rev-parse", "--show-toplevel", "HEAD", "HEAD^{tree}"]);
+  const revisionLines = coalesce(revision.output, "").split("\n");
+  const [topLevel = root, headCommit, tree] = revisionLines;
+  if ([!revision.ok, revisionLines.length !== 3, fs.realpathSync(topLevel) !== root].some(Boolean)) {
     throw executionError("PROJECT_SOURCE_ROOT_INVALID", "repository root must be the exact Git worktree root");
   }
-  const headCommit = requiredGit(root, ["rev-parse", "HEAD"], "PROJECT_SOURCE_HEAD_UNAVAILABLE");
-  const tree = requiredGit(root, ["rev-parse", "HEAD^{tree}"], "PROJECT_SOURCE_TREE_UNAVAILABLE");
   const status = requiredGit(root, ["status", "--porcelain=v1", "--untracked-files=all"], "PROJECT_SOURCE_STATUS_UNAVAILABLE");
   if (status !== "") throw executionError("PROJECT_SOURCE_DIRTY", "project command execution requires a clean Git worktree", { porcelain: status.split("\n").slice(0, 32) });
   const branch = git(root, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
@@ -285,7 +285,7 @@ export async function executeProjectCommands({ repositoryRoot, repositoryPlan, o
       });
       receipts.push({ command, receipt, artifact: context.receiptArtifacts.get(command.id), tradeResult, resultArtifact: coalesce(tradeContext?.resultArtifact, null) });
     }
-    verifyBoundArtifacts(root, context.boundArtifacts);
+    verifyBoundArtifacts(root, context.boundArtifacts, gitPathSet(root));
     assertSameProjectSource(source, inspectCleanProjectSource(root));
     const completedPlan = materializeCompletedPlan(repositoryPlan, receipts);
     const writtenPaths = [];
@@ -421,10 +421,9 @@ function validateExecutionPreconditions(root, repositoryPlan, outputPlanPath) {
   if (any(tradeResultArtifacts.size !== tradeCommandIds.size, [...tradeResultArtifacts.keys()].some((id) => !tradeCommandIds.has(id)))) {
     throw executionError("TRADE_RESULT_ARTIFACT_CARDINALITY_INVALID", "each quote-test and execution-test command needs one canonical result artifact and no other command may have one");
   }
-  verifyBoundArtifacts(root, boundArtifacts);
-  for (const artifact of receiptArtifacts.values()) assertNewEvidencePath(root, artifact.path);
-  for (const artifact of tradeResultArtifacts.values()) assertNewEvidencePath(root, artifact.path);
-  assertNewEvidencePath(root, outputPlanPath);
+  const trackedPaths = gitPathSet(root);
+  verifyBoundArtifacts(root, boundArtifacts, trackedPaths);
+  assertNewEvidencePaths(root, [...[...receiptArtifacts.values()].map(({ path: artifactPath }) => artifactPath), ...[...tradeResultArtifacts.values()].map(({ path: artifactPath }) => artifactPath), outputPlanPath], trackedPaths);
   const tradeTestsByCommand = buildTradeExecutionContexts(root, repositoryPlan, artifacts, tradeResultArtifacts);
   return { receiptArtifacts, tradeResultArtifacts, tradeTestsByCommand, boundArtifacts };
 }
@@ -527,7 +526,7 @@ function materializedJsonEvidence(value) {
   return { sha256: sha256Bytes(bytes), byteLength: bytes.length };
 }
 
-function verifyBoundArtifacts(root, artifacts) {
+function verifyBoundArtifacts(root, artifacts, trackedPaths) {
   for (const artifact of artifacts) {
     if (artifact?.status !== "verified" || typeof artifact.sha256 !== "string" || !Number.isSafeInteger(artifact.byteLength)) {
       throw executionError("PROJECT_ARTIFACT_NOT_VERIFIED", `artifact ${coalesce(artifact?.id, "<unknown>")} must be verified before command execution`);
@@ -538,19 +537,25 @@ function verifyBoundArtifacts(root, artifacts) {
     if (any(stat.size !== artifact.byteLength, sha256Bytes(fs.readFileSync(resolved)) !== artifact.sha256)) {
       throw executionError("PROJECT_ARTIFACT_DRIFT", `artifact ${artifact.id} does not match its plan binding`);
     }
-    const tracked = git(root, ["ls-files", "--error-unmatch", "--", artifact.path]);
-    if (!tracked.ok) throw executionError("PROJECT_ARTIFACT_UNTRACKED", `artifact ${artifact.id} is not bound to the source commit`);
   }
+  const untrackedArtifact = artifacts.find(({ path: artifactPath }) => !trackedPaths.has(artifactPath));
+  if (untrackedArtifact) throw executionError("PROJECT_ARTIFACT_UNTRACKED", `artifact ${untrackedArtifact.id} is not bound to the source commit`);
 }
 
-function assertNewEvidencePath(root, repositoryPath) {
-  const resolved = resolveRepositoryPath(root, repositoryPath);
-  if (fs.existsSync(resolved)) throw executionError("PROJECT_EXECUTION_OUTPUT_EXISTS", `executor output already exists: ${repositoryPath}`);
-  const tracked = git(root, ["ls-files", "--error-unmatch", "--", repositoryPath]);
-  if (tracked.ok) throw executionError("PROJECT_EXECUTION_OUTPUT_TRACKED", `executor output path must be untracked: ${repositoryPath}`);
-  const ignored = git(root, ["check-ignore", "--quiet", "--no-index", "--", repositoryPath]);
-  if (ignored.ok) throw executionError("PROJECT_EXECUTION_OUTPUT_IGNORED", `durable executor evidence must not be ignored by Git: ${repositoryPath}`);
-  ensureExistingParentsAreNotSymlinks(root, path.dirname(repositoryPath));
+function assertNewEvidencePaths(root, repositoryPaths, trackedPaths) {
+  for (const repositoryPath of repositoryPaths) {
+    const resolved = resolveRepositoryPath(root, repositoryPath);
+    if (fs.existsSync(resolved)) throw executionError("PROJECT_EXECUTION_OUTPUT_EXISTS", `executor output already exists: ${repositoryPath}`);
+    ensureExistingParentsAreNotSymlinks(root, path.dirname(repositoryPath));
+  }
+  const trackedPath = repositoryPaths.find((repositoryPath) => trackedPaths.has(repositoryPath));
+  if (trackedPath) throw executionError("PROJECT_EXECUTION_OUTPUT_TRACKED", `executor output path must be untracked: ${trackedPath}`);
+  // These evidence paths are canonical slug-derived names, and check-ignore does not support Git's literal pathspec mode.
+  const ignored = git(root, ["--no-literal-pathspecs", "check-ignore", "-z", "--no-index", "--stdin"], { input: `${repositoryPaths.join("\0")}\0`, trimOutput: false });
+  if ([!ignored.ok, ignored.status !== 1].every(Boolean)) throw executionError("PROJECT_GIT_INSPECTION_UNAVAILABLE", "Git could not inspect ignored executor evidence paths", { error: ignored.error });
+  const ignoredPaths = new Set(coalesce(ignored.output, "").split("\0").filter(Boolean));
+  const ignoredPath = repositoryPaths.find((repositoryPath) => ignoredPaths.has(repositoryPath));
+  if (ignoredPath) throw executionError("PROJECT_EXECUTION_OUTPUT_IGNORED", `durable executor evidence must not be ignored by Git: ${ignoredPath}`);
 }
 
 function verifyPendingEvidencePaths(root, expectedPaths) {
@@ -667,8 +672,8 @@ export function sha256RegularFile(filePath) {
   return `sha256:${hash.digest("hex")}`;
 }
 
-function requiredGit(root, args, code) {
-  const result = git(root, args);
+function requiredGit(root, args, code, options = {}) {
+  const result = git(root, args, options);
   if (!result.ok) throw executionError(code, `Git evidence command failed: git ${args.join(" ")}`, { error: result.error });
   return result.output;
 }
@@ -711,13 +716,15 @@ function packageInstallRunsLifecycleScripts(executable, args) {
   return !args.includes("--ignore-scripts");
 }
 
-function git(root, args) {
-  const result = spawnSafeGitSync(["-C", root, ...args], {
-    encoding: "utf8",
-    timeout: 10_000
-  });
+function gitPathSet(root) {
+  const output = requiredGit(root, ["ls-files", "-z", "--cached"], "PROJECT_GIT_INSPECTION_UNAVAILABLE", { maxBuffer: 16 * 1024 * 1024, trimOutput: false });
+  return new Set(output.split("\0").filter(Boolean));
+}
+
+function git(root, args, { input = undefined, maxBuffer = undefined, trimOutput = true } = {}) {
+  const result = spawnSafeGitSync(["-C", root, ...args], { encoding: "utf8", input, maxBuffer, timeout: 10_000 });
   return result.status === 0
-    ? { ok: true, status: 0, output: result.stdout.trim() }
+    ? { ok: true, status: 0, output: trimOutput ? result.stdout.trim() : result.stdout }
     : { ok: false, status: result.status, error: (result.stderr || result.error?.message || `exit ${result.status}`).trim() };
 }
 
