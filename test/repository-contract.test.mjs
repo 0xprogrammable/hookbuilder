@@ -277,6 +277,48 @@ test("plugin manifests are generated from canonical metadata and package version
   assert.equal(report.payload.sourceByteVerified, true);
 });
 
+test("generated Codex plugin payload starts its MCP server without package.json", () => {
+  const payloadRoot = path.join(repositoryRoot, "plugins", "programmable-v4-builder");
+  const payloadManifest = JSON.parse(fs.readFileSync(
+    path.join(payloadRoot, ".codex-plugin", "plugin.json"),
+    "utf8"
+  ));
+  assert.equal(fs.existsSync(path.join(payloadRoot, "package.json")), false);
+
+  const initialize = {
+    jsonrpc: "2.0",
+    id: 1,
+    method: "initialize",
+    params: {
+      protocolVersion: "2025-11-25",
+      capabilities: {},
+      clientInfo: { name: "payload-regression", version: "1" }
+    }
+  };
+  const result = childProcess.spawnSync(
+    process.execPath,
+    [path.join(payloadRoot, "mcp", "server.mjs")],
+    {
+      cwd: payloadRoot,
+      encoding: "utf8",
+      env: { HOME: process.env.HOME, LANG: "C.UTF-8", PATH: process.env.PATH },
+      input: `${JSON.stringify(initialize)}\n`,
+      maxBuffer: 1024 * 1024,
+      shell: false,
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 5_000
+    }
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, "");
+  const messages = result.stdout.trim().split("\n").map((line) => JSON.parse(line));
+  assert.equal(messages.length, 1);
+  assert.deepEqual(messages[0].result.serverInfo, {
+    name: payloadManifest.name,
+    version: payloadManifest.version
+  });
+});
+
 test("plugin manifest generation fails closed on package version skew", (t) => {
   const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-plugin-version-skew-"));
   t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
