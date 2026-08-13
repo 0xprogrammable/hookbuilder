@@ -43,8 +43,20 @@ function metricDistribution(runs, selector) {
 function combinedToolMetric(run, key) {
   const generation = run.telemetry?.[key];
   const judge = run.judge?.telemetry?.[key];
-  if (!Number.isSafeInteger(generation) || !Number.isSafeInteger(judge)) return null;
-  return generation + judge;
+  const stage = key === 'toolCalls'
+    ? run.telemetry?.verifierToolCalls
+    : key === 'emittedBytes'
+      ? run.telemetry?.verifierEmittedBytes
+      : 0;
+  if (
+    !Number.isSafeInteger(generation)
+    || !Number.isSafeInteger(judge)
+    || !Number.isSafeInteger(stage)
+    || generation < 0
+    || judge < 0
+    || stage < 0
+  ) return null;
+  return generation + judge + stage;
 }
 
 function combinedUsageMetric(run, key) {

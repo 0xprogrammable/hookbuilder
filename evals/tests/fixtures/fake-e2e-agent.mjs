@@ -312,7 +312,7 @@ const telemetry = {
   activatedReferenceBytes: 64 * 1024,
   descendantSubagentCount: 0,
   emittedBytes: 64 * 1024,
-  toolCalls: mode === 'efficiency-abuse' ? 9_000_000 : 20,
+  toolCalls: mode === 'efficiency-abuse' ? 9_000_000 : 8,
   toolErrors: 1,
   retries: mode === 'efficiency-abuse' ? 8_000_000 : 1,
   timeToUsefulMs: 1000,

@@ -325,7 +325,12 @@ export function runSingleEvaluation({
       artifacts = artifactRecords(verificationWorkspace, repositoryContract.artifacts);
     } catch (error) {
       if (!(error instanceof E2ERunError)) throw error;
-      const telemetry = agentResult ? { ...agentResult.telemetry, verifierToolErrors: 1 } : null;
+      const telemetry = agentResult ? {
+        ...agentResult.telemetry,
+        verifierEmittedBytes: 0,
+        verifierToolCalls: 0,
+        verifierToolErrors: 1,
+      } : null;
       returned = failedRun(common, error.code, {
         usage: agentResult?.usage,
         telemetry,
@@ -347,7 +352,12 @@ export function runSingleEvaluation({
       sandbox,
       sandboxControlDirectory,
     });
-    const telemetry = { ...agentResult.telemetry, verifierToolErrors: stageResult.verifierToolErrors };
+    const telemetry = {
+      ...agentResult.telemetry,
+      verifierEmittedBytes: stageResult.verifierEmittedBytes,
+      verifierToolCalls: stageResult.verifierToolCalls,
+      verifierToolErrors: stageResult.verifierToolErrors,
+    };
     const partial = {
       usage: { ...agentResult.usage },
       telemetry,

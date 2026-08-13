@@ -127,6 +127,19 @@ test('local fixture receives only skill and idea, executes real distinct stages,
     const executed = run.stages.filter(({ status }) => ['PASS', 'PARTIAL_EVIDENCE'].includes(status));
     assert.equal(executed.length, 12);
     assert.ok(executed.every(({ evidence }) => evidence?.sha256 && evidence.subjectCount > 0));
+    const stageEmittedBytes = executed.reduce((total, stage) => (
+      total + stage.stdout.bytes + stage.stderr.bytes
+    ), 0);
+    assert.equal(run.telemetry.verifierToolCalls, executed.length);
+    assert.equal(run.telemetry.verifierEmittedBytes, stageEmittedBytes);
+    assert.equal(
+      run.efficiency.measurements.toolCalls.value,
+      run.telemetry.toolCalls + run.judge.telemetry.toolCalls + executed.length,
+    );
+    assert.equal(
+      run.efficiency.measurements.emittedBytes.value,
+      run.telemetry.emittedBytes + run.judge.telemetry.emittedBytes + stageEmittedBytes,
+    );
     assert.equal(run.stageEvidenceQualification, 'SEMANTIC_TEST_ADEQUACY_UNPROVEN');
     assert.ok(run.stages
       .filter(({ id }) => ['unit', 'negative', 'fuzz', 'invariant', 'gas', 'code-size', 'deployment', 'submission'].includes(id))
@@ -153,6 +166,32 @@ test('local fixture receives only skill and idea, executes real distinct stages,
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
   }
+});
+
+test('whole-run accounting includes all thirteen executed repository stages', () => {
+  const run = runSingleEvaluation({
+    repositoryRoot: REPOSITORY_ROOT,
+    caseRecord: { ...FIXTURE_CASE, forkRequired: true },
+    tierProfile: { id: 'small', modelEnv: 'PROGRAMMABLE_E2E_SMALL_MODEL', standardMinimumPassBps: 9000 },
+    modelId: SUBJECT_MODEL,
+    repeat: 1,
+    adapterCommand: agentCommand('pass', null, ['--fork-required']),
+    judgeCommand: judgeCommand(),
+    judgeModelId: JUDGE_MODEL,
+    forkRpcProxyUrl: 'http://127.0.0.1:18545',
+  });
+  assert.equal(run.status, 'PASS');
+  const executed = run.stages.filter(({ status }) => ['PASS', 'PARTIAL_EVIDENCE'].includes(status));
+  assert.equal(executed.length, 13);
+  assert.equal(run.telemetry.verifierToolCalls, 13);
+  assert.equal(
+    run.telemetry.verifierEmittedBytes,
+    executed.reduce((total, stage) => total + stage.stdout.bytes + stage.stderr.bytes, 0),
+  );
+  assert.equal(
+    run.efficiency.measurements.toolCalls.value,
+    run.telemetry.toolCalls + run.judge.telemetry.toolCalls + 13,
+  );
 });
 
 test('0600 and temporary HOME do not make a same-UID local subject blind', () => {

@@ -129,8 +129,10 @@ mixed skill hashes, or mixed evaluator identities cannot establish repetition pr
 scorecard enforce the preserved 4,000-token cold-start and 8,000-token standard-architecture targets plus total input,
 output and combined tokens, tool calls, retries, emitted bytes, end-to-end wall time, time to useful output, activated
 reference bytes and all descendant subagents. Generation and judge telemetry is combined where both receipts are
-required; a missing side is `UNMEASURED`, never zero, and cannot support an efficiency claim. Optional same-identity
-baseline runs are compared by case-and-tier p50 without allowing an aggregate to hide a subgroup regression. The CLI
+required. Repository-stage calls and their complete captured stdout/stderr byte counts are measured by the harness and
+added to the tool-call and emitted-byte totals. A missing side is `UNMEASURED`, never zero, and cannot support an
+efficiency claim. Optional same-identity baseline runs are compared by case-and-tier p50 without allowing an aggregate
+to hide a subgroup regression. The CLI
 prints at most three primary diagnostics and keeps exhaustive failures, missing measurements and run receipts in the
 scorecard artifact.
 

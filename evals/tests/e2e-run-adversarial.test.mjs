@@ -95,33 +95,39 @@ test('every canonical efficiency boundary passes at max and fails at max plus on
     ...boundary.telemetry,
     activatedReferenceBytes: contract.maxActivatedReferenceBytes - boundary.judge.telemetry.activatedReferenceBytes,
     descendantSubagentCount: 0,
-    emittedBytes: contract.maxEmittedBytes - boundary.judge.telemetry.emittedBytes,
+    emittedBytes: contract.maxEmittedBytes
+      - boundary.judge.telemetry.emittedBytes
+      - boundary.telemetry.verifierEmittedBytes,
     retries: contract.maxRetries - boundary.judge.telemetry.retries,
     timeToUsefulMs: contract.maxTimeToUsefulMs,
-    toolCalls: contract.maxToolCalls - boundary.judge.telemetry.toolCalls,
+    toolCalls: contract.maxToolCalls
+      - boundary.judge.telemetry.toolCalls
+      - boundary.telemetry.verifierToolCalls,
   };
   boundary.wallTimeMs = contract.maxWallTimeMs;
   assert.equal(boundary.usage.totalTokens, boundary.usage.inputTokens + boundary.usage.outputTokens);
   assert.equal(evaluateRunEfficiency(boundary, contract).status, 'PASS');
 
   const mutations = [
-    ['coldStartContextTokens', (run) => { run.usage.coldStartContextTokens += 1; }],
-    ['architectureContextTokens', (run) => { run.usage.architectureContextTokens += 1; }],
-    ['totalInputTokens', (run) => { run.usage.inputTokens += 1; run.usage.totalTokens += 1; }],
-    ['totalOutputTokens', (run) => { run.usage.outputTokens += 1; run.usage.totalTokens += 1; }],
-    ['combinedTokens', (run) => { run.usage.outputTokens += 1; run.usage.totalTokens += 1; }],
-    ['toolCalls', (run) => { run.telemetry.toolCalls += 1; }],
-    ['retries', (run) => { run.telemetry.retries += 1; }],
-    ['emittedBytes', (run) => { run.telemetry.emittedBytes += 1; }],
-    ['wallTimeMs', (run) => { run.wallTimeMs += 1; }],
-    ['timeToUsefulMs', (run) => { run.telemetry.timeToUsefulMs += 1; }],
-    ['activatedReferenceBytes', (run) => { run.telemetry.activatedReferenceBytes += 1; }],
-    ['descendantSubagents', (run) => { run.telemetry.descendantSubagentCount += 1; }],
+    ['coldStartContextTokens', 'coldStartContextTokens', (run) => { run.usage.coldStartContextTokens += 1; }],
+    ['architectureContextTokens', 'architectureContextTokens', (run) => { run.usage.architectureContextTokens += 1; }],
+    ['totalInputTokens', 'totalInputTokens', (run) => { run.usage.inputTokens += 1; run.usage.totalTokens += 1; }],
+    ['totalOutputTokens', 'totalOutputTokens', (run) => { run.usage.outputTokens += 1; run.usage.totalTokens += 1; }],
+    ['combinedTokens', 'combinedTokens', (run) => { run.usage.outputTokens += 1; run.usage.totalTokens += 1; }],
+    ['toolCalls:generation', 'toolCalls', (run) => { run.telemetry.toolCalls += 1; }],
+    ['toolCalls:repository-stages', 'toolCalls', (run) => { run.telemetry.verifierToolCalls += 1; }],
+    ['retries', 'retries', (run) => { run.telemetry.retries += 1; }],
+    ['emittedBytes:generation', 'emittedBytes', (run) => { run.telemetry.emittedBytes += 1; }],
+    ['emittedBytes:repository-stages', 'emittedBytes', (run) => { run.telemetry.verifierEmittedBytes += 1; }],
+    ['wallTimeMs', 'wallTimeMs', (run) => { run.wallTimeMs += 1; }],
+    ['timeToUsefulMs', 'timeToUsefulMs', (run) => { run.telemetry.timeToUsefulMs += 1; }],
+    ['activatedReferenceBytes', 'activatedReferenceBytes', (run) => { run.telemetry.activatedReferenceBytes += 1; }],
+    ['descendantSubagents', 'descendantSubagents', (run) => { run.telemetry.descendantSubagentCount += 1; }],
   ];
-  for (const [metric, mutate] of mutations) {
+  for (const [label, metric, mutate] of mutations) {
     const candidate = structuredClone(boundary);
     mutate(candidate);
-    assert.equal(evaluateRunEfficiency(candidate, contract).measurements[metric].status, 'FAIL', metric);
+    assert.equal(evaluateRunEfficiency(candidate, contract).measurements[metric].status, 'FAIL', label);
   }
 });
 
@@ -145,6 +151,15 @@ test('missing efficiency telemetry is UNMEASURED and cannot support a scorecard 
   assert.equal(scorecard.releaseGates.efficiencyBudgetsSatisfied, false);
   assert.ok(scorecard.releaseBlockers.includes('EFFICIENCY_TELEMETRY_UNMEASURED'));
   assert.ok(scorecard.diagnostics.primary.length <= 3);
+
+  for (const field of ['verifierEmittedBytes', 'verifierToolCalls']) {
+    const missingStageTelemetry = structuredClone(efficiencyBase());
+    delete missingStageTelemetry.telemetry[field];
+    const evaluation = evaluateRunEfficiency(missingStageTelemetry, corpus.manifest.efficiencyContract);
+    const metric = field === 'verifierToolCalls' ? 'toolCalls' : 'emittedBytes';
+    assert.equal(evaluation.status, 'UNMEASURED', field);
+    assert.equal(evaluation.measurements[metric].status, 'UNMEASURED', field);
+  }
 });
 
 test('same-identity p50 baseline comparison passes equality and exposes regressions or missing telemetry', () => {
