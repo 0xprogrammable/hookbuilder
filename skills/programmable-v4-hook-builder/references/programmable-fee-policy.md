@@ -2,7 +2,7 @@
 
 Policy id: `programmable-volume-fee-v1`
 Policy version: `1.1.0`
-Builder source candidate: `v0.6.0` (policy unchanged from stable `v0.5.1`)
+Builder candidate: `v0.5.1` (policy unchanged from released `v0.4.0`)
 
 Apply this policy to every new Programmable launch application. Builder releases `v0.1.1` and `v0.2.0` remain
 reproducible for earlier review records, but they are not the current release for a new launch application.
