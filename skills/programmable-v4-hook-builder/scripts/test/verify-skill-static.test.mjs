@@ -174,6 +174,53 @@ test("deterministic test shards report the lowest failing shard and never double
   assert.deepEqual(output.failure, { batchIndex: 0, kind: "output", signal: null, status: null });
 });
 
+test("deterministic test shards await every started runner before reporting a rejection", async () => {
+  let releaseSibling;
+  let siblingStarted = false;
+  let siblingSettled = false;
+  let coordinatorSettled = false;
+  const pendingResult = runDeterministicTestBatches({
+    command: "/node",
+    cwd: "/skill",
+    env: {},
+    runChildProcess: async ({ args }) => {
+      if (args.at(-1) === "a.test.mjs") throw new Error("simulated spawn failure");
+      siblingStarted = true;
+      await new Promise((resolve) => { releaseSibling = resolve; });
+      siblingSettled = true;
+      return { outputExceeded: false, signal: null, status: 0, stderr: "", stdout: "", timedOut: false };
+    },
+    testFiles: ["a.test.mjs", "b.test.mjs"]
+  });
+  pendingResult.then(() => { coordinatorSettled = true; });
+
+  while (!siblingStarted) await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(coordinatorSettled, false);
+  assert.equal(siblingSettled, false);
+
+  releaseSibling();
+  const result = await pendingResult;
+  assert.equal(siblingSettled, true);
+  assert.equal(result.results.length, 2);
+  assert.deepEqual(
+    {
+      batchIndex: result.failure.batchIndex,
+      kind: result.failure.kind,
+      signal: result.failure.signal,
+      status: result.failure.status,
+      stderr: result.failure.stderr
+    },
+    {
+      batchIndex: 0,
+      kind: "runner",
+      signal: null,
+      status: null,
+      stderr: "simulated spawn failure"
+    }
+  );
+});
+
 test("installed-mode portable execution keeps its single CLI test in one nonempty shard", async () => {
   const batches = createDeterministicTestBatches(["scripts/test/cli.test.mjs"]);
   assert.deepEqual(batches, [["scripts/test/cli.test.mjs"]]);
