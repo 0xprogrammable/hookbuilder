@@ -2,6 +2,32 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.6.0 - Unreleased local candidate
+
+This source candidate is not tagged, published, released, latest, or stable. Public and installed stable guidance
+remains pinned to `v0.5.1`. Inclusion in this section does not prove that a parallel implementation lane, complete
+repository gate, external evaluation, independent review, or owner-controlled release action has finished.
+
+### Candidate source
+
+- Added source-receipted, filtered provider knowledge for confirmed provider capabilities. Routing the material does
+  not prove provider availability, compatibility, safety, approval, deployment, or live state.
+
+### Candidate goals
+
+- Shorten the default user journey by deferring specialist context, suppressing dependent diagnostic cascades, and
+  leading with a small number of useful results.
+- Tighten execution and authority boundaries with bounded processes, explicit denied-action outcomes, and no weakening
+  of existing semantic or release gates.
+- Measure total context, output, tool calls, retries, latency, and activated references before claiming efficiency.
+
+### Release state
+
+- The canonical candidate version is `0.6.0`; package, lock, runtime, MCP, plugin, and marketplace values are mirrors
+  checked for exact agreement.
+- The candidate change set and cross-lane integration remain incomplete. Release artifacts, external model evidence,
+  public CI, owner authority, tag creation, publication, and post-publication installation are not claimed here.
+
 ## 0.5.1 - 2026-08-13
 
 ### Added

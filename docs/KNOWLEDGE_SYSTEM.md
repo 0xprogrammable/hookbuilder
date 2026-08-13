@@ -85,7 +85,7 @@ command output. This is a reproducible routing budget, not a model-tokenizer or 
 never dropped: a package above the 4,000 cold target reports `expanded-required-context`, and the agent loads each
 triggered chapter only when its phase needs it.
 
-Measured representative v0.5.1 routing from the canonical files:
+Measured representative routing from the historical stable v0.5.1 files:
 
 | Profile | Estimated tokens | Initial selection |
 | --- | ---: | --- |

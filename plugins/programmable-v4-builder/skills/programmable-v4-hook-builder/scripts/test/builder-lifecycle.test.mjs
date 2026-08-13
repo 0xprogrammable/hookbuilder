@@ -47,11 +47,11 @@ test("version reports exact local standards without external action and renders 
 
 test("bundled version reports standalone code constants without requiring state", () => {
   const result = bundledVersionStatus();
-  assert.equal(result.installed.releaseVersion, "0.5.1");
-  assert.equal(result.installed.channel, "stable");
-  assert.equal(result.installed.publicationState, "release-package");
-  assert.equal(result.installed.standards.skill, "0.5.1");
-  assert.equal(result.installed.standards.engine, "0.5.1");
+  assert.equal(result.installed.releaseVersion, "0.6.0");
+  assert.equal(result.installed.channel, "canary");
+  assert.equal(result.installed.publicationState, "local-unpublished-candidate");
+  assert.equal(result.installed.standards.skill, "0.6.0");
+  assert.equal(result.installed.standards.engine, "0.6.0");
   assert.equal(result.installed.standards.policy, "1.1.0");
   assert.equal(result.installed.standards.schema, "1.6.0");
   assert.equal(result.installed.standards.submission, "1.6.0");
@@ -586,7 +586,7 @@ test("shipped candidate template remains an incomplete caller declaration", () =
   const result = planPrivateRelease({
     candidate,
     history: { schemaVersion: "1.0.0", releases: [] },
-    now: "2026-08-03T09:00:00Z"
+    now: "2026-08-14T09:00:00Z"
   });
   assert.equal(result.readyForOwnerControlledReleaseAction, false);
   assert.equal(result.candidate.callerDeclaredPrivateCandidate, true);
@@ -597,11 +597,11 @@ test("shipped candidate template remains an incomplete caller declaration", () =
   assert.equal(result.publicationPerformed, false);
   assert.equal(result.callerDeclaredPlanComplete, false);
   assert.deepEqual(result.candidate.plannedRelease.builder, {
-    fromVersion: "0.4.0",
-    toVersion: "0.5.1",
+    fromVersion: "0.5.1",
+    toVersion: "0.6.0",
     semanticClassification: "minor"
   });
-  assert.deepEqual(result.candidate.plannedRelease.submissionStandard, { fromVersion: "1.5.0", toVersion: "1.6.0" });
+  assert.deepEqual(result.candidate.plannedRelease.submissionStandard, { fromVersion: "1.6.0", toVersion: "1.6.0" });
   assert.deepEqual(result.candidate.plannedRelease.feePolicy, { fromVersion: "1.1.0", toVersion: "1.1.0" });
   assert.equal(result.candidate.plannedRelease.source.commitSha, null);
   assert.equal(result.candidate.plannedRelease.source.treeSha, null);
@@ -768,7 +768,7 @@ test("packaged caller-declared release history demonstrates shape without provin
     "utf8"
   ));
   const history = readLifecycleTemplate("release-history.caller-declared.example.json");
-  const result = planPrivateRelease({ candidate, history, now: "2026-08-03T09:00:00Z" });
+  const result = planPrivateRelease({ candidate, history, now: "2026-08-14T09:00:00Z" });
   assert.equal(result.cadence.callerDeclaredNormalWindowOpen, true);
   assert.equal(result.cadence.releaseHistoryAuthenticated, false);
   assert.equal(result.cadence.trustedTimeAuthenticated, false);
@@ -811,7 +811,7 @@ test("packaged lifecycle examples run through the standalone update and migratio
     "plan-release",
     "--candidate", path.join(skillRoot, "assets", "templates", "release-candidate.example.json"),
     "--history", path.join(lifecycleTemplates, "release-history.caller-declared.example.json"),
-    "--now", "2026-08-03T09:00:00Z",
+    "--now", "2026-08-14T09:00:00Z",
     "--human"
   ], { encoding: "utf8", shell: false });
   assert.equal(release.status, 0, release.stdout || release.stderr);
@@ -850,8 +850,8 @@ test("standalone CLI reports bundled version without an installed-state file", (
   });
   assert.equal(result.status, 0, result.stdout || result.stderr);
   const parsed = JSON.parse(result.stdout);
-  assert.equal(parsed.result.installed.releaseVersion, "0.5.1");
-  assert.equal(parsed.result.installed.publicationState, "release-package");
+  assert.equal(parsed.result.installed.releaseVersion, "0.6.0");
+  assert.equal(parsed.result.installed.publicationState, "local-unpublished-candidate");
   assert.equal(parsed.result.versionSource, "bundled-code-constants");
   assert.equal(parsed.result.installedStateOverrideUsed, false);
 });

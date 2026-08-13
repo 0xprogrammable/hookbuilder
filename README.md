@@ -16,7 +16,7 @@
   <a href="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-F8F0E9?labelColor=010103"></a>
   <a href="https://agentskills.io/specification"><img alt="Agent Skills compatible" src="https://img.shields.io/badge/Agent%20Skills-compatible-F8F0E9?labelColor=010103"></a>
-  <a href="CHANGELOG.md"><img alt="Package version 0.5.1" src="https://img.shields.io/badge/package-v0.5.1-F8F0E9?labelColor=010103"></a>
+  <a href="CHANGELOG.md"><img alt="Stable release 0.5.1" src="https://img.shields.io/badge/stable-v0.5.1-F8F0E9?labelColor=010103"></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 > [!IMPORTANT]
 > **Release status**
 >
-> Package version `v0.5.1` requires Node.js 24 or newer. Verify the public tag and GitHub release before treating it as
+> Stable release `v0.5.1` requires Node.js 24 or newer. Verify the public tag and GitHub release before treating it as
 > published. Package checks and public CI do not establish model behavior, an independent audit, project approval,
 > deployment, routing, registration, or launch authority.
 

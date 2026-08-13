@@ -14,7 +14,7 @@ and a real host invocation are different evidence levels.
 
 Do not turn format or placement evidence into a host-exercised or behavior-evidenced claim.
 
-## Host matrix for the v0.5.1 release
+## Host matrix for the stable v0.5.1 release
 
 | Host | Package path | Current evidence | Current claim |
 | --- | --- | --- | --- |
@@ -125,7 +125,7 @@ codex plugin add programmable-v4-builder@programmable
 To roll back, remove this plugin, repoint the marketplace to the previously reviewed immutable tag, and reinstall it.
 Removing and re-adding the marketplace is appropriate only when no other installed plugin depends on that marketplace;
 otherwise use a separately reviewed marketplace snapshot. Re-run the plugin validator and `doctor` after rollback.
-The v0.5.1 release contains the versioned Codex marketplace and payload. A rollback still requires an exact previously
+The stable v0.5.1 release contains the versioned Codex marketplace and payload. A rollback still requires an exact previously
 reviewed tag and a fresh plugin validation; never repoint to a mutable branch.
 
 ```bash
