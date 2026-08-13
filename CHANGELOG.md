@@ -2,31 +2,48 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
-## 0.6.0 - Unreleased local candidate
+## 0.6.0 - 2026-08-13
 
-This source candidate is not tagged, published, released, latest, or stable. Public and installed stable guidance
-remains pinned to `v0.5.1`. Inclusion in this section does not prove that a parallel implementation lane, complete
-repository gate, external evaluation, independent review, or owner-controlled release action has finished.
+### Added
 
-### Candidate source
+- Added source-receipted, EVM-scoped Chainlink capability profiles and atomic packs for CCIP, CRE, Data Feeds, Data
+  Streams, and VRF v2.5. Provider knowledge remains filtered guidance rather than availability, compatibility,
+  deployment, approval, or audit evidence.
+- Added independently authored Ethereum production invariants derived from a date-pinned ETHSkills review without
+  copying its unlicensed source text.
+- Added deterministic end-to-end budgets for total tokens, emitted bytes, tool calls, retries, latency, activated
+  references, repository stages, and descendant agents. Missing required telemetry fails as `UNMEASURED`.
+- Added a signed external-sandbox receipt contract for future separately trusted execution environments.
 
-- Added source-receipted, filtered provider knowledge for confirmed provider capabilities. Routing the material does
-  not prove provider availability, compatibility, safety, approval, deployment, or live state.
+### Changed
 
-### Candidate goals
+- Reduced common CLI output to at most three primary root causes while retaining exhaustive machine-readable reports
+  behind explicit output paths or `--json`.
+- Reworked Chainlink selection into product-specific routing and project surfaces so unrelated provider context does not
+  load by default.
+- Revalidated the complete local Solidity compiler source closure before any compiler execution and report typed drift
+  before executing changed bytes.
+- Made the generated Codex plugin MCP resolve its identity from the payload manifest, including package layouts without
+  a root `package.json`.
 
-- Shorten the default user journey by deferring specialist context, suppressing dependent diagnostic cascades, and
-  leading with a small number of useful results.
-- Tighten execution and authority boundaries with bounded processes, explicit denied-action outcomes, and no weakening
-  of existing semantic or release gates.
-- Measure total context, output, tool calls, retries, latency, and activated references before claiming efficiency.
+### Security
 
-### Release state
+- Removed same-user candidate command execution from the portable Builder. Execution now fails closed with
+  `PROJECT_EXTERNAL_SANDBOX_REQUIRED`; the bundled trust store is empty and caller-supplied keys cannot establish
+  completion authority.
+- Require independently proven repository completion before any output or preflight result can become canonical.
+  Legacy or self-consistent command receipts remain structural evidence only.
+- Preserved the immutable v0.5.1 release, historical V1 policy bytes, and fee-policy evidence while advancing the
+  active package through a new minor version.
 
-- The canonical candidate version is `0.6.0`; package, lock, runtime, MCP, plugin, and marketplace values are mirrors
-  checked for exact agreement.
-- The candidate change set and cross-lane integration remain incomplete. Release artifacts, external model evidence,
-  public CI, owner authority, tag creation, publication, and post-publication installation are not claimed here.
+### Evidence boundary
+
+- The public package release binds one exact commit, repository tree, portable Skill tree, release artifacts, checksums,
+  SBOM, reference-kernel campaign, protected CI, and post-publication install canaries.
+- Real model tiers and an independent judge, a trusted external sandbox, comparable public-repository E2Es, an
+  independently novel holdout and prior comparator, pinned-fork cases, installed-host natural-language behavior,
+  independent audit, deployment, Registry activation, and project approval remain separately unverified. The release
+  does not convert those gates into passes.
 
 ## 0.5.1 - 2026-08-13
 
@@ -201,7 +218,7 @@ repository gate, external evaluation, independent review, or owner-controlled re
   passed prototype gates.
 
 Historical candidate note: this candidate was local and unpublished, and its public predecessor at preparation time
-was `v0.4.0`. Current stable public guidance is `v0.5.1`.
+was `v0.4.0`. That announcement was later superseded by `v0.5.1`; current stable public guidance is `v0.6.0`.
 
 Compatibility note: a package prepared by `v0.4.0` remains bound to its original platform-repository pull request.
 Continue its status and update journey with the pinned `v0.4.0` client; do not silently move its Git history or package

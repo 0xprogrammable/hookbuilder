@@ -61,7 +61,7 @@
     {
       "id": "stable-candidate-separation",
       "kind": "maintenance",
-      "summary": "Keep stable v0.5.1 installation guidance and immutable history separate from the local unpublished v0.6.0 source candidate."
+      "summary": "Historical planning example: preserve immutable v0.5.1 bytes while preparing a distinct unpublished v0.6.0 candidate. This fixture is not current release state."
     }
   ],
   "unbundledChangeIds": [

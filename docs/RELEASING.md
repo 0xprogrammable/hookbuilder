@@ -4,14 +4,14 @@ Releases are immutable supply-chain events, not documentation edits.
 
 ## Current identities
 
-- Stable public and installation identity: `v0.5.1`.
-- Local source candidate: `v0.6.0`, channel `canary`, publication state `local-unpublished-candidate`.
-- Canonical candidate version authority: `config/plugin.json`. `package.json`, `package-lock.json`, the portable runtime
-  constant, MCP identity, generated plugin manifests, marketplaces, and the candidate template are mirrors. The
+- Stable public and installation identity: `v0.6.0`.
+- Prior immutable release: `v0.5.1`.
+- Canonical version authority: `config/plugin.json`. `package.json`, `package-lock.json`, the portable runtime constant,
+  MCP identity, generated plugin manifests, marketplaces, and the release-planning template are mirrors. The
   repository and plugin checks fail on version drift.
 
-The local candidate is not released, latest, stable, or authorized for publication. Never change the immutable
-`v0.5.1` tag, release notes, assets, or changelog section while preparing `v0.6.0`.
+Never change the immutable `v0.5.1` or `v0.6.0` tags, release notes, assets, or changelog sections after publication.
+Future work must use a new version and preserve released package bytes.
 
 ## Versioning
 
@@ -165,7 +165,7 @@ The archive filename is versioned, while its single top-level directory remains 
 checksums, extract into a fresh directory, and run the extracted `scripts/verify-skill.mjs --installed` before upload.
 
 Prepare any versioned announcement only after the post-publication checks below pass; no announcement is part of the
-local candidate build.
+release build.
 
 ## After publication
 

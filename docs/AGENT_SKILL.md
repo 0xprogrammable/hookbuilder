@@ -16,7 +16,7 @@ launch authorization, deployment receipt, provider result or Uniswap endorsement
 
 ## Release status
 
-Open-world submission v2, Fee V2, layered security and public application v3 are packaged for the immutable stable `v0.5.1`
+Open-world submission v2, Fee V2, layered security and public application v3 are packaged for the immutable stable `v0.6.0`
 release. A verified publication establishes exact package bytes and release artifacts only. It does not establish model behavior,
 an independent audit, Registry acceptance, launch authorization, deployment, routing, or public availability. See
 [`OPEN_WORLD_V2_RELEASE_GATES.md`](OPEN_WORLD_V2_RELEASE_GATES.md) for the still-separate evidence states.
@@ -69,13 +69,13 @@ For reproducible public work, preview and pin the immutable current release:
 
 ```bash
 gh skill preview 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.5.1
+  programmable-v4-hook-builder@v0.6.0
 
 gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.5.1
+  --pin v0.6.0
 ```
 
 Replace `codex` with the supported host name when appropriate. User scope is the beginner default because it keeps the

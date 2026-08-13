@@ -57,9 +57,9 @@ Report the installed version and exact standards:
 node "$SKILL_ROOT/scripts/builder-lifecycle.mjs" version
 ```
 
-This default reports the constants bundled with the checked-out Builder. The local v0.6.0 source candidate reports
-`channel: canary`, `publicationState: local-unpublished-candidate`, and `publicationStateVerified: false`; these bundled
-constants do not resolve or authenticate a public tag. Stable installation guidance remains pinned to v0.5.1. To inspect
+This default reports the constants bundled with the checked-out Builder. The v0.6.0 release package reports
+`channel: stable`, `publicationState: release-package`, and `publicationStateVerified: false`; these bundled constants
+do not resolve or authenticate a public tag. Stable installation guidance is pinned to v0.6.0. To inspect
 an explicit pinned installed-state record instead, add
 `--state path/to/installed-state.json`; the JSON output marks that source as an installed-state override and keeps
 publication state `not-verified`. Neither path establishes update trust or public release state.

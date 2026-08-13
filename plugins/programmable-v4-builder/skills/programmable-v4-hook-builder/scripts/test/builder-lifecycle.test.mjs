@@ -48,8 +48,8 @@ test("version reports exact local standards without external action and renders 
 test("bundled version reports standalone code constants without requiring state", () => {
   const result = bundledVersionStatus();
   assert.equal(result.installed.releaseVersion, "0.6.0");
-  assert.equal(result.installed.channel, "canary");
-  assert.equal(result.installed.publicationState, "local-unpublished-candidate");
+  assert.equal(result.installed.channel, "stable");
+  assert.equal(result.installed.publicationState, "release-package");
   assert.equal(result.installed.standards.skill, "0.6.0");
   assert.equal(result.installed.standards.engine, "0.6.0");
   assert.equal(result.installed.standards.policy, "1.1.0");
@@ -851,7 +851,7 @@ test("standalone CLI reports bundled version without an installed-state file", (
   assert.equal(result.status, 0, result.stdout || result.stderr);
   const parsed = JSON.parse(result.stdout);
   assert.equal(parsed.result.installed.releaseVersion, "0.6.0");
-  assert.equal(parsed.result.installed.publicationState, "local-unpublished-candidate");
+  assert.equal(parsed.result.installed.publicationState, "release-package");
   assert.equal(parsed.result.versionSource, "bundled-code-constants");
   assert.equal(parsed.result.installedStateOverrideUsed, false);
 });

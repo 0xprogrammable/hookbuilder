@@ -87,7 +87,7 @@ function continuedCommands(source, prefix) {
   return commands;
 }
 
-test("public Markdown installs resolve only the immutable v0.5.1 stable release", () => {
+test("public Markdown installs resolve only the immutable v0.6.0 stable release", () => {
   const documents = markdownFiles(repositoryRoot).map((absolutePath) => ({
     path: path.relative(repositoryRoot, absolutePath),
     source: fs.readFileSync(absolutePath, "utf8")
@@ -104,16 +104,16 @@ test("public Markdown installs resolve only the immutable v0.5.1 stable release"
   assert.ok(installs.length > 0);
   assert.ok(previews.length > 0);
   for (const { path: documentPath, command } of installs) {
-    assert.match(command, /(?:@v0\.5\.1\b|--pin\s+v0\.5\.1\b)/u, documentPath);
+    assert.match(command, /(?:@v0\.6\.0\b|--pin\s+v0\.6\.0\b)/u, documentPath);
   }
   for (const { path: documentPath, command } of previews) {
-    assert.match(command, /@v0\.5\.1\b/u, documentPath);
+    assert.match(command, /@v0\.6\.0\b/u, documentPath);
   }
 
   const forbiddenActiveClaims = [
-    /\bv(?!0\.5\.1\b)\d+\.\d+(?:\.\d+)?\b[^\n]{0,96}\b(?:is|remains)\s+(?:the\s+)?(?:current|latest|stable|live|published)\b/iu,
-    /\b(?:current|latest|stable|published)\s+(?:public\s+)?(?:release|version|identity|guidance)?[^\n]{0,80}\bv(?!0\.5\.1\b)\d+\.\d+(?:\.\d+)?\b/iu,
-    /\bv(?!0\.5\.1\b)\d+\.\d+(?:\.\d+)?\b[^\n]{0,96}\badds?\s+(?:a\s+)?live\b/iu
+    /\bv(?!0\.6\.0\b)\d+\.\d+(?:\.\d+)?\b[^\n]{0,96}\b(?:is|remains)\s+(?:the\s+)?(?:current|latest|stable|live|published)\b/iu,
+    /\b(?:current|latest|stable|published)\s+(?:public\s+)?(?:release|version|identity|guidance)?[^\n]{0,80}\bv(?!0\.6\.0\b)\d+\.\d+(?:\.\d+)?\b/iu,
+    /\bv(?!0\.6\.0\b)\d+\.\d+(?:\.\d+)?\b[^\n]{0,96}\badds?\s+(?:a\s+)?live\b/iu
   ];
   for (const { path: documentPath, source } of documents) {
     for (const line of source.split("\n")) {
@@ -123,7 +123,7 @@ test("public Markdown installs resolve only the immutable v0.5.1 stable release"
   }
 });
 
-test("stable v0.5.1 history is immutable and v0.6.0 remains an unpublished local candidate", () => {
+test("stable v0.5.1 history is immutable and v0.6.0 is the release package", () => {
   const versionAuthority = readJson("config/plugin.json");
   const packageDocument = readJson("package.json");
   const packageLock = readJson("package-lock.json");
@@ -142,8 +142,8 @@ test("stable v0.5.1 history is immutable and v0.6.0 remains an unpublished local
   assert.equal(packageLock.version, versionAuthority.version);
   assert.equal(packageLock.packages[""].version, versionAuthority.version);
   assert.equal(BUNDLED_BUILDER_VERSION, versionAuthority.version);
-  assert.equal(BUNDLED_BUILDER_CHANNEL, "canary");
-  assert.equal(BUNDLED_BUILDER_PUBLICATION_STATE, "local-unpublished-candidate");
+  assert.equal(BUNDLED_BUILDER_CHANNEL, "stable");
+  assert.equal(BUNDLED_BUILDER_PUBLICATION_STATE, "release-package");
   assert.equal(candidate.releaseVersion, versionAuthority.version);
   assert.equal(candidate.channel, "canary");
   assert.equal(candidate.publicState, "not-published");
@@ -156,16 +156,15 @@ test("stable v0.5.1 history is immutable and v0.6.0 remains an unpublished local
 
   assert.equal(sha256Text(stableNotes), "e141136b2f5da9a4140912361c618883342e013c465f567930014a7e5a9415db");
   assert.equal(sha256Text(stableSection), "240e28d7a04e4e55bc81648c30d6ff4bcd78fc393eec16d516804be5224bfbf2");
-  assert.match(readme, /Stable release `v0\.5\.1`/u);
-  assert.match(readme, /--pin v0\.5\.1/u);
-  assert.doesNotMatch(readme, /v0\.6\.0/u);
-  assert.match(changelog, /^## 0\.6\.0 - Unreleased local candidate$/mu);
-  assert.match(candidateNotes, /Status: `UNRELEASED_LOCAL_CANDIDATE`/u);
-  assert.match(candidateNotes, /Stable public installation\s+guidance remains `v0\.5\.1`/u);
+  assert.match(readme, /Stable release `v0\.6\.0`/u);
+  assert.match(readme, /--pin v0\.6\.0/u);
+  assert.match(changelog, /^## 0\.6\.0 - 2026-08-13$/mu);
+  assert.match(candidateNotes, /^# Programmable v4 Builder v0\.6\.0$/mu);
+  assert.match(candidateNotes, /This release publishes the exact portable Builder package/u);
   assert.match(candidateNotes, /releaseCandidate: false/u);
-  assert.match(releasing, /Stable public and installation identity: `v0\.5\.1`/u);
-  assert.match(releasing, /Local source candidate: `v0\.6\.0`/u);
-  assert.match(releasing, /Canonical candidate version authority: `config\/plugin\.json`/u);
+  assert.match(releasing, /Stable public and installation identity: `v0\.6\.0`/u);
+  assert.match(releasing, /Prior immutable release: `v0\.5\.1`/u);
+  assert.match(releasing, /Canonical version authority: `config\/plugin\.json`/u);
   assert.doesNotMatch(releasing, /git tag -a "?v0\.5\.1/u);
   assert.doesNotMatch(releasing, /gh release create "?v0\.5\.1/u);
   for (const releaseSource of [artifactGenerator, rehearsal]) {
