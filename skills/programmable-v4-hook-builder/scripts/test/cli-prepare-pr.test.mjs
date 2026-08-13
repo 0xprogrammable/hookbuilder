@@ -14,6 +14,7 @@ import {
   validatePreparePrReviewTarget
 } from "../cli-prepare-pr.mjs";
 import { CENTRAL_APPLICATION_FILES } from "../cli-central-package.mjs";
+import { assertReviewTargetBoundToHead } from "../cli-prepare-pr-head-snapshot.mjs";
 import { resolvePublicGitHubSource, resolvePublicGitHubUser } from "../cli-github-source.mjs";
 import { materializeExample } from "../example-materializer-core.mjs";
 import { GitHubPublicSourceError } from "../github-public-source-core.mjs";
@@ -42,6 +43,69 @@ test("GitHub blob URL parsing requires the exact HTTPS origin and repository pat
   assert.equal(exactGitHubBlobObjectId(`https://api.github.com.evil.invalid/repos/example-builder/programmable-proposal/git/blobs/${objectId}`, repositoryUrl), null);
   assert.equal(exactGitHubBlobObjectId(`${API_ORIGIN}/repos/example-builder/programmable-proposal-extra/git/blobs/${objectId}`, repositoryUrl), null);
   assert.equal(exactGitHubBlobObjectId(`${repositoryUrl}/git/blobs/${objectId}?redirect=1`, repositoryUrl), null);
+});
+
+test("exact HEAD snapshots batch 129 paths, deduplicate blobs, and reject duplicate Git records", () => {
+  const bytes = Buffer.from("shared source bytes\n");
+  const objectId = crypto.createHash("sha1").update(Buffer.concat([
+    Buffer.from(`blob ${bytes.length}\0`),
+    bytes
+  ])).digest("hex");
+  const sha256 = crypto.createHash("sha256").update(bytes).digest("hex");
+  const files = Array.from({ length: 129 }, (_, index) => ({
+    bytes: bytes.length,
+    kind: "source",
+    path: `src/generated/file ${String(index).padStart(3, "0")}.ts`,
+    sha256
+  }));
+  const calls = [];
+  const gitBinaryImplementation = (_repositoryRoot, args) => {
+    calls.push(args);
+    if (args[0] === "ls-tree") {
+      const paths = args.slice(args.indexOf("--") + 1);
+      return {
+        status: 0,
+        stdout: Buffer.from(paths.map((filePath) => `100644 blob ${objectId}\t${filePath}\0`).join(""))
+      };
+    }
+    if (args[0] === "ls-files") {
+      const paths = args.slice(args.indexOf("--") + 1);
+      return { status: 0, stdout: Buffer.from(paths.map((filePath) => `H ${filePath}\0`).join("")) };
+    }
+    assert.deepEqual(args, ["cat-file", "--batch"]);
+    return {
+      status: 0,
+      stdout: Buffer.concat([Buffer.from(`${objectId} blob ${bytes.length}\n`), bytes, Buffer.from("\n")])
+    };
+  };
+
+  const snapshot = assertReviewTargetBoundToHead({
+    repositoryRoot: "/repository",
+    commit: "a".repeat(40),
+    reviewTarget: { files },
+    gitBinaryImplementation
+  });
+  assert.equal(snapshot.files.size, 129);
+  assert.equal(calls.filter(([command]) => command === "ls-tree").length, 2);
+  assert.equal(calls.filter(([command]) => command === "ls-files").length, 2);
+  assert.equal(calls.filter(([command]) => command === "cat-file").length, 1);
+
+  assert.throws(
+    () => assertReviewTargetBoundToHead({
+      repositoryRoot: "/repository",
+      commit: "a".repeat(40),
+      reviewTarget: { files: files.slice(0, 1) },
+      gitBinaryImplementation: (_root, args) => {
+        const filePath = files[0].path;
+        if (args[0] === "ls-tree") {
+          const record = `100644 blob ${objectId}\t${filePath}\0`;
+          return { status: 0, stdout: Buffer.from(`${record}${record}`) };
+        }
+        return { status: 0, stdout: Buffer.alloc(0) };
+      }
+    }),
+    (error) => error instanceof CliFailure && error.code === "GIT_STATE_INVALID"
+  );
 });
 
 function trustedHostSubtest(context, name, implementation) {

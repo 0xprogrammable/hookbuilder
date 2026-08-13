@@ -16,8 +16,12 @@ import {
   REVIEW_TARGET_CONTRACT_V1
 } from "./review-target-contract.mjs";
 import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
-import { git, gitBinary } from "./cli-prepare-pr-transport.mjs";
+import { gitBinary } from "./cli-prepare-pr-transport.mjs";
 import { compareUtf8 } from "./cli-prepare-pr-values.mjs";
+
+const HEAD_PATH_BATCH_SIZE = 128;
+const HEAD_SNAPSHOT_MAX_BYTES = REVIEW_TARGET_CONTRACT_V1.maximumTotalBytes
+  + (2 * REVIEW_TARGET_CONTRACT_V1.maximumFileBytes);
 
 export function selectDeclaredHeadBytes({
   repositoryRoot,
@@ -48,44 +52,34 @@ export function assertReviewTargetBoundToHead({
   repositoryRoot,
   commit,
   reviewTarget,
-  gitImplementation,
   gitBinaryImplementation
 }) {
+  const records = reviewTarget.files.filter((record) => !isExternalPackageReviewRecord(record));
+  const snapshot = readHeadPathSnapshot({
+    repositoryRoot,
+    commit,
+    paths: records.map((record) => record.path),
+    gitBinaryImplementation,
+    unavailableMessage: "review target tree or index state is unavailable"
+  });
   const files = new Map();
-  for (const record of reviewTarget.files) {
-    if (isExternalPackageReviewRecord(record)) continue;
-    const treeRecord = git(
-      repositoryRoot,
-      ["ls-tree", "--full-tree", commit, "--", record.path],
-      gitImplementation,
-      { code: "GIT_STATE_INVALID", message: "review target tree entry is unavailable" }
-    );
-    const match = /^(100644|100755) blob ([0-9a-f]{40})\t(.+)$/u.exec(treeRecord);
-    if (!match || match[3] !== record.path) {
+  for (const record of records) {
+    const entry = snapshot.get(record.path);
+    if (entry === undefined || !["100644", "100755"].includes(entry.mode)) {
       throw new CliFailure(
         "WORKTREE_NOT_HEAD",
         "every review target entry must be a regular blob in the exact HEAD tree",
         { exitCode: 1 }
       );
     }
-    const indexRecord = git(
-      repositoryRoot,
-      ["ls-files", "-v", "--", record.path],
-      gitImplementation,
-      { code: "GIT_STATE_INVALID", message: "review target index state is unavailable" }
-    );
-    if (indexRecord !== `H ${record.path}`) {
+    if (entry.indexState !== "H") {
       throw new CliFailure(
         "WORKTREE_NOT_HEAD",
         "prepare-pr rejects review files with hidden index flags or noncanonical index state",
         { exitCode: 1 }
       );
     }
-    const bytes = gitBinary(
-      repositoryRoot,
-      ["cat-file", "blob", `${commit}:${record.path}`],
-      gitBinaryImplementation
-    );
+    const { bytes } = entry;
     if (
       (isSourceOrTestReviewKind(record.kind) || record.path.toLowerCase().endsWith(".sol"))
       && isGitLfsPointer(bytes)
@@ -150,9 +144,15 @@ export function assertPrimaryAuthorityPathsBoundToHead({
   repositoryRoot,
   commit,
   authorityPaths,
-  gitImplementation,
   gitBinaryImplementation
 }) {
+  const snapshot = readHeadPathSnapshot({
+    repositoryRoot,
+    commit,
+    paths: authorityPaths,
+    gitBinaryImplementation,
+    unavailableMessage: "primary authority tree or index state is unavailable"
+  });
   const files = new Map();
   for (const repositoryPath of authorityPaths) {
     let worktreePath;
@@ -168,38 +168,22 @@ export function assertPrimaryAuthorityPathsBoundToHead({
       );
     }
     const worktreeBytes = readStableAuthorityFile(worktreePath, repositoryPath);
-    const treeRecord = git(
-      repositoryRoot,
-      ["ls-tree", "--full-tree", commit, "--", repositoryPath],
-      gitImplementation,
-      { code: "GIT_STATE_INVALID", message: "primary authority tree entry is unavailable" }
-    );
-    const match = /^(100644|100755) blob ([0-9a-f]{40})\t(.+)$/u.exec(treeRecord);
-    if (!match || match[3] !== repositoryPath) {
+    const entry = snapshot.get(repositoryPath);
+    if (entry === undefined || !["100644", "100755"].includes(entry.mode)) {
       throw new CliFailure(
         "WORKTREE_NOT_HEAD",
         "every primary authority file must be one regular blob in the exact HEAD tree",
         { exitCode: 1 }
       );
     }
-    const indexRecord = git(
-      repositoryRoot,
-      ["ls-files", "-v", "--", repositoryPath],
-      gitImplementation,
-      { code: "GIT_STATE_INVALID", message: "primary authority index state is unavailable" }
-    );
-    if (indexRecord !== `H ${repositoryPath}`) {
+    if (entry.indexState !== "H") {
       throw new CliFailure(
         "WORKTREE_NOT_HEAD",
         "prepare-pr rejects primary authority files with hidden index flags or noncanonical index state",
         { exitCode: 1 }
       );
     }
-    const headBytes = gitBinary(
-      repositoryRoot,
-      ["cat-file", "blob", `${commit}:${repositoryPath}`],
-      gitBinaryImplementation
-    );
+    const headBytes = entry.bytes;
     if (!headBytes.equals(worktreeBytes)) {
       throw new CliFailure(
         "WORKTREE_NOT_HEAD",
@@ -210,6 +194,123 @@ export function assertPrimaryAuthorityPathsBoundToHead({
     files.set(repositoryPath, headBytes);
   }
   return { files };
+}
+
+function readHeadPathSnapshot({
+  repositoryRoot,
+  commit,
+  paths,
+  gitBinaryImplementation,
+  unavailableMessage
+}) {
+  if (paths.length === 0) return new Map();
+  const uniquePaths = [...new Set(paths)].sort(compareUtf8);
+  if (uniquePaths.length !== paths.length) {
+    throw new CliFailure("GIT_STATE_INVALID", "exact HEAD snapshot paths must be unique", { exitCode: 1 });
+  }
+  const treeEntries = new Map();
+  const indexEntries = new Map();
+  for (let offset = 0; offset < uniquePaths.length; offset += HEAD_PATH_BATCH_SIZE) {
+    const batch = uniquePaths.slice(offset, offset + HEAD_PATH_BATCH_SIZE);
+    const treeBytes = gitBinary(
+      repositoryRoot,
+      ["ls-tree", "-z", "--full-tree", commit, "--", ...batch],
+      gitBinaryImplementation,
+      { message: unavailableMessage },
+      { maxBuffer: HEAD_SNAPSHOT_MAX_BYTES }
+    );
+    for (const record of splitNulRecords(treeBytes)) {
+      const match = /^(100644|100755|120000|160000|040000) (blob|commit|tree) ([0-9a-f]{40})\t(.+)$/u.exec(record);
+      if (!match || treeEntries.has(match[4])) {
+        throw new CliFailure("GIT_STATE_INVALID", unavailableMessage, { exitCode: 1 });
+      }
+      treeEntries.set(match[4], { mode: match[1], type: match[2], objectId: match[3] });
+    }
+
+    const indexBytes = gitBinary(
+      repositoryRoot,
+      ["ls-files", "-v", "-z", "--", ...batch],
+      gitBinaryImplementation,
+      { message: unavailableMessage },
+      { maxBuffer: HEAD_SNAPSHOT_MAX_BYTES }
+    );
+    for (const record of splitNulRecords(indexBytes)) {
+      const match = /^(.?) (.+)$/u.exec(record);
+      if (!match || indexEntries.has(match[2])) {
+        throw new CliFailure("GIT_STATE_INVALID", unavailableMessage, { exitCode: 1 });
+      }
+      indexEntries.set(match[2], match[1]);
+    }
+  }
+
+  const objectIds = [...new Set(
+    [...treeEntries.values()].filter(({ type }) => type === "blob").map(({ objectId }) => objectId)
+  )];
+  const objectBytes = readBatchBlobs({
+    repositoryRoot,
+    objectIds,
+    gitBinaryImplementation,
+    unavailableMessage
+  });
+  const snapshot = new Map();
+  for (const repositoryPath of uniquePaths) {
+    const treeEntry = treeEntries.get(repositoryPath);
+    const bytes = treeEntry === undefined ? undefined : objectBytes.get(treeEntry.objectId);
+    if (treeEntry === undefined || bytes === undefined || !indexEntries.has(repositoryPath)) continue;
+    snapshot.set(repositoryPath, {
+      ...treeEntry,
+      indexState: indexEntries.get(repositoryPath),
+      bytes
+    });
+  }
+  return snapshot;
+}
+
+function readBatchBlobs({ repositoryRoot, objectIds, gitBinaryImplementation, unavailableMessage }) {
+  if (objectIds.length === 0) return new Map();
+  const input = Buffer.from(`${objectIds.join("\n")}\n`, "ascii");
+  const output = gitBinary(
+    repositoryRoot,
+    ["cat-file", "--batch"],
+    gitBinaryImplementation,
+    { message: unavailableMessage },
+    { input, maxBuffer: HEAD_SNAPSHOT_MAX_BYTES, timeout: 10_000 }
+  );
+  const blobs = new Map();
+  let offset = 0;
+  for (const expectedObjectId of objectIds) {
+    const lineEnd = output.indexOf(0x0a, offset);
+    if (lineEnd < 0) throw new CliFailure("GIT_STATE_INVALID", unavailableMessage, { exitCode: 1 });
+    const header = output.subarray(offset, lineEnd).toString("ascii");
+    const match = /^([0-9a-f]{40}) blob ([0-9]+)$/u.exec(header);
+    const byteLength = match === null ? NaN : Number(match[2]);
+    const bodyStart = lineEnd + 1;
+    const bodyEnd = bodyStart + byteLength;
+    if (
+      match === null
+      || match[1] !== expectedObjectId
+      || !Number.isSafeInteger(byteLength)
+      || byteLength < 0
+      || bodyEnd >= output.length
+      || output[bodyEnd] !== 0x0a
+    ) {
+      throw new CliFailure("GIT_STATE_INVALID", unavailableMessage, { exitCode: 1 });
+    }
+    blobs.set(expectedObjectId, output.subarray(bodyStart, bodyEnd));
+    offset = bodyEnd + 1;
+  }
+  if (offset !== output.length) {
+    throw new CliFailure("GIT_STATE_INVALID", unavailableMessage, { exitCode: 1 });
+  }
+  return blobs;
+}
+
+function splitNulRecords(bytes) {
+  if (bytes.length === 0) return [];
+  if (bytes.at(-1) !== 0) {
+    throw new CliFailure("GIT_STATE_INVALID", "Git returned a malformed NUL-delimited snapshot", { exitCode: 1 });
+  }
+  return bytes.subarray(0, -1).toString("utf8").split("\0");
 }
 
 export function readStableAuthorityFile(target, repositoryPath) {
