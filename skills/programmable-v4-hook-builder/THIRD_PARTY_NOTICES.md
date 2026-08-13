@@ -14,3 +14,18 @@ reference-only unless its owner grants a license.
 
 Educational, test-only, unlicensed, obsolete and under-construction repositories are classified explicitly in
 `references/upstream-sources.json`. None is a production baseline.
+
+The provider-integration knowledge review is a date-pinned `2026-08-13T07:10:57Z` observation, not a current or latest
+upstream claim. It observed `smartcontractkit/chainlink-agent-skills` at the exact commit,
+tree, selected-file hashes and MIT license blob recorded in
+`references/provider-knowledge-source-receipt-2026-08-13.json`. Copyright (c) 2026 SmartContract. The resulting
+Programmable rules are independently structured and do not import foreign tool permissions, workflows, deployment
+addresses, credentials or runtime authority. Chainlink products, contracts and services referenced by that repository
+can have separate licenses and terms; in particular, the agent-skill repository license does not relicense ACE product
+contracts or services.
+
+The same date-pinned receipt records `austintgriffith/ethskills` as advisory topic discovery only. Its README and website state
+MIT, but the reviewed repository revision contains no LICENSE, COPYING or NOTICE file and GitHub did not identify an
+operative repository license. No expressive ETHSkills prose or code is redistributed here. Its topics were independently
+re-derived into Programmable requirements from primary protocol and runtime evidence, and its known stale or unsafe
+examples are explicitly excluded.

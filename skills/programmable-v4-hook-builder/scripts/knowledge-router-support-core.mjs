@@ -3,8 +3,10 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   buildDirectCapabilityLegos as buildCatalogDirectCapabilityLegos,
-  canonicalJson
+  canonicalJson,
+  loadTemplateCatalog
 } from "./template-catalog-core.mjs";
+import { CHAINLINK_PRODUCT_CAPABILITY_IDS } from "./template-catalog-composition.mjs";
 
 const idPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 export const MAX_ROUTING_ITEMS = 256;
@@ -71,6 +73,7 @@ export function attachMeasuredContextBudget(resultWithoutBudget, {
 }
 
 export function buildKnowledgeSelectorInventory({ routing, catalog }) {
+  assertCatalogSurfaceRoutingComplete({ routing, catalog });
   const capabilityIds = [...new Set([
     ...catalog.definitions.flatMap((definition) => definition.capabilities),
     ...routing.capabilityRoutes.flatMap((route) => route.matches)
@@ -95,6 +98,25 @@ export function buildKnowledgeSelectorInventory({ routing, catalog }) {
     packIds: Object.freeze(catalog.definitions.filter(({ kind }) => kind === "pack").map(({ id }) => id).sort(compareUtf8)),
     routeFamilies: Object.freeze(routeFamilies)
   });
+}
+
+export function loadRoutedCatalog(skillRoot, routing) {
+  const catalog = loadTemplateCatalog({ skillRoot });
+  assertCatalogSurfaceRoutingComplete({ routing, catalog });
+  return catalog;
+}
+
+export function assertCatalogSurfaceRoutingComplete({ routing, catalog }) {
+  const routedSurfaceIds = new Set(routing.surfaceRoutes.flatMap(({ matches }) => matches));
+  const missingSurfaceIds = [...new Set(catalog.definitions.flatMap(({ projectSurfaces }) => projectSurfaces))]
+    .filter((surfaceId) => !routedSurfaceIds.has(surfaceId))
+    .sort(compareUtf8);
+  if (missingSurfaceIds.length > 0) {
+    fail(
+      "KNOWLEDGE_ROUTING_INVALID",
+      `Canonical catalog surfaces have no knowledge route: ${missingSurfaceIds.join(", ")}.`
+    );
+  }
 }
 
 function routeFamilyDescriptor(kind, route, catalog) {
@@ -321,6 +343,20 @@ export function validateRouting(routing, skillRoot) {
       }
       for (const reference of route.references) allReferences.add(requireReference(reference));
     }
+  }
+  const chainlinkRoute = routing.capabilityRoutes.find(({ id }) => id === "chainlink-provider");
+  const exactChainlinkCapabilities = [
+    ...CHAINLINK_PRODUCT_CAPABILITY_IDS,
+    "chainlink-provider"
+  ].sort(compareUtf8);
+  if (
+    chainlinkRoute === undefined
+    || canonicalJson(chainlinkRoute.matches) !== canonicalJson(exactChainlinkCapabilities)
+  ) {
+    fail(
+      "KNOWLEDGE_ROUTING_INVALID",
+      "The Chainlink provider route must close the shared provider and every exact supported product capability."
+    );
   }
   if (!Array.isArray(routing.unknownCapabilityReferences) || routing.unknownCapabilityReferences.length < 1) {
     fail("KNOWLEDGE_ROUTING_INVALID", "Unknown-capability references are missing.");

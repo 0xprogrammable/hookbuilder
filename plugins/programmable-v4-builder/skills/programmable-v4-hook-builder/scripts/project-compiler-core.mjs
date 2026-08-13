@@ -10,7 +10,9 @@ import {
   validateOpenWorldPackage
 } from "./open-world-v2-core.mjs";
 import {
+  inspectProjectOutputAuthority,
   inspectProjectTradeCapability,
+  projectCompletionProofFindings,
   projectArtifactSha256,
   validateArchitectureCandidates,
   validateProductGraph,
@@ -153,9 +155,8 @@ export function validateProjectOutput({
     previousState
   }, { repositoryRoot, verifyRepositoryFiles: true });
   for (const finding of compilation.findings) findings.push({ ...finding, path: `$.project${finding.path.slice(1)}` });
-  if (compilation.status !== "PROJECT_COMPILATION_VALID") {
-    add("blocker", "PROJECT_OUTPUT_COMPILATION_INVALID", "$.project", "The bound ProjectSpec, ProductGraph, ArchitectureCandidates, RepositoryPlan, or ProjectState is invalid.");
-  }
+  if (compilation.status !== "PROJECT_COMPILATION_VALID") add("blocker", "PROJECT_OUTPUT_COMPILATION_INVALID", "$.project", "The bound ProjectSpec, ProductGraph, ArchitectureCandidates, RepositoryPlan, or ProjectState is invalid.");
+  findings.push(...projectCompletionProofFindings(repositoryPlan, compilation));
 
   const requiredArtifacts = { projectSpec, productGraph, architectureCandidates, repositoryPlan, projectState };
   for (const [name, value] of Object.entries(requiredArtifacts)) {
@@ -210,6 +211,7 @@ export function validateProjectOutput({
         ? "PROJECT_OUTPUT_DRAFT_UNRESOLVED"
         : "PROJECT_OUTPUT_VALID",
     projectCompilationStatus: compilation.status,
+    repositoryCompletion: compilation.repositoryCompletion, commandExecutionEvidence: compilation.commandExecutionEvidence,
     submissionPackageStatus: submissionReport?.status ?? "INVALID",
     artifactHashes: {
       ...compilation.artifactHashes,
@@ -538,12 +540,9 @@ export function preflightProjectOutput({ repositoryRoot, statePath = null, previ
   }
   const expectedByPath = new Map(expectedClaims.map((claim) => [normalizeClaimPath(claim.path), claim]));
   [expectedByPath.size !== expectedClaims.length].filter(Boolean).forEach(() => add("blocker", "PROJECT_PREFLIGHT_EXPECTED_CLAIM_BIJECTION_INVALID", "$.output", "Repository-bound claim paths must be unique."));
-  const fullValid = outputReport?.status === "PROJECT_OUTPUT_VALID";
-  const draftSystem = outputReport?.status === "PROJECT_OUTPUT_DRAFT_UNRESOLVED";
+  const { fullValid, draftSystem, findings: authorityFindings } = inspectProjectOutputAuthority(outputReport);
+  findings.push(...authorityFindings);
   let draftObserved = draftSystem;
-  if (outputReport !== null && !fullValid && !draftSystem) {
-    add("blocker", "PROJECT_PREFLIGHT_OUTPUT_SYSTEM_INVALID", "$.output", "The supplied cross-artifact output system is not PROJECT_OUTPUT_VALID.", { status: outputReport.status ?? null });
-  }
   const actualPaths = new Set(claims.map(({ path: claimPath }) => claimPath));
   for (const claim of claims) {
     const validation = validateMachineArtifactClaim(claim, repositoryRoot);
@@ -588,6 +587,7 @@ export function preflightProjectOutput({ repositoryRoot, statePath = null, previ
     canonicalOutput: status === "PROJECT_PREFLIGHT_VALID",
     outputBinding: outputReport === null ? null : {
       status: outputReport.status ?? null,
+      repositoryCompletion: outputReport.repositoryCompletion ?? null, commandExecutionEvidence: outputReport.commandExecutionEvidence ?? null,
       reportSha256: outputReport.reportSha256 ?? null,
       artifactHashes: outputReport.artifactHashes ?? null,
       projection: outputReport.projection

@@ -35,12 +35,12 @@ const expectedDraftFiles = [
 ];
 
 test("host-neutral CLI exposes open-world, V2 launch checking, and historical application recheck help", () => {
-  const globalHelp = run(["--help"]);
+  const globalHelp = run(["--help", "--json"]);
   assert.equal(globalHelp.status, 0, globalHelp.stderr);
-  assert.match(globalHelp.stdout, /^  open-world\b/mu);
-  assert.match(globalHelp.stdout, /Prepare open-world v2\/Application V3 locally/u);
-  assert.match(globalHelp.stdout, /^  application-recheck\b/mu);
-  assert.match(globalHelp.stdout, /^  launch-bundle-v2\b/mu);
+  const globalCommands = JSON.parse(globalHelp.stdout).result.commands.map(({ id }) => id);
+  for (const command of ["open-world", "application-recheck", "launch-bundle-v2"]) {
+    assert.ok(globalCommands.includes(command), command);
+  }
 
   const launchV1Help = run(["launch-bundle", "--help"]);
   assert.equal(launchV1Help.status, 0, launchV1Help.stderr);

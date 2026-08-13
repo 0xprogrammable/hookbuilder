@@ -30,8 +30,10 @@ const commit = git(["rev-parse", "HEAD"]).trim();
 const tree = git(["rev-parse", `${commit}^{tree}`]).trim();
 const created = new Date(git(["show", "-s", "--format=%cI", commit]).trim()).toISOString();
 const commitEpoch = git(["show", "-s", "--format=%ct", commit]).trim();
+const versionAuthority = readCommitJson(commit, "config/plugin.json");
 const packageDocument = readCommitJson(commit, "package.json");
-const expectedTag = `v${packageDocument.version}`;
+const candidateVersion = requireCanonicalCandidateVersion(versionAuthority, packageDocument);
+const expectedTag = `v${candidateVersion}`;
 if (options.tag !== expectedTag) fail(`expected --tag ${expectedTag}`);
 const skillRoot = "skills/programmable-v4-hook-builder";
 const skillTree = git(["rev-parse", `${commit}:${skillRoot}`]).trim();
@@ -122,7 +124,7 @@ const manifest = {
   schemaVersion: "2.0.0",
   product: "Programmable v4 Builder",
   skill: "programmable-v4-hook-builder",
-  version: packageDocument.version,
+  version: candidateVersion,
   tag: expectedTag,
   commit,
   tree,
@@ -134,7 +136,7 @@ const manifest = {
 };
 writeJson(manifestName, manifest);
 
-const sbom = buildReleaseSpdx(kernelLocks, { commit, created, version: packageDocument.version });
+const sbom = buildReleaseSpdx(kernelLocks, { commit, created, version: candidateVersion });
 writeJson(sbomName, sbom);
 writeBinary(kernelEvidenceName, kernelEvidenceBytes);
 
@@ -142,7 +144,7 @@ const receipt = {
   schemaVersion: "2.0.0",
   releaseCandidate: false,
   product: "Programmable v4 Builder",
-  version: packageDocument.version,
+  version: candidateVersion,
   tag: expectedTag,
   commit,
   tree,
@@ -204,7 +206,7 @@ fs.writeFileSync(path.join(options.outputDirectory, "SHA256SUMS"), `${checksumLi
 
 process.stdout.write(`${JSON.stringify({
   status: "RELEASE_ARTIFACTS_GENERATED",
-  version: packageDocument.version,
+  version: candidateVersion,
   tag: expectedTag,
   commit,
   tree,
@@ -314,6 +316,17 @@ function readCommitJson(commit, repositoryPath) {
     `committed ${repositoryPath}`,
     1024 * 1024
   );
+}
+
+function requireCanonicalCandidateVersion(metadata, packageDocument) {
+  const version = metadata?.version;
+  if (typeof version !== "string" || !/^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/u.test(version)) {
+    fail("committed config/plugin.json version authority must be stable semver");
+  }
+  if (packageDocument?.version !== version) {
+    fail("committed package.json version must match canonical config/plugin.json version");
+  }
+  return version;
 }
 
 function parseStrictJson(bytes, label, maxSourceBytes) {

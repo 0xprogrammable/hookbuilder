@@ -1,0 +1,233 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "programmable-provider-knowledge-source-receipt",
+  "observedAt": "2026-08-13T07:10:57Z",
+  "snapshotSemantics": {
+    "claim": "DATE_PINNED_OBSERVATION_ONLY",
+    "currentOrLatestClaim": false,
+    "automaticRefresh": false,
+    "supersessionPolicy": "new-content-addressed-receipt-and-independent-review-required"
+  },
+  "integrationBase": {
+    "repository": "https://github.com/0xprogrammable/hookbuilder.git",
+    "ref": "main",
+    "commit": "0d657a78220e09905895ca0c60cdb34ab9ed21cf",
+    "tree": "075639702eb66864a22cbe9de92cef7a00630889"
+  },
+  "policy": {
+    "sourceCodeExecuted": false,
+    "dependenciesInstalled": false,
+    "liveRuntimeFetchesUsed": false,
+    "foreignInstructionsAuthoritative": false,
+    "foreignToolPoliciesImported": false,
+    "foreignWorkflowsImported": false,
+    "secretsRead": false,
+    "networkAccessInInstalledSkill": "forbidden",
+    "executionAuthorityEffect": "NONE",
+    "automaticDeploymentEffect": false,
+    "automaticApprovalEffect": false,
+    "driftPolicy": "re-review-exact-commit-tree-license-and-selected-blobs-before-update"
+  },
+  "sources": [
+    {
+      "id": "chainlink-agent-skills",
+      "repository": "https://github.com/smartcontractkit/chainlink-agent-skills.git",
+      "defaultBranch": "main",
+      "commit": "4ec7d5fdddcc062684fadda659187c7d9ba4307f",
+      "tree": "1002838b56a804670efe23bb83f895064c48cc6d",
+      "commitVerification": "github-verified-observed-2026-08-13",
+      "releaseBinding": null,
+      "license": {
+        "decision": "COPY_ALLOWED_WITH_NOTICE",
+        "spdx": "MIT",
+        "path": "LICENSE",
+        "gitBlob": "33b2f77d25780fbf9cf387f6668288c7634650e1",
+        "sha256": "de1e78d3f3e50e0eb554d95dd5649747cc2f9aaf4272cb0ba8d1882b06c802ed",
+        "copyright": "Copyright (c) 2026 SmartContract"
+      },
+      "selectedFiles": [
+        {
+          "path": "chainlink-ace-skill/SKILL.md",
+          "gitBlob": "4908d5b9ad4f336cdd9be166d2d8708e51464e5d",
+          "sha256": "d97b5a6b3e8c8c2c179890084945bfa773f30a4b7eefd69b13f4f8fc95f38c98",
+          "decision": "reference-only-separate-product-license-and-legal-review"
+        },
+        {
+          "path": "chainlink-ccip-skill/SKILL.md",
+          "gitBlob": "5de3732cae455905bd74306f23ecebd6ba57e753",
+          "sha256": "cb02146386d4fd94742c0f15b0bcca06c0aa1faf5104a59f8d3d884f6168f6d6",
+          "decision": "adapt-facts-through-independent-rules"
+        },
+        {
+          "path": "chainlink-confidential-ai-attester-skill/SKILL.md",
+          "gitBlob": "4ecd3afad98def3d03409584a189e4a6e4d089c6",
+          "sha256": "89f4468a7d71157eba2751ea46a99fb1243f299984ba63afafedf0c01fa1ab42",
+          "decision": "exclude-alpha-hackathon-scope"
+        },
+        {
+          "path": "chainlink-cre-skill/SKILL.md",
+          "gitBlob": "a8f8cf43fc15824c0403d85f8f27e2c6025bfe54",
+          "sha256": "3b549c5dd616595f122a27e2c90d0cc1646b2ab682454cc364a527812dc433a2",
+          "decision": "adapt-determinism-and-runtime-boundaries"
+        },
+        {
+          "path": "chainlink-data-feeds-skill/SKILL.md",
+          "gitBlob": "bdb9c4988531bc99d73bdacba923350a59c1bd97",
+          "sha256": "d8f1193c82c71d5d88afb9c8efe26c329c8c77cb5a2a9bf45ba7b2eb849916dc",
+          "decision": "adapt-freshness-round-and-runtime-identity-rules"
+        },
+        {
+          "path": "chainlink-data-streams-skill/SKILL.md",
+          "gitBlob": "c23d5bb5f17c6d23d7cc52a32ce48f33e76f9e55",
+          "sha256": "49e49ad3cbad7e285f3eeba5235f22b90424f0e51ed35501277ac7ddc7eb3e39",
+          "decision": "adapt-verifier-timestamp-market-status-and-size-rules"
+        },
+        {
+          "path": "chainlink-vrf-skill/SKILL.md",
+          "gitBlob": "65cc464ca021e008570e67f2a211761f21ef3d8e",
+          "sha256": "39a77be5bf2ee8237d5a026027ed1e511fcb2027c7ba082fe98231a18e33f679",
+          "decision": "adapt-vrf-v2-5-request-fulfillment-and-liveness-rules"
+        }
+      ],
+  "selectedReferenceFiles": [
+    {
+      "path": "chainlink-ccip-skill/references/ccip-api.md",
+      "gitBlob": "cc90183d9210c52a10dec727df112f8eaeda586f",
+      "sha256": "df30e874fa5ff171cb87cfc629edbca4d34d419b72ddc88e15c63e7a69aad8b6",
+      "decision": "adapt-uint64-selector-and-lane-discovery-boundaries"
+    },
+    {
+      "path": "chainlink-ccip-skill/references/ccip-contracts.md",
+          "gitBlob": "17607dd8d8158149bbca66159a76b7d62d3ba01f",
+          "sha256": "19f76c898c3578225fec978fdb63f9e86eddf86e61a48daf1833feab67a95452",
+      "decision": "adapt-source-destination-runtime-and-message-boundaries"
+    },
+    {
+      "path": "chainlink-ccip-skill/references/ccip-solidity-examples.md",
+      "gitBlob": "5f332e40ec7f9691841229074758a0a1c24081e0",
+      "sha256": "d9e8f42f805f437480242051ce4338104dfa59a4d4d93c36f8282fdcb09c1e3f",
+      "decision": "adapt-directional-sender-receiver-and-recovery-boundaries"
+    },
+    {
+      "path": "chainlink-cre-skill/references/concepts.md",
+          "gitBlob": "3007084221735c46371f14e81a660f2b78f24717",
+          "sha256": "6d9dec4da1a994d412301469557738e0a0ca42cfb56fdabc795f1ac4179da293",
+      "decision": "adapt-language-specific-determinism-boundaries"
+    },
+    {
+      "path": "chainlink-cre-skill/references/operations.md",
+      "gitBlob": "1b5624acb4f17533b36a9b14d66a63e33a03321e",
+      "sha256": "8553fb6c89c90dec2e51689adb040982b1987d57dedefce0fd88f9e235475b20",
+      "decision": "adapt-workflow-lifecycle-and-activation-evidence"
+    },
+        {
+          "path": "chainlink-cre-skill/references/project-scaffolding.md",
+          "gitBlob": "a74bd3c54095f9660ff4005c88dddad42f523ec3",
+          "sha256": "8fcb2d1cb82d5247892d3c444cd03420f024a8216e1959803b7ba57330b9b800",
+      "decision": "adapt-go-typescript-toolchain-and-quickjs-boundaries"
+    },
+    {
+      "path": "chainlink-cre-skill/references/simulation.md",
+      "gitBlob": "561564a0990d5aa651c4b58ac581d5b334905129",
+      "sha256": "426a2c373a198ea2447550df4d22b0a02cea90b00e2acae3ed5bb7f0644f752b",
+      "decision": "adapt-single-node-simulation-evidence-boundary"
+    },
+        {
+          "path": "chainlink-data-feeds-skill/references/feed-operations.md",
+          "gitBlob": "2155e90db6ca5dc33250b88b843d7bb1d21ca272",
+          "sha256": "5f6a387226d1d7f8267c6ab62551fea9e401136dec215f0054792c5c8157d53d",
+          "decision": "adapt-feed-identity-and-operational-evidence"
+        },
+        {
+          "path": "chainlink-data-feeds-skill/references/reading-price-feeds.md",
+          "gitBlob": "d7927f43f3649fdf46ea3ef78568534d04124e28",
+          "sha256": "1633cd209177994b360a2fd9940b23bda9187aae054152fcbc805d9024a1569e",
+          "decision": "adapt-round-decimals-range-and-freshness-rules"
+        },
+        {
+          "path": "chainlink-data-streams-skill/references/onchain-verification.md",
+          "gitBlob": "b681771a9143e1dd8953f82987f279ae6f74f049",
+          "sha256": "91879e1031f8acb70b6c04ef0559f4a720d7fef375d8dd07e3d4516b6e8160eb",
+          "decision": "adapt-verifier-runtime-size-and-gas-boundaries"
+        },
+        {
+          "path": "chainlink-data-streams-skill/references/report-schemas.md",
+          "gitBlob": "ee12357b1b53b5bc3b29c11c51d92c6eed6a30ac",
+          "sha256": "814cc3a231ab250d2979ddbc75047a4c3035f65207ab65959b0733c7a0e4b7f7",
+          "decision": "adapt-feed-schema-time-market-and-ripcord-fields"
+        },
+        {
+          "path": "chainlink-vrf-skill/references/billing.md",
+          "gitBlob": "512dae7cf2de705352ef10afc1b0e254170f4a39",
+          "sha256": "c121bbfb0daa20d2c7f39dd2ceac1ecc4c10e5de067de57708c082b53ba93ce7",
+          "decision": "adapt-payment-mode-and-funding-boundaries"
+        },
+        {
+          "path": "chainlink-vrf-skill/references/direct-funding.md",
+          "gitBlob": "fd2f7897408002cbb004e82b89c6e49fb78956ea",
+          "sha256": "ff5df34b3fdd04e779b111c348c0b532efc97181b618b9fadf22a2fd4f1861dd",
+          "decision": "adapt-wrapper-and-direct-funding-role-bindings"
+        },
+        {
+          "path": "chainlink-vrf-skill/references/security-and-best-practices.md",
+          "gitBlob": "55ea002334e629fa2a6058b035c080adf3d9cfec",
+          "sha256": "9073e9b794cda4893d8dbf99bcacf6e5ddf6aa7d06d894c3335ae9601308b0ea",
+          "decision": "adapt-request-fulfillment-liveness-and-bias-boundaries"
+        },
+        {
+          "path": "chainlink-vrf-skill/references/subscription.md",
+          "gitBlob": "37f2d8e80b0a92579f3e620e8e3e8886e26251f3",
+          "sha256": "ad131c30621277b6accd78633b5040c45b515acf3e66800d70d9a794a9d0d29e",
+          "decision": "adapt-subscription-consumer-and-funding-bindings"
+        }
+      ],
+      "coverageLimits": {
+        "automationDedicatedSkill": false,
+        "functionsDedicatedSkill": false,
+        "confidentialAiCore": false,
+        "aceContractsLicenseInheritedFromSkillRepository": false,
+        "deploymentAddressesTrustedFromMovingDocumentation": false
+      }
+    },
+    {
+      "id": "ethskills",
+      "repository": "https://github.com/austintgriffith/ethskills.git",
+      "canonicalSite": "https://ethskills.com",
+      "defaultBranch": "master",
+      "commit": "b7cf0ef0be924b8de3f80709818f80229b3692e8",
+      "tree": "274466bc8c7ec4692764958d1ff86dad29d413cf",
+      "commitVerification": "unsigned",
+      "releaseBinding": null,
+      "license": {
+        "decision": "COPY_BLOCKED_LICENSE_TEXT_MISSING",
+        "declaredInReadme": "MIT",
+        "repositoryLicenseFile": null,
+        "githubDetectedLicense": null
+      },
+      "selectedFiles": [
+        { "path": "concepts/SKILL.md", "sha256": "d50f2d1432c87ccf6c7617fb4d08038c13d3e797be338f26b2d31060500f5a0b" },
+        { "path": "indexing/SKILL.md", "sha256": "ee8fd23dc448782d317492717e39190fa25f7fcf02b9fd64154e5954f208979e" },
+        { "path": "l2s/SKILL.md", "sha256": "a3ec5f219e45a6983e30182cb68e1fc0b65f4c66b32501055bdb3445d8984237" },
+        { "path": "protocol/SKILL.md", "sha256": "100b87c78a9ef86ecf8af09574b2ec91fd06e83a12ec868ca1cc0820d34ef824" },
+        { "path": "security/SKILL.md", "sha256": "dd988d2f417226f02bfec777264edd6c85666515976c28e8c11aa4eb73ca7a65" },
+        { "path": "testing/SKILL.md", "sha256": "684eab6b127f83f5a7ae4b8d93993b3d07c2c59587b7a49e8fd569007e58411a" },
+        { "path": "wallets/SKILL.md", "sha256": "ae147e09a230f8c1bccf06eb444adeaa63957841752cb08449e0c7e4f7fb9f0a" }
+      ],
+      "useDecision": "advisory-topic-discovery-only-independent-rules-from-primary-specifications",
+      "rejectedClaims": [
+        "wrong-uniswap-v4-lp-fee-override-flag",
+        "stale-v4-periphery-basehook-import",
+        "removed-openzeppelin-v5-safeapprove-api",
+        "overstated-vrf-unbiasability",
+        "unbounded-commit-reveal-nonreveal",
+        "static-oracle-and-cost-rankings",
+        "l2-mev-does-not-matter",
+        "instant-mainnet-finality",
+        "withdrawal-delay-equals-finality",
+        "blanket-create2-same-address",
+        "reorg-free-event-indexing",
+        "eoa-only-signature-validation"
+      ]
+    }
+  ]
+}

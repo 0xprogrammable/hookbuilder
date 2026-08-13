@@ -53,6 +53,31 @@ export const ARCHITECTURE_ROLES = Object.freeze([
   "hybrid"
 ]);
 
+export function projectCompletionProofFindings(repositoryPlan, compilation) {
+  if (compilation?.repositoryCompletion === "PROVEN" || repositoryPlan?.tradeCapability?.applicability === "unresolved") return [];
+  return [{
+    severity: "blocker",
+    code: "PROJECT_OUTPUT_REPOSITORY_COMPLETION_NOT_PROVEN",
+    path: "$.project.repositoryPlan.completionStatus",
+    message: "Canonical project output requires authenticated external-sandbox completion evidence; legacy command receipts prove content consistency only.",
+    details: {
+      repositoryCompletion: compilation?.repositoryCompletion ?? null,
+      commandExecutionEvidence: compilation?.commandExecutionEvidence ?? null,
+      planCompletionStatus: repositoryPlan?.completionStatus ?? null
+    }
+  }];
+}
+
+export function inspectProjectOutputAuthority(outputReport) {
+  const completionProven = outputReport?.repositoryCompletion === "PROVEN";
+  const fullValid = outputReport?.status === "PROJECT_OUTPUT_VALID" && completionProven;
+  const draftSystem = outputReport?.status === "PROJECT_OUTPUT_DRAFT_UNRESOLVED";
+  const findings = [];
+  if (outputReport?.status === "PROJECT_OUTPUT_VALID" && !completionProven) findings.push({ severity: "blocker", code: "PROJECT_PREFLIGHT_REPOSITORY_COMPLETION_NOT_PROVEN", path: "$.output.repositoryCompletion", message: "PROJECT_PREFLIGHT_VALID requires authenticated repository completion evidence.", details: { repositoryCompletion: outputReport.repositoryCompletion ?? null, commandExecutionEvidence: outputReport.commandExecutionEvidence ?? null } });
+  if (outputReport !== null && !fullValid && !draftSystem) findings.push({ severity: "blocker", code: "PROJECT_PREFLIGHT_OUTPUT_SYSTEM_INVALID", path: "$.output", message: "The supplied cross-artifact output system is not PROJECT_OUTPUT_VALID.", details: { status: outputReport.status ?? null } });
+  return { fullValid, draftSystem, findings };
+}
+
 const lifecycleKinds = Object.freeze(["creation", "use", "claim", "exit", "decommissioning"]);
 const parameterKinds = Object.freeze(["mutable-parameter", "immutable-parameter"]);
 const severityOrder = Object.freeze({ blocker: 0, review: 1, advisory: 2 });

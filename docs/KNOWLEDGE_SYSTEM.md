@@ -85,7 +85,7 @@ command output. This is a reproducible routing budget, not a model-tokenizer or 
 never dropped: a package above the 4,000 cold target reports `expanded-required-context`, and the agent loads each
 triggered chapter only when its phase needs it.
 
-Measured representative v0.5.1 routing from the canonical files:
+Measured representative routing from the historical stable v0.5.1 files:
 
 | Profile | Estimated tokens | Initial selection |
 | --- | ---: | --- |
@@ -128,6 +128,10 @@ when explicitly requested or explicitly allowed as a labeled fallback.
 Upstream refreshes are review tasks. The drift checker observes public metadata without changing the package. A
 maintainer reads source and release diffs, selects one coherent candidate set, updates the observed snapshot, runs all
 invalidated tests, records compatibility and migration impact, and changes the tested baseline only in a new release.
+
+Provider-advisory receipts follow the same non-mutating rule but are separately date-pinned. The Chainlink and ETHSkills
+receipt observed exact bytes at `2026-08-13T07:10:57Z`; it makes no current or latest claim. Any refresh requires a new
+content-addressed receipt, renewed license/no-copy review, and the tests invalidated by the selected facts.
 
 The exact research snapshot and adopted lessons are recorded in
 [`UNISWAP_MASTER_SKILL_ADOPTION.md`](UNISWAP_MASTER_SKILL_ADOPTION.md).

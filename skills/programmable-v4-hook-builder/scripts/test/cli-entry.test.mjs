@@ -26,10 +26,19 @@ test("CLI argument parser preserves repeated companion manifests in caller order
   assert.deepEqual(parsed.options.companionManifests, ["a.json", "b.json"]);
 });
 
-test("doctor delegates to the existing readiness command and emits JSON", () => {
+test("doctor defaults to a concise readiness result and preserves full JSON on request", () => {
   const fixture = createRepository();
   try {
-    const result = runCli(["doctor", "--repository-root", fixture.repository]);
+    const summary = runCli(["doctor", "--repository-root", fixture.repository]);
+    assert.equal(summary.status, 0, summary.stdout || summary.stderr);
+    assert.ok(Buffer.byteLength(summary.stdout) < 900);
+    const summaryOutput = JSON.parse(summary.stdout);
+    assert.equal(summaryOutput.result.status, "LOCAL_REPOSITORY_READY");
+    assert.equal(summaryOutput.result.ready.repositoryWork, true);
+    assert.equal(summaryOutput.result.ready.publicBeta, false);
+    assert.equal(Object.hasOwn(summaryOutput.result, "tools"), false);
+
+    const result = runCli(["doctor", "--json", "--repository-root", fixture.repository]);
     assert.equal(result.status, 0, result.stdout || result.stderr);
     assert.equal(result.stderr, "");
     const output = JSON.parse(result.stdout);
@@ -118,7 +127,7 @@ test("doctor defaults to the installed plugin root when the host cwd is not a Gi
 
   const result = childProcess.spawnSync(
     process.execPath,
-    [path.join(installedSkillRoot, "scripts", "cli.mjs"), "doctor"],
+    [path.join(installedSkillRoot, "scripts", "cli.mjs"), "doctor", "--json"],
     { cwd: hostCwd, encoding: "utf8", shell: false }
   );
   assert.equal(result.status, 0, result.stdout || result.stderr);
@@ -139,7 +148,7 @@ test("doctor defaults to the installed plugin root when the host cwd is not a Gi
   assert.equal(output.result.publicBetaGit.gitRepository.status, "missing");
 });
 
-test("scaffold and check route through the canonical scripts", () => {
+test("scaffold and check route through the canonical scripts with concise default diagnostics", () => {
   const fixture = createRepository();
   try {
     const scaffold = runCli([
@@ -161,10 +170,13 @@ test("scaffold and check route through the canonical scripts", () => {
     const report = path.join(fixture.repository, "submissions", "entry-model", "compatibility-report.json");
     const check = runCli(["check", submission, "--repository-root", fixture.repository]);
     assert.equal(check.status, 0, check.stdout || check.stderr);
+    assert.ok(Buffer.byteLength(check.stdout) < 2_500, `concise V1 check emitted ${Buffer.byteLength(check.stdout)} bytes`);
     const checkOutput = JSON.parse(check.stdout);
     assert.equal(checkOutput.command, "check");
     assert.equal(checkOutput.ok, true);
     assert.equal(checkOutput.result.gatePassed, false);
+    assert.equal(checkOutput.result.status, "REDESIGN_REQUIRED");
+    assert.equal(checkOutput.result.submissionFormat, "v1");
     assert.deepEqual(checkOutput.result.commandOutcome, {
       blockingFindingsPresent: true,
       designReady: false,
@@ -175,11 +187,39 @@ test("scaffold and check route through the canonical scripts", () => {
       selectedGatePassed: null,
       zeroExitMeaning: "REPORT_GENERATED_ONLY_NOT_READINESS"
     });
-    assert.equal(checkOutput.result.submissionHash, JSON.parse(fs.readFileSync(report, "utf8")).submissionHash);
+    const persistedReport = JSON.parse(fs.readFileSync(report, "utf8"));
+    assert.equal(checkOutput.result.submissionHash, persistedReport.submissionHash);
+    assert.equal(checkOutput.result.diagnostics.counts.total, persistedReport.findings.length);
+    assert.equal(
+      Object.values(checkOutput.result.diagnostics.counts.bySeverity).reduce((total, count) => total + count, 0),
+      persistedReport.findings.length
+    );
+    assert.equal(checkOutput.result.diagnostics.counts.displayedRootCauses, 3);
+    assert.equal(checkOutput.result.diagnostics.primary.length, 3);
+    assert.equal(new Set(checkOutput.result.diagnostics.primary.map(({ code }) => code)).size, 3);
+    assert.equal(checkOutput.result.diagnostics.primary[0].code, "CAPABILITY_USAGE_UNRESOLVED");
+    assert.equal(checkOutput.result.diagnostics.primary[0].occurrences, 9);
+    assert.equal(checkOutput.result.diagnostics.primary[0].additionalLocations, 8);
+    assert.equal(Object.hasOwn(checkOutput.result, "findings"), false);
     assert.deepEqual(checkOutput.result.reportWritten, {
       path: "submissions/entry-model/compatibility-report.json",
-      submissionHash: checkOutput.result.submissionHash
+      submissionHash: persistedReport.submissionHash
     });
+    assert.deepEqual(checkOutput.result.exhaustiveReport, {
+      available: true,
+      option: "--json",
+      path: "submissions/entry-model/compatibility-report.json",
+      source: "artifact-and-cli-opt-in",
+      submissionHash: persistedReport.submissionHash
+    });
+    assert.match(checkOutput.result.next, /compatibility-report\.json/u);
+
+    const complete = runCli(["check", submission, "--no-write", "--json", "--repository-root", fixture.repository]);
+    assert.equal(complete.status, 0, complete.stdout || complete.stderr);
+    const completeOutput = JSON.parse(complete.stdout);
+    assert.equal(completeOutput.result.findings.length, persistedReport.findings.length);
+    assert.equal(completeOutput.result.submissionHash, persistedReport.submissionHash);
+    assert.equal(Object.hasOwn(completeOutput.result, "diagnostics"), false);
 
     const required = runCli([
       "check",
@@ -191,6 +231,8 @@ test("scaffold and check route through the canonical scripts", () => {
     assert.equal(required.status, 1, required.stdout || required.stderr);
     const requiredOutput = JSON.parse(required.stdout);
     assert.equal(requiredOutput.error.code, "CHECK_DESIGN_NOT_READY");
+    assert.ok(requiredOutput.error.details.diagnostics.primary.length <= 3);
+    assert.equal(Object.hasOwn(requiredOutput.error.details, "findings"), false);
     assert.equal(requiredOutput.error.details.commandOutcome.enforcedGate, "design-ready");
     assert.equal(requiredOutput.error.details.commandOutcome.selectedGatePassed, false);
     assert.equal(
@@ -225,6 +267,65 @@ test("check can diagnose without writing and rejects conflicting report options"
     ]);
     assert.equal(conflicting.status, 2, conflicting.stdout || conflicting.stderr);
     assert.equal(JSON.parse(conflicting.stdout).error.code, "USAGE_ERROR");
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("check detects an open-world v2 submission and routes the complete package to the v2 validator", () => {
+  const fixture = createRepository();
+  try {
+    const packageRoot = path.join(fixture.repository, "open-world-v2");
+    fs.cpSync(path.join(skillRoot, "assets", "templates", "open-world-v2", "new-idea"), packageRoot, {
+      recursive: true
+    });
+    const submission = path.join(packageRoot, "submission.v2.json");
+    const result = runCli(["check", submission, "--no-write", "--repository-root", fixture.repository]);
+    assert.equal(result.status, 0, result.stdout || result.stderr);
+    assert.ok(Buffer.byteLength(result.stdout) < 2_200, `concise V2 check emitted ${Buffer.byteLength(result.stdout)} bytes`);
+    assert.equal(result.stderr, "");
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.ok, true);
+    assert.equal(output.result.submissionFormat, "open-world-v2");
+    assert.equal(output.result.package, "open-world-v2");
+    assert.equal(output.result.valid, true);
+    assert.equal(output.result.reportWritten, null);
+    assert.equal(output.result.commandOutcome.zeroExitMeaning, "OPEN_WORLD_V2_PACKAGE_VALIDATED_NOT_APPROVAL");
+    assert.equal(output.result.diagnostics.counts.total, 4);
+    assert.equal(output.result.diagnostics.counts.distinctRootCauses, 4);
+    assert.equal(output.result.diagnostics.counts.displayedRootCauses, 3);
+    assert.equal(output.result.diagnostics.counts.omittedRootCauses, 1);
+    assert.equal(output.result.diagnostics.primary.length, 3);
+    assert.equal(new Set(output.result.diagnostics.primary.map(({ code }) => code)).size, 3);
+    assert.equal(Object.hasOwn(output.result, "report"), false);
+    assert.deepEqual(output.result.exhaustiveReport, {
+      available: true,
+      option: "--json",
+      source: "cli-opt-in"
+    });
+
+    const complete = runCli(["check", submission, "--no-write", "--json", "--repository-root", fixture.repository]);
+    assert.equal(complete.status, 0, complete.stdout || complete.stderr);
+    const completeOutput = JSON.parse(complete.stdout);
+    assert.equal(completeOutput.result.validatorCommand, "open-world validate");
+    assert.equal(completeOutput.result.report.findings.length, output.result.diagnostics.counts.total);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("check returns one recovery response when a v2 file is not a canonical package entry", () => {
+  const fixture = createRepository();
+  try {
+    const source = path.join(skillRoot, "assets", "templates", "open-world-v2", "new-idea", "submission.v2.json");
+    const renamed = path.join(fixture.repository, "submission.json");
+    fs.copyFileSync(source, renamed);
+    const result = runCli(["check", renamed, "--no-write", "--repository-root", fixture.repository]);
+    assert.equal(result.status, 2, result.stdout || result.stderr);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.error.code, "CHECK_V2_PACKAGE_REQUIRED");
+    assert.match(output.error.message, /name this file submission\.v2\.json/u);
+    assert.equal(output.error.details, undefined);
   } finally {
     fixture.cleanup();
   }
@@ -423,6 +524,7 @@ test("check exposes structural intake and fails closed for independent prototype
       "check",
       submissionPath,
       "--require-intake-ready",
+      "--json",
       "--repository-root",
       fixture.repository
     ]);
@@ -450,6 +552,7 @@ test("check exposes structural intake and fails closed for independent prototype
       submissionPath,
       "--require-prototype-validated",
       "--require-design-ready",
+      "--json",
       "--repository-root",
       fixture.repository
     ]);

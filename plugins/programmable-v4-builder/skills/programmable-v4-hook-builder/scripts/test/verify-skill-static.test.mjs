@@ -17,6 +17,7 @@ import { markdownHeadingAnchors, parseCanonicalYamlMapping } from "../verify-ski
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "..", "..");
 const verifier = path.join(skillRoot, "scripts", "verify-skill.mjs");
+const executionVerifier = path.join(skillRoot, "scripts", "verify-skill-execution-core.mjs");
 const sourceSkillShape = {
   name: { type: "string", required: true },
   description: { type: "string", required: true },
@@ -90,8 +91,8 @@ test("source verification partitions every portable test exactly once with bound
     .filter((name) => name.endsWith(".test.mjs"))
     .sort();
   const batches = createDeterministicTestBatches(testFiles);
-  assert.equal(testFiles.length, 80);
-  assert.deepEqual(batches.map((batch) => batch.length), [40, 40]);
+  assert.equal(testFiles.length, 81);
+  assert.deepEqual(batches.map((batch) => batch.length), [41, 40]);
   assert.deepEqual(batches[0], testFiles.filter((_, index) => index % 2 === 0));
   assert.deepEqual(batches[1], testFiles.filter((_, index) => index % 2 === 1));
   assert.deepEqual([...batches.flat()].sort(), testFiles);
@@ -264,7 +265,8 @@ test("installed-mode portable execution keeps its single CLI test in one nonempt
 
 function readDeclaredRequiredInventories() {
   const source = fs.readFileSync(verifier, "utf8");
-  const testDeclaration = source.match(/const REQUIRED_PORTABLE_TESTS = Object\.freeze\(`([\s\S]*?)`\.trim\(\)\.split/u);
+  const executionSource = fs.readFileSync(executionVerifier, "utf8");
+  const testDeclaration = executionSource.match(/REQUIRED_PORTABLE_TESTS = Object\.freeze\(`([\s\S]*?)`\.trim\(\)\.split/u);
   assert.ok(testDeclaration, "portable verifier must declare its complete test inventory");
   const portableTestPaths = testDeclaration[1]
     .trim()
@@ -448,7 +450,7 @@ test("portable verifier declares every direct test exactly once", () => {
     .sort()
     .map((name) => `scripts/test/${name}`);
 
-  assert.equal(portableTestPaths.length, 80);
+  assert.equal(portableTestPaths.length, 81);
   assert.equal(new Set(portableTestPaths).size, portableTestPaths.length);
   assert.deepEqual([...portableTestPaths].sort(), discovered);
 });
@@ -460,9 +462,9 @@ test("portable verifier deletion-guards its exact required inventory in one boun
     .update(`${requiredPaths.join("\n")}\n`)
     .digest("hex");
 
-  assert.equal(requiredPaths.length, 394);
+  assert.equal(requiredPaths.length, 397);
   assert.equal(new Set(requiredPaths).size, requiredPaths.length);
-  assert.equal(inventorySha256, "eb34b76b38983f8633ed157d110879abb4fa25cb6157d52ee7675ead096abaa3");
+  assert.equal(inventorySha256, "67d2ca5f31e3858a84ee8a97056958f6c614114b4f5d89ae83ee04d0c2c917af");
   for (const requiredPath of requiredPaths) {
     const entry = fs.lstatSync(path.join(skillRoot, requiredPath));
     assert.ok(entry.isFile(), `${requiredPath} must be a regular file`);
@@ -522,7 +524,7 @@ test("portable verifier drain-preserves a complete diagnostic payload larger tha
     assert.ok(Buffer.byteLength(result.stderr, "utf8") > 64 * 1024);
     assert.deepEqual(lines.slice(0, -1).sort(), lines.slice(0, -1));
     assert.equal(lines.length, 3);
-    assert.equal(lines[0], `- portable package has ${646 + extraTests.length} files; keep it at or below 646`);
+    assert.equal(lines[0], `- portable package has ${662 + extraTests.length} files; keep it at or below 662`);
     assert.ok(lines[1].startsWith(inventoryPrefix));
     assert.ok(lines[1].endsWith(inventorySuffix));
     assert.deepEqual(
@@ -796,7 +798,7 @@ test("trusted verifier rejects excessive file count before checking candidate sc
     const result = runUntrustedVerifier(candidateRoot);
 
     assert.notEqual(result.status, 0, result.stdout);
-    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 646/);
+    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 662/);
     assert.doesNotMatch(result.stderr, /invalid-syntax|SyntaxError/);
   } finally {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });

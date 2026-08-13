@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "pack",
+  "id": "chainlink-ccip",
+  "label": "Chainlink CCIP requirements",
+  "summary": "Atomic EVM-only requirements for one directional CCIP lane. Select it through --chainlink-product ccip; this definition is not deployment or provider-support evidence.",
+  "acceleratorOnly": true,
+  "eligibilityEffect": "none",
+  "unknownCapabilityPolicy": "preserve-and-route",
+  "reviewRoute": "architecture-review-required",
+  "requires": [],
+  "conflictsWith": [],
+  "capabilities": [
+    "chainlink-ccip"
+  ],
+  "projectSurfaces": [
+    "contract",
+    "service"
+  ],
+  "requiredFacts": [
+    "One source-to-destination EVM lane with distinct EIP-155 chain IDs and uint64 Chainlink chain selectors; a reverse lane is a separate profile",
+    "Exact router, sender and receiver roles, addresses, runtime-code hashes, dependency lock, payload schema and application domain",
+    "Source inclusion, destination execution, finality, rate-limit and fee-funding policies",
+    "Replay, duplicate, out-of-order, bounded-pending-work and terminal-recovery behavior with a pre-bound beneficiary",
+    "Send and receive execution outside PoolManager callbacks"
+  ],
+  "requiredFiles": [
+    "Content-addressed EVM-only Chainlink provider profile selecting CCIP",
+    "Source and destination deployment evidence with runtime-code hashes and dependency lock",
+    "Directional sender and receiver source plus payload schema",
+    "Finality, rate-limit, fee-funding and terminal-recovery policies"
+  ],
+  "requiredTests": [
+    "Wrong source or destination chain, selector, router, sender, receiver, runtime hash, application domain and payload schema",
+    "Replay, duplicate, reordering, partial delivery, reorg and destination execution failure",
+    "Fee exhaustion, rate limiting, outage, timeout and permissionless terminal recovery",
+    "Bounded payload size, pending messages, retries and total completion work",
+    "No CCIP send or receive execution inside a PoolManager callback"
+  ],
+  "risks": [
+    "Chain IDs and Chainlink selectors are different domains and can be confused",
+    "A valid source message can execute in the wrong application lane without exact domain binding",
+    "Unbounded pending work or privileged recovery can trap or redirect user value",
+    "A structural plan can be mistaken for deployed router or provider availability evidence"
+  ]
+}

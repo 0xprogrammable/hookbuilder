@@ -18,11 +18,16 @@ Preserve public-safe verbatim UTF-8 intent, language and byte hash. Emit:
 
 Process schemas outside context. Summaries, templates and code never replace verbatim intent.
 
-`validate` never runs code; `execute` runs reviewed argv and binds receipts. After architecture selection use SKILL.md's
-`project materialize`; never hand-author derived hashes, state, inventory or applicability. Before handoff run
-`project require-output` with exact state/package. Schemas must yield one identity/facet/market/route projection; invented claims
-block. `CLEAR` is source-only, `DRAFT_UNRESOLVED` noncanonical, and only exit zero with `PROJECT_PREFLIGHT_VALID`
-completes Autopilot. Unsigned receipts prove content, not execution; completion stays `NOT_PROVEN` until fresh E2E.
+`validate` never runs code. The portable `execute` path also never runs candidate argv: it fails closed with
+`PROJECT_EXTERNAL_SANDBOX_REQUIRED`. No-market `project materialize --write` writes inert source/test bytes and a
+source-bound materializing plan only; tradable `--write` is blocked. Never hand-author derived hashes, state, inventory
+or applicability. A completed plan requires an exact external-sandbox receipt plus Ed25519 provenance from an
+independently configured trust root; this release bundles no production authority. Before handoff run `project
+require-output` only when that evidence and the exact state/package exist. Schemas must yield one
+identity/facet/market/route projection; invented claims block. `CLEAR` is source-only, `DRAFT_UNRESOLVED` noncanonical,
+`PROJECT_MATERIALIZATION_PLAN_WRITTEN` is not execution, and only exit zero with `PROJECT_PREFLIGHT_VALID` completes
+Autopilot. Legacy unsigned receipts prove content consistency only; completion stays `NOT_PROVEN` until trusted fresh
+E2E.
 
 ## ProjectSpec
 

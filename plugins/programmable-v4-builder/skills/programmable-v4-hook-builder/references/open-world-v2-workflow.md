@@ -22,8 +22,9 @@ Autopilot build use the productive `project materialize` command after the archi
 ready. Perform no network or GitHub action.
 
 For the one bundled tradable profile, require a natural idea that independently names a Uniswap v4 hook, fees on
-executed gross quote volume and buy/sell rates immutable after registration. Preview this command without `--write`, inspect the
-report, then repeat it with `--write`; never add missing intent merely to satisfy the profile:
+executed gross quote volume and buy/sell rates immutable after registration. Preview this command without `--write`;
+never add missing intent merely to satisfy the profile. The portable release rejects `--write` because productive
+tradable materialization requires candidate dependency and test execution, and no trusted sandbox authority is bundled:
 
 ```bash
 node "$SKILL_ROOT/scripts/cli.mjs" project materialize --idea-file "$IDEA_FILE" --application-id "$APPLICATION_ID" --classification tradable --market-ref "$MARKET_REF" --reference-profile programmable-volume-fee-v2 --output "$NEW_REPOSITORY"
@@ -46,9 +47,10 @@ node "$SKILL_ROOT/scripts/project-compiler.mjs" validate \
   --state "$PROJECT_STATE_PATH"
 ```
 
-After materialization, commit the complete source tree first. Bind a `materializing` plan to that exact clean commit and
-branch, declare `executionPolicy.externalWrites: false` for every command, and keep only that transient input plan on one
-specifically ignored path. Execute the reviewed argv without a shell:
+After no-market source materialization, the output contains one clean source commit plus a `materializing` plan bound to
+that exact commit and branch. The plan is transient on one specifically ignored path and every command declares
+`executionPolicy.externalWrites: false`. The portable command below never executes its argv; it validates the source and
+plan boundary, then exits 2 with `PROJECT_EXTERNAL_SANDBOX_REQUIRED`:
 
 ```bash
 node "$SKILL_ROOT/scripts/project-compiler.mjs" execute \
@@ -57,10 +59,13 @@ node "$SKILL_ROOT/scripts/project-compiler.mjs" execute \
   --output-plan ".programmable/repository-plan.v1.json"
 ```
 
-The executor strips inherited credentials, bounds each timeout and output, rejects repeated/trivial commands, unsafe
-cwd symlinks and known external-write flags, and stops on source drift. Its receipts and completed plan must not be
-ignored. Add them plus the immutable project-state JSON only in a narrow evidence-only descendant commit, then validate
-from that clean commit. A fresh clone must retain and revalidate the same source/evidence ancestry and bytes.
+Completion requires an external launcher/runtime isolated by a separate UID, container or VM and a receipt conforming to
+`project-sandbox-receipt-v1.schema.json`. Verification binds the exact commit/tree, plan/command/input hashes,
+launcher/runtime identities, enforced filesystem/network/secret/external-write/process policies, boolean network/write
+observations and command/output hashes. It also verifies Ed25519 provenance against an independently configured trust
+root. This release configures no production key, so a local unsigned or self-signed JSON file cannot satisfy the gate.
+Only after trusted evidence exists may a host integration author a completed plan and immutable states; the portable CLI
+does not provide that integration.
 
 Before showing or handing off ProjectSpec, ProductGraph, RepositoryPlan, ProjectState, Submission, or trade manifests,
 require them as one byte-bound output. `--submission-root` is repository-relative and must contain only files declared

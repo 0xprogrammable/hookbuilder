@@ -49,7 +49,7 @@ const forbidden = request.rubric.forbidden.map((criterion) => ({
   evidence: [],
 }));
 const result = {
-  schemaVersion: '1.0.0',
+  schemaVersion: '1.1.0',
   kind: 'programmable-e2e-judge-result',
   requestSha256: mode === 'invalid-binding' ? '0'.repeat(64) : sha256(requestBytes),
   usage: {
@@ -58,6 +58,9 @@ const result = {
     totalTokens: 2000,
   },
   telemetry: {
+    activatedReferenceBytes: 8 * 1024,
+    descendantSubagentCount: 0,
+    emittedBytes: 16 * 1024,
     toolCalls: 4,
     toolErrors: 0,
     retries: 0,

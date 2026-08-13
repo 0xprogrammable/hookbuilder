@@ -1,0 +1,273 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:programmable:chainlink-provider-profile:1.0.0",
+  "title": "Programmable EVM Chainlink provider profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "profileId",
+    "subject",
+    "projectPlan",
+    "runtimeCoverage",
+    "targetChainIds",
+    "sourceReceipt",
+    "authorityBoundary",
+    "sourceCoverage",
+    "productionInvariants",
+    "integrations",
+    "evidence"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "kind": { "const": "programmable-chainlink-provider-profile" },
+    "profileId": { "$ref": "#/$defs/slug" },
+    "subject": { "$ref": "#/$defs/artifact" },
+    "projectPlan": { "$ref": "#/$defs/artifact" },
+    "runtimeCoverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executionFamily", "scope"],
+      "properties": {
+        "executionFamily": { "const": "evm" },
+        "scope": { "const": "EVM_ONLY" }
+      }
+    },
+    "targetChainIds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/uint" }
+    },
+    "sourceReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "const": "references/provider-knowledge-source-receipt-2026-08-13.json" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "authorityBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executionAuthorityEffect", "validationNetworkAccess", "secrets", "automaticDeployment", "automaticApproval"],
+      "properties": {
+        "executionAuthorityEffect": { "const": "NONE" },
+        "validationNetworkAccess": { "const": "forbidden" },
+        "secrets": { "const": "backend-only" },
+        "automaticDeployment": { "const": false },
+        "automaticApproval": { "const": false }
+      }
+    },
+    "sourceCoverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["automation", "functions", "confidentialAi", "ace", "nonEvm"],
+      "properties": {
+        "automation": { "const": "not-covered-by-reviewed-source" },
+        "functions": { "const": "not-covered-by-reviewed-source" },
+        "confidentialAi": { "const": "excluded-alpha" },
+        "ace": { "const": "excluded-separate-legal-license-security-review" },
+        "nonEvm": { "const": "out-of-scope" }
+      }
+    },
+    "productionInvariants": { "$ref": "#/$defs/productionInvariants" },
+    "integrations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/integration" }
+    },
+    "evidence": { "$ref": "#/$defs/artifacts" }
+  },
+  "$defs": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "uint": { "type": "string", "minLength": 1, "maxLength": 78, "pattern": "^(?:0|[1-9][0-9]*)$" },
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "address": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$" },
+    "bytes32": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" },
+    "path": { "type": "string", "minLength": 1, "maxLength": 512, "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*\\\\)[^\\u0000-\\u001f\\u007f-\\u009f]+$" },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "kind"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "kind": { "enum": ["config", "dependency-lock", "deployment", "receipt", "review", "runtime", "schema", "simulation", "source", "test"] }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/artifact" }
+    },
+    "productionInvariants": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["liveness", "accountExecution", "indexerRpc", "chainCapability", "futureProtocol"],
+      "properties": {
+        "liveness": { "oneOf": [{ "$ref": "#/$defs/invariantNotApplicable" }, { "$ref": "#/$defs/livenessRequirements" }] },
+        "accountExecution": { "oneOf": [{ "$ref": "#/$defs/invariantNotApplicable" }, { "$ref": "#/$defs/accountExecutionRequirements" }] },
+        "indexerRpc": { "oneOf": [{ "$ref": "#/$defs/invariantNotApplicable" }, { "$ref": "#/$defs/indexerRpcRequirements" }] },
+        "chainCapability": { "oneOf": [{ "$ref": "#/$defs/invariantNotApplicable" }, { "$ref": "#/$defs/chainCapabilityRequirements" }] },
+        "futureProtocol": { "oneOf": [{ "$ref": "#/$defs/invariantNotApplicable" }, { "$ref": "#/$defs/futureProtocolRequirements" }] }
+      }
+    },
+    "invariantNotApplicable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "reason", "evidenceSha256"],
+      "properties": {
+        "disposition": { "const": "not-applicable-with-evidence" },
+        "reason": { "type": "string", "minLength": 24, "maxLength": 500 },
+        "evidenceSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "livenessRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "callerBinding", "authorizationBinding", "gasPayerBinding", "fundingAndIncentiveBinding", "deadlineBinding", "workBound", "retryIdempotency", "stuckExitBinding"],
+      "properties": {
+        "disposition": { "const": "requirements-declared" },
+        "callerBinding": { "const": "required" },
+        "authorizationBinding": { "const": "required" },
+        "gasPayerBinding": { "const": "required" },
+        "fundingAndIncentiveBinding": { "const": "required" },
+        "deadlineBinding": { "const": "required" },
+        "workBound": { "const": "required" },
+        "retryIdempotency": { "const": "required" },
+        "stuckExitBinding": { "const": "required" }
+      }
+    },
+    "accountExecutionRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "supportedModels", "nonceBinding", "deadlineBinding", "domainBinding", "replayPolicy", "codeLengthAssumptionPolicy", "mutableSignatureValidityPolicy", "persistentDelegationPolicy"],
+      "properties": {
+        "disposition": { "const": "requirements-declared" },
+        "supportedModels": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": { "enum": ["eip7702", "eoa", "erc1271", "erc4337", "relayer-session-key"] }
+        },
+        "nonceBinding": { "const": "required" },
+        "deadlineBinding": { "const": "required" },
+        "domainBinding": { "const": "required" },
+        "replayPolicy": { "const": "must-reject" },
+        "codeLengthAssumptionPolicy": { "const": "forbidden" },
+        "mutableSignatureValidityPolicy": { "const": "must-handle" },
+        "persistentDelegationPolicy": { "const": "must-handle" }
+      }
+    },
+    "indexerRpcRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "runtimeHashBinding", "abiAndTopicBinding", "startBlockHashBinding", "blockTagBinding", "logChunkBound", "removedLogPolicy", "deterministicReplayRequirement", "providerDisagreementPolicy", "freshnessBinding"],
+      "properties": {
+        "disposition": { "const": "requirements-declared" },
+        "runtimeHashBinding": { "const": "required" },
+        "abiAndTopicBinding": { "const": "required" },
+        "startBlockHashBinding": { "const": "required" },
+        "blockTagBinding": { "const": "required" },
+        "logChunkBound": { "const": "required" },
+        "removedLogPolicy": { "const": "must-handle" },
+        "deterministicReplayRequirement": { "const": "required" },
+        "providerDisagreementPolicy": { "const": "fail-closed" },
+        "freshnessBinding": { "const": "required" }
+      }
+    },
+    "chainCapabilityRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "inclusionFinalityWithdrawalSeparation", "feeAndTimeSemanticsBinding", "sequencerPolicyRequirement", "opcodePrecompileCompilerBinding", "bridgeReplayDomainBinding", "deterministicAddressAssumptionPolicy"],
+      "properties": {
+        "disposition": { "const": "requirements-declared" },
+        "inclusionFinalityWithdrawalSeparation": { "const": "required" },
+        "feeAndTimeSemanticsBinding": { "const": "required" },
+        "sequencerPolicyRequirement": { "const": "bind-or-prove-not-applicable" },
+        "opcodePrecompileCompilerBinding": { "const": "required" },
+        "bridgeReplayDomainBinding": { "const": "required" },
+        "deterministicAddressAssumptionPolicy": { "const": "forbidden" }
+      }
+    },
+    "futureProtocolRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition", "forkInclusionEvidence", "executionSpecCommitBinding", "targetRuntimeProof", "fallbackOrMigrationBinding"],
+      "properties": {
+        "disposition": { "const": "requirements-declared" },
+        "forkInclusionEvidence": { "const": "required" },
+        "executionSpecCommitBinding": { "const": "required" },
+        "targetRuntimeProof": { "const": "required" },
+        "fallbackOrMigrationBinding": { "const": "required" }
+      }
+    },
+    "contractRole": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "address", "runtimeCodeKeccak256", "deploymentEvidence"],
+      "properties": {
+        "role": { "$ref": "#/$defs/slug" },
+        "address": { "$ref": "#/$defs/address" },
+        "runtimeCodeKeccak256": { "$ref": "#/$defs/bytes32" },
+        "deploymentEvidence": { "$ref": "#/$defs/artifact" }
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chainId", "dependencyLock", "contractRoles"],
+      "properties": {
+        "chainId": { "$ref": "#/$defs/uint" },
+        "dependencyLock": { "$ref": "#/$defs/artifact" },
+        "contractRoles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/contractRole" }
+        }
+      }
+    },
+    "integration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "genericCapabilities", "executionOperations", "deployments", "properties", "evidence"],
+      "properties": {
+        "id": { "enum": ["ccip", "cre", "data-feeds", "data-streams", "vrf-v2-5"] },
+        "status": { "enum": ["planned", "implemented-structure", "deployment-evidence-declared"] },
+        "genericCapabilities": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["cross-chain-messaging", "keeper-automation", "oracle-data", "randomness"] }
+        },
+        "executionOperations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["async-callback-outside-hook", "async-read-outside-hook", "bounded-sync-read-in-hook", "offchain-deterministic-runtime", "report-verification-outside-hook"] }
+        },
+        "deployments": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/deployment" }
+        },
+        "properties": { "type": "object" },
+        "evidence": { "$ref": "#/$defs/artifacts" }
+      }
+    }
+  }
+}

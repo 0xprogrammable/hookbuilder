@@ -7,6 +7,19 @@ import { GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1 } from "./github-exact-object-reso
 import { git, runGit } from "./cli-prepare-pr-transport.mjs";
 import { requireCommit, requireSafeBranch } from "./cli-prepare-pr-values.mjs";
 
+export function compactDoctorReport(report, publicBetaGit) {
+  const blockers = report.publicBetaBlockers.slice(0, 3);
+  return {
+    status: ["LOCAL_TOOLING_BLOCKED", "IDEA_WORK_READY", "LOCAL_REPOSITORY_READY"][Number(report.readyForDeterministicPreflight) + Number(report.readyForRepositoryWork)],
+    ready: { ideaWork: report.readyForIdeaWork, deterministicPreflight: report.readyForDeterministicPreflight, repositoryWork: report.readyForRepositoryWork, publicBeta: false },
+    repository: { root: report.repositoryRoot, cleanWorktree: report.cleanWorktree, preparePrLocal: publicBetaGit.readyForPreparePrLocal },
+    node: report.runtimeCompatibility.node,
+    blockers,
+    omittedBlockers: report.publicBetaBlockers.length - blockers.length,
+    next: "If repositoryWork is true, run context --mode autopilot; otherwise rerun doctor --json."
+  };
+}
+
 export function inspectLocalGitReadiness(repositoryRoot, gitImplementation = runGit) {
   const blocked = (status, reason) => ({ status, reason });
   const exactObjectTooling = inspectExactObjectGitTooling();

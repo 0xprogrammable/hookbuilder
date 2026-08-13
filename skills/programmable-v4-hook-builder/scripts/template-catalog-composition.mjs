@@ -17,6 +17,139 @@ import {
   unique
 } from "./template-catalog-shared.mjs";
 
+const CHAINLINK_PRODUCT_IDS = Object.freeze([
+  "chainlink-ccip",
+  "chainlink-cre",
+  "chainlink-data-feeds",
+  "chainlink-data-streams",
+  "chainlink-vrf-v2-5"
+]);
+const CHAINLINK_PRODUCT_ID_SET = new Set(CHAINLINK_PRODUCT_IDS);
+export const CHAINLINK_PRODUCT_CAPABILITY_IDS = CHAINLINK_PRODUCT_IDS;
+const CHAINLINK_GENERIC_CAPABILITY_BY_PRODUCT = Object.freeze({
+  "chainlink-ccip": "cross-chain-messaging",
+  "chainlink-cre": "keeper-automation",
+  "chainlink-data-feeds": "oracle-data",
+  "chainlink-data-streams": "oracle-data",
+  "chainlink-vrf-v2-5": "randomness"
+});
+const CHAINLINK_PRODUCT_ALIASES = new Map([
+  ["ccip", "chainlink-ccip"],
+  ["chainlink-vrf", "chainlink-vrf-v2-5"],
+  ["cre", "chainlink-cre"],
+  ["data-feeds", "chainlink-data-feeds"],
+  ["data-streams", "chainlink-data-streams"],
+  ["feeds", "chainlink-data-feeds"],
+  ["streams", "chainlink-data-streams"],
+  ["vrf", "chainlink-vrf-v2-5"],
+  ["vrf-v2-5", "chainlink-vrf-v2-5"],
+  ["vrf-v2.5", "chainlink-vrf-v2-5"]
+]);
+export const TEMPLATE_BASELINE_TRIGGERS = Object.freeze({
+  authority: true,
+  valueFlow: false,
+  sourceOfTruth: true,
+  signaturesReplay: false,
+  externalCalls: false,
+  custody: false,
+  piiGeolocation: false,
+  secretBoundary: false,
+  sourceTestSchema: true,
+  failureRecovery: true
+});
+
+export function chainlinkProductCapabilities(value) {
+  const exact = new Map([
+    ["ccip", "chainlink-ccip"],
+    ["cre", "chainlink-cre"],
+    ["data-feeds", "chainlink-data-feeds"],
+    ["data-streams", "chainlink-data-streams"],
+    ["vrf-v2-5", "chainlink-vrf-v2-5"]
+  ]);
+  const productId = exact.get(value);
+  if (productId === undefined) {
+    fail(
+      "CHAINLINK_PRODUCT_INVALID",
+      `Unknown or aliased Chainlink product ${value}. Use one of: ${[...exact.keys()].join(", ")}.`,
+      {
+        product: value,
+        availableProductIds: [...exact.keys()],
+        adverseDecision: false,
+        eligibilityEffect: "none"
+      }
+    );
+  }
+  return [
+    productId,
+    "chainlink-provider",
+    CHAINLINK_GENERIC_CAPABILITY_BY_PRODUCT[productId]
+  ].sort(compareUtf8);
+}
+
+export function collectChainlinkPlanSurfaces(plan, activeSurfaceSlugs) {
+  const selectedCapabilities = new Set(plan.machineCapabilities.allCapabilityIds);
+  const surfacesByCapability = new Map();
+  for (const capabilityId of ["chainlink-provider", ...CHAINLINK_PRODUCT_IDS]) {
+    if (!selectedCapabilities.has(capabilityId)) continue;
+    const entry = plan.directCapabilityLegos?.entries?.find((candidate) => candidate.capabilityId === capabilityId);
+    if (
+      entry?.exactRequirementStatus !== "catalog-atomic"
+      || !Array.isArray(entry.projectSurfaces)
+      || entry.projectSurfaces.length === 0
+    ) {
+      fail("CHAINLINK_PRODUCT_REQUIREMENTS_INCOMPLETE", `Chainlink capability ${capabilityId} lacks one atomic product-requirement surface closure.`);
+    }
+    surfacesByCapability.set(capabilityId, entry.projectSurfaces);
+    for (const surface of entry.projectSurfaces) activeSurfaceSlugs.add(surface);
+  }
+  return { selectedCapabilities, surfacesByCapability };
+}
+
+export function bindChainlinkPlanSurfaces({ selectedCapabilities, surfacesByCapability }, capabilitySurfaceSlugs) {
+  if (selectedCapabilities.has("chainlink-provider")) {
+    capabilitySurfaceSlugs.set("chainlink-provider", new Set(surfacesByCapability.get("chainlink-provider")));
+  }
+  for (const [productId, genericCapability] of Object.entries(CHAINLINK_GENERIC_CAPABILITY_BY_PRODUCT)) {
+    if (!selectedCapabilities.has(productId)) continue;
+    const surfaces = surfacesByCapability.get(productId);
+    capabilitySurfaceSlugs.set(productId, new Set(surfaces));
+    const assigned = capabilitySurfaceSlugs.get(genericCapability) ?? new Set();
+    for (const surface of surfaces) assigned.add(surface);
+    capabilitySurfaceSlugs.set(genericCapability, assigned);
+  }
+}
+
+function chainlinkCapabilityNeedsSecretBoundary(capabilityId) {
+  if (capabilityId === "chainlink-provider") return true;
+  return /(?:^|-)(?:keeper|oracle|randomness|signed)(?:-|$)/u.test(capabilityId);
+}
+
+export function templateCapabilityKind(capabilityId, surfaceIds, custom) {
+  if (custom) return capabilityId;
+  if (/reward|fee|claim|distribution|incentive|vesting/u.test(capabilityId)) return "reward-distribution";
+  if (/wallet|transaction/u.test(capabilityId)) return "wallet-transaction";
+  if (/game|threejs|loot/u.test(capabilityId)) return "gameplay";
+  if (/map|location/u.test(capabilityId)) return "map-interaction";
+  if (/keeper|automation|twamm/u.test(capabilityId)) return "scheduled-execution";
+  if (/index|discovery|metadata|disclosure|evidence|security-propert/u.test(capabilityId)) return "indexing";
+  if (/token|launch/u.test(capabilityId)) return "token-launch";
+  if (surfaceIds.some((id) => id === "service-surface")) return "api";
+  return "pool-interaction";
+}
+
+export function templateSecurityTriggers(capabilityId) {
+  const text = capabilityId.toLowerCase();
+  return {
+    ...TEMPLATE_BASELINE_TRIGGERS,
+    valueFlow: /accounting|asset|auction|claim|curve|fee|incentive|liquidity|order|pool|price|reward|staking|swap|token|twamm|vesting|wrapper|yield/u.test(text),
+    signaturesReplay: /signed|wallet-action|transaction/u.test(text),
+    externalCalls: /adapter|cross-chain|external|map|oracle|provider|randomness|service|wrapped|yield/u.test(text),
+    custody: /accumulator|custody|hook-owned|inventory|staking|vesting|yield/u.test(text),
+    piiGeolocation: /geolocation|location|map/u.test(text),
+    secretBoundary: chainlinkCapabilityNeedsSecretBoundary(text)
+  };
+}
+
 export function parseCustomCapability(value) {
   if (typeof value !== "string") {
     fail("CUSTOM_CAPABILITY_INVALID", "Custom capability must use <id>=<visible label>.");
@@ -55,6 +188,7 @@ export function composeTemplate({
     fail("STARTER_UNKNOWN", `Unknown starter: ${starterId}.`, { starterId });
   }
 
+  rejectChainlinkProductAliases(packIds);
   const requestedPackIds = normalizeRequestedIds(packIds, "pack id");
   const requestedCapabilityIds = normalizeRequestedUserIds(capabilityIds, "capability id");
   const selected = new Set(starter.defaultPacks);
@@ -79,6 +213,7 @@ export function composeTemplate({
   for (const packId of [...selected]) visit(packId);
 
   const selectedPackIds = [...selected].sort(compareUtf8);
+  requireExactChainlinkProduct({ selectedPackIds, requestedCapabilityIds });
   if (["ordinary-launch", "custom-token-standard-fee-hook"].includes(starter.id) && selected.has("custom-hook-behavior")) {
     fail(
       "CUSTOM_HOOK_STARTER_REQUIRED",
@@ -232,6 +367,59 @@ export function composeTemplate({
       providerSupportInference: "forbidden"
     }
   };
+}
+
+function rejectChainlinkProductAliases(packIds) {
+  if (!Array.isArray(packIds)) return;
+  for (const value of packIds) {
+    const normalized = String(value).toLowerCase();
+    const replacement = CHAINLINK_PRODUCT_ID_SET.has(normalized)
+      ? normalized
+      : CHAINLINK_PRODUCT_ALIASES.get(normalized);
+    if (replacement === undefined) continue;
+    fail(
+      "CHAINLINK_PRODUCT_ALIAS_INVALID",
+      `Chainlink product ${value} must be selected through --chainlink-product ${replacement.replace(/^chainlink-/u, "")}; its catalog definition supplies requirements, not a standalone integration.`,
+      {
+        alias: value,
+        replacement,
+        adverseDecision: false,
+        eligibilityEffect: "none"
+      }
+    );
+  }
+}
+
+function requireExactChainlinkProduct({ selectedPackIds, requestedCapabilityIds }) {
+  const foundationPackSelected = selectedPackIds.includes("chainlink-provider");
+  const foundationCapabilitySelected = requestedCapabilityIds.includes("chainlink-provider");
+  const productIds = requestedCapabilityIds.filter((id) => CHAINLINK_PRODUCT_ID_SET.has(id));
+  const recovery = "Use --chainlink-product vrf-v2-5 (or ccip, cre, data-feeds, data-streams) instead.";
+  if (foundationPackSelected) {
+    fail(
+      "CHAINLINK_PRODUCT_REQUIRED",
+      `chainlink-provider is a shared foundation and omits the exact product-requirement closure. ${recovery}`,
+      {
+        availableProductIds: CHAINLINK_PRODUCT_IDS.map((id) => id.replace(/^chainlink-/u, "")),
+        adverseDecision: false,
+        eligibilityEffect: "none"
+      }
+    );
+  }
+  if (!foundationCapabilitySelected && productIds.length === 0) return;
+  const incomplete = !foundationCapabilitySelected
+    || productIds.length === 0
+    || productIds.some((id) => !requestedCapabilityIds.includes(CHAINLINK_GENERIC_CAPABILITY_BY_PRODUCT[id]));
+  if (!incomplete) return;
+  fail(
+    "CHAINLINK_PRODUCT_REQUIRED",
+    `Chainlink selection must bind the exact product, shared provider boundary, and generic capability together. ${recovery}`,
+    {
+      availableProductIds: CHAINLINK_PRODUCT_IDS.map((id) => id.replace(/^chainlink-/u, "")),
+      adverseDecision: false,
+      eligibilityEffect: "none"
+    }
+  );
 }
 
 export function normalizeRequestedIds(values, label) {

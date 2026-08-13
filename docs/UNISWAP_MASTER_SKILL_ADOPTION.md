@@ -1,6 +1,7 @@
 # Uniswap master-skill adoption record
 
-Private maintainer record for the Programmable v4 Builder `v0.5.1` candidate. This document records what was inspected,
+Historical maintainer record for the Programmable v4 Builder `v0.5.1` candidate that preceded the immutable stable
+release. It does not describe or evidence the local unpublished `v0.6.0` source candidate. This document records what was inspected,
 what became portable skill guidance, and what still requires live or human evidence. It is not part of the agent's
 default context and is not an Uniswap endorsement, audit, deployment record, or public release announcement.
 
@@ -179,5 +180,5 @@ tests, deployment evidence, provider observations, independent security review, 
 
 Future daily releases update the observed source snapshot, inspect every drift item, change only a coherent candidate
 dependency set, run migrations and the complete gates, and preserve old protected tags and evidence. Security hotfixes
-remain separate exceptions. The frozen `v0.3.0` private bundle is never rewritten; this work produces a new `v0.5.1`
-candidate.
+remain separate exceptions. The frozen `v0.3.0` private bundle was not rewritten; the historical work recorded here
+produced the `v0.5.1` candidate that preceded the stable release.

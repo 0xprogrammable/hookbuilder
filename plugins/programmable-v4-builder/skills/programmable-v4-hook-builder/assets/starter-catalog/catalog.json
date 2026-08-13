@@ -41,6 +41,42 @@
       "sha256": "b5b76a64787f5335e9a5c1cf3b415a90d97c53fb033119eaf8b77b70d8f24a16"
     },
     {
+      "id": "chainlink-ccip",
+      "kind": "pack",
+      "path": "packs/chainlink-ccip.json",
+      "sha256": "7e5575667ba814ba2e0dea9efb06d6d0034667878e082795334b080cfd4dc2fb"
+    },
+    {
+      "id": "chainlink-cre",
+      "kind": "pack",
+      "path": "packs/chainlink-cre.json",
+      "sha256": "fb9a657564d6486b78a73d1bc459793560bc3542f4980f652778e32f80630c78"
+    },
+    {
+      "id": "chainlink-data-feeds",
+      "kind": "pack",
+      "path": "packs/chainlink-data-feeds.json",
+      "sha256": "19e173578f066209048eacf64a65aa0482549802e747c79a472c03d1392cdbc4"
+    },
+    {
+      "id": "chainlink-data-streams",
+      "kind": "pack",
+      "path": "packs/chainlink-data-streams.json",
+      "sha256": "fbf8e24aad73d57772a779e60fda8e49cc665c81372e185c23af4a432806ec69"
+    },
+    {
+      "id": "chainlink-provider",
+      "kind": "pack",
+      "path": "packs/chainlink-provider.json",
+      "sha256": "553b1987c5a78fb60b541f62f4986c519e1294ff5b6d7c865587e8618eff611b"
+    },
+    {
+      "id": "chainlink-vrf-v2-5",
+      "kind": "pack",
+      "path": "packs/chainlink-vrf-v2-5.json",
+      "sha256": "69b2832c3f9111694dd15a2d1748c6f1509c8ba2bb52238cdd116966be808267"
+    },
+    {
       "id": "continuous-clearing-auction",
       "kind": "pack",
       "path": "packs/continuous-clearing-auction.json",
@@ -57,6 +93,12 @@
       "kind": "pack",
       "path": "packs/contract-priced-sell-and-burn-v4-custom-accounting.json",
       "sha256": "db2d6176631056cc7146e51551e9bfc5d808dda09d1cd2825be79fb08b9b7790"
+    },
+    {
+      "id": "cross-chain-messaging",
+      "kind": "pack",
+      "path": "packs/cross-chain-messaging.json",
+      "sha256": "026d7184484891e0586b5fc21c4719e3909698f36c7556e54f1a590703d6b4a5"
     },
     {
       "id": "custom-curve",

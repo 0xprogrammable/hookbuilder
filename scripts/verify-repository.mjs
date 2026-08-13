@@ -8,6 +8,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import {
   createLogRecord,
+  inventorySolidityTests,
   RELEASE_KERNEL_CHECKS,
   RELEASE_KERNEL_EVIDENCE_KIND,
   RELEASE_KERNEL_EVIDENCE_SCHEMA_VERSION,
@@ -25,7 +26,12 @@ import {
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
-const repositoryVersion = JSON.parse(fs.readFileSync(path.join(repositoryRoot, "package.json"), "utf8")).version;
+const versionAuthority = JSON.parse(fs.readFileSync(path.join(repositoryRoot, "config", "plugin.json"), "utf8"));
+const packageDocument = JSON.parse(fs.readFileSync(path.join(repositoryRoot, "package.json"), "utf8"));
+if (packageDocument.version !== versionAuthority.version) {
+  throw new Error("package.json version must match canonical config/plugin.json version");
+}
+const repositoryVersion = versionAuthority.version;
 const options = parseArgs(process.argv.slice(2));
 const releaseCommandTimeoutMs = options.kernelEvidenceOutput === null ? null : kernelTimeoutMs();
 const repositoryTests = fs.readdirSync(path.join(repositoryRoot, "test"))
@@ -261,33 +267,6 @@ function runCaptured(command, args, cwd, environment = {}) {
     timeoutMs,
     durationMs: Date.now() - started
   };
-}
-
-function inventorySolidityTests(testRoot) {
-  const functions = [];
-  for (const file of walkFiles(testRoot).filter((name) => name.endsWith(".sol"))) {
-    const source = fs.readFileSync(file, "utf8")
-      .replace(/\/\*[\s\S]*?\*\//gu, "")
-      .replace(/\/\/.*$/gmu, "");
-    for (const match of source.matchAll(/\bfunction\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/gu)) functions.push(match[1]);
-  }
-  const invariant = functions.filter((name) => name.startsWith("invariant")).length;
-  return {
-    unit: functions.filter((name) => name.startsWith("test") && !name.startsWith("testFuzz")).length,
-    fuzz: functions.filter((name) => name.startsWith("testFuzz")).length,
-    invariant,
-    invariantPolicy: "required-and-present"
-  };
-}
-
-function walkFiles(directory) {
-  const files = [];
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    const absolutePath = path.join(directory, entry.name);
-    if (entry.isDirectory()) files.push(...walkFiles(absolutePath));
-    else if (entry.isFile()) files.push(absolutePath);
-  }
-  return files;
 }
 
 function parseArgs(args) {
