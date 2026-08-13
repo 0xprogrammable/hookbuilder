@@ -55,10 +55,11 @@ const commandSpecs = new Map([
     positionals: { min: 1, max: 1, names: ["model-id"] }
   }],
   ["check", {
-    usage: "cli.mjs check <submission.json> [--write-report <path> | --no-write] [--require-design-ready | --require-intake-ready | --require-ready | --require-prototype-validated] [--repository-root <path>]",
-    summary: "Generate the canonical compatibility report. Without a --require-* gate, exit 0 means report generation only, not readiness.",
+    usage: "cli.mjs check <submission.json> [--json] [--write-report <path> | --no-write] [--require-design-ready | --require-intake-ready | --require-ready | --require-prototype-validated] [--repository-root <path>]",
+    summary: "Summarize at most three root causes and generate the canonical compatibility report. Use --json for complete diagnostics; without a --require-* gate, exit 0 means report generation only, not readiness.",
     options: [
       repositoryOption(),
+      { name: "--json", key: "fullJson", type: "boolean", description: "Return the complete machine-readable report instead of the concise outcome." },
       { name: "--write-report", key: "reportPath", type: "value", valueName: "path", description: "Write to this in-repository path; by default compatibility-report.json is written beside the submission." },
       { name: "--no-write", key: "noWrite", type: "boolean", description: "Return the diagnostic report without changing files." },
       { name: "--require-design-ready", key: "requireDesignReady", type: "boolean", description: "Fail unless the design axis is DESIGN_READY." },
@@ -264,18 +265,19 @@ async function execute(command, options, positionals) {
             submissionHash: result.submissionHash
           }
     };
+    const output = options.fullJson ? completed : summarizeV1Check(completed);
     if (options.requirePrototypeValidated) {
       throw new CliFailure(
         "INDEPENDENT_VERIFICATION_REQUIRED",
         "prototype validation requires independent verification that this local command does not perform",
-        { exitCode: 1, details: completed }
+        { exitCode: 1, details: output }
       );
     }
     if (options.requireDesignReady && result.readiness?.design !== "DESIGN_READY") {
       throw new CliFailure(
         "CHECK_DESIGN_NOT_READY",
         "the exact design has not reached DESIGN_READY",
-        { exitCode: 1, details: completed }
+        { exitCode: 1, details: output }
       );
     }
     if (
@@ -288,10 +290,10 @@ async function execute(command, options, positionals) {
       throw new CliFailure(
         "CHECK_INTAKE_NOT_READY",
         "the exact implementation has not reached STRUCTURALLY_COMPLETE with complete repository closure",
-        { exitCode: 1, details: completed }
+        { exitCode: 1, details: output }
       );
     }
-    return completed;
+    return output;
   }
   if (command === "package") {
     const packageRoot = resolveDirectory(repositoryRoot, positionals[0]);
@@ -526,6 +528,130 @@ function checkCommandOutcome(result, options) {
   };
 }
 
+function summarizeV1Check(result) {
+  const diagnostics = summarizeFindings(result.findings);
+  return {
+    submissionFormat: "v1",
+    submissionHash: result.submissionHash,
+    status: result.decision,
+    readiness: {
+      design: result.readiness?.design ?? null,
+      implementation: result.readiness?.implementation ?? null,
+      repositoryClosure: result.closure?.status ?? null
+    },
+    gatePassed: result.gatePassed,
+    commandOutcome: result.commandOutcome,
+    diagnostics,
+    reportWritten: result.reportWritten,
+    exhaustiveReport: exhaustiveReportHint(result.reportWritten),
+    next: diagnostics.counts.total === 0
+      ? "No deterministic finding remains; continue only to the separately required gate. Add --json for the complete local report."
+      : result.reportWritten === null
+        ? "Resolve the primary root causes, then rerun check; add --json for every finding."
+        : `Resolve the primary root causes in ${result.reportWritten.path}, then rerun check; add --json for the complete inline report.`
+  };
+}
+
+function summarizeV2Check(result) {
+  const diagnostics = summarizeFindings(result.report?.findings);
+  return {
+    submissionFormat: "open-world-v2",
+    package: result.package,
+    status: result.report?.status ?? (result.valid === true ? "VALID" : "INVALID"),
+    valid: result.valid === true,
+    ideaEligibility: result.report?.ideaEligibility ?? null,
+    commandOutcome: result.commandOutcome,
+    diagnostics,
+    reportWritten: null,
+    exhaustiveReport: exhaustiveReportHint(null),
+    safety: {
+      readOnly: result.readOnly === true,
+      networkAccessed: result.networkAccessed === true,
+      writePerformed: result.writePerformed === true,
+      externalActionsPerformed: Array.isArray(result.externalActionsPerformed)
+        ? result.externalActionsPerformed.length
+        : null
+    },
+    next: diagnostics.counts.total === 0
+      ? "No deterministic finding remains; continue only to the separately required review gate. Add --json for the complete package report."
+      : "Resolve the primary root causes, then rerun check; add --json for the complete package report."
+  };
+}
+
+function summarizeFindings(input) {
+  const findings = Array.isArray(input) ? input.filter((finding) => finding && typeof finding === "object") : [];
+  const severityCounts = {
+    hard: 0,
+    blocker: 0,
+    review: 0,
+    splitReview: 0,
+    warning: 0,
+    info: 0,
+    other: 0
+  };
+  const groups = new Map();
+  for (const finding of findings) {
+    const severityKey = finding.severity === "split-review"
+      ? "splitReview"
+      : Object.hasOwn(severityCounts, finding.severity)
+        ? finding.severity
+        : "other";
+    severityCounts[severityKey] += 1;
+    const code = typeof finding.code === "string" && finding.code.length > 0
+      ? finding.code
+      : "UNCLASSIFIED_FINDING";
+    const group = groups.get(code);
+    if (group) {
+      group.occurrences += 1;
+      continue;
+    }
+    groups.set(code, {
+      severity: typeof finding.severity === "string" ? finding.severity : "unknown",
+      code,
+      path: typeof finding.path === "string" ? finding.path : null,
+      message: typeof finding.message === "string" ? finding.message : "See the complete report for this finding.",
+      recovery: typeof finding.remediation === "string"
+        ? finding.remediation
+        : typeof finding.details?.remediation === "string"
+          ? finding.details.remediation
+          : "Inspect this root cause in the complete report and update the exact bound input.",
+      occurrences: 1
+    });
+  }
+  const primary = [...groups.values()].slice(0, 3).map((finding) => ({
+    ...finding,
+    additionalLocations: finding.occurrences - 1
+  }));
+  const displayedFindingCount = primary.reduce((total, finding) => total + finding.occurrences, 0);
+  return {
+    counts: {
+      total: findings.length,
+      bySeverity: severityCounts,
+      distinctRootCauses: groups.size,
+      displayedRootCauses: primary.length,
+      omittedRootCauses: Math.max(0, groups.size - primary.length),
+      omittedFindings: Math.max(0, findings.length - displayedFindingCount)
+    },
+    primary
+  };
+}
+
+function exhaustiveReportHint(reportWritten) {
+  return reportWritten === null
+    ? {
+        available: true,
+        source: "cli-opt-in",
+        option: "--json"
+      }
+    : {
+        available: true,
+        source: "artifact-and-cli-opt-in",
+        path: reportWritten.path,
+        submissionHash: reportWritten.submissionHash,
+        option: "--json"
+      };
+}
+
 function detectSubmissionFormat(submissionPath) {
   let value;
   try {
@@ -595,7 +721,7 @@ function executeOpenWorldV2Check({ submission, repositoryRoot, options }) {
     }
     throw error;
   }
-  return {
+  const completed = {
     ...delegated.result,
     submissionFormat: "open-world-v2",
     validatorCommand: "open-world validate",
@@ -607,6 +733,7 @@ function executeOpenWorldV2Check({ submission, repositoryRoot, options }) {
       zeroExitMeaning: "OPEN_WORLD_V2_PACKAGE_VALIDATED_NOT_APPROVAL"
     }
   };
+  return options.fullJson ? completed : summarizeV2Check(completed);
 }
 function runDelegatedCommand(command, args) {
   const delegated = delegatedCommands.get(command);

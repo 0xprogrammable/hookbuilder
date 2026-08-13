@@ -53,6 +53,7 @@ test("fresh ordinary launch scaffolds a permissionless token with the mandatory 
       "check",
       submissionPath,
       "--no-write",
+      "--json",
       "--repository-root",
       repository
     ], repository);

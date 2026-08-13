@@ -148,7 +148,7 @@ test("doctor defaults to the installed plugin root when the host cwd is not a Gi
   assert.equal(output.result.publicBetaGit.gitRepository.status, "missing");
 });
 
-test("scaffold and check route through the canonical scripts", () => {
+test("scaffold and check route through the canonical scripts with concise default diagnostics", () => {
   const fixture = createRepository();
   try {
     const scaffold = runCli([
@@ -170,10 +170,13 @@ test("scaffold and check route through the canonical scripts", () => {
     const report = path.join(fixture.repository, "submissions", "entry-model", "compatibility-report.json");
     const check = runCli(["check", submission, "--repository-root", fixture.repository]);
     assert.equal(check.status, 0, check.stdout || check.stderr);
+    assert.ok(Buffer.byteLength(check.stdout) < 2_500, `concise V1 check emitted ${Buffer.byteLength(check.stdout)} bytes`);
     const checkOutput = JSON.parse(check.stdout);
     assert.equal(checkOutput.command, "check");
     assert.equal(checkOutput.ok, true);
     assert.equal(checkOutput.result.gatePassed, false);
+    assert.equal(checkOutput.result.status, "REDESIGN_REQUIRED");
+    assert.equal(checkOutput.result.submissionFormat, "v1");
     assert.deepEqual(checkOutput.result.commandOutcome, {
       blockingFindingsPresent: true,
       designReady: false,
@@ -184,11 +187,39 @@ test("scaffold and check route through the canonical scripts", () => {
       selectedGatePassed: null,
       zeroExitMeaning: "REPORT_GENERATED_ONLY_NOT_READINESS"
     });
-    assert.equal(checkOutput.result.submissionHash, JSON.parse(fs.readFileSync(report, "utf8")).submissionHash);
+    const persistedReport = JSON.parse(fs.readFileSync(report, "utf8"));
+    assert.equal(checkOutput.result.submissionHash, persistedReport.submissionHash);
+    assert.equal(checkOutput.result.diagnostics.counts.total, persistedReport.findings.length);
+    assert.equal(
+      Object.values(checkOutput.result.diagnostics.counts.bySeverity).reduce((total, count) => total + count, 0),
+      persistedReport.findings.length
+    );
+    assert.equal(checkOutput.result.diagnostics.counts.displayedRootCauses, 3);
+    assert.equal(checkOutput.result.diagnostics.primary.length, 3);
+    assert.equal(new Set(checkOutput.result.diagnostics.primary.map(({ code }) => code)).size, 3);
+    assert.equal(checkOutput.result.diagnostics.primary[0].code, "CAPABILITY_USAGE_UNRESOLVED");
+    assert.equal(checkOutput.result.diagnostics.primary[0].occurrences, 9);
+    assert.equal(checkOutput.result.diagnostics.primary[0].additionalLocations, 8);
+    assert.equal(Object.hasOwn(checkOutput.result, "findings"), false);
     assert.deepEqual(checkOutput.result.reportWritten, {
       path: "submissions/entry-model/compatibility-report.json",
-      submissionHash: checkOutput.result.submissionHash
+      submissionHash: persistedReport.submissionHash
     });
+    assert.deepEqual(checkOutput.result.exhaustiveReport, {
+      available: true,
+      option: "--json",
+      path: "submissions/entry-model/compatibility-report.json",
+      source: "artifact-and-cli-opt-in",
+      submissionHash: persistedReport.submissionHash
+    });
+    assert.match(checkOutput.result.next, /compatibility-report\.json/u);
+
+    const complete = runCli(["check", submission, "--no-write", "--json", "--repository-root", fixture.repository]);
+    assert.equal(complete.status, 0, complete.stdout || complete.stderr);
+    const completeOutput = JSON.parse(complete.stdout);
+    assert.equal(completeOutput.result.findings.length, persistedReport.findings.length);
+    assert.equal(completeOutput.result.submissionHash, persistedReport.submissionHash);
+    assert.equal(Object.hasOwn(completeOutput.result, "diagnostics"), false);
 
     const required = runCli([
       "check",
@@ -200,6 +231,8 @@ test("scaffold and check route through the canonical scripts", () => {
     assert.equal(required.status, 1, required.stdout || required.stderr);
     const requiredOutput = JSON.parse(required.stdout);
     assert.equal(requiredOutput.error.code, "CHECK_DESIGN_NOT_READY");
+    assert.ok(requiredOutput.error.details.diagnostics.primary.length <= 3);
+    assert.equal(Object.hasOwn(requiredOutput.error.details, "findings"), false);
     assert.equal(requiredOutput.error.details.commandOutcome.enforcedGate, "design-ready");
     assert.equal(requiredOutput.error.details.commandOutcome.selectedGatePassed, false);
     assert.equal(
@@ -249,15 +282,33 @@ test("check detects an open-world v2 submission and routes the complete package 
     const submission = path.join(packageRoot, "submission.v2.json");
     const result = runCli(["check", submission, "--no-write", "--repository-root", fixture.repository]);
     assert.equal(result.status, 0, result.stdout || result.stderr);
+    assert.ok(Buffer.byteLength(result.stdout) < 2_200, `concise V2 check emitted ${Buffer.byteLength(result.stdout)} bytes`);
     assert.equal(result.stderr, "");
     const output = JSON.parse(result.stdout);
     assert.equal(output.ok, true);
     assert.equal(output.result.submissionFormat, "open-world-v2");
-    assert.equal(output.result.validatorCommand, "open-world validate");
+    assert.equal(output.result.package, "open-world-v2");
     assert.equal(output.result.valid, true);
     assert.equal(output.result.reportWritten, null);
     assert.equal(output.result.commandOutcome.zeroExitMeaning, "OPEN_WORLD_V2_PACKAGE_VALIDATED_NOT_APPROVAL");
-    assert.ok(output.result.report.findings.length < 10);
+    assert.equal(output.result.diagnostics.counts.total, 4);
+    assert.equal(output.result.diagnostics.counts.distinctRootCauses, 4);
+    assert.equal(output.result.diagnostics.counts.displayedRootCauses, 3);
+    assert.equal(output.result.diagnostics.counts.omittedRootCauses, 1);
+    assert.equal(output.result.diagnostics.primary.length, 3);
+    assert.equal(new Set(output.result.diagnostics.primary.map(({ code }) => code)).size, 3);
+    assert.equal(Object.hasOwn(output.result, "report"), false);
+    assert.deepEqual(output.result.exhaustiveReport, {
+      available: true,
+      option: "--json",
+      source: "cli-opt-in"
+    });
+
+    const complete = runCli(["check", submission, "--no-write", "--json", "--repository-root", fixture.repository]);
+    assert.equal(complete.status, 0, complete.stdout || complete.stderr);
+    const completeOutput = JSON.parse(complete.stdout);
+    assert.equal(completeOutput.result.validatorCommand, "open-world validate");
+    assert.equal(completeOutput.result.report.findings.length, output.result.diagnostics.counts.total);
   } finally {
     fixture.cleanup();
   }
@@ -473,6 +524,7 @@ test("check exposes structural intake and fails closed for independent prototype
       "check",
       submissionPath,
       "--require-intake-ready",
+      "--json",
       "--repository-root",
       fixture.repository
     ]);
@@ -500,6 +552,7 @@ test("check exposes structural intake and fails closed for independent prototype
       submissionPath,
       "--require-prototype-validated",
       "--require-design-ready",
+      "--json",
       "--repository-root",
       fixture.repository
     ]);
