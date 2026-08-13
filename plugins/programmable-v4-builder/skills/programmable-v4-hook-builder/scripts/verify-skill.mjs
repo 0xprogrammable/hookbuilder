@@ -11,7 +11,7 @@ import { validateAgainstSchema } from "./submission-core.mjs";
 import { validateStarterCatalogClosure, validateTemplateCatalogHistory } from "./verify-skill-catalog-core.mjs";
 import { scanPins, validateKnowledgeRoutingClosure, validateLocalModuleClosure } from "./verify-skill-closure-core.mjs";
 import { validateScriptsAndTests } from "./verify-skill-execution-core.mjs";
-import { createPortableFilesystem, isForbiddenPortableDirectory, isInside, resolveSkillRootWithoutSymlinks } from "./verify-skill-filesystem-core.mjs";
+import { createPortableFilesystem, isForbiddenPortableDirectory, isInside, resolveSkillRootWithoutSymlinks, writeDiagnostics } from "./verify-skill-filesystem-core.mjs";
 import { validateInstalledProvenance } from "./verify-skill-provenance-core.mjs";
 import { markdownHeadingAnchors, parseCanonicalYamlMapping, redactInstalledLocalPathForPortableScan } from "./verify-skill-yaml-core.mjs";
 
@@ -453,7 +453,7 @@ if (packageBytes > MAX_PORTABLE_BYTES) errors.push(`portable package is ${packag
 for (const entry of packageEntries) {
   if (entry.stat.size > MAX_PORTABLE_FILE_BYTES) errors.push(`${relative(entry.path)} exceeds the ${MAX_PORTABLE_FILE_BYTES}-byte per-file limit`);
 }
-if (errors.length > 0) failWithErrors(errors);
+if (errors.length > 0) await failWithErrors(errors);
 
 for (const jsonPath of packageFiles.filter((entry) => entry.toLowerCase().endsWith(".json"))) {
   try {
@@ -463,7 +463,7 @@ for (const jsonPath of packageFiles.filter((entry) => entry.toLowerCase().endsWi
     errors.push(`${relative(jsonPath)}: must be bounded duplicate-free UTF-8 JSON`);
   }
 }
-if (errors.length > 0) failWithErrors(errors);
+if (errors.length > 0) await failWithErrors(errors);
 
 const skill = read("SKILL.md");
 const rawSkillLineCount = skill.split("\n").length;
@@ -688,9 +688,7 @@ await validateScriptsAndTests({
   walk
 });
 
-if (errors.length > 0) {
-  failWithErrors(errors);
-}
+if (errors.length > 0) await failWithErrors(errors);
 
 if (untrustedDataMode) {
   console.log(`Validated candidate skill structure, schema, links, Git pin shapes and script syntax without executing candidate scripts or tests; SKILL.md has ${lineCount} lines.`);
@@ -698,7 +696,7 @@ if (untrustedDataMode) {
   console.log(`Validated portable skill structure, schema, links, Git pin shapes, deterministic CLI checks${installedMode ? "" : " and repository fixture tests"} and ${lineCount}-line SKILL.md.`);
 }
 
-function failWithErrors(messages) {
-  for (const error of [...new Set(messages)].sort()) console.error(`- ${error}`);
+async function failWithErrors(messages) {
+  await writeDiagnostics(messages);
   process.exit(1);
 }
