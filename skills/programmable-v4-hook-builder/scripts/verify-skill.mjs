@@ -22,7 +22,7 @@ if (!Number.isInteger(nodeMajor) || nodeMajor < 24) {
   console.error("verify-skill.mjs: NODE_24_OR_NEWER_REQUIRED");
   process.exit(1);
 }
-const MAX_PORTABLE_FILES = 646;
+const MAX_PORTABLE_FILES = 654;
 const MAX_PORTABLE_BYTES = 12_000_000;
 const MAX_PORTABLE_FILE_BYTES = 1_000_000;
 const REQUIRED_PORTABLE_TESTS = Object.freeze(`

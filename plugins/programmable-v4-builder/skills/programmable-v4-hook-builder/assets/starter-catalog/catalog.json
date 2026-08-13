@@ -41,6 +41,12 @@
       "sha256": "b5b76a64787f5335e9a5c1cf3b415a90d97c53fb033119eaf8b77b70d8f24a16"
     },
     {
+      "id": "chainlink-provider",
+      "kind": "pack",
+      "path": "packs/chainlink-provider.json",
+      "sha256": "ae459f342d86f49a30bbc037790243eedd72423fae78445c01cf6b6a1068e501"
+    },
+    {
       "id": "continuous-clearing-auction",
       "kind": "pack",
       "path": "packs/continuous-clearing-auction.json",
@@ -57,6 +63,12 @@
       "kind": "pack",
       "path": "packs/contract-priced-sell-and-burn-v4-custom-accounting.json",
       "sha256": "db2d6176631056cc7146e51551e9bfc5d808dda09d1cd2825be79fb08b9b7790"
+    },
+    {
+      "id": "cross-chain-messaging",
+      "kind": "pack",
+      "path": "packs/cross-chain-messaging.json",
+      "sha256": "026d7184484891e0586b5fc21c4719e3909698f36c7556e54f1a590703d6b4a5"
     },
     {
       "id": "custom-curve",

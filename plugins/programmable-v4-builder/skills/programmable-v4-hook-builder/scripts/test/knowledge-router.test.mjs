@@ -332,6 +332,49 @@ test("canonical external-provider surfaces use their minimal route while novel s
   assert.ok(deferred(novel, "references/security-and-evidence.md"));
 });
 
+test("Chainlink routing is explicit while generic production invariants remain provider-neutral", () => {
+  const selected = planKnowledge({
+    mode: "prototype",
+    packs: ["chainlink-provider"],
+    skillRoot
+  });
+  assert.equal(selected.capabilities.includes("chainlink-provider"), true);
+  assert.equal(selected.reviewRoute, "architecture-review-required");
+  assert.equal(selected.networkAccessed, false);
+  for (const reference of [
+    "references/chainlink-provider-integration.md",
+    "references/project-surfaces-and-capabilities.md",
+    "references/companion-manifests.md"
+  ]) {
+    const route = deferred(selected, reference);
+    assert.ok(route, reference);
+    assert.equal(route.reasons.includes("capability:chainlink-provider"), true, reference);
+  }
+
+  for (const processedOutsideContext of [
+    "references/chainlink-provider-profile-v1.schema.json",
+    "references/provider-knowledge-source-receipt-2026-08-13.json"
+  ]) assert.equal(paths(selected).includes(processedOutsideContext), false, processedOutsideContext);
+
+  for (const capability of ["cross-chain-messaging", "randomness", "oracle-data", "keeper-automation"]) {
+    const generic = planKnowledge({ mode: "prototype", capabilities: [capability], skillRoot });
+    assert.equal(
+      generic.loadLater.some(({ path: reference }) => reference === "references/chainlink-provider-integration.md"),
+      false,
+      capability
+    );
+    assert.ok(deferred(generic, "references/ethereum-production-invariants.md"), capability);
+  }
+
+  for (const surface of ["external-provider", "indexer", "keeper", "service"]) {
+    const generic = planKnowledge({ mode: "prototype", surfaces: [surface], skillRoot });
+    assert.ok(deferred(generic, "references/ethereum-production-invariants.md"), surface);
+  }
+
+  const contractOnly = planKnowledge({ mode: "prototype", surfaces: ["contract"], skillRoot });
+  assert.equal(paths(contractOnly).includes("references/ethereum-production-invariants.md"), false);
+});
+
 test("every routing-contract match is known and genuinely unlisted ids remain exact", (t) => {
   const routing = JSON.parse(fs.readFileSync(
     path.join(skillRoot, "references", "knowledge-routing.json"),

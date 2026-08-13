@@ -49,8 +49,8 @@ test("loads one hash-bound, closed and explicitly non-allowlisting catalog", () 
   const catalog = loadTemplateCatalog({ skillRoot });
   const entries = listTemplateCatalog(catalog);
 
-  assert.equal(catalog.catalogDigest, "56ce5b0bad83a85c99222df1a2e298db814ca7b907817ce6545f95d57b3dbf9f");
-  assert.equal(entries.length, 41);
+  assert.equal(catalog.catalogDigest, "7c9f94b8afdcaaa4324d2e778e09b55e7f0f66905b98f38aaa321509a98b69c5");
+  assert.equal(entries.length, 43);
   assert.deepEqual(entries.map(({ id }) => id), [...entries.map(({ id }) => id)].sort());
   assert.deepEqual(
     entries.filter(({ kind }) => kind === "starter").map(({ id }) => id),
@@ -357,6 +357,7 @@ test("catalog covers the requested broad starter and capability families", () =>
     "custom-hook-behavior",
     "custom-token-standard-fee-hook",
     "continuous-clearing-auction",
+    "cross-chain-messaging",
     "contract-priced-sell-and-burn",
     "contract-priced-sell-and-burn-v4-custom-accounting",
     "dynamic-lp-fee",

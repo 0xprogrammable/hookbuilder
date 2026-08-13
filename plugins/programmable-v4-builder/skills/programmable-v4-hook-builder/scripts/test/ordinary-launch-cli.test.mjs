@@ -68,6 +68,35 @@ test("fresh ordinary launch scaffolds a permissionless token with the mandatory 
   }
 });
 
+test("Chainlink provider pack preserves the canonical external-provider surface through scaffold", () => {
+  const repository = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-chainlink-surface-"));
+  try {
+    assert.equal(childProcess.spawnSync("git", ["init", "--quiet", repository], { encoding: "utf8", shell: false }).status, 0);
+    const planDirectory = path.join(repository, "chainlink-plan");
+    const started = run(["start", "--starter", "ordinary-launch", "--pack", "chainlink-provider", "--target", planDirectory], repository);
+    assert.equal(started.status, 0, started.stdout || started.stderr);
+    const scaffolded = run([
+      "scaffold",
+      "chainlink-provider-surface",
+      "--template-plan",
+      path.join(planDirectory, "programmable-template.json"),
+      "--repository-root",
+      repository
+    ], repository);
+    assert.equal(scaffolded.status, 0, scaffolded.stdout || scaffolded.stderr);
+    const submission = JSON.parse(fs.readFileSync(path.join(repository, "submissions", "chainlink-provider-surface", "submission.json"), "utf8"));
+    const provider = submission.projectSurfaces.find(({ id }) => id === "oracle-surface");
+    assert.ok(provider, JSON.stringify(submission.projectSurfaces, null, 2));
+    assert.equal(provider.kind, "external-provider");
+    assert.equal(provider.executionBoundary, "external-provider");
+    assert.equal(provider.exposure.usesSecrets, true);
+    assert.equal(provider.profiles.secretBoundary.status, "applicable");
+    assert.equal(submission.builderTemplate.templateSelection.selectedPackIds.includes("chainlink-provider"), true);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 function run(args, cwd) {
   return childProcess.spawnSync(process.execPath, [cli, ...args], {
     cwd,

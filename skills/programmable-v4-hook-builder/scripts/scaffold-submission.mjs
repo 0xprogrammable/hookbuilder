@@ -301,7 +301,7 @@ function inferSecurityTriggers(capabilityId) {
     externalCalls: /adapter|cross-chain|external|map|oracle|provider|randomness|service|wrapped|yield/u.test(text),
     custody: /accumulator|custody|hook-owned|inventory|staking|vesting|yield/u.test(text),
     piiGeolocation: /geolocation|location|map/u.test(text),
-    secretBoundary: /keeper|oracle|randomness|service|signed/u.test(text)
+    secretBoundary: /keep|oracl|provid|random|servic|signed/u.test(text)
   };
 }
 

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "pack",
+  "id": "cross-chain-messaging",
+  "label": "Cross-chain messaging",
+  "summary": "Model one directional cross-chain message lane with exact domains, runtimes, finality, replay, ordering, fee funding and terminal recovery.",
+  "acceleratorOnly": true,
+  "eligibilityEffect": "none",
+  "unknownCapabilityPolicy": "preserve-and-route",
+  "reviewRoute": "architecture-review-required",
+  "requires": [],
+  "conflictsWith": [],
+  "capabilities": [
+    "cross-chain-messaging"
+  ],
+  "projectSurfaces": [
+    "contract",
+    "service"
+  ],
+  "requiredFacts": [
+    "Exact source and destination chain domains, messenger runtimes, sender, receiver and payload schema",
+    "Source inclusion, destination execution, finality, replay, duplicate, ordering, rate-limit and fee-funding policy",
+    "Bounded pending work, timeout, retry, idempotency and beneficiary recovery without owner redirection"
+  ],
+  "requiredFiles": [
+    "Directional messaging adapter source",
+    "Content-addressed source and destination deployment evidence",
+    "Payload schema and finality, rate-limit, fee-funding and recovery policies"
+  ],
+  "requiredTests": [
+    "Wrong source, destination, sender, receiver, messenger, domain and payload schema",
+    "Replay, duplicate, reordering, partial delivery, reorg and destination execution failure",
+    "Fee exhaustion, rate limiting, outage, timeout and permissionless terminal recovery",
+    "Bounded message size, queue capacity, retry count and total completion work"
+  ],
+  "risks": [
+    "Source and destination finality can differ and invalidate an assumed delivery state",
+    "Replay or domain confusion can execute a valid payload in the wrong lane",
+    "Unbounded pending messages or privileged recovery can trap or redirect user value"
+  ]
+}

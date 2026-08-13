@@ -11,6 +11,7 @@ import {
   collectLiveObservations,
   DriftInputError
 } from "../check-upstream-drift.mjs";
+import { CHAINLINK_KNOWLEDGE_RECEIPT_SHA256_V1 } from "../chainlink-provider-profile-core.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const script = path.resolve(testDirectory, "..", "check-upstream-drift.mjs");
@@ -19,6 +20,80 @@ const commitA = "a".repeat(40);
 const commitB = "b".repeat(40);
 const digestA = "1".repeat(64);
 const digestB = "2".repeat(64);
+
+test("provider knowledge receipt binds reviewed source identities, license limits and zero authority", () => {
+  const receiptBytes = fs.readFileSync(path.join(
+    skillRoot,
+    "references",
+    "provider-knowledge-source-receipt-2026-08-13.json"
+  ));
+  assert.equal(`sha256:${crypto.createHash("sha256").update(receiptBytes).digest("hex")}`, CHAINLINK_KNOWLEDGE_RECEIPT_SHA256_V1);
+  const receipt = JSON.parse(receiptBytes);
+  assert.equal(receipt.observedAt, "2026-08-13T07:10:57Z");
+  assert.deepEqual(receipt.integrationBase, {
+    repository: "https://github.com/0xprogrammable/hookbuilder.git",
+    ref: "main",
+    commit: "0d657a78220e09905895ca0c60cdb34ab9ed21cf",
+    tree: "075639702eb66864a22cbe9de92cef7a00630889"
+  });
+  assert.deepEqual(receipt.policy, {
+    sourceCodeExecuted: false,
+    dependenciesInstalled: false,
+    liveRuntimeFetchesUsed: false,
+    foreignInstructionsAuthoritative: false,
+    foreignToolPoliciesImported: false,
+    foreignWorkflowsImported: false,
+    secretsRead: false,
+    networkAccessInInstalledSkill: "forbidden",
+    executionAuthorityEffect: "NONE",
+    automaticDeploymentEffect: false,
+    automaticApprovalEffect: false,
+    driftPolicy: "re-review-exact-commit-tree-license-and-selected-blobs-before-update"
+  });
+
+  const chainlink = receipt.sources.find(({ id }) => id === "chainlink-agent-skills");
+  assert.equal(chainlink.commit, "4ec7d5fdddcc062684fadda659187c7d9ba4307f");
+  assert.equal(chainlink.tree, "1002838b56a804670efe23bb83f895064c48cc6d");
+  assert.equal(chainlink.releaseBinding, null);
+  assert.equal(chainlink.license.decision, "COPY_ALLOWED_WITH_NOTICE");
+  assert.equal(chainlink.license.spdx, "MIT");
+  assert.equal(chainlink.license.gitBlob, "33b2f77d25780fbf9cf387f6668288c7634650e1");
+  assert.equal(chainlink.selectedFiles.length, 7);
+  assert.equal(chainlink.selectedReferenceFiles.length, 15);
+  assert.deepEqual(
+    chainlink.selectedReferenceFiles.map(({ path: referencePath }) => referencePath),
+    [...chainlink.selectedReferenceFiles.map(({ path: referencePath }) => referencePath)].sort()
+  );
+  assert.equal(
+    chainlink.selectedReferenceFiles.find(({ path: referencePath }) => referencePath === "chainlink-cre-skill/references/concepts.md").sha256,
+    "6d9dec4da1a994d412301469557738e0a0ca42cfb56fdabc795f1ac4179da293"
+  );
+  assert.deepEqual(chainlink.coverageLimits, {
+    automationDedicatedSkill: false,
+    functionsDedicatedSkill: false,
+    confidentialAiCore: false,
+    aceContractsLicenseInheritedFromSkillRepository: false,
+    deploymentAddressesTrustedFromMovingDocumentation: false
+  });
+
+  const ethskills = receipt.sources.find(({ id }) => id === "ethskills");
+  assert.equal(ethskills.commit, "b7cf0ef0be924b8de3f80709818f80229b3692e8");
+  assert.equal(ethskills.tree, "274466bc8c7ec4692764958d1ff86dad29d413cf");
+  assert.equal(ethskills.commitVerification, "unsigned");
+  assert.equal(ethskills.license.decision, "COPY_BLOCKED_LICENSE_TEXT_MISSING");
+  for (const rejected of [
+    "wrong-uniswap-v4-lp-fee-override-flag",
+    "removed-openzeppelin-v5-safeapprove-api",
+    "l2-mev-does-not-matter",
+    "reorg-free-event-indexing",
+    "eoa-only-signature-validation"
+  ]) assert.equal(ethskills.rejectedClaims.includes(rejected), true, rejected);
+
+  const notices = fs.readFileSync(path.join(skillRoot, "THIRD_PARTY_NOTICES.md"), "utf8");
+  assert.match(notices, /Copyright \(c\) 2026 SmartContract/u);
+  assert.match(notices, /no LICENSE, COPYING or NOTICE file/u);
+  assert.match(notices, /No expressive ETHSkills prose or code is redistributed/u);
+});
 
 test("reviewed UniRoute and AI Toolkit successors stay exact and synchronized across canonical references", () => {
   const canonicalSnapshot = JSON.parse(

@@ -1,10 +1,19 @@
 import assert from "node:assert/strict";
+import childProcess from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { validateAgainstSchema } from "../submission-core.mjs";
+import {
+  CHAINLINK_INTEGRATION_IDS_V1,
+  CHAINLINK_KNOWLEDGE_RECEIPT_SHA256_V1,
+  collectChainlinkProviderArtifactBindingsV1,
+  validateChainlinkProviderProfileV1
+} from "../chainlink-provider-profile-core.mjs";
 import {
   APPLICANT_GATE_IDS_V1,
   PERMIT2_LAUNCH_WITNESS_TYPE_STRING_V1,
@@ -18,6 +27,7 @@ import {
   validateSwapModeClassificationV1,
   validateTestEvidenceOutcomeV1
 } from "../typed-launch-contracts-v1-core.mjs";
+import { composeTemplate, loadTemplateCatalog } from "../template-catalog-core.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "../..");
@@ -29,6 +39,7 @@ const A = (character = "1") => `0x${character.repeat(40)}`;
 const G = (character = "1") => character.repeat(40);
 
 const schemaByName = Object.fromEntries([
+  "chainlink-provider-profile-v1.schema.json",
   "swap-mode-classification-v1.schema.json",
   "delegated-payer-sponsor-intent-v1.schema.json",
   "permit2-launch-witness-v1.schema.json",
@@ -430,6 +441,246 @@ function decisionFixture() {
   };
 }
 
+const chainlinkArtifact = (name, kind = "test", character = "1") => ({ path: `evidence/chainlink/${name}.json`, sha256: H(character), kind });
+
+function chainlinkDeployment(id, chainId, roles) {
+  return {
+    chainId,
+    dependencyLock: chainlinkArtifact(`${id}-${chainId}-dependencies`, "dependency-lock", "2"),
+    contractRoles: [...roles].sort().map((role, index) => ({
+      role,
+      address: A(String((index % 8) + 1)),
+      runtimeCodeKeccak256: B(String((index % 8) + 1)),
+      deploymentEvidence: chainlinkArtifact(`${id}-${chainId}-${role}-deployment`, "deployment", "3")
+    }))
+  };
+}
+
+function chainlinkFixture() {
+  const artifact = chainlinkArtifact;
+  const deployment = chainlinkDeployment;
+  const integrations = [
+    {
+      id: "ccip",
+      status: "planned",
+      genericCapabilities: ["cross-chain-messaging"],
+      executionOperations: ["async-callback-outside-hook"],
+      deployments: [],
+      properties: {
+        direction: "source-to-destination",
+        sourceChainId: "1",
+        sourceChainSelector: "5009297550715157269",
+        destinationChainId: "10",
+        destinationChainSelector: "3734403246176062136",
+        sender: A("1"),
+        receiver: A("2"),
+        payloadSchemaSha256: H("3"),
+        applicationDomain: B("4"),
+        maximumPayloadBytes: "16384",
+        maximumPendingMessages: "256",
+        finalityPolicySha256: H("4"),
+        rateLimitPolicySha256: H("5"),
+        feeFundingPolicySha256: H("6"),
+        recoveryBeneficiary: A("3"),
+        replayRejected: true,
+        reorderingHandled: true,
+        ownerRedirectAllowed: false
+      },
+      evidence: [
+        artifact("ccip-design"),
+        artifact("ccip-fee-funding-policy", "config", "6"),
+        artifact("ccip-finality-policy", "config", "4"),
+        artifact("ccip-payload-schema", "schema", "3"),
+        artifact("ccip-rate-limit-policy", "config", "5")
+      ]
+    },
+    {
+      id: "cre",
+      status: "planned",
+      genericCapabilities: ["keeper-automation"],
+      executionOperations: ["offchain-deterministic-runtime"],
+      deployments: [],
+      properties: {
+        language: "typescript",
+        typescriptRuntime: "quickjs-wasm",
+        sdkVersion: "1.2.3",
+        compilerVersion: "1.2.3",
+        workflowId: "bounded-market-observer",
+        workflowArtifactSha256: H("1"),
+        configSha256: H("2"),
+        targetId: "staging",
+        donId: "reviewed-don",
+        triggerType: "cron",
+        randomnessSource: "not-used",
+        runtimeTimeOnly: true,
+        floatingPointEconomicArithmeticForbidden: true,
+        networkWorkBounded: true,
+        reportVerificationBound: true,
+        retryIdempotent: true,
+        localSimulationProof: "single-node-only"
+      },
+      evidence: [
+        artifact("cre-config", "config", "2"),
+        artifact("cre-design"),
+        artifact("cre-workflow", "source", "1")
+      ]
+    },
+    {
+      id: "data-feeds",
+      status: "planned",
+      genericCapabilities: ["oracle-data"],
+      executionOperations: ["bounded-sync-read-in-hook"],
+      deployments: [],
+      properties: {
+        chainId: "1",
+        pair: "ETH / USD",
+        quoteUnit: "USD with 8 decimals",
+        inversion: "direct",
+        decimals: 8,
+        maximumAgeSeconds: "3600",
+        minimumAnswer: "1",
+        maximumAnswer: "100000000000000",
+        roundCompleteness: "updated-at-nonzero",
+        sequencerPolicy: "not-applicable-with-chain-proof",
+        sequencerGracePeriodSeconds: null,
+        futureTimestampRejected: true,
+        nonPositiveRejected: true,
+        silentFallbackAllowed: false
+      },
+      evidence: [artifact("data-feeds-design")]
+    },
+    {
+      id: "data-streams",
+      status: "planned",
+      genericCapabilities: ["oracle-data"],
+      executionOperations: ["report-verification-outside-hook"],
+      deployments: [],
+      properties: {
+        chainId: "1",
+        feedId: B("1"),
+        reportSchemaSha256: H("2"),
+        reportSchemaVersion: "v3",
+        maximumObservationAgeSeconds: "30",
+        maximumFutureSeconds: "2",
+        maximumReportBytes: "16384",
+        maximumVerificationGas: "500000",
+        validFromEnforced: true,
+        expiresAtEnforced: true,
+        marketStatusPolicy: "bound-and-reject-unsupported",
+        ripcordPolicy: "bound-and-fail-closed",
+        billingRoute: "backend-billing",
+        credentials: "backend-only"
+      },
+      evidence: [artifact("data-streams-design"), artifact("data-streams-report-schema", "schema", "2")]
+    },
+    {
+      id: "vrf-v2-5",
+      status: "planned",
+      genericCapabilities: ["randomness"],
+      executionOperations: ["async-callback-outside-hook"],
+      deployments: [],
+      properties: {
+        chainId: "1",
+        paymentMode: "subscription",
+        coordinatorKeyHash: B("1"),
+        subscriptionId: "42",
+        minimumRequestConfirmations: "3",
+        callbackGasLimit: "500000",
+        numWords: "2",
+        coordinatorMaximumNumWords: "500",
+        fundingAsset: A("4"),
+        requestIdentityBound: true,
+        frozenInputBound: true,
+        replacementRerollAllowed: false,
+        callbackCanRevert: false,
+        callbackWorkPolicy: "minimal-store-only",
+        duplicateFulfillmentPolicy: "idempotent-ignore",
+        unknownRequestPolicy: "record-and-return",
+        timeoutPolicy: "cancel-or-refund-without-reroll",
+        outOfOrderFulfillmentTested: true,
+        storageBounded: true
+      },
+      evidence: [artifact("vrf-design")]
+    }
+  ];
+  return {
+    schemaVersion: "1.0.0",
+    kind: "programmable-chainlink-provider-profile",
+    profileId: "chainlink-multi-product",
+    subject: artifact("subject", "source"),
+    projectPlan: artifact("programmable-template", "config"),
+    runtimeCoverage: { executionFamily: "evm", scope: "EVM_ONLY" },
+    targetChainIds: ["1", "10"],
+    sourceReceipt: {
+      path: "references/provider-knowledge-source-receipt-2026-08-13.json",
+      sha256: CHAINLINK_KNOWLEDGE_RECEIPT_SHA256_V1
+    },
+    authorityBoundary: {
+      executionAuthorityEffect: "NONE",
+      validationNetworkAccess: "forbidden",
+      secrets: "backend-only",
+      automaticDeployment: false,
+      automaticApproval: false
+    },
+    sourceCoverage: {
+      automation: "not-covered-by-reviewed-source",
+      functions: "not-covered-by-reviewed-source",
+      confidentialAi: "excluded-alpha",
+      ace: "excluded-separate-legal-license-security-review",
+      nonEvm: "out-of-scope"
+    },
+    productionInvariants: {
+      liveness: {
+        callerBound: true,
+        authorizationBound: true,
+        gasPayerBound: true,
+        fundingAndIncentiveBound: true,
+        deadlineBound: true,
+        workBounded: true,
+        retryIdempotent: true,
+        stuckExitBound: true
+      },
+      accountExecution: {
+        supportedModels: ["eip7702", "eoa", "erc1271", "erc4337", "relayer-session-key"],
+        nonceBound: true,
+        deadlineBound: true,
+        domainBound: true,
+        replayRejected: true,
+        codeLengthAssumptionsForbidden: true,
+        mutableSignatureValidityHandled: true,
+        persistentDelegationHandled: true
+      },
+      indexerRpc: {
+        runtimeHashBound: true,
+        abiAndTopicBound: true,
+        startBlockHashBound: true,
+        blockTagBound: true,
+        boundedLogChunks: true,
+        removedLogsHandled: true,
+        deterministicReplay: true,
+        providerDisagreementFailsClosed: true,
+        freshnessBound: true
+      },
+      chainCapability: {
+        inclusionFinalityWithdrawalSeparated: true,
+        feeAndTimeSemanticsBound: true,
+        sequencerPolicy: "not-applicable-with-chain-proof",
+        opcodePrecompileCompilerBound: true,
+        bridgeReplayDomainBound: true,
+        deterministicAddressAssumptionsForbidden: true
+      },
+      futureProtocol: {
+        forkInclusionRequired: true,
+        executionSpecCommitRequired: true,
+        targetRuntimeProofRequired: true,
+        fallbackOrMigrationBound: true
+      }
+    },
+    integrations,
+    evidence: [artifact("profile-review", "review")]
+  };
+}
+
 test("closed swap-mode contract permits a deliberately exact-input-only design and rejects bypass ambiguity", () => {
   const fixture = swapFixture();
   assertValid("swap-mode-classification-v1.schema.json", fixture, validateSwapModeClassificationV1);
@@ -509,6 +760,268 @@ test("RWA evidence closes NAV reserve calendar corporate-action redemption and i
   reversedLimits.redemption.minimumAmount = "100";
   reversedLimits.redemption.maximumAmount = "99";
   assert.match(validateRwaEvidenceProfileV1(reversedLimits).join("\n"), /cannot be lower/);
+});
+
+test("Chainlink profile composes provider-specific evidence with production liveness and runtime boundaries", () => {
+  const fixture = chainlinkFixture();
+  assertValid("chainlink-provider-profile-v1.schema.json", fixture, validateChainlinkProviderProfileV1);
+  assert.deepEqual(fixture.integrations.map(({ id }) => id), CHAINLINK_INTEGRATION_IDS_V1);
+  assert.equal(fixture.integrations.every(({ status, deployments }) => status !== "planned" || deployments.length === 0), true);
+
+  const reroll = structuredClone(fixture);
+  reroll.integrations.find(({ id }) => id === "vrf-v2-5").properties.replacementRerollAllowed = true;
+  assert.match(validateChainlinkProviderProfileV1(reroll).join("\n"), /replacementRerollAllowed/);
+
+  const callback = structuredClone(fixture);
+  callback.integrations.find(({ id }) => id === "vrf-v2-5").properties.callbackCanRevert = true;
+  assert.match(validateChainlinkProviderProfileV1(callback).join("\n"), /callbackCanRevert/);
+
+  const fallback = structuredClone(fixture);
+  fallback.integrations.find(({ id }) => id === "data-feeds").properties.silentFallbackAllowed = true;
+  assert.match(validateChainlinkProviderProfileV1(fallback).join("\n"), /silentFallbackAllowed/);
+
+  const poolCallback = structuredClone(fixture);
+  poolCallback.integrations.find(({ id }) => id === "ccip").executionOperations = ["bounded-sync-read-in-hook"];
+  assert.match(validateChainlinkProviderProfileV1(poolCallback).join("\n"), /executionOperations/);
+
+  const fakeCoverage = structuredClone(fixture);
+  fakeCoverage.sourceCoverage.automation = "covered";
+  assert.match(validateChainlinkProviderProfileV1(fakeCoverage).join("\n"), /sourceCoverage\.automation/);
+
+  const wrongComposition = structuredClone(fixture);
+  wrongComposition.integrations.find(({ id }) => id === "vrf-v2-5").genericCapabilities = ["oracle-data"];
+  assert.match(validateChainlinkProviderProfileV1(wrongComposition).join("\n"), /genericCapabilities/);
+
+  const productOutsideRootChains = structuredClone(fixture);
+  productOutsideRootChains.integrations.find(({ id }) => id === "vrf-v2-5").properties.chainId = "999";
+  assert.match(validateChainlinkProviderProfileV1(productOutsideRootChains).join("\n"), /root targetChainIds/);
+
+  const compressedBidirectionalLane = structuredClone(fixture);
+  compressedBidirectionalLane.integrations.find(({ id }) => id === "ccip").properties.direction = "bidirectional";
+  assert.match(validateChainlinkProviderProfileV1(compressedBidirectionalLane).join("\n"), /source-to-destination/);
+
+  const oversizedSelector = structuredClone(fixture);
+  oversizedSelector.integrations.find(({ id }) => id === "ccip").properties.sourceChainSelector = (1n << 64n).toString();
+  assert.match(validateChainlinkProviderProfileV1(oversizedSelector).join("\n"), /18446744073709551615/);
+
+  const duplicateLaneSelector = structuredClone(fixture);
+  const duplicateSelectorProperties = duplicateLaneSelector.integrations.find(({ id }) => id === "ccip").properties;
+  duplicateSelectorProperties.destinationChainSelector = duplicateSelectorProperties.sourceChainSelector;
+  assert.match(validateChainlinkProviderProfileV1(duplicateLaneSelector).join("\n"), /differ from sourceChainSelector/);
+
+  const unclosedClaim = structuredClone(fixture);
+  const feed = unclosedClaim.integrations.find(({ id }) => id === "data-feeds");
+  feed.status = "deployment-evidence-declared";
+  assert.match(validateChainlinkProviderProfileV1(unclosedClaim).join("\n"), /at least two content-addressed artifacts/);
+
+  const noReorg = structuredClone(fixture);
+  noReorg.productionInvariants.indexerRpc.removedLogsHandled = false;
+  assert.match(validateChainlinkProviderProfileV1(noReorg).join("\n"), /removedLogsHandled/);
+
+  const mutableReceipt = structuredClone(fixture);
+  mutableReceipt.sourceReceipt.sha256 = H("9");
+  assert.match(validateChainlinkProviderProfileV1(mutableReceipt).join("\n"), /sourceReceipt\.sha256/);
+
+  const go = structuredClone(fixture);
+  const cre = go.integrations.find(({ id }) => id === "cre").properties;
+  cre.language = "go";
+  cre.typescriptRuntime = null;
+  cre.randomnessSource = "cre-runtime-rand";
+  assertValid("chainlink-provider-profile-v1.schema.json", go, validateChainlinkProviderProfileV1);
+
+  const fakeTsRandom = structuredClone(fixture);
+  fakeTsRandom.integrations.find(({ id }) => id === "cre").properties.randomnessSource = "cre-runtime-rand";
+  assert.match(validateChainlinkProviderProfileV1(fakeTsRandom).join("\n"), /randomnessSource/);
+
+  const oneLaneCcip = structuredClone(fixture);
+  const ccip = oneLaneCcip.integrations.find(({ id }) => id === "ccip");
+  ccip.status = "deployment-evidence-declared";
+  ccip.deployments = [
+    chainlinkDeployment("ccip", "1", ["sender", "source-router"]),
+    chainlinkDeployment("ccip", "10", ["destination-router", "receiver"])
+  ];
+  ccip.evidence.push(chainlinkArtifact("ccip-dependency", "dependency-lock"), chainlinkArtifact("ccip-source", "source"));
+  ccip.deployments.pop();
+  assert.match(validateChainlinkProviderProfileV1(oneLaneCcip).join("\n"), /destinationChainId|requires deployment/);
+
+  const directWithoutWrapper = structuredClone(fixture);
+  const vrf = directWithoutWrapper.integrations.find(({ id }) => id === "vrf-v2-5");
+  vrf.status = "deployment-evidence-declared";
+  vrf.deployments = [chainlinkDeployment("vrf", "1", ["consumer", "coordinator"])];
+  vrf.evidence = [
+    chainlinkArtifact("vrf-config", "config"),
+    chainlinkArtifact("vrf-dependency", "dependency-lock"),
+    chainlinkArtifact("vrf-source", "source"),
+    chainlinkArtifact("vrf-test", "test")
+  ];
+  vrf.properties.paymentMode = "direct-funding";
+  vrf.properties.subscriptionId = null;
+  assert.match(validateChainlinkProviderProfileV1(directWithoutWrapper).join("\n"), /wrapper deployment role/);
+
+  const declaredVrfDeployment = structuredClone(fixture);
+  declaredVrfDeployment.integrations = [declaredVrfDeployment.integrations.find(({ id }) => id === "vrf-v2-5")];
+  const declaredVrf = declaredVrfDeployment.integrations[0];
+  declaredVrf.status = "deployment-evidence-declared";
+  declaredVrf.deployments = [chainlinkDeployment("vrf", "1", ["consumer", "coordinator"])];
+  declaredVrf.evidence = [
+    chainlinkArtifact("vrf-config", "config"),
+    chainlinkArtifact("vrf-dependency", "dependency-lock"),
+    chainlinkArtifact("vrf-deployment", "deployment"),
+    chainlinkArtifact("vrf-source", "source"),
+    chainlinkArtifact("vrf-test", "test")
+  ];
+  assertValid("chainlink-provider-profile-v1.schema.json", declaredVrfDeployment, validateChainlinkProviderProfileV1);
+
+  const vagueFeed = structuredClone(fixture);
+  vagueFeed.integrations.find(({ id }) => id === "data-feeds").properties.maximumAgeSeconds = "0";
+  assert.match(validateChainlinkProviderProfileV1(vagueFeed).join("\n"), /maximumAgeSeconds/);
+
+  const unboundedStream = structuredClone(fixture);
+  unboundedStream.integrations.find(({ id }) => id === "data-streams").properties.maximumReportBytes = "0";
+  assert.match(validateChainlinkProviderProfileV1(unboundedStream).join("\n"), /maximumReportBytes/);
+
+  const expiredStreamAccepted = structuredClone(fixture);
+  expiredStreamAccepted.integrations.find(({ id }) => id === "data-streams").properties.expiresAtEnforced = false;
+  assert.match(validateChainlinkProviderProfileV1(expiredStreamAccepted).join("\n"), /expiresAtEnforced/);
+
+  const excessiveWords = structuredClone(fixture);
+  excessiveWords.integrations.find(({ id }) => id === "vrf-v2-5").properties.numWords = "501";
+  assert.match(validateChainlinkProviderProfileV1(excessiveWords).join("\n"), /coordinatorMaximumNumWords/);
+
+  const maximumChain = structuredClone(fixture);
+  maximumChain.targetChainIds = [((1n << 256n) - 1n).toString()];
+  maximumChain.integrations = [maximumChain.integrations.find(({ id }) => id === "cre")];
+  assertValid("chainlink-provider-profile-v1.schema.json", maximumChain, validateChainlinkProviderProfileV1);
+  maximumChain.targetChainIds = [(1n << 256n).toString()];
+  assert.match(validateChainlinkProviderProfileV1(maximumChain).join("\n"), /uint256 range/);
+
+  const oversizedDeploymentChain = structuredClone(fixture);
+  oversizedDeploymentChain.integrations.find(({ id }) => id === "data-feeds").deployments = [
+    chainlinkDeployment("data-feeds", (1n << 256n).toString(), ["current-aggregator", "feed-proxy"])
+  ];
+  assert.match(validateChainlinkProviderProfileV1(oversizedDeploymentChain).join("\n"), /uint256 range/);
+
+  const malformed = structuredClone(fixture);
+  malformed.integrations[0].id = { hostile: true };
+  assert.doesNotThrow(() => validateChainlinkProviderProfileV1(malformed));
+  assert.match(validateChainlinkProviderProfileV1(malformed).join("\n"), /integrations/);
+});
+
+test("provider CLI validates the exact profile offline and reports no authority", () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-chainlink-profile-"));
+  try {
+    const profile = path.join(directory, "profile.json");
+    const validProfile = chainlinkFixture();
+    for (const binding of collectChainlinkProviderArtifactBindingsV1(validProfile)) {
+      const target = path.join(directory, binding.path);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      if (!fs.existsSync(target)) fs.writeFileSync(target, `artifact:${binding.path}\n`);
+      binding.sha256 = `sha256:${crypto.createHash("sha256").update(fs.readFileSync(target)).digest("hex")}`;
+    }
+    const evidenceDigest = (integrationId, suffix) => validProfile.integrations
+      .find(({ id }) => id === integrationId).evidence
+      .find(({ path: artifactPath }) => artifactPath.endsWith(`/${suffix}.json`)).sha256;
+    const ccipProperties = validProfile.integrations.find(({ id }) => id === "ccip").properties;
+    ccipProperties.payloadSchemaSha256 = evidenceDigest("ccip", "ccip-payload-schema");
+    ccipProperties.finalityPolicySha256 = evidenceDigest("ccip", "ccip-finality-policy");
+    ccipProperties.rateLimitPolicySha256 = evidenceDigest("ccip", "ccip-rate-limit-policy");
+    ccipProperties.feeFundingPolicySha256 = evidenceDigest("ccip", "ccip-fee-funding-policy");
+    const creProperties = validProfile.integrations.find(({ id }) => id === "cre").properties;
+    creProperties.workflowArtifactSha256 = evidenceDigest("cre", "cre-workflow");
+    creProperties.configSha256 = evidenceDigest("cre", "cre-config");
+    validProfile.integrations.find(({ id }) => id === "data-streams").properties.reportSchemaSha256 = evidenceDigest("data-streams", "data-streams-report-schema");
+    const projectPlanPath = path.join(directory, validProfile.projectPlan.path);
+    const projectPlan = composeTemplate({
+      catalog: loadTemplateCatalog({ skillRoot }),
+      starterId: "blank-custom",
+      packIds: ["chainlink-provider"],
+      capabilityIds: ["cross-chain-messaging", "keeper-automation", "oracle-data", "randomness"]
+    });
+    const projectPlanBytes = `${JSON.stringify(projectPlan, null, 2)}\n`;
+    fs.writeFileSync(projectPlanPath, projectPlanBytes);
+    validProfile.projectPlan.sha256 = `sha256:${crypto.createHash("sha256").update(fs.readFileSync(projectPlanPath)).digest("hex")}`;
+    fs.writeFileSync(profile, `${JSON.stringify(validProfile, null, 2)}\n`);
+    const script = path.join(skillRoot, "scripts", "chainlink-provider-profile.mjs");
+    const result = childProcess.spawnSync(process.execPath, [script, "check", "--root", directory, "--profile", "profile.json"], {
+      encoding: "utf8",
+      env: { ...process.env, NO_PROXY: "*", HTTPS_PROXY: "http://127.0.0.1:1" },
+      shell: false
+    });
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    const output = JSON.parse(result.stdout);
+    assert.equal(output.status, "CHAINLINK_PROFILE_STRUCTURALLY_VALID");
+    assert.equal(output.artifactBindingsVerified, true);
+    assert.equal(output.deploymentOrRuntimeVerified, false);
+    assert.equal(output.networkAccessed, false);
+    assert.deepEqual(output.externalActionsPerformed, []);
+    assert.equal(output.executionAuthorityEffect, "NONE");
+
+    const incompletePlan = composeTemplate({
+      catalog: loadTemplateCatalog({ skillRoot }),
+      starterId: "blank-custom",
+      packIds: ["chainlink-provider"]
+    });
+    fs.writeFileSync(projectPlanPath, `${JSON.stringify(incompletePlan, null, 2)}\n`);
+    const missingComposition = structuredClone(validProfile);
+    missingComposition.projectPlan.sha256 = `sha256:${crypto.createHash("sha256").update(fs.readFileSync(projectPlanPath)).digest("hex")}`;
+    fs.writeFileSync(profile, `${JSON.stringify(missingComposition, null, 2)}\n`);
+    const missingCompositionResult = childProcess.spawnSync(process.execPath, [script, "check", "--root", directory, "--profile", "profile.json"], {
+      encoding: "utf8",
+      env: { ...process.env, NO_PROXY: "*", HTTPS_PROXY: "http://127.0.0.1:1" },
+      shell: false
+    });
+    assert.equal(missingCompositionResult.status, 1, missingCompositionResult.stderr || missingCompositionResult.stdout);
+    assert.match(JSON.parse(missingCompositionResult.stdout).findings.map(({ code }) => code).join("\n"), /CHAINLINK_PROJECT_PLAN_INVALID/);
+    fs.writeFileSync(projectPlanPath, projectPlanBytes);
+    fs.writeFileSync(profile, `${JSON.stringify(validProfile, null, 2)}\n`);
+
+    const overBudget = structuredClone(validProfile);
+    for (const integration of overBudget.integrations) {
+      for (let index = 0; index < 30; index += 1) integration.evidence.push(chainlinkArtifact(`zz-${integration.id}-${String(index).padStart(2, "0")}`));
+      integration.evidence.sort((left, right) => left.path.localeCompare(right.path));
+    }
+    fs.writeFileSync(profile, `${JSON.stringify(overBudget, null, 2)}\n`);
+    const overBudgetResult = childProcess.spawnSync(process.execPath, [script, "check", "--root", directory, "--profile", "profile.json"], {
+      encoding: "utf8",
+      env: { ...process.env, NO_PROXY: "*", HTTPS_PROXY: "http://127.0.0.1:1" },
+      shell: false
+    });
+    assert.equal(overBudgetResult.status, 1, overBudgetResult.stderr || overBudgetResult.stdout);
+    assert.match(JSON.parse(overBudgetResult.stdout).findings.map(({ code }) => code).join("\n"), /CHAINLINK_ARTIFACT_BUDGET_EXCEEDED/);
+    fs.writeFileSync(profile, `${JSON.stringify(validProfile, null, 2)}\n`);
+
+    const weakened = structuredClone(validProfile);
+    weakened.authorityBoundary.automaticDeployment = true;
+    fs.writeFileSync(profile, `${JSON.stringify(weakened, null, 2)}\n`);
+    const rejected = childProcess.spawnSync(process.execPath, [script, "check", "--root", directory, "--profile", "profile.json"], {
+      encoding: "utf8",
+      env: { ...process.env, NO_PROXY: "*", HTTPS_PROXY: "http://127.0.0.1:1" },
+      shell: false
+    });
+    assert.equal(rejected.status, 1, rejected.stderr || rejected.stdout);
+    assert.equal(JSON.parse(rejected.stdout).status, "CHAINLINK_PROFILE_INVALID");
+
+    const missing = structuredClone(validProfile);
+    const missingBinding = collectChainlinkProviderArtifactBindingsV1(missing)[0];
+    fs.rmSync(path.join(directory, missingBinding.path));
+    fs.writeFileSync(profile, `${JSON.stringify(missing, null, 2)}\n`);
+    const missingResult = childProcess.spawnSync(process.execPath, [script, "check", "--root", directory, "--profile", "profile.json"], {
+      encoding: "utf8",
+      env: { ...process.env, NO_PROXY: "*", HTTPS_PROXY: "http://127.0.0.1:1" },
+      shell: false
+    });
+    assert.equal(missingResult.status, 1, missingResult.stderr || missingResult.stdout);
+    assert.match(JSON.parse(missingResult.stdout).findings.map(({ code }) => code).join("\n"), /CHAINLINK_ARTIFACT_BINDING_INVALID/);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("provider validation plan closure excludes materialization and child-process authority", () => {
+  const profileCli = fs.readFileSync(path.join(skillRoot, "scripts", "chainlink-provider-profile.mjs"), "utf8");
+  assert.doesNotMatch(profileCli, /node:child_process|template-catalog-materializer/u);
+  assert.match(profileCli, /template-catalog-composition\.mjs/u);
+  assert.match(profileCli, /template-catalog-loader\.mjs/u);
 });
 
 test("typed A1-A11 and P1-P9 decision derives verdict but never authority from GitHub projection state", () => {

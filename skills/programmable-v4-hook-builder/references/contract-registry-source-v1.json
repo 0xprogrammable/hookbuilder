@@ -51,6 +51,18 @@
       }
     },
     {
+      "contractId": "chainlink-provider-profile-v1",
+      "schemaPath": "references/chainlink-provider-profile-v1.schema.json",
+      "schemaId": "urn:programmable:chainlink-provider-profile:1.0.0",
+      "lifecycle": "active",
+      "payloadDigestProfile": "contract-defined",
+      "validator": {
+        "modulePath": "scripts/chainlink-provider-profile-core.mjs",
+        "exportName": "validateChainlinkProviderProfileV1",
+        "mode": "direct"
+      }
+    },
+    {
       "contractId": "command-receipt-v1",
       "schemaPath": "references/command-receipt-v1.schema.json",
       "schemaId": "urn:programmable:project-command-receipt:1.0.0",

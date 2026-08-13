@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "pack",
+  "id": "chainlink-provider",
+  "label": "Chainlink provider profile",
+  "summary": "Route the Chainlink provider baseline; the required product profile must separately bind its exact generic oracle, randomness, automation or cross-chain capability.",
+  "acceleratorOnly": true,
+  "eligibilityEffect": "none",
+  "unknownCapabilityPolicy": "preserve-and-route",
+  "reviewRoute": "architecture-review-required",
+  "requires": [],
+  "conflictsWith": [],
+  "capabilities": [
+    "chainlink-provider"
+  ],
+  "projectSurfaces": [
+    "contract",
+    "indexer",
+    "keeper",
+    "oracle",
+    "service"
+  ],
+  "requiredFacts": [
+    "Selected Chainlink product and the exact generic capability it specializes: VRF randomness, Feeds or Streams oracle data, CRE keeper automation, or CCIP cross-chain messaging",
+    "Exact target chain, provider contract roles, addresses, runtime-code hashes, dependency lock and deployment evidence",
+    "Provider callback, report, retry, outage, stale-data, replacement-authority, billing and beneficiary recovery boundaries",
+    "Backend-only credential boundary and a profile proving no validation, deployment, approval or transaction authority",
+    "Explicit non-coverage of Automation, Functions and alpha Confidential AI in the reviewed source revision"
+  ],
+  "requiredFiles": [
+    "Content-addressed EVM-only Chainlink provider profile matching chainlink-provider-profile-v1.schema.json",
+    "Exact dependency lock and provider deployment evidence",
+    "Product-specific adapter or consumer source",
+    "Ethereum liveness, account, indexer/RPC and chain-capability evidence"
+  ],
+  "requiredTests": [
+    "Wrong chain, address, runtime hash, role, dependency lock and provider replacement",
+    "Product-specific stale, duplicate, reordered, replay, callback and outage behavior",
+    "Bounded work, idempotency, timeout, stuck-state exit and beneficiary recovery",
+    "RPC disagreement, reorg rollback, account-model replay and target-chain capability mismatch"
+  ],
+  "risks": [
+    "A provider example or moving documentation page can be mistaken for target-chain deployment evidence",
+    "Provider liveness inside a PoolManager callback can trap pool execution",
+    "Silent fallback or replacement authority can rewrite the reviewed trust and economic model",
+    "A valid structural profile can be overstated as audit, provider availability, deployment or launch proof"
+  ]
+}
