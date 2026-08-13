@@ -6,7 +6,9 @@ import { projectCommandExecutionPlanSha256 } from "./project-command-executor-co
 export const PROJECT_SANDBOX_RECEIPT_SCHEMA_VERSION = "1.0.0";
 export const PROJECT_SANDBOX_RECEIPT_KIND = "programmable-project-external-sandbox-receipt";
 export const PROJECT_SANDBOX_REQUEST_KIND = "programmable-project-external-sandbox-request";
-export const PROJECT_SANDBOX_TRUSTED_PUBLIC_KEYS = Object.freeze({});
+// This private constant is the sole production trust store. The portable
+// release deliberately ships it empty; callers cannot import or extend it.
+const PROJECT_SANDBOX_TRUSTED_PUBLIC_KEYS = Object.freeze({});
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const GIT_OBJECT = /^(?!0{40}$)[0-9a-f]{40}$/u;
@@ -104,17 +106,15 @@ export function validateProjectSandboxReceiptV1(receipt) {
   }
 }
 
-export function verifyProjectSandboxReceiptV1({
-  receipt,
-  expectedRequest,
-  trustedPublicKeys = PROJECT_SANDBOX_TRUSTED_PUBLIC_KEYS
-}) {
+export function verifyProjectSandboxReceiptV1(input) {
+  requireExactKeys(input, ["receipt", "expectedRequest"], "sandbox receipt verification input", "PROJECT_SANDBOX_VERIFICATION_INPUT_INVALID");
+  const { receipt, expectedRequest } = input;
   validateReceiptStructure(receipt);
   requirePlainObject(expectedRequest, "expectedRequest");
   if (canonicalJsonV2(receipt.payload.request) !== canonicalJsonV2(expectedRequest)) {
     fail("PROJECT_SANDBOX_SUBJECT_MISMATCH", "sandbox receipt does not bind the expected request bytes");
   }
-  const keyMaterial = trustedPublicKeys?.[receipt.signature.keyId];
+  const keyMaterial = PROJECT_SANDBOX_TRUSTED_PUBLIC_KEYS[receipt.signature.keyId];
   if (typeof keyMaterial !== "string" && !Buffer.isBuffer(keyMaterial)) {
     fail("PROJECT_SANDBOX_AUTHORITY_UNTRUSTED", "sandbox receipt signer is not in the independently configured trust root");
   }
@@ -338,10 +338,10 @@ function requirePlainObject(value, label) {
   }
 }
 
-function requireExactKeys(value, expected, label) {
+function requireExactKeys(value, expected, label, code = "PROJECT_SANDBOX_RECEIPT_INVALID") {
   requirePlainObject(value, label);
   if (JSON.stringify(Object.keys(value).sort()) !== JSON.stringify([...expected].sort())) {
-    fail("PROJECT_SANDBOX_RECEIPT_INVALID", `${label} keys drift`);
+    fail(code, `${label} keys drift`);
   }
 }
 

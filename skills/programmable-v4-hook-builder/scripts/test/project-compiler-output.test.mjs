@@ -86,7 +86,7 @@ test("project output gate closes unresolved artifacts and rejects identity, face
 });
 
 
-test("project output gate accepts a canonical no-market prototype and forbids any manufactured route evidence", async (t) => {
+test("project output gate blocks legacy-receipt completion and forbids manufactured no-market route evidence", async (t) => {
   const prototype = createNoMarketOpenWorldV2PrototypeFixture("reward-service");
   const project = await createCompleteRepository(t, {
     extraFiles: [...prototype.files].map(([relativePath, bytes]) => [`submission/${relativePath}`, bytes])
@@ -94,7 +94,11 @@ test("project output gate accepts a canonical no-market prototype and forbids an
   const submissionRoot = path.join(project.root, "submission");
   const input = { ...project.bundle, repositoryRoot: project.root, submissionRoot };
   const report = validateProjectOutput(input);
-  assert.equal(report.status, "PROJECT_OUTPUT_VALID", canonicalJsonV2(report));
+  assert.equal(report.status, "PROJECT_OUTPUT_INVALID", canonicalJsonV2(report));
+  assert.equal(report.projectCompilationStatus, "PROJECT_COMPILATION_VALID");
+  assert.equal(report.repositoryCompletion, "NOT_PROVEN");
+  assert.equal(report.commandExecutionEvidence, "UNTRUSTED_DETERMINISTIC_RECEIPT_CONTENT_MATCH");
+  assert.ok(report.findings.some(({ code }) => code === "PROJECT_OUTPUT_REPOSITORY_COMPLETION_NOT_PROVEN"));
   assert.equal(report.projection.applicability, "no-market");
   assert.deepEqual(report.projection.markets, []);
   const preflight = childProcess.spawnSync(process.execPath, [
@@ -110,10 +114,12 @@ test("project output gate accepts a canonical no-market prototype and forbids an
     "--submission-root",
     "submission"
   ], { encoding: "utf8", shell: false });
-  assert.equal(preflight.status, 0, preflight.stderr || preflight.stdout);
+  assert.equal(preflight.status, 1, preflight.stderr || preflight.stdout);
   const preflightReport = JSON.parse(preflight.stdout);
-  assert.equal(preflightReport.status, "PROJECT_PREFLIGHT_VALID");
-  assert.equal(preflightReport.canonicalOutput, true);
+  assert.equal(preflightReport.status, "PROJECT_PREFLIGHT_BLOCKED");
+  assert.equal(preflightReport.canonicalOutput, false);
+  assert.equal(preflightReport.outputBinding.repositoryCompletion, "NOT_PROVEN");
+  assert.equal(preflightReport.outputBinding.commandExecutionEvidence, "UNTRUSTED_DETERMINISTIC_RECEIPT_CONTENT_MATCH");
   assert.equal(preflightReport.outputBinding.reportSha256, report.reportSha256);
   const directPreflight = preflightProjectOutput({
     repositoryRoot: project.root,
@@ -162,7 +168,8 @@ test("project output gate accepts a canonical no-market prototype and forbids an
     })))
   });
   const poisonedOutput = validateProjectOutput({ ...poisoned.bundle, repositoryRoot: poisoned.root, submissionRoot: path.join(poisoned.root, "submission") });
-  assert.equal(poisonedOutput.status, "PROJECT_OUTPUT_VALID", canonicalJsonV2(poisonedOutput));
+  assert.equal(poisonedOutput.status, "PROJECT_OUTPUT_INVALID", canonicalJsonV2(poisonedOutput));
+  assert.ok(poisonedOutput.findings.some(({ code }) => code === "PROJECT_OUTPUT_REPOSITORY_COMPLETION_NOT_PROVEN"));
   const poisonedPreflight = childProcess.spawnSync(process.execPath, [
     unifiedCli, "project", "preflight", "--repository-root", poisoned.root,
     "--state", poisoned.statePath, "--previous-state", poisoned.previousStatePath, "--submission-root", "submission"
@@ -178,10 +185,14 @@ test("project output gate accepts a canonical no-market prototype and forbids an
 });
 
 
-test("project output gate accepts a COMPLETE tradable prototype and fails closed on market, route, completion, and manifest-byte drift", async (t) => {
+test("project output gate blocks a legacy-receipt COMPLETE tradable prototype and fails closed on all drift", async (t) => {
   const fixture = await createTradableOutputFixture(t);
   const report = validateProjectOutput(fixture.input);
-  assert.equal(report.status, "PROJECT_OUTPUT_VALID", canonicalJsonV2(report));
+  assert.equal(report.status, "PROJECT_OUTPUT_INVALID", canonicalJsonV2(report));
+  assert.equal(report.projectCompilationStatus, "PROJECT_COMPILATION_VALID");
+  assert.equal(report.repositoryCompletion, "NOT_PROVEN");
+  assert.equal(report.commandExecutionEvidence, "UNTRUSTED_DETERMINISTIC_RECEIPT_CONTENT_MATCH");
+  assert.ok(report.findings.some(({ code }) => code === "PROJECT_OUTPUT_REPOSITORY_COMPLETION_NOT_PROVEN"));
   assert.equal(report.projection.applicability, "tradable");
   assert.deepEqual(report.projection.markets, ["main-market"]);
   assert.equal(report.evidenceBoundary.commandsReexecuted, false);
@@ -199,9 +210,11 @@ test("project output gate accepts a COMPLETE tradable prototype and fails closed
     "--submission-root",
     "submission"
   ], { encoding: "utf8", shell: false });
-  assert.equal(preflight.status, 0, preflight.stderr || preflight.stdout);
+  assert.equal(preflight.status, 1, preflight.stderr || preflight.stdout);
   const preflightReport = JSON.parse(preflight.stdout);
-  assert.equal(preflightReport.status, "PROJECT_PREFLIGHT_VALID");
+  assert.equal(preflightReport.status, "PROJECT_PREFLIGHT_BLOCKED");
+  assert.equal(preflightReport.canonicalOutput, false);
+  assert.equal(preflightReport.outputBinding.repositoryCompletion, "NOT_PROVEN");
   assert.equal(preflightReport.outputBinding.reportSha256, report.reportSha256);
 
   const mutate = (change) => {

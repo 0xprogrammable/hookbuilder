@@ -130,7 +130,7 @@ test("portable executor blocks arbitrary Node, Python, shell, cwd escape, and sy
   );
 });
 
-test("external receipt requires exact subject and an independently trusted Ed25519 authority", async (t) => {
+test("production receipt verification rejects caller authority injection and remains fail-closed with an empty trust store", async (t) => {
   const fixture = createMaterializedRepository(t);
   const source = inspectCleanProjectSource(fixture.root);
   const request = createProjectSandboxRequestV1({ repositoryPlan: fixture.plan, source });
@@ -139,29 +139,28 @@ test("external receipt requires exact subject and an independently trusted Ed255
   assert.deepEqual(validateProjectSandboxReceiptV1(receipt), []);
 
   assert.throws(
-    () => verifyProjectSandboxReceiptV1({ receipt, expectedRequest: request, trustedPublicKeys: {} }),
+    () => verifyProjectSandboxReceiptV1({ receipt, expectedRequest: request }),
     ({ code }) => code === "PROJECT_SANDBOX_AUTHORITY_UNTRUSTED"
   );
-  const verified = verifyProjectSandboxReceiptV1({
-    receipt,
-    expectedRequest: request,
-    trustedPublicKeys: {
-      "independent-sandbox-authority-v1": publicKey.export({ type: "spki", format: "pem" })
-    }
-  });
-  assert.equal(verified.status, "PROJECT_EXTERNAL_SANDBOX_RECEIPT_VERIFIED");
-  assert.equal(verified.executionCompleted, true);
-  assert.equal(verified.commandsExecuted, true);
-  assert.equal(verified.networkAccessed, false);
-  assert.equal(verified.externalWritesPerformed, false);
+  const callerKey = publicKey.export({ type: "spki", format: "pem" });
+  for (const forbidden of [
+    { trustedPublicKeys: { "independent-sandbox-authority-v1": callerKey } },
+    { trustedPublicKey: callerKey },
+    { trustedPublicKeyPath: "/tmp/caller-authority.pem" },
+    { authorityReportPath: "/tmp/caller-authority.json" }
+  ]) {
+    assert.throws(
+      () => verifyProjectSandboxReceiptV1({ receipt, expectedRequest: request, ...forbidden }),
+      ({ code }) => code === "PROJECT_SANDBOX_VERIFICATION_INPUT_INVALID"
+    );
+  }
 
   const wrongSubject = structuredClone(request);
   wrongSubject.applicationId = "different-subject";
   assert.throws(
     () => verifyProjectSandboxReceiptV1({
       receipt,
-      expectedRequest: wrongSubject,
-      trustedPublicKeys: { "independent-sandbox-authority-v1": publicKey.export({ type: "spki", format: "pem" }) }
+      expectedRequest: wrongSubject
     }),
     ({ code }) => code === "PROJECT_SANDBOX_SUBJECT_MISMATCH"
   );
@@ -172,7 +171,7 @@ test("external receipt requires exact subject and an independently trusted Ed255
 
   const selfSigned = signedReceipt(request, crypto.generateKeyPairSync("ed25519").privateKey, "self-asserted-local-key");
   assert.throws(
-    () => verifyProjectSandboxReceiptV1({ receipt: selfSigned, expectedRequest: request, trustedPublicKeys: {} }),
+    () => verifyProjectSandboxReceiptV1({ receipt: selfSigned, expectedRequest: request }),
     ({ code }) => code === "PROJECT_SANDBOX_AUTHORITY_UNTRUSTED"
   );
 });
