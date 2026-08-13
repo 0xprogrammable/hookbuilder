@@ -129,6 +129,13 @@ test("project output gate blocks legacy-receipt completion and forbids manufactu
   });
   assert.equal(canonicalJsonV2(directPreflight), canonicalJsonV2(preflightReport));
 
+  const materializing = structuredCloneProjectOutputInput(input);
+  materializing.repositoryPlan.completionStatus = "materializing";
+  const materializingReport = validateProjectOutput(materializing);
+  assert.equal(materializingReport.status, "PROJECT_OUTPUT_INVALID");
+  assert.equal(materializingReport.repositoryCompletion, "NOT_PROVEN");
+  assert.ok(materializingReport.findings.some(({ code, details }) => code === "PROJECT_OUTPUT_REPOSITORY_COMPLETION_NOT_PROVEN" && details?.planCompletionStatus === "materializing"));
+
   const manufactured = structuredCloneProjectOutputInput(input);
   manufactured.repositoryPlan.commands.push({
     id: "invented-quote-command",

@@ -54,15 +54,16 @@ export const ARCHITECTURE_ROLES = Object.freeze([
 ]);
 
 export function projectCompletionProofFindings(repositoryPlan, compilation) {
-  if (repositoryPlan?.completionStatus !== "COMPLETE" || compilation?.repositoryCompletion === "PROVEN") return [];
+  if (compilation?.repositoryCompletion === "PROVEN" || repositoryPlan?.tradeCapability?.applicability === "unresolved") return [];
   return [{
     severity: "blocker",
     code: "PROJECT_OUTPUT_REPOSITORY_COMPLETION_NOT_PROVEN",
     path: "$.project.repositoryPlan.completionStatus",
-    message: "A COMPLETE RepositoryPlan requires authenticated external-sandbox completion evidence; legacy command receipts prove content consistency only.",
+    message: "Canonical project output requires authenticated external-sandbox completion evidence; legacy command receipts prove content consistency only.",
     details: {
       repositoryCompletion: compilation?.repositoryCompletion ?? null,
-      commandExecutionEvidence: compilation?.commandExecutionEvidence ?? null
+      commandExecutionEvidence: compilation?.commandExecutionEvidence ?? null,
+      planCompletionStatus: repositoryPlan?.completionStatus ?? null
     }
   }];
 }
