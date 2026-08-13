@@ -12,6 +12,29 @@ const TEST_BATCH_COUNT = 2;
 const TEST_TIMEOUT_MS = 15 * 60 * 1000;
 const TEST_OUTPUT_BYTES = 128 * 1024 * 1024;
 const monotonicNow = () => performance.now();
+export const REQUIRED_PORTABLE_TESTS = Object.freeze(`
+application-api-schema application-dependency-core application-v3-prepare-revision-core build-info
+build-profile builder-lifecycle canonical-json-core cli
+cli-central-base cli-central-package cli-entry cli-open-world
+cli-open-world-github cli-output-dir cli-prepare-pr companion-manifest-v2
+composition-checker contract-registry cross-chain-policy dependency-pointer-core
+example-materializer fee-conformance fee-conformance-receipt-v1 fee-conformance-vector-set-v1
+fee-policy-v2 fee-policy-v2-vector-parity github-application github-exact-object-resolver
+github-public-source-core golden-scenarios historical-v1-freeze implementation-legos-runtime
+knowledge-router launch-bundle launch-bundle-v2 launch-bundle-v2-cli
+launch-plan-graph legacy-strict-json-boundaries official-launchpad open-world-migration
+open-world-regressions open-world-runtime open-world-security open-world-source-signals
+open-world-v2 open-world-v2-module-boundaries ordinary-launch-cli package-dependency-contract
+policy-bundle project-compiler-foundation project-compiler-materialization
+project-compiler-output project-compiler-plan project-compiler-receipts project-executor-safety
+project-compiler-v4-deployment project-surfaces public-claims
+raw-git-integrity-core registry-acceptance-v3-github registry-discovery residual-json-boundaries
+resolve-contract-core review-target review-target-contract reviewed-drift-receipt
+runtime-assets-core schema-security semantic-rule-registry source-closure-verifier
+source-evidence-workflow source-manifest strict-json-core submission
+template-catalog trade-capability-manifest typed-launch-contracts-v1 upstream-drift
+v4-hook-semantic-contract verify-package-build-info verify-skill-static
+`.trim().split(/\s+/u).map((stem) => `scripts/test/${stem}.test.mjs`));
 
 if (!isMainThread && workerData?.kind === "module-syntax-parser") {
   if (!Array.isArray(workerData.scripts) || typeof vm.SourceTextModule !== "function") {

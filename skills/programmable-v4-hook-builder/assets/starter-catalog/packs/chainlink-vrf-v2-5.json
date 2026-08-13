@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "pack",
+  "id": "chainlink-vrf-v2-5",
+  "label": "Chainlink VRF v2.5 requirements",
+  "summary": "Atomic EVM-only requirements for VRF v2.5 request and fulfillment. Select it through --chainlink-product vrf-v2-5; this definition does not prove funding or deployment.",
+  "acceleratorOnly": true,
+  "eligibilityEffect": "none",
+  "unknownCapabilityPolicy": "preserve-and-route",
+  "reviewRoute": "architecture-review-required",
+  "requires": [],
+  "conflictsWith": [],
+  "capabilities": [
+    "chainlink-vrf-v2-5"
+  ],
+  "projectSurfaces": [
+    "contract",
+    "external-provider"
+  ],
+  "requiredFacts": [
+    "Subscription or direct-funding mode with exact coordinator, consumer and direct-funding wrapper runtime identities",
+    "Key hash, subscription ID when applicable, funding asset, confirmations, callback-gas limit and word count",
+    "Every request ID bound to frozen chain, consumer, purpose, input and beneficiary",
+    "Authenticated minimal idempotent fulfillment that tolerates duplicate, unknown and reordered request IDs without reverting",
+    "Separately callable bounded business transition plus timeout cancel, refund or exit that cannot reroll the same commitment"
+  ],
+  "requiredFiles": [
+    "Content-addressed EVM-only Chainlink provider profile selecting VRF v2.5",
+    "Coordinator, consumer and optional wrapper deployment evidence with runtime-code hashes and dependency lock",
+    "Request, fulfillment and deferred business-transition source",
+    "Funding, timeout, cancellation, beneficiary-exit and provider-rotation policies"
+  ],
+  "requiredTests": [
+    "Wrong coordinator, consumer, wrapper, key hash, funding mode, chain and runtime hash",
+    "Duplicate, unknown, reordered, delayed and replayed request fulfillment",
+    "Callback-gas, word-count, confirmation, funding and total-work bounds",
+    "Timeout, cancellation, refund and beneficiary exit without rerolling a frozen commitment",
+    "Application-level withholding, selective fulfillment, timing, input-manipulation and authority risks"
+  ],
+  "risks": [
+    "Request-to-result confusion can apply valid randomness to the wrong action or beneficiary",
+    "Provider outage, underfunding or callback-gas exhaustion can strand pending actions",
+    "Timeout recovery can become an owner-controlled reroll or value-redirection path",
+    "Verifiable provider output does not remove application-level withholding or selection bias"
+  ]
+}

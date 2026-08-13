@@ -12,6 +12,23 @@ const METHODOLOGY_BLOCKERS = Object.freeze([
   'TRUSTED_SANDBOX_ATTESTATION_VERIFIER_MISSING',
 ]);
 
+export const EFFICIENCY_CONTRACT_OWNER = 'evals/holdout/manifest.json#/efficiencyContract';
+
+const EFFICIENCY_METRICS = Object.freeze([
+  Object.freeze({ id: 'coldStartContextTokens', budgetKey: 'coldStartContextTargetTokens', standardOnly: true }),
+  Object.freeze({ id: 'architectureContextTokens', budgetKey: 'standardArchitectureContextTargetTokens', standardOnly: true }),
+  Object.freeze({ id: 'totalInputTokens', budgetKey: 'maxTotalInputTokens' }),
+  Object.freeze({ id: 'totalOutputTokens', budgetKey: 'maxTotalOutputTokens' }),
+  Object.freeze({ id: 'combinedTokens', budgetKey: 'maxCombinedTokens' }),
+  Object.freeze({ id: 'toolCalls', budgetKey: 'maxToolCalls' }),
+  Object.freeze({ id: 'retries', budgetKey: 'maxRetries' }),
+  Object.freeze({ id: 'emittedBytes', budgetKey: 'maxEmittedBytes' }),
+  Object.freeze({ id: 'wallTimeMs', budgetKey: 'maxWallTimeMs' }),
+  Object.freeze({ id: 'timeToUsefulMs', budgetKey: 'maxTimeToUsefulMs' }),
+  Object.freeze({ id: 'activatedReferenceBytes', budgetKey: 'maxActivatedReferenceBytes' }),
+  Object.freeze({ id: 'descendantSubagents', budgetKey: 'maxDescendantSubagents' }),
+]);
+
 function percentile(values, probability) {
   if (values.length === 0) return null;
   const sorted = [...values].sort((left, right) => left - right);
@@ -26,8 +43,175 @@ function metricDistribution(runs, selector) {
 function combinedToolMetric(run, key) {
   const generation = run.telemetry?.[key];
   const judge = run.judge?.telemetry?.[key];
-  if (!Number.isSafeInteger(generation) && !Number.isSafeInteger(judge)) return null;
-  return (generation ?? 0) + (judge ?? 0);
+  const stage = key === 'toolCalls'
+    ? run.telemetry?.verifierToolCalls
+    : key === 'emittedBytes'
+      ? run.telemetry?.verifierEmittedBytes
+      : 0;
+  if (
+    !Number.isSafeInteger(generation)
+    || !Number.isSafeInteger(judge)
+    || !Number.isSafeInteger(stage)
+    || generation < 0
+    || judge < 0
+    || stage < 0
+  ) return null;
+  return generation + judge + stage;
+}
+
+function combinedUsageMetric(run, key) {
+  const generation = run.usage?.[key];
+  const judge = run.judge?.usage?.[key];
+  if (!Number.isSafeInteger(generation) || !Number.isSafeInteger(judge)) return null;
+  return generation + judge;
+}
+
+function efficiencyMetricValue(run, metricId) {
+  switch (metricId) {
+    case 'coldStartContextTokens': return run.usage?.coldStartContextTokens;
+    case 'architectureContextTokens': return run.usage?.architectureContextTokens;
+    case 'totalInputTokens': return combinedUsageMetric(run, 'inputTokens');
+    case 'totalOutputTokens': return combinedUsageMetric(run, 'outputTokens');
+    case 'combinedTokens': return combinedUsageMetric(run, 'totalTokens');
+    case 'toolCalls': return combinedToolMetric(run, 'toolCalls');
+    case 'retries': return combinedToolMetric(run, 'retries');
+    case 'emittedBytes': return combinedToolMetric(run, 'emittedBytes');
+    case 'wallTimeMs': return run.wallTimeMs;
+    case 'timeToUsefulMs': return run.telemetry?.timeToUsefulMs;
+    case 'activatedReferenceBytes': return combinedToolMetric(run, 'activatedReferenceBytes');
+    case 'descendantSubagents': return combinedToolMetric(run, 'descendantSubagentCount');
+    default: return null;
+  }
+}
+
+export function evaluateRunEfficiency(run, contract) {
+  const measurements = {};
+  for (const definition of EFFICIENCY_METRICS) {
+    const maximum = contract?.[definition.budgetKey];
+    if (definition.standardOnly && run.declaredNovel === true) {
+      measurements[definition.id] = { status: 'NOT_APPLICABLE', maximum };
+      continue;
+    }
+    const value = efficiencyMetricValue(run, definition.id);
+    if (!Number.isSafeInteger(maximum) || maximum < 0 || !Number.isSafeInteger(value) || value < 0) {
+      measurements[definition.id] = { status: 'UNMEASURED', maximum: maximum ?? null, value: value ?? null };
+      continue;
+    }
+    measurements[definition.id] = {
+      status: value <= maximum ? 'PASS' : 'FAIL',
+      value,
+      maximum,
+    };
+  }
+  const values = Object.values(measurements);
+  const status = values.some(({ status }) => status === 'UNMEASURED')
+    ? 'UNMEASURED'
+    : values.some(({ status }) => status === 'FAIL')
+      ? 'FAIL'
+      : 'PASS';
+  return {
+    status,
+    contractOwner: EFFICIENCY_CONTRACT_OWNER,
+    contractSha256: sha256(canonicalJson(contract)),
+    measurements,
+  };
+}
+
+function summarizeEfficiency(runs, contract) {
+  const evaluations = runs.map((run) => ({ runId: run.runId, result: evaluateRunEfficiency(run, contract) }));
+  const failures = [];
+  const unmeasured = [];
+  for (const { runId, result } of evaluations) {
+    for (const [metric, measurement] of Object.entries(result.measurements)) {
+      if (measurement.status === 'FAIL') failures.push({ runId, metric, observed: measurement.value, maximum: measurement.maximum });
+      if (measurement.status === 'UNMEASURED') unmeasured.push({ runId, metric });
+    }
+  }
+  const status = unmeasured.length > 0 ? 'UNMEASURED' : failures.length > 0 ? 'FAIL' : runs.length > 0 ? 'PASS' : 'UNMEASURED';
+  const primaryIssues = [...new Map([
+    ...unmeasured.map(({ runId, metric }) => [
+      `EFFICIENCY_METRIC_UNMEASURED:${metric}`,
+      { code: 'EFFICIENCY_METRIC_UNMEASURED', runId, metric },
+    ]),
+    ...failures.map(({ runId, metric, observed, maximum }) => [
+      `EFFICIENCY_BUDGET_EXCEEDED:${metric}`,
+      { code: 'EFFICIENCY_BUDGET_EXCEEDED', runId, metric, observed, maximum },
+    ]),
+  ]).values()].slice(0, 3);
+  return {
+    status,
+    contractOwner: EFFICIENCY_CONTRACT_OWNER,
+    contractSha256: sha256(canonicalJson(contract)),
+    contract: { ...contract },
+    runCount: runs.length,
+    measuredRunCount: evaluations.filter(({ result }) => result.status !== 'UNMEASURED').length,
+    unmeasuredRunCount: evaluations.filter(({ result }) => result.status === 'UNMEASURED').length,
+    failedRunCount: evaluations.filter(({ result }) => result.status === 'FAIL').length,
+    primaryIssues,
+    unmeasured,
+    failures,
+  };
+}
+
+function comparableRunIdentity(run) {
+  return canonicalJson({
+    runId: run.runId,
+    caseId: run.caseId,
+    casePromptSha256: run.casePromptSha256,
+    rubricSha256: run.rubricSha256,
+    tier: run.tier,
+    modelId: run.modelId,
+    repeat: run.repeat,
+    declaredNovel: run.declaredNovel,
+    adapterIdentity: run.adapterIdentity,
+    judgeAdapterIdentity: run.judgeAdapterIdentity,
+  });
+}
+
+export function compareEfficiencyBaseline(runs, baselineRuns) {
+  if (baselineRuns === null || baselineRuns === undefined) {
+    return { status: 'NOT_PROVIDED', qualification: 'no-comparable-baseline-run-set-provided', regressions: [], unmeasured: [] };
+  }
+  if (!Array.isArray(baselineRuns) || baselineRuns.length !== runs.length) {
+    return { status: 'INCOMPARABLE', qualification: 'candidate-and-baseline-run-matrices-differ', regressions: [], unmeasured: [] };
+  }
+  const baselineById = new Map(baselineRuns.map((run) => [run.runId, run]));
+  if (baselineById.size !== baselineRuns.length || runs.some((run) => {
+    const baseline = baselineById.get(run.runId);
+    return !baseline || comparableRunIdentity(run) !== comparableRunIdentity(baseline);
+  })) {
+    return { status: 'INCOMPARABLE', qualification: 'candidate-and-baseline-run-identities-differ', regressions: [], unmeasured: [] };
+  }
+
+  const groups = new Map();
+  for (const run of runs) {
+    const key = `${run.caseId}\0${run.tier}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(run);
+  }
+  const regressions = [];
+  const unmeasured = [];
+  for (const [group, candidateGroup] of groups) {
+    const baselineGroup = candidateGroup.map((run) => baselineById.get(run.runId));
+    for (const definition of EFFICIENCY_METRICS) {
+      if (definition.standardOnly && candidateGroup.every(({ declaredNovel }) => declaredNovel === true)) continue;
+      const candidateValues = candidateGroup.map((run) => efficiencyMetricValue(run, definition.id));
+      const baselineValues = baselineGroup.map((run) => efficiencyMetricValue(run, definition.id));
+      if ([...candidateValues, ...baselineValues].some((value) => !Number.isSafeInteger(value) || value < 0)) {
+        unmeasured.push({ group, metric: definition.id });
+        continue;
+      }
+      const candidateP50 = percentile(candidateValues, 0.5);
+      const baselineP50 = percentile(baselineValues, 0.5);
+      if (candidateP50 > baselineP50) regressions.push({ group, metric: definition.id, candidateP50, baselineP50 });
+    }
+  }
+  return {
+    status: unmeasured.length > 0 ? 'UNMEASURED' : regressions.length > 0 ? 'REGRESSION' : 'PASS',
+    qualification: 'same-run-identity-p50-comparison-adapter-and-local-harness-reported-not-provider-verified',
+    regressions,
+    unmeasured,
+  };
 }
 
 function metricsForRuns(runs) {
@@ -40,6 +224,8 @@ function metricsForRuns(runs) {
     judgeInputTokens: metricDistribution(runs, (run) => run.judge?.usage?.inputTokens),
     judgeOutputTokens: metricDistribution(runs, (run) => run.judge?.usage?.outputTokens),
     judgeTotalTokens: metricDistribution(runs, (run) => run.judge?.usage?.totalTokens),
+    combinedInputTokens: metricDistribution(runs, (run) => combinedUsageMetric(run, 'inputTokens')),
+    combinedOutputTokens: metricDistribution(runs, (run) => combinedUsageMetric(run, 'outputTokens')),
     combinedTotalTokens: metricDistribution(runs, (run) => (
       Number.isSafeInteger(run.usage?.totalTokens) && Number.isSafeInteger(run.judge?.usage?.totalTokens)
         ? run.usage.totalTokens + run.judge.usage.totalTokens
@@ -52,6 +238,11 @@ function metricsForRuns(runs) {
         : null
     )),
     retries: metricDistribution(runs, (run) => combinedToolMetric(run, 'retries')),
+    emittedBytes: metricDistribution(runs, (run) => combinedToolMetric(run, 'emittedBytes')),
+    activatedReferenceBytes: metricDistribution(runs, (run) => combinedToolMetric(run, 'activatedReferenceBytes')),
+    descendantSubagents: metricDistribution(runs, (run) => combinedToolMetric(run, 'descendantSubagentCount')),
+    timeToUsefulMs: metricDistribution(runs, (run) => run.telemetry?.timeToUsefulMs),
+    wallTimeMs: metricDistribution(runs, (run) => run.wallTimeMs),
     questions: metricDistribution(runs, (run) => run.telemetry?.questions),
     escalations: metricDistribution(runs, (run) => run.telemetry?.escalations),
     manualInterventions: metricDistribution(runs, (run) => run.telemetry?.manualInterventions),
@@ -156,7 +347,36 @@ function failureSummary(runs, hardGateCaseIds) {
   };
 }
 
-export function summarizeRuns({ runs, corpus, selectedCaseIds, selectedTierIds, repetitions, suiteBinding = null, revealedCoverage = null }) {
+function diagnosticsForScorecard({ efficiency, baselineComparison, releaseBlockers }) {
+  const primary = [...efficiency.primaryIssues];
+  if (primary.length < 3 && ['INCOMPARABLE', 'REGRESSION', 'UNMEASURED'].includes(baselineComparison.status)) {
+    primary.push({
+      code: `EFFICIENCY_BASELINE_${baselineComparison.status}`,
+      detailCount: baselineComparison.regressions.length + baselineComparison.unmeasured.length,
+    });
+  }
+  for (const code of releaseBlockers) {
+    if (primary.length >= 3) break;
+    if (!primary.some((item) => item.code === code)) primary.push({ code });
+  }
+  return {
+    primaryLimit: 3,
+    primary: primary.slice(0, 3),
+    exhaustiveDetailInArtifact: true,
+    exhaustiveFields: ['efficiency.failures', 'efficiency.unmeasured', 'baselineComparison', 'failureClasses', 'releaseBlockers', 'runs'],
+  };
+}
+
+export function summarizeRuns({
+  runs,
+  corpus,
+  selectedCaseIds,
+  selectedTierIds,
+  repetitions,
+  suiteBinding = null,
+  revealedCoverage = null,
+  baselineRuns = null,
+}) {
   const exactCaseSelection = sameSet(selectedCaseIds, corpus.cases.map(({ id }) => id));
   const exactTierSelection = sameSet(selectedTierIds, corpus.manifest.tierProfiles.map(({ id }) => id));
   const completeSealedRepositoryCorpus = exactCaseSelection
@@ -177,12 +397,18 @@ export function summarizeRuns({ runs, corpus, selectedCaseIds, selectedTierIds, 
     && runs.every((run) => run.judge?.executionCompleted === true);
   const allJudgeVerdictsPass = allJudgeExecutionsCompleted && runs.every((run) => run.judge?.status === 'PASS');
   const allRunsPassed = allPlannedRunsCompleted && runs.every(({ status }) => status === 'PASS');
-  const tokenTargetsSatisfied = runs.filter(({ declaredNovel }) => !declaredNovel).every((run) => (
+  const standardContextTargetsSatisfied = runs.length > 0 && runs.filter(({ declaredNovel }) => !declaredNovel).every((run) => (
     Number.isSafeInteger(run.usage?.coldStartContextTokens)
     && Number.isSafeInteger(run.usage?.architectureContextTokens)
     && run.usage.coldStartContextTokens <= corpus.manifest.efficiencyContract.coldStartContextTargetTokens
     && run.usage.architectureContextTokens <= corpus.manifest.efficiencyContract.standardArchitectureContextTargetTokens
   ));
+  const efficiency = summarizeEfficiency(runs, corpus.manifest.efficiencyContract);
+  const efficiencyBudgetsSatisfied = efficiency.status === 'PASS';
+  const efficiencyTelemetryMeasured = efficiency.status !== 'UNMEASURED';
+  const baselineComparison = compareEfficiencyBaseline(runs, baselineRuns);
+  const suppliedBaselineHasNoRegression = baselineComparison.status === 'NOT_PROVIDED'
+    || baselineComparison.status === 'PASS';
   const noAssistedOrEscalated = runs.every((run) => (
     run.status !== 'ASSISTED'
     && (run.telemetry?.manualInterventions ?? 0) === 0
@@ -203,17 +429,26 @@ export function summarizeRuns({ runs, corpus, selectedCaseIds, selectedTierIds, 
     && tierThresholdsSatisfied
     && hardGateCasesPassed100Percent
     && allJudgeExecutionsCompleted
-    && tokenTargetsSatisfied
+    && standardContextTargetsSatisfied
+    && efficiencyBudgetsSatisfied
+    && suppliedBaselineHasNoRegression
     && noAssistedOrEscalated
       ? 'PASS'
       : 'FAIL';
   const releaseBlockers = [...METHODOLOGY_BLOCKERS];
+  if (!efficiencyTelemetryMeasured) releaseBlockers.push('EFFICIENCY_TELEMETRY_UNMEASURED');
+  else if (!efficiencyBudgetsSatisfied) releaseBlockers.push('EFFICIENCY_BUDGET_EXCEEDED');
+  if (baselineComparison.status === 'REGRESSION') releaseBlockers.push('EFFICIENCY_BASELINE_REGRESSION');
+  if (['INCOMPARABLE', 'UNMEASURED'].includes(baselineComparison.status)) {
+    releaseBlockers.push('EFFICIENCY_BASELINE_INCOMPARABLE');
+  }
   if (!trustedSubjectAndStageSandbox) releaseBlockers.push('TRUSTED_SUBJECT_AND_STAGE_SANDBOX_MISSING');
   if (!pinnedSuiteIdentity) releaseBlockers.push('PINNED_EVALUATOR_IDENTITY_INCOMPLETE');
   if (!allJudgeExecutionsCompleted) releaseBlockers.push('SEALED_JUDGE_EXECUTION_INCOMPLETE');
   const status = executionHasBlockedRun || releaseBlockers.length > 0 ? 'EXTERNAL_BLOCKED' : sealedCorpusThresholdOutcome;
   const caseIds = [...selectedCaseIds].sort();
   const tierIds = [...selectedTierIds].sort();
+  const uniqueReleaseBlockers = [...new Set(releaseBlockers)].sort();
   const summary = {
     schemaVersion: '2.0.0',
     kind: 'programmable-sealed-repository-e2e-scorecard',
@@ -240,7 +475,7 @@ export function summarizeRuns({ runs, corpus, selectedCaseIds, selectedTierIds, 
     completedRunCount: runs.length,
     outcomes: Object.fromEntries(['PASS', 'FAIL', 'ASSISTED', 'EXTERNAL_BLOCKED'].map((key) => [key, runs.filter(({ status: outcome }) => outcome === key).length])),
     failureClasses,
-    releaseBlockers: [...new Set(releaseBlockers)].sort(),
+    releaseBlockers: uniqueReleaseBlockers,
     releaseGates: {
       completeSealedRepositoryCorpus,
       allPlannedRunsCompleted,
@@ -249,7 +484,11 @@ export function summarizeRuns({ runs, corpus, selectedCaseIds, selectedTierIds, 
       providerReceiptsCryptographicallyVerified: providerReceipts.cryptographicallyProviderVerified,
       tierThresholdsSatisfied,
       hardGateCasesPassed100Percent,
-      standardTokenTargetsSatisfied: tokenTargetsSatisfied,
+      standardTokenTargetsSatisfied: standardContextTargetsSatisfied,
+      efficiencyTelemetryMeasured,
+      efficiencyBudgetsSatisfied,
+      efficiencyBaselineCompared: baselineComparison.status === 'PASS',
+      efficiencyBaselineNoRegression: suppliedBaselineHasNoRegression,
       noAssistedOrEscalatedRuns: noAssistedOrEscalated,
       allJudgeExecutionsCompleted,
       allJudgeVerdictsPass,
@@ -262,6 +501,9 @@ export function summarizeRuns({ runs, corpus, selectedCaseIds, selectedTierIds, 
       previousReleaseRegressionCompared: false,
       releaseCandidate: false,
     },
+    efficiency,
+    baselineComparison,
+    diagnostics: diagnosticsForScorecard({ efficiency, baselineComparison, releaseBlockers: uniqueReleaseBlockers }),
     metrics: {
       overall: metricsForRuns(runs),
       byTier: groupedMetrics(runs, tierIds, (run) => run.tier),
@@ -312,6 +554,10 @@ export function externalBlockedScorecard({ corpus, selectedCaseIds, selectedTier
       tierThresholdsSatisfied: false,
       hardGateCasesPassed100Percent: false,
       standardTokenTargetsSatisfied: false,
+      efficiencyTelemetryMeasured: false,
+      efficiencyBudgetsSatisfied: false,
+      efficiencyBaselineCompared: false,
+      efficiencyBaselineNoRegression: false,
       noAssistedOrEscalatedRuns: false,
       allJudgeExecutionsCompleted: false,
       allJudgeVerdictsPass: false,
@@ -323,6 +569,31 @@ export function externalBlockedScorecard({ corpus, selectedCaseIds, selectedTier
       comparablePublicRepositoryPopulationAvailable: false,
       previousReleaseRegressionCompared: false,
       releaseCandidate: false,
+    },
+    efficiency: {
+      status: 'UNMEASURED',
+      contractOwner: EFFICIENCY_CONTRACT_OWNER,
+      contractSha256: sha256(canonicalJson(corpus.manifest.efficiencyContract)),
+      contract: { ...corpus.manifest.efficiencyContract },
+      runCount: 0,
+      measuredRunCount: 0,
+      unmeasuredRunCount: 0,
+      failedRunCount: 0,
+      primaryIssues: [{ code: 'EFFICIENCY_EVALUATION_NOT_RUN' }],
+      unmeasured: [],
+      failures: [],
+    },
+    baselineComparison: {
+      status: 'NOT_PROVIDED',
+      qualification: 'no-comparable-baseline-run-set-provided',
+      regressions: [],
+      unmeasured: [],
+    },
+    diagnostics: {
+      primaryLimit: 3,
+      primary: blockers.slice(0, 3).map((code) => ({ code })),
+      exhaustiveDetailInArtifact: true,
+      exhaustiveFields: ['blockers', 'releaseBlockers'],
     },
     metrics: null,
     tiers: [],

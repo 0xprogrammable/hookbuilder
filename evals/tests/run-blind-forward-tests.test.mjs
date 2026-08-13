@@ -896,7 +896,7 @@ test("frozen mainnet fork binding uses the independently live dRPC canary and ex
   assert.equal(declaration.providerUriSha256, "sha256:078ddbb63a6abd3c9a5eb951895223315b3d0ba63d4f4c0c588ab34306bf6d79");
 });
 
-test("isolated SVM provisioning copies both exact compiler identities and fails on source drift", (t) => {
+test("isolated SVM provisioning copies both exact compiler identities and fails on source drift before execution", (t) => {
   const root = temporaryRoot(t);
   const sourceHome = path.join(root, "host-svm");
   for (const version of ["0.8.17", "0.8.26"]) {
@@ -904,16 +904,87 @@ test("isolated SVM provisioning copies both exact compiler identities and fails 
     fs.mkdirSync(path.dirname(executable), { recursive: true });
     fs.writeFileSync(executable, `#!/bin/sh\nprintf 'solc, the solidity compiler commandline interface\\nVersion: ${version}+commit.unit.Darwin.appleclang\\n'\n`, { mode: 0o700 });
   }
-  const sources = resolveSolcToolchainSources(sourceHome);
-  const installed = provisionSolcToolchain({ sources, targetHome: path.join(root, "subject-svm") });
+  const spawnCalls = [];
+  const spawnCompiler = (...arguments_) => {
+    spawnCalls.push(arguments_[0]);
+    return spawnSync(...arguments_);
+  };
+  const sources = resolveSolcToolchainSources(sourceHome, { spawnCompiler });
+  const installed = provisionSolcToolchain({ sources, targetHome: path.join(root, "subject-svm"), spawnCompiler });
   assert.deepEqual(installed.compilers.map(({ version }) => version), ["0.8.17", "0.8.26"]);
   assert.equal(installed.isolation.separateWritablePaths, true);
   for (const compiler of installed.compilers) {
     assert.notEqual(compiler.sourcePath, compiler.installedPath);
     assert.equal(fs.statSync(compiler.sourcePath).ino === fs.statSync(compiler.installedPath).ino, false);
   }
-  fs.appendFileSync(path.join(sourceHome, "0.8.17/solc-0.8.17"), "# drift\n");
-  assert.throws(() => provisionSolcToolchain({ sources, targetHome: path.join(root, "drift-svm") }), /drifted after cohort preflight/u);
+  // Mutate the second compiler to prove the complete source closure is checked
+  // before even the first repeated --version execution.
+  fs.appendFileSync(path.join(sourceHome, "0.8.26/solc-0.8.26"), "# drift\n");
+  const callsBeforeDrift = spawnCalls.length;
+  assert.throws(
+    () => provisionSolcToolchain({ sources, targetHome: path.join(root, "drift-svm"), spawnCompiler }),
+    (error) => error?.code === "SOURCE_SOLC_DRIFT" && /drifted after cohort preflight/u.test(error.message),
+  );
+  assert.equal(spawnCalls.length, callsBeforeDrift, "drifted source bytes must not execute");
+  assert.equal(fs.existsSync(path.join(root, "drift-svm")), false, "drift must fail before target provisioning");
+});
+
+test("solc spawn failures expose only deterministic typed execution diagnostics", (t) => {
+  const root = temporaryRoot(t);
+  const sourceHome = path.join(root, "host-svm");
+  for (const version of ["0.8.17", "0.8.26"]) {
+    const executable = path.join(sourceHome, version, `solc-${version}`);
+    fs.mkdirSync(path.dirname(executable), { recursive: true });
+    fs.writeFileSync(executable, "#!/bin/sh\nexit 0\n", { mode: 0o700 });
+  }
+  const secret = "should-never-appear-in-diagnostics";
+  const injectedSpawnFailure = () => ({
+    status: null,
+    signal: "SIGTERM",
+    error: Object.assign(new Error(secret), { code: "EACCES" }),
+    stdout: secret,
+    stderr: secret,
+  });
+  assert.throws(
+    () => resolveSolcToolchainSources(sourceHome, { spawnCompiler: injectedSpawnFailure }),
+    (error) => {
+      assert.equal(error?.code, "SOLC_EXECUTION_FAILED");
+      assert.deepEqual(error?.execution, { errorCode: "EACCES", status: null, signal: "SIGTERM" });
+      assert.equal(JSON.stringify({ code: error.code, message: error.message, execution: error.execution }).includes(secret), false);
+      return true;
+    },
+  );
+
+  const secretCode = "TOP_SECRET_TOKEN";
+  const injectedUntrustedFailure = () => ({
+    status: 999,
+    signal: "SIGSECRET",
+    error: Object.assign(new Error(secret), { code: secretCode }),
+  });
+  assert.throws(
+    () => resolveSolcToolchainSources(sourceHome, { spawnCompiler: injectedUntrustedFailure }),
+    (error) => {
+      assert.deepEqual(error?.execution, { errorCode: "SPAWN_ERROR", status: 999, signal: "UNKNOWN_SIGNAL" });
+      assert.equal(JSON.stringify(error.execution).includes(secretCode), false);
+      return true;
+    },
+  );
+});
+
+test("solc structural integrity fails independently before execution identity", (t) => {
+  const root = temporaryRoot(t);
+  const sourceHome = path.join(root, "host-svm");
+  for (const version of ["0.8.17", "0.8.26"]) {
+    const executable = path.join(sourceHome, version, `solc-${version}`);
+    fs.mkdirSync(path.dirname(executable), { recursive: true });
+    fs.writeFileSync(executable, "#!/bin/sh\nexit 0\n", { mode: version === "0.8.17" ? 0o600 : 0o700 });
+  }
+  let spawnCount = 0;
+  assert.throws(
+    () => resolveSolcToolchainSources(sourceHome, { spawnCompiler: () => { spawnCount += 1; } }),
+    (error) => error?.code === "SOLC_STRUCTURE_INVALID" && error.execution === undefined,
+  );
+  assert.equal(spawnCount, 0);
 });
 
 test("exact subject HOME resolves both isolated solc versions with forge offline and rejects cache drift", (t) => {

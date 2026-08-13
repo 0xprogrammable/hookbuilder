@@ -25,7 +25,7 @@ The materializer starts from the canonical template, applies every patch through
 result against `references/submission.schema.json`. It reads JSON only; it does not import, compile, or execute candidate
 source. Run `node scripts/validate-submission.mjs submission.json` separately for the compatibility preflight.
 
-Every `v0.5.1` scenario inherits the mandatory root `programmableFee` policy `1.1.0`. Examples may vary project economics,
+Every `v0.6.0` source-candidate scenario inherits the mandatory root `programmableFee` policy `1.1.0`. Examples may vary project economics,
 but cannot replace the 10 bps canonical-pool platform allocation with an LP fee, transfer tax, router charge, app payment,
 or alternative pool. A structurally ready example remains a proposal, not an audit, deployment, routing approval, live-fee
 proof, or production release.

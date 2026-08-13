@@ -28,9 +28,20 @@ const commands = [
   "template-catalog.mjs"
 ];
 
-test("host-neutral entry lists the complete builder journey", () => {
+test("host-neutral help leads with one golden path and keeps every command in opt-in JSON", () => {
   const result = run("cli.mjs", ["--help"]);
   assert.equal(result.status, 0, result.stderr);
+  assert.ok(Buffer.byteLength(result.stdout) < 600);
+  for (const command of ["doctor", "context", "project", "prepare-pr"]) {
+    assert.match(result.stdout, new RegExp(`^  ${escapeRegExp(command)}\\b`, "m"));
+  }
+  assert.doesNotMatch(result.stdout, /^  submit\b/mu);
+
+  const detail = run("cli.mjs", ["--help", "--json"]);
+  assert.equal(detail.status, 0, detail.stderr);
+  const payload = JSON.parse(detail.stdout);
+  assert.deepEqual(payload.result.goldenPath, ["doctor", "context", "project", "prepare-pr"]);
+  const commandIds = payload.result.commands.map(({ id }) => id);
   for (const command of [
     "context",
     "resolve-contract",
@@ -51,9 +62,9 @@ test("host-neutral entry lists the complete builder journey", () => {
     "migrate",
     "plan-release"
   ]) {
-    assert.match(result.stdout, new RegExp(`^  ${escapeRegExp(command)}\\b`, "m"));
+    assert.ok(commandIds.includes(command), command);
   }
-  assert.equal(result.stderr, "");
+  assert.equal(detail.stderr, "");
 });
 
 test("delegated builder commands expose side-effect-free help", () => {
@@ -93,7 +104,7 @@ test("host-neutral version reports the bundled standalone release without state"
   const result = run("cli.mjs", ["version"]);
   assert.equal(result.status, 0, result.stdout || result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(output.result.installed.releaseVersion, "0.5.1");
+  assert.equal(output.result.installed.releaseVersion, "0.6.0");
   assert.equal(output.result.installed.publicationState, "release-package");
   assert.equal(output.result.versionSource, "bundled-code-constants");
   assert.equal(output.result.installedStateOverrideUsed, false);

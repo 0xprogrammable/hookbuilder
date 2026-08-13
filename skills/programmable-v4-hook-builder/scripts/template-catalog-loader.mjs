@@ -1,5 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
+import { parseCli } from "./cli-args.mjs";
+import { chainlinkProductCapabilities } from "./template-catalog-composition.mjs";
 import {
   assertDirectory,
   assertExactKeys,
@@ -40,6 +42,45 @@ import {
   starterKeys,
   strictUtf8
 } from "./template-catalog-shared.mjs";
+
+const listSpec = {
+  command: "template-catalog.mjs list",
+  options: [
+    { name: "--kind", key: "kind", type: "value", valueName: "starter|pack" },
+    { name: "--filter", key: "filter", type: "value", valueName: "text" },
+    { name: "--json", key: "asJson", type: "boolean" }
+  ],
+  positionals: { min: 0, max: 0 }
+};
+
+export function parseTemplateCatalogList(args) {
+  if (args.includes("--help") || args.includes("-h")) return { help: true, options: null };
+  try {
+    return { help: false, options: parseCli(listSpec, args).options };
+  } catch (error) {
+    fail("USAGE_ERROR", error.message);
+  }
+}
+
+export function filterTemplateCatalogEntries(entries, filter) {
+  if (filter === null) return entries;
+  const normalized = filter.normalize("NFC").toLowerCase();
+  return entries.filter((entry) => JSON.stringify(entry).toLowerCase().includes(normalized));
+}
+
+export function compactTemplateCatalogEntry({ id, kind }) {
+  return { id, kind };
+}
+
+export function addChainlinkProductSelection(options, product) {
+  if (options.chainlinkProducts.includes(product)) {
+    fail("USAGE_ERROR", `Duplicate Chainlink product: ${product}.`);
+  }
+  options.chainlinkProducts.push(product);
+  for (const capability of chainlinkProductCapabilities(product)) {
+    if (!options.capabilityIds.includes(capability)) options.capabilityIds.push(capability);
+  }
+}
 
 export function loadTemplateCatalog({ skillRoot = null, catalogDirectory = null } = {}) {
   if ((skillRoot === null) === (catalogDirectory === null)) {

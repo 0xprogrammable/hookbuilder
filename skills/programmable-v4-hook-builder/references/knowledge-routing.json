@@ -554,6 +554,7 @@
     {
       "id": "offchain-trust",
       "matches": [
+        "cross-chain-messaging",
         "external-map-service",
         "external-services",
         "keeper-automation",
@@ -564,6 +565,23 @@
         "signed-claim"
       ],
       "references": [
+        "project-surfaces-and-capabilities.md",
+        "companion-manifests.md",
+        "ethereum-production-invariants.md"
+      ]
+    },
+    {
+      "id": "chainlink-provider",
+      "matches": [
+        "chainlink-ccip",
+        "chainlink-cre",
+        "chainlink-data-feeds",
+        "chainlink-data-streams",
+        "chainlink-provider",
+        "chainlink-vrf-v2-5"
+      ],
+      "references": [
+        "chainlink-provider-integration.md",
         "project-surfaces-and-capabilities.md",
         "companion-manifests.md"
       ]
@@ -633,6 +651,16 @@
       ]
     },
     {
+      "id": "contract",
+      "matches": [
+        "contract"
+      ],
+      "references": [
+        "project-surfaces-and-capabilities.md",
+        "security-and-evidence.md"
+      ]
+    },
+    {
       "id": "runtime",
       "matches": [
         "game"
@@ -650,7 +678,8 @@
       "references": [
         "project-surfaces-and-capabilities.md",
         "companion-manifests.md",
-        "routing-and-discovery.md"
+        "routing-and-discovery.md",
+        "ethereum-production-invariants.md"
       ]
     },
     {
@@ -661,13 +690,34 @@
       ],
       "references": [
         "project-surfaces-and-capabilities.md",
-        "companion-manifests.md"
+        "companion-manifests.md",
+        "ethereum-production-invariants.md"
       ]
     },
     {
       "id": "external-provider",
       "matches": [
         "external-provider"
+      ],
+      "references": [
+        "project-surfaces-and-capabilities.md",
+        "ethereum-production-invariants.md"
+      ]
+    },
+    {
+      "id": "metadata",
+      "matches": [
+        "metadata"
+      ],
+      "references": [
+        "project-surfaces-and-capabilities.md",
+        "routing-and-discovery.md"
+      ]
+    },
+    {
+      "id": "other",
+      "matches": [
+        "other"
       ],
       "references": [
         "project-surfaces-and-capabilities.md"

@@ -15,9 +15,14 @@ import {
   showImplementationLego,
   showTemplateDefinition
 } from "./template-catalog-core.mjs";
+import {
+  addChainlinkProductSelection,
+  compactTemplateCatalogEntry,
+  filterTemplateCatalogEntries,
+  parseTemplateCatalogList
+} from "./template-catalog-loader.mjs";
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-
 try {
   const args = process.argv.slice(2);
   if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
@@ -26,10 +31,17 @@ try {
     const command = args[0];
     const catalog = loadTemplateCatalog({ skillRoot });
     if (command === "list") {
-      const options = parseList(args.slice(1));
+      const parsed = parseTemplateCatalogList(args.slice(1));
+      if (parsed.help) {
+        process.stdout.write(listHelp());
+        process.exit(0);
+      }
+      const options = parsed.options;
+      const entries = filterTemplateCatalogEntries(listTemplateCatalog(catalog, options), options.filter);
       emitSuccess(command, {
         catalogDigest: catalog.catalogDigest,
-        entries: listTemplateCatalog(catalog, options)
+        count: entries.length,
+        entries: options.asJson ? entries : entries.map(compactTemplateCatalogEntry)
       });
     } else if (command === "list-legos") {
       const options = parseLegoList(args.slice(1));
@@ -83,25 +95,6 @@ try {
   process.stdout.write(`${canonicalJson(output)}\n`);
   process.exitCode = code === "USAGE_ERROR" ? 2 : 1;
 }
-
-function parseList(args) {
-  let kind = null;
-  for (let index = 0; index < args.length; index += 1) {
-    const argument = args[index];
-    if (argument === "--help" || argument === "-h") {
-      process.stdout.write(listHelp());
-      process.exit(0);
-    }
-    if (argument === "--kind") {
-      if (kind !== null) usageError("--kind may be provided only once.");
-      kind = requireValue(args, ++index, "--kind");
-      continue;
-    }
-    usageError(`Unknown list argument: ${argument}.`);
-  }
-  return { kind };
-}
-
 function parseShow(args, command = "show") {
   if (args.includes("--help") || args.includes("-h")) {
     process.stdout.write(showHelp(command));
@@ -136,6 +129,7 @@ function parseMaterialize(args) {
     starterId: null,
     packIds: [],
     capabilityIds: [],
+    chainlinkProducts: [],
     customCapabilities: [],
     localTags: [],
     targetDirectory: null
@@ -157,6 +151,11 @@ function parseMaterialize(args) {
     }
     if (argument === "--capability") {
       options.capabilityIds.push(requireValue(args, ++index, "--capability"));
+      continue;
+    }
+    if (argument === "--chainlink-product") {
+      const product = requireValue(args, ++index, "--chainlink-product");
+      addChainlinkProductSelection(options, product);
       continue;
     }
     if (argument === "--custom-capability") {
@@ -202,14 +201,12 @@ function help() {
   return [
     "Usage: template-catalog.mjs <command> [options]",
     "",
-    "Local deterministic starter and capability-pack catalog. It performs no Git or network action.",
+    "Local deterministic accelerators; no Git or network action.",
     "",
     "Commands:",
-    "  list         List starters and capability packs.",
-    "  list-legos   List hash-bound implementation Legos.",
-    "  show         Show one complete catalog definition.",
-    "  show-lego    Show one complete implementation Lego descriptor.",
-    "  materialize  Create one new local template directory.",
+    "  list [--filter <text>] [--json]  Find starters and packs.",
+    "  show <id> | list-legos | show-lego <id>  Inspect one layer.",
+    "  materialize  Create one local plan.",
     "",
     "Run template-catalog.mjs <command> --help for command options.",
     ""
@@ -218,9 +215,9 @@ function help() {
 
 function listHelp() {
   return [
-    "Usage: template-catalog.mjs list [--kind starter|pack]",
+    "Usage: template-catalog.mjs list [--kind starter|pack] [--filter <text>] [--json]",
     "",
-    "List catalog accelerators in deterministic id order.",
+    "Default: ids/kinds. --json adds labels, routes and digests.",
     ""
   ].join("\n");
 }
@@ -250,16 +247,13 @@ function materializeHelp() {
   return [
     "Usage: template-catalog.mjs materialize --starter <id> --target <new-directory>",
     "       [--pack <id>]... [--capability <known-id>]... [--custom-capability <id>=<visible-label>]...",
+    "       [--chainlink-product ccip|cre|data-feeds|data-streams|vrf-v2-5]...",
     "       [--local-tag <slug>]...",
     "",
-    "Create planning artifacts and exact-trigger source accelerators in one new target directory.",
-    "--target names the new plan directory itself, not a parent into which another folder is added.",
-    "Dependencies and mandatory packs are included automatically.",
-    "Known --capability selections are exact Legos and never expand sibling capabilities from a pack.",
-    "Implementation Lego maturity never implies integration, fee conformance, audit, deployment or production readiness.",
-    "Unknown capabilities remain owner-defined and route to architecture review.",
-    "Local tags are safe owner-provided discovery labels; they do not require catalog membership or imply provider support.",
-    "No Git, network, submission, deployment or publication action occurs.",
+    "Create one plan; its parent must exist. Dependencies and mandatory packs are automatic.",
+    "Chainlink requires one exact --chainlink-product; the provider foundation alone is incomplete.",
+    "Exact capabilities do not expand siblings; unknowns remain eligible for review.",
+    "Legos are not audit/deployment evidence. No Git, network, submission or publication occurs.",
     ""
   ].join("\n");
 }

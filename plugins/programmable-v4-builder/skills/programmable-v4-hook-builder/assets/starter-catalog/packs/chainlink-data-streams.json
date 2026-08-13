@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "pack",
+  "id": "chainlink-data-streams",
+  "label": "Chainlink Data Streams requirements",
+  "summary": "Atomic EVM-only requirements for Data Streams report verification. Select it through --chainlink-product data-streams; credentials and heavy verification stay outside v4 callbacks.",
+  "acceleratorOnly": true,
+  "eligibilityEffect": "none",
+  "unknownCapabilityPolicy": "preserve-and-route",
+  "reviewRoute": "architecture-review-required",
+  "requires": [],
+  "conflictsWith": [],
+  "capabilities": [
+    "chainlink-data-streams"
+  ],
+  "projectSurfaces": [
+    "contract",
+    "external-provider",
+    "service"
+  ],
+  "requiredFacts": [
+    "Exact verifier role, address and runtime-code hash, feed ID, report schema and version",
+    "Valid-from, expiry, observation-age and future bounds plus maximum report bytes and verification gas",
+    "Billing route, market-status and ripcord policies with explicit authority and recovery",
+    "Backend-only credential boundary with no keys, subscriptions or private endpoints in client, bytecode, logs or public evidence",
+    "Report verification outside PoolManager callbacks and rejection before value effects"
+  ],
+  "requiredFiles": [
+    "Content-addressed EVM-only Chainlink provider profile selecting Data Streams",
+    "Verifier deployment evidence, runtime-code hash, dependency lock and report schema",
+    "Backend report-fetch and onchain verification source with credential boundary",
+    "Freshness, size, gas, billing, market-status and ripcord policies"
+  ],
+  "requiredTests": [
+    "Wrong verifier, runtime hash, feed ID, report schema, report version and target chain",
+    "Not-yet-valid, expired, stale, future, oversized, malformed and replayed report",
+    "Verification gas and report-byte bounds before value effects",
+    "Credential leakage through browser bundles, bytecode, manifests, logs and public evidence",
+    "No heavy report verification inside a PoolManager callback"
+  ],
+  "risks": [
+    "Leaked credentials can expose paid data access or operational authority",
+    "Wrong report schema or feed ID can authenticate semantically unrelated data",
+    "Unbounded report size or verification gas can break liveness",
+    "A structurally valid report path can be overstated as current verifier deployment or provider availability"
+  ]
+}

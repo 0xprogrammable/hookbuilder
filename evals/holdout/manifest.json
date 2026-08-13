@@ -37,7 +37,8 @@
       "installedSkillPath",
       "naturalPrompt"
     ],
-    "resultPath": ".programmable-e2e/agent-result.json"
+    "resultPath": ".programmable-e2e/agent-result.json",
+    "resultSchemaVersion": "1.1.0"
   },
   "judgeContract": {
     "arguments": [
@@ -46,6 +47,7 @@
     ],
     "requestPath": "judge-request.json",
     "resultPath": "judge-result.json",
+    "resultSchemaVersion": "1.1.0",
     "independentModelEnv": "PROGRAMMABLE_E2E_JUDGE_MODEL"
   },
   "repositoryContract": {
@@ -76,10 +78,20 @@
     ]
   },
   "efficiencyContract": {
-    "coldStartContextTargetTokens": 4000,
-    "standardArchitectureContextTargetTokens": 8000,
     "assistedRunsCountAsPass": false,
-    "escalatedRunsCountAsPass": false
+    "coldStartContextTargetTokens": 4000,
+    "escalatedRunsCountAsPass": false,
+    "maxActivatedReferenceBytes": 262144,
+    "maxCombinedTokens": 60000,
+    "maxDescendantSubagents": 0,
+    "maxEmittedBytes": 1048576,
+    "maxRetries": 2,
+    "maxTimeToUsefulMs": 120000,
+    "maxToolCalls": 30,
+    "maxTotalInputTokens": 50000,
+    "maxTotalOutputTokens": 10000,
+    "maxWallTimeMs": 600000,
+    "standardArchitectureContextTargetTokens": 8000
   },
   "coverageContract": {
     "languages": [

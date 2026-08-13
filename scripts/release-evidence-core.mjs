@@ -1,4 +1,6 @@
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 
 export const RELEASE_KERNEL_EVIDENCE_SCHEMA_VERSION = "1.0.0";
 export const RELEASE_KERNEL_EVIDENCE_KIND = "programmable-reference-kernel-release-evidence";
@@ -78,6 +80,41 @@ export function createLogRecord(value) {
     bytes: Buffer.byteLength(text, "utf8"),
     sha256: sha256(Buffer.from(text, "utf8"))
   });
+}
+
+export function inventorySolidityTests(testRoot) {
+  const root = path.resolve(testRoot);
+  const rootStat = fs.lstatSync(root);
+  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) {
+    throw new Error("Solidity test inventory root must be a real directory");
+  }
+  const functions = [];
+  for (const file of walkRegularFiles(root).filter((name) => name.endsWith(".sol"))) {
+    const source = fs.readFileSync(file, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//gu, "")
+      .replace(/\/\/.*$/gmu, "");
+    for (const match of source.matchAll(/\bfunction\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(/gu)) functions.push(match[1]);
+  }
+  const invariant = functions.filter((name) => name.startsWith("invariant")).length;
+  return Object.freeze({
+    unit: functions.filter((name) => name.startsWith("test") && !name.startsWith("testFuzz")).length,
+    fuzz: functions.filter((name) => name.startsWith("testFuzz")).length,
+    invariant,
+    invariantPolicy: "required-and-present"
+  });
+}
+
+function walkRegularFiles(directory) {
+  const files = [];
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const absolutePath = path.join(directory, entry.name);
+    const stat = fs.lstatSync(absolutePath);
+    if (stat.isSymbolicLink()) throw new Error(`Solidity test inventory must not traverse symlinks: ${absolutePath}`);
+    if (stat.isDirectory()) files.push(...walkRegularFiles(absolutePath));
+    else if (stat.isFile()) files.push(absolutePath);
+    else throw new Error(`Solidity test inventory accepts only regular files and directories: ${absolutePath}`);
+  }
+  return files.sort((left, right) => left < right ? -1 : left > right ? 1 : 0);
 }
 
 export function toolVersionAccepted(toolId, version) {

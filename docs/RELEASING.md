@@ -2,6 +2,17 @@
 
 Releases are immutable supply-chain events, not documentation edits.
 
+## Current identities
+
+- Stable public and installation identity: `v0.6.0`.
+- Prior immutable release: `v0.5.1`.
+- Canonical version authority: `config/plugin.json`. `package.json`, `package-lock.json`, the portable runtime constant,
+  MCP identity, generated plugin manifests, marketplaces, and the release-planning template are mirrors. The
+  repository and plugin checks fail on version drift.
+
+Never change the immutable `v0.5.1` or `v0.6.0` tags, release notes, assets, or changelog sections after publication.
+Future work must use a new version and preserve released package bytes.
+
 ## Versioning
 
 - Patch: compatible corrections with no new required project field or capability contract.
@@ -40,8 +51,8 @@ any time. The cadence calculation never proves authority, privacy, completeness 
 Run the local infrastructure and packaging rehearsal:
 
 ```bash
-candidate_output=/absolute/path/to/programmable-v4-builder-v0.5.1-candidate
-npm run release:candidate -- --tag v0.5.1 --output-dir "$candidate_output"
+candidate_output=/absolute/path/to/programmable-v4-builder-v0.6.0-candidate
+npm run release:candidate -- --tag v0.6.0 --output-dir "$candidate_output"
 ```
 
 The `release:candidate` name is retained for CLI compatibility. A successful run is not a release-candidate verdict.
@@ -54,10 +65,11 @@ set twice and requires identical filenames, byte counts, SHA-256 digests and byt
 output directory and performs no external write.
 
 The two routing canaries are CLI context and preflight checks, not trade execution. Separate repository tests enforce
-that `no-market` projects emit no route, that each tradable market selects either standard Uniswap v4 or the canonical
-Programmable adapter contract, and that declared quote/execution commands produce source-bound local Forge call or
-revert traces. Those results remain `PARTIAL_EVIDENCE` and every manifest remains `NOT_APPROVED`; they are not a
-provider quote, pinned-fork receipt, deployed-market execution, host invocation, broadcast transaction or approval.
+that `no-market` projects emit no route and that each tradable market selects either standard Uniswap v4 or the
+canonical Programmable adapter contract. Static Project Compiler fixtures validate legacy receipt/result bindings but
+execute no candidate bytes and remain `NOT_PROVEN`; reference-kernel Forge evidence remains a separate local
+`PARTIAL_EVIDENCE` lane. Every manifest remains `NOT_APPROVED`; none of these are a provider quote, pinned-fork
+receipt, deployed-market execution, host invocation, broadcast transaction or approval.
 
 The output contains `local-release-verification.json`, `kernel-release-evidence.json` and an `artifacts/` directory.
 The artifact set embeds the exact kernel evidence and its digest. The SPDX 2.3 SBOM names both V1 and V2 kernel
@@ -111,7 +123,7 @@ publication, create one immutable GitHub release. Run the Skill publication vali
 create a mutable release:
 
 ```bash
-release_tag=v0.5.1
+release_tag=v0.6.0
 gh skill publish --dry-run
 test "$(git rev-parse HEAD)" = "$(gh api repos/0xprogrammable/hookbuilder/commits/main --jq .sha)"
 test -z "$(git status --porcelain=v1 --untracked-files=all)"
@@ -129,7 +141,7 @@ gh release create "$release_tag" "$candidate_output"/artifacts/* \
   --verify-tag \
   --fail-on-no-commits \
   --title "Programmable v4 Builder $release_tag" \
-  --notes-file docs/releases/v0.5.1.md \
+  --notes-file docs/releases/v0.6.0.md \
   --latest
 
 gh release verify "$release_tag" --repo 0xprogrammable/hookbuilder
@@ -153,7 +165,7 @@ The archive filename is versioned, while its single top-level directory remains 
 checksums, extract into a fresh directory, and run the extracted `scripts/verify-skill.mjs --installed` before upload.
 
 Prepare any versioned announcement only after the post-publication checks below pass; no announcement is part of the
-local candidate build.
+release build.
 
 ## After publication
 

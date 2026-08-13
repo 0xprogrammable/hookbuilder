@@ -149,7 +149,7 @@ test("every repository JSON file is valid UTF-8 with no duplicate object keys", 
   );
 });
 
-test("version and plugin identities agree across canonical and generated packages", () => {
+test("canonical config version and generated package identities agree", () => {
   const packageDocument = JSON.parse(fs.readFileSync(path.join(repositoryRoot, "package.json"), "utf8"));
   const packageLock = JSON.parse(fs.readFileSync(path.join(repositoryRoot, "package-lock.json"), "utf8"));
   const metadata = JSON.parse(fs.readFileSync(path.join(repositoryRoot, "config", "plugin.json"), "utf8"));
@@ -171,7 +171,7 @@ test("version and plugin identities agree across canonical and generated package
   assert.equal(packageDocument.homepage, "https://github.com/0xprogrammable/hookbuilder#readme");
   assert.equal(Object.hasOwn(packageDocument, "dependencies"), false);
   assert.equal(Object.hasOwn(packageDocument, "devDependencies"), false);
-  assert.equal(packageDocument.version, "0.5.1");
+  assert.equal(metadata.version, "0.6.0");
   assert.equal(packageLock.name, packageDocument.name);
   assert.equal(packageLock.version, packageDocument.version);
   assert.equal(packageLock.packages[""].name, packageDocument.name);
@@ -263,7 +263,7 @@ test("plugin manifests are generated from canonical metadata and package version
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(result.stdout);
   assert.equal(report.status, "PLUGIN_MANIFESTS_VALID");
-  assert.equal(report.version, "0.5.1");
+  assert.equal(report.version, "0.6.0");
   assert.deepEqual(report.outputs, [
     ".codex-plugin/plugin.json",
     ".agents/plugins/marketplace.json",
@@ -275,6 +275,48 @@ test("plugin manifests are generated from canonical metadata and package version
   assert.ok(report.payload.files > 300);
   assert.match(report.payload.sha256, /^[0-9a-f]{64}$/u);
   assert.equal(report.payload.sourceByteVerified, true);
+});
+
+test("generated Codex plugin payload starts its MCP server without package.json", () => {
+  const payloadRoot = path.join(repositoryRoot, "plugins", "programmable-v4-builder");
+  const payloadManifest = JSON.parse(fs.readFileSync(
+    path.join(payloadRoot, ".codex-plugin", "plugin.json"),
+    "utf8"
+  ));
+  assert.equal(fs.existsSync(path.join(payloadRoot, "package.json")), false);
+
+  const initialize = {
+    jsonrpc: "2.0",
+    id: 1,
+    method: "initialize",
+    params: {
+      protocolVersion: "2025-11-25",
+      capabilities: {},
+      clientInfo: { name: "payload-regression", version: "1" }
+    }
+  };
+  const result = childProcess.spawnSync(
+    process.execPath,
+    [path.join(payloadRoot, "mcp", "server.mjs")],
+    {
+      cwd: payloadRoot,
+      encoding: "utf8",
+      env: { HOME: process.env.HOME, LANG: "C.UTF-8", PATH: process.env.PATH },
+      input: `${JSON.stringify(initialize)}\n`,
+      maxBuffer: 1024 * 1024,
+      shell: false,
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 5_000
+    }
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, "");
+  const messages = result.stdout.trim().split("\n").map((line) => JSON.parse(line));
+  assert.equal(messages.length, 1);
+  assert.deepEqual(messages[0].result.serverInfo, {
+    name: payloadManifest.name,
+    version: payloadManifest.version
+  });
 });
 
 test("plugin manifest generation fails closed on package version skew", (t) => {
@@ -303,7 +345,7 @@ test("plugin manifest generation fails closed on package version skew", (t) => {
     { cwd: fixtureRoot, encoding: "utf8", shell: false, stdio: ["ignore", "pipe", "pipe"] }
   );
   assert.notEqual(result.status, 0, result.stdout);
-  assert.match(result.stderr, /plugin metadata version must match package\.json/u);
+  assert.match(result.stderr, /package\.json version must match canonical config\/plugin\.json version/u);
 });
 
 test("every GitHub Action is pinned to an immutable commit", () => {
@@ -623,7 +665,7 @@ test("release output containment rejects an in-repository ..x directory and perm
     process.execPath,
     [
       script,
-      "--tag", "v0.5.1",
+      "--tag", "v0.6.0",
       "--output-dir", path.join(repositoryRoot, "..x-release-output"),
       "--kernel-evidence", evidence
     ],
@@ -637,7 +679,7 @@ test("release output containment rejects an in-repository ..x directory and perm
   fs.writeFileSync(path.join(outside, "sentinel"), "keep non-empty\n");
   const escaped = childProcess.spawnSync(
     process.execPath,
-    [script, "--tag", "v0.5.1", "--output-dir", outside, "--kernel-evidence", evidence],
+    [script, "--tag", "v0.6.0", "--output-dir", outside, "--kernel-evidence", evidence],
     { cwd: repositoryRoot, encoding: "utf8", shell: false, stdio: ["ignore", "pipe", "pipe"] }
   );
   assert.notEqual(escaped.status, 0);
