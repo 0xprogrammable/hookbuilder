@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "pack",
+  "id": "chainlink-cre",
+  "label": "Chainlink CRE requirements",
+  "summary": "Atomic EVM-only requirements for a CRE workflow. Select it through --chainlink-product cre; this definition does not prove DON execution, consensus or provider support.",
+  "acceleratorOnly": true,
+  "eligibilityEffect": "none",
+  "unknownCapabilityPolicy": "preserve-and-route",
+  "reviewRoute": "architecture-review-required",
+  "requires": [],
+  "conflictsWith": [],
+  "capabilities": [
+    "chainlink-cre"
+  ],
+  "projectSurfaces": [
+    "keeper",
+    "service"
+  ],
+  "requiredFacts": [
+    "Selected Go or TypeScript runtime with exact SDK and compiler versions, workflow artifact and configuration hashes, workflow identity, target, DON and trigger",
+    "TypeScript QuickJS and WASM restrictions including unavailable Node built-ins and randomnessSource not-used, or the separately bound Go randomness mode",
+    "Deterministic time, randomness, consensus aggregation and scaled integer or decimal arithmetic inputs",
+    "Bounded network and data work, retry and idempotency, report verification, secrets by reference and terminal recovery",
+    "Local simulation classified only as single-node tooling evidence rather than DON execution or consensus evidence"
+  ],
+  "requiredFiles": [
+    "Content-addressed EVM-only Chainlink provider profile selecting CRE",
+    "Workflow source, artifact, configuration, dependency lock and compiler or SDK receipts",
+    "Trigger, target, workflow and DON identity configuration",
+    "Secrets-reference, report-verification, retry and terminal-recovery policies"
+  ],
+  "requiredTests": [
+    "Wrong workflow, artifact, configuration, compiler, SDK, target, DON and trigger identity",
+    "Runtime-specific unavailable API, nondeterministic input and arithmetic-scale behavior",
+    "Duplicate, reordered, retried, timed-out and partially completed workflow execution",
+    "Bounded network calls, response bytes, retries and total work",
+    "Simulation evidence cannot be promoted to DON execution, consensus, deployment or provider-support evidence"
+  ],
+  "risks": [
+    "A local single-node simulation can be overstated as distributed execution evidence",
+    "TypeScript code can assume Node APIs that QuickJS and WASM do not provide",
+    "Unbounded external work or retries can break liveness and cost limits",
+    "Mutable workflow or DON identity can rewrite the reviewed trust boundary"
+  ]
+}

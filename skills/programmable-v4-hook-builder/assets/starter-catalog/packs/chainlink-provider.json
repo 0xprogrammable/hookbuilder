@@ -3,7 +3,7 @@
   "kind": "pack",
   "id": "chainlink-provider",
   "label": "Chainlink provider profile",
-  "summary": "Shared EVM-only Chainlink foundation. Select one exact chainlink-* product pack; this foundation is not a complete product choice.",
+  "summary": "Shared EVM-only Chainlink foundation. Select one exact product through --chainlink-product; this foundation is not a complete product choice.",
   "acceleratorOnly": true,
   "eligibilityEffect": "none",
   "unknownCapabilityPolicy": "preserve-and-route",
@@ -11,19 +11,14 @@
   "requires": [],
   "conflictsWith": [],
   "capabilities": [
-    "chainlink-ccip",
-    "chainlink-cre",
-    "chainlink-data-feeds",
-    "chainlink-data-streams",
-    "chainlink-provider",
-    "chainlink-vrf-v2-5"
+    "chainlink-provider"
   ],
   "projectSurfaces": [
     "contract",
     "external-provider"
   ],
   "requiredFacts": [
-    "Selected Chainlink product and the exact generic capability it specializes: VRF randomness, Feeds or Streams oracle data, CRE keeper automation, or CCIP cross-chain messaging",
+    "Selected Chainlink product and its separately hash-bound product-requirement definition",
     "Exact target chain, provider contract roles, addresses, runtime-code hashes, dependency lock and deployment evidence",
     "Provider callback, report, retry, outage, stale-data, replacement-authority, billing and beneficiary recovery boundaries",
     "Backend-only credential boundary and a profile proving no validation, deployment, approval or transaction authority",

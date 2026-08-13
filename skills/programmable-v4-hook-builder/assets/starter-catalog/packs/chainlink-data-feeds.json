@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "pack",
+  "id": "chainlink-data-feeds",
+  "label": "Chainlink Data Feeds requirements",
+  "summary": "Atomic EVM-only requirements for one Data Feeds read path. Select it through --chainlink-product data-feeds; this definition is not current deployment evidence.",
+  "acceleratorOnly": true,
+  "eligibilityEffect": "none",
+  "unknownCapabilityPolicy": "preserve-and-route",
+  "reviewRoute": "architecture-review-required",
+  "requires": [],
+  "conflictsWith": [],
+  "capabilities": [
+    "chainlink-data-feeds"
+  ],
+  "projectSurfaces": [
+    "contract",
+    "external-provider"
+  ],
+  "requiredFacts": [
+    "Exact pair, unit, inversion, decimals, proxy, current aggregator, maximum age and economic answer range",
+    "Proxy and aggregator roles, addresses, runtime-code hashes, dependency lock and target-chain deployment evidence",
+    "Completeness, future-timestamp, non-positive-answer and stale-data rejection without treating answeredInRound as a freshness oracle",
+    "Official target-chain sequencer uptime feed and justified grace period when applicable, or evidence-bound non-applicability",
+    "Explicit independently bound fallback whose use is visible to downstream value logic"
+  ],
+  "requiredFiles": [
+    "Content-addressed EVM-only Chainlink provider profile selecting Data Feeds",
+    "Feed adapter source with pair, unit, inversion, decimals, age and answer-range configuration",
+    "Proxy, aggregator and optional sequencer-feed deployment evidence with runtime-code hashes",
+    "Fallback, stale-data and sequencer-recovery policies"
+  ],
+  "requiredTests": [
+    "Wrong pair, unit, inversion, decimals, proxy, aggregator, runtime hash and target chain",
+    "Zero update timestamp, future timestamp, non-positive, stale, extreme and malformed answer",
+    "Sequencer down, grace period, missing official feed and reorg behavior when applicable",
+    "Fallback activation, attribution, stale fallback and silent-provider-substitution rejection",
+    "Bounded synchronous read behavior and no hidden external work inside PoolManager callbacks"
+  ],
+  "risks": [
+    "A proxy address or moving documentation page can be mistaken for current aggregator deployment evidence",
+    "Wrong units, inversion or decimals can move value despite a syntactically valid answer",
+    "Silent fallback can replace the reviewed provider and freshness model",
+    "Sequencer outages can make a recent-looking L2 answer economically unsafe"
+  ]
+}

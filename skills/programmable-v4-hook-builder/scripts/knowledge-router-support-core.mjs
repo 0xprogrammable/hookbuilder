@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import {
+  CHAINLINK_PRODUCT_CAPABILITY_IDS,
   buildDirectCapabilityLegos as buildCatalogDirectCapabilityLegos,
   canonicalJson
 } from "./template-catalog-core.mjs";
@@ -335,6 +336,20 @@ export function validateRouting(routing, skillRoot) {
       }
       for (const reference of route.references) allReferences.add(requireReference(reference));
     }
+  }
+  const chainlinkRoute = routing.capabilityRoutes.find(({ id }) => id === "chainlink-provider");
+  const exactChainlinkCapabilities = [
+    ...CHAINLINK_PRODUCT_CAPABILITY_IDS,
+    "chainlink-provider"
+  ].sort(compareUtf8);
+  if (
+    chainlinkRoute === undefined
+    || canonicalJson(chainlinkRoute.matches) !== canonicalJson(exactChainlinkCapabilities)
+  ) {
+    fail(
+      "KNOWLEDGE_ROUTING_INVALID",
+      "The Chainlink provider route must close the shared provider and every exact supported product capability."
+    );
   }
   if (!Array.isArray(routing.unknownCapabilityReferences) || routing.unknownCapabilityReferences.length < 1) {
     fail("KNOWLEDGE_ROUTING_INVALID", "Unknown-capability references are missing.");

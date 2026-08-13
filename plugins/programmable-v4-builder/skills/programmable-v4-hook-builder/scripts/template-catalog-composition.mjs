@@ -25,6 +25,7 @@ const CHAINLINK_PRODUCT_IDS = Object.freeze([
   "chainlink-vrf-v2-5"
 ]);
 const CHAINLINK_PRODUCT_ID_SET = new Set(CHAINLINK_PRODUCT_IDS);
+export const CHAINLINK_PRODUCT_CAPABILITY_IDS = CHAINLINK_PRODUCT_IDS;
 const CHAINLINK_GENERIC_CAPABILITY_BY_PRODUCT = Object.freeze({
   "chainlink-ccip": "cross-chain-messaging",
   "chainlink-cre": "keeper-automation",
@@ -295,11 +296,14 @@ export function composeTemplate({
 function rejectChainlinkProductAliases(packIds) {
   if (!Array.isArray(packIds)) return;
   for (const value of packIds) {
-    const replacement = CHAINLINK_PRODUCT_ALIASES.get(String(value).toLowerCase());
+    const normalized = String(value).toLowerCase();
+    const replacement = CHAINLINK_PRODUCT_ID_SET.has(normalized)
+      ? normalized
+      : CHAINLINK_PRODUCT_ALIASES.get(normalized);
     if (replacement === undefined) continue;
     fail(
       "CHAINLINK_PRODUCT_ALIAS_INVALID",
-      `Chainlink product alias ${value} is not a pack. Use --chainlink-product ${replacement.replace(/^chainlink-/u, "")}.`,
+      `Chainlink product ${value} must be selected through --chainlink-product ${replacement.replace(/^chainlink-/u, "")}; its catalog definition supplies requirements, not a standalone integration.`,
       {
         alias: value,
         replacement,
@@ -318,7 +322,7 @@ function requireExactChainlinkProduct({ selectedPackIds, requestedCapabilityIds 
   if (foundationPackSelected) {
     fail(
       "CHAINLINK_PRODUCT_REQUIRED",
-      `chainlink-provider is a foundation pack and would expand every product label. ${recovery}`,
+      `chainlink-provider is a shared foundation and omits the exact product-requirement closure. ${recovery}`,
       {
         availableProductIds: CHAINLINK_PRODUCT_IDS.map((id) => id.replace(/^chainlink-/u, "")),
         adverseDecision: false,

@@ -55,13 +55,6 @@ const narrowedPackSurfaces = Object.freeze({
   "programmable-volume-fee": ["contract", "indexer", "metadata"],
   "test-evidence-threat-model": []
 });
-const chainlinkProductSurfaces = Object.freeze({
-  "chainlink-ccip": ["contract", "service"],
-  "chainlink-cre": ["keeper", "service"],
-  "chainlink-data-feeds": ["contract", "external-provider"],
-  "chainlink-data-streams": ["contract", "external-provider", "service"],
-  "chainlink-vrf-v2-5": ["contract", "external-provider"]
-});
 const chainlinkGenericCapabilityByProduct = Object.freeze({
   "chainlink-ccip": "cross-chain-messaging",
   "chainlink-cre": "keeper-automation",
@@ -220,8 +213,11 @@ function applyTemplateArchitecturePlan(submission, plan) {
     for (const slug of surfacesForDefinition(pack)) activeSurfaceSlugs.add(slug);
   }
   const selectedCapabilities = new Set(plan.machineCapabilities.allCapabilityIds);
-  for (const [productId, surfaces] of Object.entries(chainlinkProductSurfaces)) {
-    if (!selectedCapabilities.has(productId)) continue;
+  const chainlinkCapabilitySurfaces = new Map();
+  for (const capabilityId of ["chainlink-provider", ...Object.keys(chainlinkGenericCapabilityByProduct)]) {
+    if (!selectedCapabilities.has(capabilityId)) continue;
+    const surfaces = requireAtomicCapabilitySurfaces(plan, capabilityId);
+    chainlinkCapabilitySurfaces.set(capabilityId, surfaces);
     for (const slug of surfaces) activeSurfaceSlugs.add(slug);
   }
   for (const slug of [...activeSurfaceSlugs]) {
@@ -244,12 +240,12 @@ function applyTemplateArchitecturePlan(submission, plan) {
     capabilitySurfaceSlugs.set(custom.id, new Set([slug]));
   }
   if (selectedCapabilities.has("chainlink-provider")) {
-    capabilitySurfaceSlugs.set("chainlink-provider", new Set(["contract"]));
+    capabilitySurfaceSlugs.set("chainlink-provider", new Set(chainlinkCapabilitySurfaces.get("chainlink-provider")));
   }
-  for (const [productId, surfaces] of Object.entries(chainlinkProductSurfaces)) {
+  for (const [productId, genericCapability] of Object.entries(chainlinkGenericCapabilityByProduct)) {
     if (!selectedCapabilities.has(productId)) continue;
+    const surfaces = chainlinkCapabilitySurfaces.get(productId);
     capabilitySurfaceSlugs.set(productId, new Set(surfaces));
-    const genericCapability = chainlinkGenericCapabilityByProduct[productId];
     const assigned = capabilitySurfaceSlugs.get(genericCapability) ?? new Set();
     for (const surface of surfaces) assigned.add(surface);
     capabilitySurfaceSlugs.set(genericCapability, assigned);
@@ -303,6 +299,18 @@ function applyTemplateArchitecturePlan(submission, plan) {
 
 function surfacesForDefinition(definition) {
   return narrowedPackSurfaces[definition.id] ?? definition.projectSurfaces;
+}
+
+function requireAtomicCapabilitySurfaces(plan, capabilityId) {
+  const entry = plan.directCapabilityLegos?.entries?.find((candidate) => candidate.capabilityId === capabilityId);
+  if (
+    entry?.exactRequirementStatus !== "catalog-atomic"
+    || !Array.isArray(entry.projectSurfaces)
+    || entry.projectSurfaces.length === 0
+  ) {
+    throw new Error(`Chainlink capability ${capabilityId} lacks one atomic product-requirement surface closure.`);
+  }
+  return entry.projectSurfaces;
 }
 
 function surfaceIdForSlug(slug) {

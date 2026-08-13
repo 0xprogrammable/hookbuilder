@@ -76,38 +76,54 @@ test("fresh ordinary launch scaffolds a permissionless token with the mandatory 
   }
 });
 
-test("Chainlink VRF selection materializes only the product-required provider surfaces", () => {
-  const repository = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-chainlink-surface-"));
-  try {
-    assert.equal(childProcess.spawnSync("git", ["init", "--quiet", repository], { encoding: "utf8", shell: false }).status, 0);
-    const planDirectory = path.join(repository, "chainlink-plan");
-    const started = run(["start", "--starter", "ordinary-launch", "--chainlink-product", "vrf-v2-5", "--target", planDirectory], repository);
-    assert.equal(started.status, 0, started.stdout || started.stderr);
-    const scaffolded = run([
-      "scaffold",
-      "chainlink-provider-surface",
-      "--template-plan",
-      path.join(planDirectory, "programmable-template.json"),
-      "--repository-root",
-      repository
-    ], repository);
-    assert.equal(scaffolded.status, 0, scaffolded.stdout || scaffolded.stderr);
-    const submission = JSON.parse(fs.readFileSync(path.join(repository, "submissions", "chainlink-provider-surface", "submission.json"), "utf8"));
-    const provider = submission.projectSurfaces.find(({ id }) => id === "external-provider-surface");
-    assert.ok(provider, JSON.stringify(submission.projectSurfaces, null, 2));
-    assert.equal(provider.kind, "external-provider");
-    assert.equal(provider.executionBoundary, "external-provider");
-    assert.equal(provider.exposure.usesSecrets, true);
-    assert.equal(provider.profiles.secretBoundary.status, "applicable");
-    assert.equal(submission.builderTemplate.templateSelection.selectedPackIds.includes("chainlink-provider"), false);
-    assert.equal(submission.builderTemplate.templateSelection.selectedCapabilityIds.includes("chainlink-provider"), true);
-    assert.equal(submission.builderTemplate.templateSelection.selectedCapabilityIds.includes("chainlink-vrf-v2-5"), true);
-    const surfaceIds = submission.projectSurfaces.map(({ id }) => id);
-    assert.equal(surfaceIds.includes("keeper-surface"), false);
-    assert.equal(surfaceIds.includes("service-surface"), false);
-    assert.equal(surfaceIds.includes("external-provider-surface"), true);
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
+test("every Chainlink product scaffolds its exact product surfaces and keeps the shared provider on external-provider", () => {
+  const cases = [
+    ["ccip", "chainlink-ccip", "cross-chain-messaging", ["contract-surface", "service-surface"]],
+    ["cre", "chainlink-cre", "keeper-automation", ["keeper-surface", "service-surface"]],
+    ["data-feeds", "chainlink-data-feeds", "oracle-data", ["contract-surface", "external-provider-surface"]],
+    ["data-streams", "chainlink-data-streams", "oracle-data", ["contract-surface", "external-provider-surface", "service-surface"]],
+    ["vrf-v2-5", "chainlink-vrf-v2-5", "randomness", ["contract-surface", "external-provider-surface"]]
+  ];
+
+  for (const [selector, productId, genericCapabilityId, productSurfaceIds] of cases) {
+    const repository = fs.mkdtempSync(path.join(os.tmpdir(), `programmable-chainlink-${selector}-`));
+    try {
+      assert.equal(childProcess.spawnSync("git", ["init", "--quiet", repository], { encoding: "utf8", shell: false }).status, 0);
+      const planDirectory = path.join(repository, "chainlink-plan");
+      const started = run(["start", "--starter", "ordinary-launch", "--chainlink-product", selector, "--target", planDirectory], repository);
+      assert.equal(started.status, 0, started.stdout || started.stderr);
+      const submissionId = `chainlink-${selector}-surface`;
+      const scaffolded = run([
+        "scaffold",
+        submissionId,
+        "--template-plan",
+        path.join(planDirectory, "programmable-template.json"),
+        "--repository-root",
+        repository
+      ], repository);
+      assert.equal(scaffolded.status, 0, scaffolded.stdout || scaffolded.stderr);
+      const submission = JSON.parse(fs.readFileSync(path.join(repository, "submissions", submissionId, "submission.json"), "utf8"));
+      const externalProvider = submission.projectSurfaces.find(({ id }) => id === "external-provider-surface");
+      const providerCapability = submission.projectCapabilities.find(({ id }) => id === "chainlink-provider");
+      const productCapability = submission.projectCapabilities.find(({ id }) => id === productId);
+      const genericCapability = submission.projectCapabilities.find(({ id }) => id === genericCapabilityId);
+
+      assert.ok(externalProvider, selector);
+      assert.equal(externalProvider.kind, "external-provider", selector);
+      assert.equal(externalProvider.executionBoundary, "external-provider", selector);
+      assert.equal(externalProvider.exposure.usesSecrets, true, selector);
+      assert.equal(externalProvider.profiles.secretBoundary.status, "applicable", selector);
+      assert.equal(externalProvider.capabilityIds.includes("chainlink-provider"), true, selector);
+      assert.deepEqual(providerCapability.surfaceIds, ["contract-surface", "external-provider-surface"], selector);
+      assert.deepEqual(productCapability.surfaceIds, productSurfaceIds, selector);
+      assert.deepEqual(genericCapability.surfaceIds, productSurfaceIds, selector);
+      assert.equal(submission.builderTemplate.templateSelection.selectedPackIds.includes("chainlink-provider"), false, selector);
+      assert.equal(submission.builderTemplate.templateSelection.selectedCapabilityIds.includes("chainlink-provider"), true, selector);
+      assert.equal(submission.builderTemplate.templateSelection.selectedCapabilityIds.includes(productId), true, selector);
+      assert.equal(submission.builderTemplate.templateSelection.selectedCapabilityIds.includes(genericCapabilityId), true, selector);
+    } finally {
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
   }
 });
 

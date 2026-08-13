@@ -332,7 +332,7 @@ test("canonical external-provider surfaces use their minimal route while novel s
   assert.ok(deferred(novel, "references/security-and-evidence.md"));
 });
 
-test("Chainlink routing is explicit while generic production invariants remain provider-neutral", () => {
+test("Chainlink routing is explicit while generic production invariants remain provider-neutral", (t) => {
   const selected = planKnowledge({
     mode: "prototype",
     packs: ["chainlink-provider"],
@@ -357,6 +357,43 @@ test("Chainlink routing is explicit while generic production invariants remain p
     "references/chainlink-provider-profile-v1.schema.json",
     "references/provider-knowledge-source-receipt-2026-08-13.json"
   ]) assert.equal(paths(selected).includes(processedOutsideContext), false, processedOutsideContext);
+
+  for (const productCapability of [
+    "chainlink-ccip",
+    "chainlink-cre",
+    "chainlink-data-feeds",
+    "chainlink-data-streams",
+    "chainlink-vrf-v2-5"
+  ]) {
+    const direct = planKnowledge({
+      mode: "prototype",
+      capabilities: [productCapability],
+      skillRoot
+    });
+    assert.deepEqual(direct.unknownCapabilities, [], productCapability);
+    const route = deferred(direct, "references/chainlink-provider-integration.md");
+    assert.ok(route, productCapability);
+    assert.equal(route.reasons.includes(`capability:${productCapability}`), true, productCapability);
+  }
+
+  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "programmable-chainlink-route-closure-")));
+  t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const copiedSkill = path.join(temporary, "skill");
+  fs.cpSync(skillRoot, copiedSkill, { recursive: true });
+  const copiedRoutingPath = path.join(copiedSkill, "references", "knowledge-routing.json");
+  const copiedRouting = JSON.parse(fs.readFileSync(copiedRoutingPath, "utf8"));
+  copiedRouting.capabilityRoutes
+    .find(({ id }) => id === "chainlink-provider")
+    .matches = copiedRouting.capabilityRoutes
+      .find(({ id }) => id === "chainlink-provider")
+      .matches.filter((id) => id !== "chainlink-cre");
+  fs.writeFileSync(copiedRoutingPath, `${JSON.stringify(copiedRouting, null, 2)}\n`);
+  assert.throws(
+    () => planKnowledge({ mode: "prototype", capabilities: ["chainlink-cre"], skillRoot: copiedSkill }),
+    (error) => error instanceof KnowledgeRouterError
+      && error.code === "KNOWLEDGE_ROUTING_INVALID"
+      && /every exact supported product capability/u.test(error.message)
+  );
 
   for (const capability of ["cross-chain-messaging", "randomness", "oracle-data", "keeper-automation"]) {
     const generic = planKnowledge({ mode: "prototype", capabilities: [capability], skillRoot });

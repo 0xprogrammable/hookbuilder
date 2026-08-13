@@ -573,7 +573,12 @@
     {
       "id": "chainlink-provider",
       "matches": [
-        "chainlink-provider"
+        "chainlink-ccip",
+        "chainlink-cre",
+        "chainlink-data-feeds",
+        "chainlink-data-streams",
+        "chainlink-provider",
+        "chainlink-vrf-v2-5"
       ],
       "references": [
         "chainlink-provider-integration.md",

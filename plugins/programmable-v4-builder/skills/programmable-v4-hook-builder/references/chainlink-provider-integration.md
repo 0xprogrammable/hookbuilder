@@ -10,7 +10,7 @@ Validate a project-owned profile from any candidate repository with:
 
 Select the exact product before materialization with `--chainlink-product ccip`, `cre`, `data-feeds`, `data-streams`,
 or `vrf-v2-5`. The generic `--pack chainlink-provider` path intentionally fails before materialization because it would
-expand every product label. Product aliases fail with the exact replacement while unknown project capabilities remain
+omit the exact product-requirement closure. Product aliases fail with the exact replacement while unknown project capabilities remain
 eligible through the ordinary owner-defined architecture-review path.
 
 For the smallest closed VRF starting point, create a planning-only example in one new local directory, then run its

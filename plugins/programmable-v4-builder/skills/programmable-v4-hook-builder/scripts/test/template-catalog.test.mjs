@@ -13,6 +13,7 @@ import {
 import {
   TemplateCatalogError,
   buildImplementationLegoSelection,
+  chainlinkProductCapabilities,
   composeTemplate,
   listImplementationLegos,
   listTemplateCatalog,
@@ -49,8 +50,8 @@ test("loads one hash-bound, closed and explicitly non-allowlisting catalog", () 
   const catalog = loadTemplateCatalog({ skillRoot });
   const entries = listTemplateCatalog(catalog);
 
-  assert.equal(catalog.catalogDigest, "fbd8f7f574b2c884f1e2d3adb381630b0ba3ba9895526ed50485da2e51ae7e1f");
-  assert.equal(entries.length, 43);
+  assert.equal(catalog.catalogDigest, "27a069da4cdc2e2296a199a58373c9f112cd0e1e0c21d836700af6fad505ea23");
+  assert.equal(entries.length, 48);
   assert.deepEqual(entries.map(({ id }) => id), [...entries.map(({ id }) => id)].sort());
   assert.deepEqual(
     entries.filter(({ kind }) => kind === "starter").map(({ id }) => id),
@@ -547,6 +548,53 @@ test("known capabilities materialize atomically without pack expansion", () => {
     }
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("every Chainlink selector composes one atomic product definition, the shared provider closure and its generic capability", () => {
+  const catalog = loadTemplateCatalog({ skillRoot });
+  const cases = [
+    ["ccip", "chainlink-ccip", "cross-chain-messaging", ["contract", "service"]],
+    ["cre", "chainlink-cre", "keeper-automation", ["keeper", "service"]],
+    ["data-feeds", "chainlink-data-feeds", "oracle-data", ["contract", "external-provider"]],
+    ["data-streams", "chainlink-data-streams", "oracle-data", ["contract", "external-provider", "service"]],
+    ["vrf-v2-5", "chainlink-vrf-v2-5", "randomness", ["contract", "external-provider"]]
+  ];
+
+  for (const [selector, productId, genericCapabilityId, productSurfaces] of cases) {
+    const capabilities = chainlinkProductCapabilities(selector);
+    const plan = composeTemplate({
+      catalog,
+      starterId: "ordinary-launch",
+      capabilityIds: capabilities
+    });
+    const entries = new Map(plan.directCapabilityLegos.entries.map((entry) => [entry.capabilityId, entry]));
+    const product = entries.get(productId);
+    const provider = entries.get("chainlink-provider");
+
+    assert.deepEqual(plan.selection.requestedCapabilityIds, capabilities, selector);
+    assert.equal(plan.selection.selectedPackIds.some((id) => id.startsWith("chainlink-")), false, selector);
+    assert.equal(entries.has(genericCapabilityId), true, selector);
+    assert.equal(product.exactRequirementStatus, "catalog-atomic", selector);
+    assert.deepEqual(product.projectSurfaces, productSurfaces, selector);
+    assert.deepEqual(product.atomicDefinitionReceipts.map(({ definitionId }) => definitionId), [productId], selector);
+    assert.ok(product.requiredFacts.length > 0, selector);
+    assert.ok(product.requiredFiles.length > 0, selector);
+    assert.ok(product.requiredTests.length > 0, selector);
+    assert.ok(product.risks.length > 0, selector);
+    assert.equal(provider.exactRequirementStatus, "catalog-atomic", selector);
+    assert.deepEqual(provider.projectSurfaces, ["contract", "external-provider"], selector);
+    assert.deepEqual(provider.atomicDefinitionReceipts.map(({ definitionId }) => definitionId), ["chainlink-provider"], selector);
+    assert.ok(provider.requiredFacts.length > 0, selector);
+  }
+
+  for (const [selector, productId] of cases) {
+    assert.throws(
+      () => composeTemplate({ catalog, starterId: "ordinary-launch", packIds: [productId] }),
+      (error) => error.code === "CHAINLINK_PRODUCT_ALIAS_INVALID"
+        && error.message.includes(`--chainlink-product ${selector}`),
+      selector
+    );
   }
 });
 
