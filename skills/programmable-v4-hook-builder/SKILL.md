@@ -1,6 +1,6 @@
 ---
 name: programmable-v4-hook-builder
-description: Use for Programmable or clear intent to design, build, repair, review, test, upgrade, or submit a complete Uniswap v4 hook/project. Exclude explanations, unrelated Solidity/ERC20/repository work, skill discovery/installation, and non-blockchain uses.
+description: Use only to design, build, repair, review, test, upgrade, or submit a complete Programmable or Uniswap v4 project. Never use for questions/explanations, even about v4; generic Solidity/ERC20/repo work; skill install/discovery; or non-blockchain uses.
 license: MIT
 ---
 

@@ -241,6 +241,10 @@ test("global skill boundaries apply v4 mechanics conditionally and distinguish d
     path.join(repositoryRoot, "skills", "programmable-v4-hook-builder", "SKILL.md"),
     "utf8"
   );
+  assert.match(
+    skill,
+    /description: Use only to .*complete Programmable or Uniswap v4 project\. Never use for questions\/explanations, even about v4;/u
+  );
   assert.match(skill, /For v4 start with all 14 permissions disabled\./u);
   assert.match(skill, /for canonical v4 cover all four direction\/exactness\s+quadrants and prove support or pre-effects rejection\./u);
   assert.match(skill, /Hidden mint, seizure, fee, pause, upgrade or payout redirection conflicts/u);
