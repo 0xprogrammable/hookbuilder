@@ -78,6 +78,37 @@ from one prompt word. Explore and Autopilot start only from the compact business
 protocol, fee, security, template, and specialist chapters stay deferred until their exact triggers become true.
 Historical workflow chapters remain reserved for an explicit V1 recheck or migration.
 
+Use `--brief` for the model-facing path. It retains the mode, selector and unknown-selector bindings, review route,
+profile digest, exact `loadNow` path/hash/bytes/reasons, measured context budget, and a full-output instruction while
+keeping the complete JSON envelope below 2,500 bytes. Long selector inventories are represented by count, bounded
+preview, omission count, and SHA-256; rerun without `--brief` when the complete inventory is actually needed.
+
+After the initial brief is consumed, bind its exact `profileDigest` and activate one specialist delta only after at least
+one exact capability or surface is explicitly confirmed:
+
+```bash
+node skills/programmable-v4-hook-builder/scripts/cli.mjs context \
+  --mode autopilot \
+  --capability custom-curve \
+  --surface contract \
+  --activate-confirmed \
+  --base-profile-digest <cold-profile-digest> \
+  --brief
+```
+
+`references/knowledge-activation-v1.json` is the hash-bound activation contract. Its explicit stage/order/path data
+selects at most one reference and orders the remaining routed references semantically. Activation is delta-only: it
+does not charge or return the already-consumed `SKILL.md` or generic mode-initial reference again. It separates
+applicable `routedLater` from the mode's untriggered `deferredCatalog`, rejects a missing selector, route-family name, or
+stale base digest, and preserves unknown owner-defined capabilities as eligible architecture-review work. The exact
+legacy Fee V2 chapter is quarantined from specialist promotion and remains conditional on preserved exact legacy intent
+or an applicable current central-policy Rule ID.
+
+For `custom-curve + contract`, the first delta is the 5,314-byte `v4-contract-reasoning-kernel.md`; the full v4 mechanics,
+hook-pattern, scenario, and security chapters remain later in declared order. For `browser-game + application`, the
+first delta is `runtime-assets.md` and the applicable route contains no v4 chapter. These are deterministic routing
+properties, not claims that a model interpreted or implemented the content correctly.
+
 returns:
 
 - exact `loadNow` files with selection reasons;
@@ -95,6 +126,35 @@ must remain at or below 8,000. Totals include `SKILL.md`, selected references, a
 command output. This is a reproducible routing budget, not a model-tokenizer or safety claim. Required later context is
 never dropped: a package above the 4,000 cold target reports `expanded-required-context`, and the agent loads each
 triggered chapter only when its phase needs it.
+
+Measured on the local v0.9 candidate after confirmed activation support:
+
+| Journey | Brief bytes | Activated reference bytes | Cumulative estimated tokens |
+| --- | ---: | ---: | ---: |
+| Cold Autopilot | 1,399 | 4,889 initial compiler | 3,258 |
+| `custom-curve + contract` activation | 1,972 | 5,314 compact v4 kernel | 5,080 |
+| `browser-game + application` activation | 1,856 | 3,935 runtime assets | 4,706 |
+
+The activation cumulative total counts `SKILL.md`, the cold initial reference, the cold brief, the one activated
+reference, and the activation brief exactly once. It is a byte-derived estimate, not provider token telemetry.
+
+The same commands were repeated three times against released v0.8.0 commit
+`83337415994548b6b6ea2f05cba7f99a9620b991`, the pre-activation v0.9 checkpoint
+`d7c25ad0b68339731f8978e4eafb755445b6730b`, and this candidate. Every repeated stdout hash was stable within its
+subject:
+
+| Subject and command | Stdout bytes | Estimated-token boundary | Repeated output |
+| --- | ---: | ---: | --- |
+| v0.8.0 cold Autopilot, full output | 3,238 | 3,707 | 3/3 byte-identical |
+| pre-activation v0.9 cold Autopilot, full output | 3,238 | 3,709 | 3/3 byte-identical |
+| candidate cold Autopilot, brief | 1,399 | 3,258 | 3/3 byte-identical |
+| v0.8.0 custom-curve/contract selection, full output | 5,179 | 4,192, specialist still deferred | 3/3 byte-identical |
+| pre-activation v0.9 custom-curve/contract selection, full output | 5,179 | 4,194, specialist still deferred | 3/3 byte-identical |
+| candidate custom-curve/contract activation, brief | 1,972 | 5,080 cumulative, specialist included | 3/3 byte-identical |
+
+This comparison supports lower model-facing router output and a bounded first specialist load. It does not claim lower
+provider tokens for a complete build: the two baselines did not have an equivalent activation phase and therefore did
+not include specialist context in their reported selection total.
 
 Measured representative routing from the historical stable v0.5.1 files:
 

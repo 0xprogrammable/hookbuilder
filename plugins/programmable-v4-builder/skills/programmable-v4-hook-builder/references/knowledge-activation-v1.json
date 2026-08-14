@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "programmable-knowledge-activation",
+  "selectionSemantics": "confirmed-selector-delta-one-reference",
+  "maximumLoadNow": 1,
+  "cumulativeEstimatedTokenTarget": 8000,
+  "quarantinedReferences": [
+    "programmable-fee-policy-v2.md"
+  ],
+  "rules": [
+    {
+      "id": "v4-custom-curve-contract-foundation",
+      "stage": 10,
+      "order": 10,
+      "capabilityAny": [
+        "custom-curve"
+      ],
+      "surfaceAny": [
+        "contract"
+      ],
+      "reference": "v4-contract-reasoning-kernel.md",
+      "reason": "Start with the compact v4 contract reasoning foundation before patterns, scenarios, or broad security chapters."
+    },
+    {
+      "id": "browser-game-application-runtime",
+      "stage": 20,
+      "order": 10,
+      "capabilityAny": [
+        "browser-game"
+      ],
+      "surfaceAny": [
+        "application"
+      ],
+      "reference": "runtime-assets.md",
+      "reason": "Start with the confirmed browser runtime and asset boundary; do not introduce v4 mechanics without a v4 capability."
+    }
+  ],
+  "ordering": [
+    {
+      "stage": 10,
+      "order": 20,
+      "path": "v4-protocol-mechanics.md"
+    },
+    {
+      "stage": 15,
+      "order": 10,
+      "path": "project-surfaces-and-capabilities.md"
+    },
+    {
+      "stage": 20,
+      "order": 10,
+      "path": "v4-hook-lego.md"
+    },
+    {
+      "stage": 20,
+      "order": 20,
+      "path": "v4-liquidity-and-state.md"
+    },
+    {
+      "stage": 20,
+      "order": 30,
+      "path": "v4-sdk-integration.md"
+    },
+    {
+      "stage": 20,
+      "order": 40,
+      "path": "runtime-assets.md"
+    },
+    {
+      "stage": 25,
+      "order": 10,
+      "path": "companion-manifests.md"
+    },
+    {
+      "stage": 25,
+      "order": 20,
+      "path": "routing-and-discovery.md"
+    },
+    {
+      "stage": 25,
+      "order": 30,
+      "path": "chainlink-provider-integration.md"
+    },
+    {
+      "stage": 30,
+      "order": 10,
+      "path": "scenario-matrix.md"
+    },
+    {
+      "stage": 30,
+      "order": 20,
+      "path": "official-model-patterns.md"
+    },
+    {
+      "stage": 35,
+      "order": 10,
+      "path": "ethereum-production-invariants.md"
+    },
+    {
+      "stage": 40,
+      "order": 10,
+      "path": "security-and-evidence.md"
+    },
+    {
+      "stage": 50,
+      "order": 10,
+      "path": "build-profiles.md"
+    },
+    {
+      "stage": 50,
+      "order": 20,
+      "path": "upstream-sources.md"
+    },
+    {
+      "stage": 60,
+      "order": 10,
+      "path": "open-world-v2-workflow.md"
+    },
+    {
+      "stage": 60,
+      "order": 20,
+      "path": "open-world-v2-output-contract.md"
+    }
+  ]
+}

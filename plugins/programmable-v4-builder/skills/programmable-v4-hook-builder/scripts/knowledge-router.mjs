@@ -5,6 +5,11 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import {
+  activateConfirmedKnowledge,
+  renderActivatedContext,
+  renderContextBrief
+} from "./knowledge-activation-core.mjs";
 import { describeKnowledgeSelectors, KnowledgeRouterError, planKnowledge } from "./knowledge-router-core.mjs";
 import { openOfflineRegistry, RegistryDiscoveryError, showRegistryProject } from "./registry-discovery-core.mjs";
 import { canonicalJson } from "./template-catalog-core.mjs";
@@ -23,7 +28,7 @@ try {
       ? { templatePlan: null, templatePlanSplitReview: null }
       : await readTemplatePlan(options.templatePlan);
     const registryProjectInput = await loadRegistryProjects(options.registryProjects);
-    const result = planKnowledge({
+    const planInput = {
       mode: options.mode,
       templatePlan: templatePlanInput.templatePlan,
       templatePlanSplitReview: templatePlanInput.templatePlanSplitReview,
@@ -33,8 +38,27 @@ try {
       registryProjects: registryProjectInput.registryProjects,
       registryProjectSplitReview: registryProjectInput.registryProjectSplitReview,
       skillRoot
-    });
-    process.stdout.write(`${canonicalJson({ schemaVersion: "1.0.0", ok: true, command: "context", result })}\n`);
+    };
+    const routedPlan = planKnowledge(planInput);
+    if (options.activateConfirmed) {
+      const basePlan = planKnowledge({ mode: options.mode, skillRoot });
+      const result = activateConfirmedKnowledge({
+        basePlan,
+        routedPlan,
+        baseProfileDigest: options.baseProfileDigest,
+        explicitCapabilities: options.capabilities,
+        explicitSurfaces: options.surfaces,
+        skillRoot
+      });
+      process.stdout.write(options.brief
+        ? renderContextBrief(result, { basePlan })
+        : renderActivatedContext(result, { basePlan }));
+    } else {
+      if (options.baseProfileDigest !== null) usageError("--base-profile-digest requires --activate-confirmed.");
+      process.stdout.write(options.brief
+        ? renderContextBrief(routedPlan)
+        : `${canonicalJson({ schemaVersion: "1.0.0", ok: true, command: "context", result: routedPlan })}\n`);
+    }
   }
 } catch (error) {
   const code = error instanceof KnowledgeRouterError || error instanceof RegistryDiscoveryError
@@ -51,11 +75,21 @@ try {
   };
   if ((error instanceof KnowledgeRouterError || error instanceof RegistryDiscoveryError) && error.details !== undefined) output.error.details = error.details;
   process.stdout.write(`${canonicalJson(output)}\n`);
-  process.exitCode = code === "USAGE_ERROR" || code === "KNOWLEDGE_MODE_INVALID" || code === "KNOWLEDGE_INPUT_INVALID" || code === "KNOWLEDGE_PACK_INVALID" || code === "KNOWLEDGE_ROUTE_FAMILY_AMBIGUOUS" || code === "REGISTRY_QUERY_INVALID" ? 2 : 1;
+  process.exitCode = code === "USAGE_ERROR" || code === "KNOWLEDGE_MODE_INVALID" || code === "KNOWLEDGE_INPUT_INVALID" || code === "KNOWLEDGE_PACK_INVALID" || code === "KNOWLEDGE_ROUTE_FAMILY_AMBIGUOUS" || code === "KNOWLEDGE_ACTIVATION_INVALID" || code === "KNOWLEDGE_ACTIVATION_BASE_MISMATCH" || code === "REGISTRY_QUERY_INVALID" ? 2 : 1;
 }
 
 function parseArgs(args) {
-  const options = { mode: null, templatePlan: null, packs: [], capabilities: [], surfaces: [], registryProjects: [] };
+  const options = {
+    mode: null,
+    templatePlan: null,
+    packs: [],
+    capabilities: [],
+    surfaces: [],
+    registryProjects: [],
+    activateConfirmed: false,
+    baseProfileDigest: null,
+    brief: false
+  };
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === "--mode") {
@@ -72,11 +106,23 @@ function parseArgs(args) {
       options.surfaces.push(requireValue(args, ++index, "--surface"));
     } else if (argument === "--registry-project") {
       options.registryProjects.push(requireValue(args, ++index, "--registry-project"));
+    } else if (argument === "--activate-confirmed") {
+      if (options.activateConfirmed) usageError("--activate-confirmed may be provided only once.");
+      options.activateConfirmed = true;
+    } else if (argument === "--base-profile-digest") {
+      if (options.baseProfileDigest !== null) usageError("--base-profile-digest may be provided only once.");
+      options.baseProfileDigest = requireValue(args, ++index, "--base-profile-digest");
+    } else if (argument === "--brief") {
+      if (options.brief) usageError("--brief may be provided only once.");
+      options.brief = true;
     } else {
       usageError(`Unknown argument: ${argument}.`);
     }
   }
   if (options.mode === null) usageError("context requires --mode <mode>.");
+  if (options.activateConfirmed && options.baseProfileDigest === null) {
+    usageError("--activate-confirmed requires --base-profile-digest <digest>.");
+  }
   return options;
 }
 
@@ -173,7 +219,7 @@ function usageError(message) {
 
 function help() {
   return [
-    "Usage: knowledge-router.mjs --mode <explore|autopilot|preflight|prototype|repair|review|submit|handoff> [--template-plan <programmable-template.json>] [--registry-project <id>]... [--pack <catalog-pack-id>]... [--capability <id>]... [--surface <id>]...",
+    "Usage: knowledge-router.mjs --mode <explore|autopilot|preflight|prototype|repair|review|submit|handoff> [selectors] [--brief] [--activate-confirmed --base-profile-digest <digest>]",
     "",
     "Return the smallest local reference profile for the confirmed task.",
     "",
@@ -182,10 +228,13 @@ function help() {
     "  --template-plan <path>  Derive selectors from one current plan.",
     "  --pack|--capability|--surface <id>  Add a confirmed selector; repeat as needed.",
     "  --registry-project <id> Add bundled Registry discovery context.",
+    "  --brief                 Return a complete bounded routing brief below 2,500 bytes.",
+    "  --activate-confirmed    Load exactly one specialist delta for exact confirmed selectors.",
+    "  --base-profile-digest <digest>  Bind activation to the consumed mode-only profile.",
     "",
     "Examples:",
-    "  context --mode autopilot",
-    "  context --mode prototype --capability <confirmed-id>",
+    "  context --mode autopilot --brief",
+    "  context --mode autopilot --capability <confirmed-id> --activate-confirmed --base-profile-digest <digest> --brief",
     "",
     "Use --help --json for every exact selectable id and reserved routing family.",
     "Use templates list --filter <text> before selecting a pack.",

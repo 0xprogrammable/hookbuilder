@@ -108,6 +108,8 @@ const required = [
   "references/intent-fidelity-v1.schema.json",
   "references/intake-playbook.md",
   "references/knowledge-routing.json",
+  "references/knowledge-activation-v1.json",
+  "references/v4-contract-reasoning-kernel.md",
   "references/delegated-payer-sponsor-intent-v1.schema.json",
   "references/launch-admission-decision-v1.schema.json",
   "references/normative-property-manifest-v1.json",

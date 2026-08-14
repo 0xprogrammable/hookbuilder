@@ -19,6 +19,7 @@ export function scanPins(value, currentPath, pinErrors) {
 export function validateKnowledgeRoutingClosure(findings, context) {
   const { packageEntriesByPath, packageFiles, read, relative } = context;
   const routingRelativePath = "references/knowledge-routing.json";
+  const activationRelativePath = "references/knowledge-activation-v1.json";
   let routing;
   try {
     routing = JSON.parse(read(routingRelativePath));
@@ -105,6 +106,31 @@ export function validateKnowledgeRoutingClosure(findings, context) {
       archivalIds.add(group.id);
       references.push(...group.references);
     }
+  }
+  let activation;
+  try {
+    activation = JSON.parse(read(activationRelativePath));
+  } catch (error) {
+    findings.push(`${activationRelativePath}: ${error.message}`);
+  }
+  if (
+    activation?.schemaVersion !== "1.0.0"
+    || activation?.kind !== "programmable-knowledge-activation"
+    || activation?.selectionSemantics !== "confirmed-selector-delta-one-reference"
+    || activation?.maximumLoadNow !== 1
+    || activation?.cumulativeEstimatedTokenTarget !== 8000
+    || !Array.isArray(activation?.rules)
+    || activation.rules.length < 1
+    || !Array.isArray(activation?.ordering)
+    || activation.ordering.length < 1
+    || !Array.isArray(activation?.quarantinedReferences)
+    || !activation.quarantinedReferences.includes("programmable-fee-policy-v2.md")
+  ) {
+    findings.push(`${activationRelativePath}: identity, single-delta limit, token target, or Fee V2 quarantine is invalid`);
+  } else {
+    references.push(...activation.rules.map(({ reference }) => reference));
+    references.push(...activation.ordering.map(({ path: reference }) => reference));
+    references.push(...activation.quarantinedReferences);
   }
   for (const reference of references) {
     if (typeof reference !== "string" || !/^[a-z0-9]+(?:[-.][a-z0-9]+)*\.(?:md|json)$/.test(reference)) {

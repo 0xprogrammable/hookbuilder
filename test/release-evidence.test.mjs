@@ -376,7 +376,7 @@ test("candidate quantitative docs match generator-backed source inventories", ()
   const productionModuleCount = sizeReport.discovery.discoveredFiles;
 
   assert.equal(sizeReport.status, "SIZE_BUDGET_PASSED");
-  assert.equal(productionModuleCount, 327);
+  assert.equal(productionModuleCount, 328);
   assert.deepEqual(v2Inventory, { unit: 54, fuzz: 1, invariant: 3, invariantPolicy: "required-and-present" });
   assert.equal(registry.inventory.contractCount, 50);
   assert.equal(registry.inventory.validatorClosureCount, 25);

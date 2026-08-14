@@ -30,15 +30,21 @@ own evidence and authority.
 Resolve `SKILL_ROOT` from this file and `REPOSITORY_ROOT` from the worktree independently:
 
 ```bash
-node "$SKILL_ROOT/scripts/cli.mjs" doctor --repository-root "$REPOSITORY_ROOT"
-node "$SKILL_ROOT/scripts/cli.mjs" policy
-node "$SKILL_ROOT/scripts/cli.mjs" context --mode autopilot
+BUILDER_CLI="$SKILL_ROOT/scripts/cli.mjs"
+node "$BUILDER_CLI" doctor --repository-root "$REPOSITORY_ROOT"
+node "$BUILDER_CLI" policy
+node "$BUILDER_CLI" context --mode autopilot --brief
 ```
 
-`cli.mjs policy` from protected `0xprogrammable/submit-launch:main` is the complete Programmable rule set. Use every
-`build` Rule ID, add none, and stop if unavailable. Read only `loadNow`; defer `loadLater`. Repeat `context` with confirmed capabilities or surfaces, never a product-family
-union. Keep cold Explore at 4,000 estimated tokens and pre-code context at 8,000. Process schemas and catalogs outside
-model context. Schemas and validators outrank prose; use historical V1 only for identified reproduction or migration.
+From `policy`, use every `build` Rule ID, add none, and stop if unavailable. Read `loadNow`; save `profileDigest`.
+After an exact selector is confirmed, activate before architecture or code:
+
+```bash
+node "$BUILDER_CLI" context --mode autopilot --capability "$CONFIRMED_CAPABILITY" --activate-confirmed --base-profile-digest "$BASE_PROFILE_DIGEST" --brief
+```
+
+Use `--surface` only when confirmed. Empty, family, or stale activation fails; unknowns stay eligible. Load one reference
+maximum; keep cold/cumulative context below 4,000/8,000 estimated tokens.
 
 Save the exact received public prompt bytes unchanged as `$IDEA_FILE`; never rewrite/extract them. Bind those same bytes exactly as ProjectSpec and Submission IdeaSource. Compare `minimum-correct`, `v4-native` and `hybrid`, then select the
 least capital, trust and operational surface that preserves intent.

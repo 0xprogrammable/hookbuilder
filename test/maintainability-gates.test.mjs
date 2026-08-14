@@ -306,7 +306,7 @@ test("all canonical production modules and the portable package stay inside revi
   assert.equal(report.machineDebt.importCycles.measured, true);
   assert.equal(report.machineDebt.importCycles.cycleCount, 0);
   assert.equal(report.machineDebt.importCycles.unresolvedRelativeImportCount, 0);
-  assert.equal(report.portablePackage.maxFiles, 677);
+  assert.equal(report.portablePackage.maxFiles, 680);
   assert.equal(report.portablePackage.maxBytes, 12_000_000);
   assert.ok(report.portablePackage.files <= report.portablePackage.maxFiles);
   assert.ok(report.portablePackage.bytes <= report.portablePackage.maxBytes);

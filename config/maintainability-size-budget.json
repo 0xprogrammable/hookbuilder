@@ -204,6 +204,14 @@
           "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
         },
         {
+          "path": "skills/programmable-v4-hook-builder/scripts/knowledge-router.mjs",
+          "observedLines": 254,
+          "observedBytes": 10738,
+          "observedComplexityScore": 59,
+          "observedMaxBlockDepth": 4,
+          "reviewRef": "v0.9.0 reviewed bounded context brief and confirmed single-reference activation CLI"
+        },
+        {
           "path": "skills/programmable-v4-hook-builder/scripts/launch-bundle-core.mjs",
           "observedLines": 14,
           "observedBytes": 381,
@@ -349,11 +357,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
-          "observedLines": 686,
-          "observedBytes": 34162,
+          "observedLines": 688,
+          "observedBytes": 34255,
           "observedComplexityScore": 85,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.9.0 reviewed project-repair required-file inventory"
+          "reviewRef": "v0.9.0 reviewed activation, compact reasoning-kernel, and project-repair required-file inventory"
         }
       ]
     },
@@ -368,7 +376,7 @@
     "path": "skills/programmable-v4-hook-builder",
     "observedFiles": 640,
     "observedBytes": 9619846,
-    "maxFiles": 681,
+    "maxFiles": 684,
     "maxBytes": 12000000
   }
 }
