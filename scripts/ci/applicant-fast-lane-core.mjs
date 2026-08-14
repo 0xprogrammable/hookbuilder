@@ -170,7 +170,7 @@ export function classifyPlatformChecks({ event, ref, mode, paths }) {
     mode,
     platformPaths,
     domains,
-    repositoryNodes: [24],
+    repositoryNodes: [22, 24],
     referenceKernels: [...referenceKernels].sort(compareUtf8),
     codeqlRequired: protectedBranchRun || releaseCompatibility || nonLightweightPaths.length > 0,
     fullNodeCompatibility,

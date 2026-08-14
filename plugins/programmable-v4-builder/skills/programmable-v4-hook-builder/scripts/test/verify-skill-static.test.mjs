@@ -1111,9 +1111,9 @@ test("installed verifier accepts current pinned gh skill GitHub provenance", () 
   }
 });
 
-test("portable verifier rejects runtimes below Node 24 before scanning package bytes", () => {
+test("portable verifier rejects runtimes below Node 22 before scanning package bytes", () => {
   const bootstrap = [
-    'Object.defineProperty(process.versions, "node", { value: "22.23.1" });',
+    'Object.defineProperty(process.versions, "node", { value: "21.7.3" });',
     `process.argv = [process.execPath, ${JSON.stringify(verifier)}, "--installed"];`,
     `await import(${JSON.stringify(pathToFileURL(verifier).href)});`
   ].join("\n");
@@ -1124,7 +1124,7 @@ test("portable verifier rejects runtimes below Node 24 before scanning package b
   );
   assert.equal(result.status, 1, result.stdout || result.stderr);
   assert.equal(result.stdout, "");
-  assert.match(result.stderr, /NODE_24_OR_NEWER_REQUIRED/u);
+  assert.match(result.stderr, /NODE_22_OR_NEWER_REQUIRED/u);
 });
 
 test("installed metadata parser accepts exact unpinned GitHub and quoted local profiles", () => {

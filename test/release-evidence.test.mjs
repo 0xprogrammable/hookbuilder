@@ -182,7 +182,9 @@ test("stable v0.5.1 through v0.8.0 history is immutable and v0.9.0 is the releas
   assert.deepEqual(candidate.changes.map(({ id, kind }) => ({ id, kind })), [
     { id: "catalog-capability-routing-closure", kind: "feature" },
     { id: "project-compiler-brief-output", kind: "feature" },
+    { id: "natural-v4-intent-triggering", kind: "feature" },
     { id: "confirmed-context-activation", kind: "feature" },
+    { id: "portable-node22-runtime", kind: "feature" },
     { id: "bounded-repair-diagnosis", kind: "feature" },
     { id: "journey-activation-evidence", kind: "feature" }
   ]);
@@ -331,9 +333,9 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
   const coldContext = context("--mode", "autopilot", "--brief");
   assert.equal(coldContext.status, 0, coldContext.stderr || coldContext.stdout);
   assert.equal(coldContext.stderr, "");
-  assert.equal(Buffer.byteLength(coldContext.stdout, "utf8"), 1_399);
+  assert.equal(Buffer.byteLength(coldContext.stdout, "utf8"), 1_120);
   const coldPlan = JSON.parse(coldContext.stdout).result;
-  assert.equal(coldPlan.contextBudget.estimatedTokens, 3_256);
+  assert.equal(coldPlan.contextBudget.estimatedTokens, 3_183);
 
   const customCurve = context(
     "--mode", "autopilot",
@@ -344,9 +346,9 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
     "--brief"
   );
   assert.equal(customCurve.status, 0, customCurve.stderr || customCurve.stdout);
-  assert.equal(Buffer.byteLength(customCurve.stdout, "utf8"), 1_972);
+  assert.equal(Buffer.byteLength(customCurve.stdout, "utf8"), 1_951);
   const customCurvePlan = JSON.parse(customCurve.stdout).result;
-  assert.equal(customCurvePlan.contextBudget.cumulativeEstimatedTokens, 5_078);
+  assert.equal(customCurvePlan.contextBudget.cumulativeEstimatedTokens, 5_000);
   assert.deepEqual(
     customCurvePlan.loadNow.map(({ path: reference }) => reference),
     ["references/v4-contract-reasoning-kernel.md"]
@@ -361,9 +363,9 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
     "--brief"
   );
   assert.equal(browserGame.status, 0, browserGame.stderr || browserGame.stdout);
-  assert.equal(Buffer.byteLength(browserGame.stdout, "utf8"), 1_856);
+  assert.equal(Buffer.byteLength(browserGame.stdout, "utf8"), 1_827);
   const browserGamePlan = JSON.parse(browserGame.stdout).result;
-  assert.equal(browserGamePlan.contextBudget.cumulativeEstimatedTokens, 4_704);
+  assert.equal(browserGamePlan.contextBudget.cumulativeEstimatedTokens, 4_624);
   assert.deepEqual(
     browserGamePlan.loadNow.map(({ path: reference }) => reference),
     ["references/runtime-assets.md"]
@@ -374,12 +376,48 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
     false
   );
 
+  const crossDomain = context(
+    "--mode", "autopilot",
+    "--capability", "custom-curve",
+    "--capability", "browser-game",
+    "--surface", "contract",
+    "--surface", "application",
+    "--activate-confirmed",
+    "--base-profile-digest", coldPlan.profileDigest,
+    "--brief"
+  );
+  assert.equal(crossDomain.status, 0, crossDomain.stderr || crossDomain.stdout);
+  assert.equal(Buffer.byteLength(crossDomain.stdout, "utf8"), 2_222);
+  const crossDomainPlan = JSON.parse(crossDomain.stdout).result;
+  assert.equal(crossDomainPlan.contextBudget.cumulativeEstimatedTokens, 6_052);
+  assert.deepEqual(
+    crossDomainPlan.loadNow.map(({ path: reference }) => reference),
+    ["references/v4-contract-reasoning-kernel.md", "references/runtime-assets.md"]
+  );
+
   const repairContext = context("--mode", "repair", "--brief");
   assert.equal(repairContext.status, 0, repairContext.stderr || repairContext.stdout);
-  assert.equal(Buffer.byteLength(repairContext.stdout, "utf8"), 1_391);
+  assert.equal(Buffer.byteLength(repairContext.stdout, "utf8"), 1_111);
   const repairPlan = JSON.parse(repairContext.stdout).result;
-  assert.equal(repairPlan.contextBudget.estimatedTokens, 2_514);
+  assert.equal(repairPlan.contextBudget.estimatedTokens, 2_441);
   assert.deepEqual(repairPlan.loadNow.map(({ path: reference }) => reference), ["references/repair-loop.md"]);
+
+  const reusedColdReference = context(
+    "--mode", "autopilot",
+    "--capability", "project-spec",
+    "--surface", "other",
+    "--activate-confirmed",
+    "--base-profile-digest", coldPlan.profileDigest,
+    "--brief"
+  );
+  assert.equal(reusedColdReference.status, 0, reusedColdReference.stderr || reusedColdReference.stdout);
+  const reusedColdReferencePlan = JSON.parse(reusedColdReference.stdout).result;
+  assert.deepEqual(reusedColdReferencePlan.loadNow, []);
+  assert.deepEqual(
+    reusedColdReferencePlan.knowledgeActivation.reusedBasePaths,
+    ["references/business-system-compiler.md"]
+  );
+  assert.equal(reusedColdReferencePlan.contextBudget.activation.referenceBytes, 0);
 
   for (const source of [candidateNotes, changelog]) {
     assert.match(source, /3,371(?: bytes)?[\s\S]{0,80}1,150(?: bytes)?[\s\S]{0,80}65\.89%/u);
@@ -387,10 +425,11 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
     assert.match(source, /2,499 bytes/u);
     assert.match(source, /16,731[\s\S]{0,120}`autopilot`|`autopilot`[\s\S]{0,120}16,731/u);
     assert.match(source, /20,538[\s\S]{0,160}`claims`[\s\S]{0,80}`authority`|`claims`[\s\S]{0,160}`authority`[\s\S]{0,160}20,538/u);
-    assert.match(source, /1,399(?: bytes)?[\s\S]{0,180}3,256/u);
-    assert.match(source, /1,972(?: bytes)?[\s\S]{0,180}5,078/u);
-    assert.match(source, /1,856(?: bytes)?[\s\S]{0,180}4,704/u);
-    assert.match(source, /1,391(?: bytes)?[\s\S]{0,180}2,514/u);
+    assert.match(source, /1,120(?: bytes)?[\s\S]{0,180}3,183/u);
+    assert.match(source, /1,951(?: bytes)?[\s\S]{0,180}5,000/u);
+    assert.match(source, /1,827(?: bytes)?[\s\S]{0,180}4,624/u);
+    assert.match(source, /2,222(?: bytes)?[\s\S]{0,180}6,052/u);
+    assert.match(source, /1,111(?: bytes)?[\s\S]{0,180}2,441/u);
   }
   assert.match(candidateNotes, /preserve[s]? the command exit code[\s\S]{0,180}`reportSha256`/iu);
   assert.match(candidateNotes, /not universal[\s\S]{0,80}model-token/iu);

@@ -125,7 +125,7 @@ test('canonical eval suite passes deterministic structure validation', () => {
     dailySentinelPositiveTriggerCount: 5,
     dailySentinelNegativeTriggerCount: 5,
     dailySentinelQualification: 'STRUCTURE_AND_COVERAGE_ONLY',
-    dailySentinelSha256: '3f54706a354ac181ab23b20cb1ec1a6086032427829f393a3b5d15369bdb514e',
+    dailySentinelSha256: '4f677d0221b7b1a27eada449f1853b7b68c40f6b4c038025d5146786fe8dde02',
     e2ePublicResponseCaseCount: 47,
     e2eSealedRepositoryEnvelopeCount: 24,
     e2eComparablePublicRepositoryCaseCount: 0,
@@ -148,6 +148,24 @@ test('daily sentinel reuses public cases and keeps balanced trigger coverage', (
   assert.equal(sentinel.publicCaseIds.length, 5);
   assert.equal(sentinel.triggerPrompts.positive.length, 5);
   assert.equal(sentinel.triggerPrompts.negative.length, 5);
+  assert.equal(
+    sentinel.triggerPrompts.positive.filter(({ prompt }) => /\bProgrammable\b/u.test(prompt)).length,
+    1,
+    'exactly one explicit branded trigger must remain covered',
+  );
+  assert.equal(
+    sentinel.triggerPrompts.positive.filter(({ prompt }) => !/\bProgrammable\b/u.test(prompt)).length,
+    4,
+    'the trigger corpus must contain exactly four natural v4 build intents without the brand name',
+  );
+  for (const { prompt } of sentinel.triggerPrompts.positive.filter(({ prompt }) => !/\bProgrammable\b/u.test(prompt))) {
+    assert.match(prompt, /\bUniswap(?:[\s-]+)v4\b/iu);
+    assert.match(prompt, /\b(?:design|build|turn|repair|review|test|upgrade|prepare|bau(?:e|en|t)?|bereit(?:e|en|t)?)\b/iu);
+  }
+  assert.ok(
+    sentinel.triggerPrompts.negative.every(({ prompt }) => !/\bProgrammable\b/u.test(prompt)),
+    'adjacent unbranded questions must stay outside the skill',
+  );
 
   withTemporaryRepository(
     (temporaryRoot) => {
@@ -160,6 +178,35 @@ test('daily sentinel reuses public cases and keeps balanced trigger coverage', (
     (temporaryRoot) => expectInvalid(
       temporaryRoot,
       /daily sentinel: publicCaseIds\[0\].*existing public case id|daily sentinel: negative\[0\] activation decision drift/u,
+    ),
+  );
+
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
+      const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
+      for (const record of candidate.triggerPrompts.positive) {
+        if (!/\bProgrammable\b/u.test(record.prompt)) record.prompt = `Use Programmable. ${record.prompt}`;
+      }
+      fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /positive prompts must contain exactly one explicit Programmable trigger|positive prompts must contain exactly four implicit v4 build intents/u,
+    ),
+  );
+
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
+      const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
+      candidate.triggerPrompts.positive.find(({ id }) => id === 'plain-language-game-en').prompt =
+        'Build a generic TypeScript utility with tests.';
+      fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /implicit positive\[\d+\] must name Uniswap v4 and a build, repair, review, test, or submission action/u,
     ),
   );
 });

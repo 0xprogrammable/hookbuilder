@@ -29,7 +29,7 @@
 > [!IMPORTANT]
 > **Release status**
 >
-> Release package `v0.9.0` requires Node.js 24 or newer. Its bundled status retains
+> Release package `v0.9.0` supports Node.js 22+ for the portable Skill; source and release gates require Node.js 24+. Its bundled status retains
 > `publicationStateVerified: false`; verify the public tag, GitHub release, and installed bytes before treating it as
 > published or live. Package checks and public CI do not establish model behavior, an independent audit, project approval,
 > deployment, routing, registration, or launch authority.

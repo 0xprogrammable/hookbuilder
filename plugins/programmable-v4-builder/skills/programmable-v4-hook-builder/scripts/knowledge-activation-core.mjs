@@ -36,40 +36,78 @@ export function activateConfirmedKnowledge({
 
   const activation = loadActivationContract(skillRoot);
   const quarantined = new Set(activation.contract.quarantinedReferences.map(toReferencePath));
+  const basePaths = new Set(basePlan.loadNow.map(({ path: reference }) => reference));
   const routedLater = routedPlan.loadLater.filter(({ reasons, path: reference }) => (
-    Array.isArray(reasons) && reasons.length > 0 && !quarantined.has(reference)
+    Array.isArray(reasons) && reasons.length > 0
+      && !quarantined.has(reference)
+      && !basePaths.has(reference)
   ));
-  const matchingRule = activation.contract.rules
-    .filter((rule) => (
-      rule.capabilityAny.some((id) => capabilities.includes(id))
-      && rule.surfaceAny.some((id) => surfaces.includes(id))
-    ))
-    .sort(comparePriority)[0] ?? null;
-
   const orderedCandidates = routedLater
     .map((reference) => enrichReference(reference, skillRoot, activation.priorityByPath))
     .sort(compareReferencePriority);
-  const selected = matchingRule === null
-    ? orderedCandidates[0]
-    : descriptorForRule(matchingRule, skillRoot);
-  if (selected === undefined) {
+  const capabilityRouteCandidates = descriptorsForMatchedRoutes({
+    activation,
+    routeKind: "capability",
+    selectorIds: capabilities,
+    skillRoot
+  });
+  const surfaceRouteCandidates = descriptorsForMatchedRoutes({
+    activation,
+    routeKind: "surface",
+    selectorIds: surfaces,
+    skillRoot
+  });
+  const capabilityPaths = new Set(capabilityRouteCandidates.map(({ path: reference }) => reference));
+  const contributingSurfaceCandidates = capabilityRouteCandidates.length === 0
+    ? surfaceRouteCandidates
+    : surfaceRouteCandidates.filter(({ path: reference }) => (
+      !capabilityPaths.has(reference) && !basePaths.has(reference)
+    ));
+  const matchedRouteCandidates = mergeReferenceCandidates(
+    capabilityRouteCandidates,
+    contributingSurfaceCandidates
+  );
+  const reusedBaseCandidates = matchedRouteCandidates.filter(({ path: reference }) => basePaths.has(reference));
+  const routeCandidates = matchedRouteCandidates.filter(({ path: reference }) => !basePaths.has(reference));
+  const selected = selectWithinCumulativeBudget({
+    basePlan,
+    candidates: matchedRouteCandidates.length > 0 ? routeCandidates : orderedCandidates,
+    maximumLoadNow: activation.contract.maximumLoadNow,
+    targetEstimatedTokens: activation.contract.cumulativeEstimatedTokenTarget
+  });
+  const reusesEveryMatchedRoute = matchedRouteCandidates.length > 0
+    && reusedBaseCandidates.length === matchedRouteCandidates.length;
+  if (selected.length === 0 && !reusesEveryMatchedRoute) {
     activationFailure(
       "KNOWLEDGE_ACTIVATION_INVALID",
       "No specialist reference applies to the exact confirmed selector."
     );
   }
 
-  const loadLater = orderedCandidates
-    .filter(({ path: reference }) => reference !== selected.path)
+  const selectedPaths = new Set(selected.map(({ path: reference }) => reference));
+  const loadLaterByPath = new Map();
+  for (const candidate of [...routeCandidates, ...orderedCandidates]) {
+    if (!basePaths.has(candidate.path) && !selectedPaths.has(candidate.path) && !loadLaterByPath.has(candidate.path)) {
+      loadLaterByPath.set(candidate.path, candidate);
+    }
+  }
+  const loadLater = [...loadLaterByPath.values()]
+    .sort(compareReferencePriority)
     .map(stripPriority);
   const deferredCatalog = orderedDeferredCatalog(routedPlan, skillRoot);
+  const reusedBasePaths = reusedBaseCandidates.map(({ path: reference }) => reference).sort(compareUtf8);
+  const selectedRouteIds = matchedRouteCandidates.length === 0
+    ? ["fallback:ordered-applicable-reference"]
+    : [...new Set([...reusedBaseCandidates, ...selected].flatMap(({ routeIds = [] }) => routeIds))].sort(compareUtf8);
   const selectionPreimage = {
     schemaVersion: "1.0.0",
     mode: routedPlan.mode,
     baseProfileDigest,
     routedProfileDigest: routedPlan.profileDigest,
     capabilities,
-    surfaces
+    surfaces,
+    routeIds: selectedRouteIds,
+    reusedBasePaths
   };
   const selectionDigest = domainHash("programmable.knowledge-activation-selection.v1", selectionPreimage);
   const profilePreimage = {
@@ -78,7 +116,8 @@ export function activateConfirmedKnowledge({
     routedProfileDigest: routedPlan.profileDigest,
     selectionDigest,
     activationContractSha256: activation.sha256,
-    selected: stripPriority(selected),
+    reusedBasePaths,
+    selected: selected.map(stripPriority),
     loadLater,
     deferredCatalog,
     reviewRoute: routedPlan.reviewRoute,
@@ -103,13 +142,14 @@ export function activateConfirmedKnowledge({
     ideaEligibility: "ELIGIBLE_FOR_REVIEW",
     designEligible: true,
     automaticAdverseDecision: false,
-    loadNow: [stripPriority(selected)],
+    loadNow: selected.map(stripPriority),
     loadLater,
     deferredCatalog,
     knowledgeActivation: {
       path: "references/knowledge-activation-v1.json",
       sha256: activation.sha256,
-      ruleId: matchingRule?.id ?? "ordered-applicable-reference",
+      routeIds: selectedRouteIds,
+      ...(reusedBasePaths.length === 0 ? {} : { reusedBasePaths }),
       selectionSemantics: activation.contract.selectionSemantics,
       maximumLoadNow: activation.contract.maximumLoadNow
     },
@@ -200,20 +240,21 @@ function briefResult(result, contextBudget) {
   const deferredCatalog = result.kind === "programmable-knowledge-activation"
     ? result.deferredCatalog
     : result.loadLater.filter(({ reasons }) => !Array.isArray(reasons) || reasons.length === 0);
+  const unknowns = compactGroups({
+    capabilities: result.unknownCapabilities,
+    surfaces: result.unknownSurfaces
+  });
   return {
     schemaVersion: "1.0.0",
     kind: result.kind,
     mode: result.mode,
-    selectors: {
-      packs: compactIds(result.packs),
-      capabilities: compactIds(result.capabilities),
-      surfaces: compactIds(result.surfaces),
-      registryProjects: compactIds(result.registryProjects.map(({ id }) => id))
-    },
-    unknowns: {
-      capabilities: compactIds(result.unknownCapabilities),
-      surfaces: compactIds(result.unknownSurfaces)
-    },
+    selectors: compactGroups({
+      packs: result.packs,
+      capabilities: result.capabilities,
+      surfaces: result.surfaces,
+      registryProjects: result.registryProjects.map(({ id }) => id)
+    }),
+    ...(Object.keys(unknowns).length === 0 ? {} : { unknowns }),
     ...(result.status === undefined ? {} : {
       hold: {
         code: result.code,
@@ -229,14 +270,23 @@ function briefResult(result, contextBudget) {
       baseProfileDigest: result.baseProfileDigest,
       selectionDigest: result.selectionDigest,
       ideaEligibility: result.ideaEligibility,
-      automaticAdverseDecision: result.automaticAdverseDecision
+      automaticAdverseDecision: result.automaticAdverseDecision,
+      knowledgeActivation: {
+        path: result.knowledgeActivation.path,
+        sha256: result.knowledgeActivation.sha256,
+        routeIds: compactRouteIds(result.knowledgeActivation.routeIds),
+        ...(result.knowledgeActivation.reusedBasePaths === undefined
+          ? {}
+          : { reusedBasePaths: result.knowledgeActivation.reusedBasePaths }),
+        maximumLoadNow: result.knowledgeActivation.maximumLoadNow
+      }
     }),
     profileDigest: result.profileDigest,
     loadNow: result.loadNow.map(compactLoadNow),
     routedLater: compactReferenceInventory(routedLater),
     deferredCatalog: compactReferenceInventory(deferredCatalog),
     contextBudget,
-    fullOutputInstruction: "Repeat the same context command without --brief for the complete deterministic plan."
+    fullOutputInstruction: "Rerun without --brief."
   };
 }
 
@@ -274,6 +324,20 @@ function compactIds(values) {
     omitted: values.length - ids.length,
     sha256: hashJson(values)
   };
+}
+
+function compactRouteIds(values) {
+  if (values.length <= 4) return values;
+  return {
+    count: values.length,
+    sha256: hashJson(values)
+  };
+}
+
+function compactGroups(groups) {
+  return Object.fromEntries(Object.entries(groups)
+    .filter(([, values]) => values.length > 0)
+    .map(([name, values]) => [name, compactIds(values)]));
 }
 
 function compactLoadNow(reference) {
@@ -323,24 +387,28 @@ function loadActivationContract(skillRoot) {
   } catch (error) {
     throw new KnowledgeRouterError("KNOWLEDGE_ACTIVATION_UNAVAILABLE", `Cannot load activation contract: ${error.message}`);
   }
-  validateActivationContract(contract, skillRoot);
+  const routing = loadKnowledgeRouting({ skillRoot });
+  validateActivationContract(contract, skillRoot, routing);
   const priorityByPath = new Map(contract.ordering.map((entry) => [toReferencePath(entry.path), entry]));
+  const routeSelectionsByKey = new Map(contract.routeSelections.map((entry) => [routeKey(entry.routeKind, entry.routeId), entry]));
   return {
     contract,
     priorityByPath,
+    routeSelectionsByKey,
+    routing,
     sha256: crypto.createHash("sha256").update(source).digest("hex")
   };
 }
 
-function validateActivationContract(contract, skillRoot) {
+function validateActivationContract(contract, skillRoot, routing) {
   if (
-    contract?.schemaVersion !== "1.0.0"
+    contract?.schemaVersion !== "1.1.0"
     || contract?.kind !== "programmable-knowledge-activation"
-    || contract?.selectionSemantics !== "confirmed-selector-delta-one-reference"
-    || contract?.maximumLoadNow !== 1
+    || contract?.selectionSemantics !== "confirmed-route-specialists-up-to-two"
+    || contract?.maximumLoadNow !== 2
     || contract?.cumulativeEstimatedTokenTarget !== 8000
-    || !Array.isArray(contract.rules)
-    || contract.rules.length < 1
+    || !Array.isArray(contract.routeSelections)
+    || contract.routeSelections.length < 1
     || !Array.isArray(contract.ordering)
     || contract.ordering.length < 1
     || !Array.isArray(contract.quarantinedReferences)
@@ -348,25 +416,35 @@ function validateActivationContract(contract, skillRoot) {
   ) activationContractFailure("Activation contract identity or policy is invalid.");
 
   const identities = new Set();
+  const expectedRouteKeys = new Set([
+    ...routing.capabilityRoutes.map(({ id }) => routeKey("capability", id)),
+    ...routing.surfaceRoutes.map(({ id }) => routeKey("surface", id))
+  ]);
+  const coveredRouteKeys = new Set();
   const references = new Set(contract.quarantinedReferences);
-  for (const rule of contract.rules) {
+  for (const selection of contract.routeSelections) {
+    const selectionRouteKey = routeKey(selection?.routeKind, selection?.routeId);
     if (
-      !exactKeys(rule, ["capabilityAny", "id", "order", "reason", "reference", "stage", "surfaceAny"])
-      || !idPattern.test(rule.id ?? "")
-      || identities.has(rule.id)
-      || !validPriority(rule)
-      || !validIds(rule.capabilityAny)
-      || !validIds(rule.surfaceAny)
-      || rule.capabilityAny.length < 1
-      || rule.surfaceAny.length < 1
-      || typeof rule.reference !== "string"
-      || contract.quarantinedReferences.includes(rule.reference)
-      || typeof rule.reason !== "string"
-      || rule.reason.length < 24
-      || rule.reason.length > 300
-    ) activationContractFailure("Activation rule is invalid.");
-    identities.add(rule.id);
-    references.add(rule.reference);
+      !exactKeys(selection, ["id", "order", "reason", "reference", "routeId", "routeKind", "stage"])
+      || !idPattern.test(selection.id ?? "")
+      || identities.has(selection.id)
+      || !new Set(["capability", "surface"]).has(selection.routeKind)
+      || !idPattern.test(selection.routeId ?? "")
+      || !expectedRouteKeys.has(selectionRouteKey)
+      || coveredRouteKeys.has(selectionRouteKey)
+      || !validPriority(selection)
+      || typeof selection.reference !== "string"
+      || contract.quarantinedReferences.includes(selection.reference)
+      || typeof selection.reason !== "string"
+      || selection.reason.length < 24
+      || selection.reason.length > 300
+    ) activationContractFailure("Activation route selection is invalid.");
+    identities.add(selection.id);
+    coveredRouteKeys.add(selectionRouteKey);
+    references.add(selection.reference);
+  }
+  if (coveredRouteKeys.size !== expectedRouteKeys.size) {
+    activationContractFailure("Activation route coverage is incomplete.");
   }
   const orderedPaths = new Set();
   for (const entry of contract.ordering) {
@@ -393,14 +471,80 @@ function orderedDeferredCatalog(routedPlan, skillRoot) {
     ));
 }
 
-function descriptorForRule(rule, skillRoot) {
-  const descriptor = referenceDescriptor(rule.reference, skillRoot);
-  return {
-    ...descriptor,
-    reasons: [`activation-rule:${rule.id}`, ...rule.capabilityAny.map((id) => `capability:${id}`), ...rule.surfaceAny.map((id) => `surface:${id}`)].sort(compareUtf8),
-    stage: rule.stage,
-    order: rule.order
-  };
+function descriptorsForMatchedRoutes({ activation, routeKind, selectorIds, skillRoot }) {
+  const routes = routeKind === "capability"
+    ? activation.routing.capabilityRoutes
+    : activation.routing.surfaceRoutes;
+  const byPath = new Map();
+  for (const selectorId of selectorIds) {
+    const matched = routes
+      .filter(({ matches }) => matches.includes(selectorId))
+      .map((route) => ({
+        route,
+        selection: activation.routeSelectionsByKey.get(routeKey(routeKind, route.id))
+      }))
+      .sort((left, right) => comparePriority(left.selection, right.selection));
+    if (matched.length === 0) continue;
+    const { route, selection } = matched[0];
+    const routeId = routeKey(routeKind, route.id);
+    if (selection === undefined) activationContractFailure(`Activation route selection is unavailable: ${routeId}.`);
+    const descriptor = {
+      ...referenceDescriptor(selection.reference, skillRoot),
+      reasons: [
+        `activation-route:${routeId}`,
+        `${routeKind}:${selectorId}`
+      ].sort(compareUtf8),
+      routeIds: [routeId],
+      stage: selection.stage,
+      order: selection.order
+    };
+    const existing = byPath.get(descriptor.path);
+    if (existing === undefined) {
+      byPath.set(descriptor.path, descriptor);
+      continue;
+    }
+    const primary = compareReferencePriority(descriptor, existing) < 0 ? descriptor : existing;
+    byPath.set(descriptor.path, {
+      ...primary,
+      reasons: [...new Set([...existing.reasons, ...descriptor.reasons])].sort(compareUtf8),
+      routeIds: [...new Set([...existing.routeIds, ...descriptor.routeIds])].sort(compareUtf8)
+    });
+  }
+  return [...byPath.values()].sort(compareReferencePriority);
+}
+
+function mergeReferenceCandidates(...candidateGroups) {
+  const byPath = new Map();
+  for (const descriptor of candidateGroups.flat()) {
+    const existing = byPath.get(descriptor.path);
+    if (existing === undefined) {
+      byPath.set(descriptor.path, descriptor);
+      continue;
+    }
+    const primary = compareReferencePriority(descriptor, existing) < 0 ? descriptor : existing;
+    byPath.set(descriptor.path, {
+      ...primary,
+      reasons: [...new Set([...existing.reasons, ...descriptor.reasons])].sort(compareUtf8),
+      routeIds: [...new Set([...existing.routeIds, ...descriptor.routeIds])].sort(compareUtf8)
+    });
+  }
+  return [...byPath.values()].sort(compareReferencePriority);
+}
+
+function selectWithinCumulativeBudget({ basePlan, candidates, maximumLoadNow, targetEstimatedTokens }) {
+  const baseBriefBytes = Buffer.byteLength(renderInitialBrief(basePlan));
+  const reservedOutputEstimatedTokens = Math.ceil((maximumBriefBytes - 1) / 4);
+  let cumulativeEstimatedTokens = basePlan.contextBudget.contentEstimatedTokens
+    + Math.ceil(baseBriefBytes / 4)
+    + reservedOutputEstimatedTokens;
+  const selected = [];
+  for (const candidate of candidates) {
+    if (selected.length >= maximumLoadNow) break;
+    if (cumulativeEstimatedTokens + candidate.estimatedTokens >= targetEstimatedTokens) continue;
+    selected.push(candidate);
+    cumulativeEstimatedTokens += candidate.estimatedTokens;
+  }
+  return selected;
 }
 
 function enrichReference(reference, skillRoot, priorityByPath) {
@@ -439,7 +583,7 @@ function requireReferenceFile(skillRoot, reference) {
   }
 }
 
-function stripPriority({ stage: _stage, order: _order, ...reference }) {
+function stripPriority({ stage: _stage, order: _order, routeIds: _routeIds, ...reference }) {
   return reference;
 }
 
@@ -448,16 +592,14 @@ function compareReferencePriority(left, right) {
 }
 
 function comparePriority(left, right) {
+  if (left === undefined) return 1;
+  if (right === undefined) return -1;
   return left.stage - right.stage || left.order - right.order || compareUtf8(left.id, right.id);
 }
 
 function validPriority(value) {
   return Number.isSafeInteger(value.stage) && value.stage > 0
     && Number.isSafeInteger(value.order) && value.order > 0;
-}
-
-function validIds(values) {
-  return Array.isArray(values) && values.every((value) => typeof value === "string" && idPattern.test(value));
 }
 
 function exactKeys(value, expected) {
@@ -473,6 +615,10 @@ function normalizeConfirmedIds(values) {
 
 function toReferencePath(reference) {
   return reference.startsWith("references/") ? reference : `references/${reference}`;
+}
+
+function routeKey(routeKind, routeId) {
+  return `${String(routeKind)}:${String(routeId)}`;
 }
 
 function domainHash(domain, value) {

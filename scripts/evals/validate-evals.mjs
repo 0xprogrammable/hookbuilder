@@ -450,12 +450,35 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
       addIssue(issues, !seenPrompts.has(record?.prompt), `${label} prompt is duplicated`);
       seenPrompts.add(record?.prompt);
       addIssue(issues, record?.expectedActivation === expectedActivation, `${label} activation decision drift`);
-      addIssue(
-        issues,
-        group === 'positive' ? /\bProgrammable\b/u.test(record?.prompt ?? '') : !/\bProgrammable\b/u.test(record?.prompt ?? ''),
-        `${label} trigger boundary is ambiguous`,
-      );
+      if (group === 'negative') {
+        addIssue(
+          issues,
+          !/\bProgrammable\b/u.test(record?.prompt ?? ''),
+          `${label} trigger boundary is ambiguous`,
+        );
+      }
     }
+  }
+  const positivePrompts = value.triggerPrompts?.positive ?? [];
+  const brandedPrompts = positivePrompts.filter(({ prompt }) => /\bProgrammable\b/u.test(prompt ?? ''));
+  const implicitV4Work = positivePrompts.filter(({ prompt }) => !/\bProgrammable\b/u.test(prompt ?? ''));
+  addIssue(
+    issues,
+    brandedPrompts.length === 1,
+    'daily sentinel: positive prompts must contain exactly one explicit Programmable trigger',
+  );
+  addIssue(
+    issues,
+    implicitV4Work.length === 4,
+    'daily sentinel: positive prompts must contain exactly four implicit v4 build intents',
+  );
+  for (const [index, { prompt }] of implicitV4Work.entries()) {
+    addIssue(
+      issues,
+      /\bUniswap(?:[\s-]+)v4\b/iu.test(prompt ?? '')
+        && /\b(?:design|architect|build|create|turn|repair|review|test|upgrade|submit|prepare|entwirf|architekt|bau(?:e|en|t)?|erstell(?:e|en|t)?|reparier(?:e|en|t)?|prüf(?:e|en|t)?|test(?:e|en|t)?|verbesser(?:e|n|t)?|bereit(?:e|en|t)?|reich(?:e|en|t)?)\b/iu.test(prompt ?? ''),
+      `daily sentinel: implicit positive[${index}] must name Uniswap v4 and a build, repair, review, test, or submission action`,
+    );
   }
   for (const group of ['positive', 'negative']) {
     const languages = new Set((value.triggerPrompts?.[group] ?? []).map(({ language }) => language));

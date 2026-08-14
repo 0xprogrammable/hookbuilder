@@ -63,7 +63,7 @@ test("Autopilot starts from the compact compiler with the productive completion 
   assert.match(skill, /project materialize --idea-file "\$IDEA_FILE" --application-id "\$APPLICATION_ID" --classification no-market --source-contract "\$SOURCE_CONTRACT" --test-source "\$TEST_SOURCE" --output "\$NEW_REPOSITORY"/u);
   assert.match(coldContext, /project materialize --idea-file "\$IDEA_FILE" --application-id "\$APPLICATION_ID" --classification tradable --market-ref "\$MARKET_REF" --reference-profile programmable-volume-fee-v2 --output "\$NEW_REPOSITORY"/u);
   assert.match(coldContext, /exact natural intent names the v4 hook,[\s\S]*gross-quote-volume fees,[\s\S]*policy `programmable-volume-fee-v2@2\.0\.0`, its inclusive 10 bps[\s\S]*claimant `0x4957f49620AFf3Adbbe8195a4f633E49cc93376c`/u);
-  assert.match(coldContext, /Save the exact received public prompt bytes unchanged as `\$IDEA_FILE`; never rewrite\/extract them\. Bind those same bytes exactly as ProjectSpec and Submission IdeaSource/u);
+  assert.match(coldContext, /Save the exact public prompt bytes unchanged as `\$IDEA_FILE`; never rewrite\/extract them\. Bind them exactly as ProjectSpec and Submission IdeaSource/u);
   assert.doesNotMatch(coldContext, /(?:independent audit findings?|known findings?|expected solutions?|finding [1-4])/iu);
   assert.doesNotMatch(coldContext, /(?:Reference fee kernel|ProgrammableVolumeFeeHookV2\.sol|known exploit|audit report)/iu);
   assert.match(coldContext, /NOT_APPROVED/u);
@@ -191,7 +191,7 @@ test("every installed Markdown reference is routed, linked, or explicitly archiv
     path.join(skillRoot, "references", "knowledge-activation-v1.json"),
     "utf8"
   ));
-  for (const reference of activation.rules.map(({ reference }) => reference)) routed.add(reference);
+  for (const reference of activation.routeSelections.map(({ reference }) => reference)) routed.add(reference);
   const archival = new Set(routing.archivalReferences.flatMap(({ references }) => references));
   assert.deepEqual([...archival].sort(), [
     "compatibility-standard.md",
@@ -1507,8 +1507,7 @@ test("confirmed activation is digest-bound, delta-only, and promotes the compact
   assert.equal(output.mode, "autopilot");
   assert.deepEqual(output.selectors.capabilities.ids, ["custom-curve"]);
   assert.deepEqual(output.selectors.surfaces.ids, ["contract"]);
-  assert.deepEqual(output.unknowns.capabilities.ids, []);
-  assert.deepEqual(output.unknowns.surfaces.ids, []);
+  assert.equal(Object.hasOwn(output, "unknowns"), false);
   assert.equal(output.baseProfileDigest, coldOutput.result.profileDigest);
   assert.match(output.selectionDigest, /^[a-f0-9]{64}$/u);
   assert.match(output.profileDigest, /^[a-f0-9]{64}$/u);
@@ -1517,7 +1516,7 @@ test("confirmed activation is digest-bound, delta-only, and promotes the compact
   assert.match(output.loadNow[0].sha256, /^[a-f0-9]{64}$/u);
   assert.ok(output.loadNow[0].bytes > 0 && output.loadNow[0].bytes <= 6_000);
   assert.equal(output.loadNow[0].reasons.includes("capability:custom-curve"), true);
-  assert.equal(output.loadNow[0].reasons.includes("surface:contract"), true);
+  assert.equal(output.loadNow[0].reasons.includes("activation-route:capability:hook-implementation"), true);
   assert.equal(output.loadNow.some(({ path: reference }) => reference === "references/business-system-compiler.md"), false);
   assert.equal(output.contextBudget.phase, "confirmed-activation-delta");
   assert.equal(output.contextBudget.cumulativeEstimatedTokens < 8_000, true, JSON.stringify(output.contextBudget));
@@ -1552,6 +1551,160 @@ test("confirmed browser-game application activation never introduces v4 context"
     false
   );
   assert.equal(output.loadLater[0].path, "references/project-surfaces-and-capabilities.md");
+});
+
+test("confirmed cross-domain activation loads two route-owned specialists under the cumulative budget", () => {
+  const cold = JSON.parse(contextCli(["--mode", "autopilot", "--brief"]).stdout).result;
+  const activated = contextCli([
+    "--mode", "autopilot",
+    "--capability", "browser-game",
+    "--capability", "custom-curve",
+    "--surface", "application",
+    "--surface", "contract",
+    "--activate-confirmed",
+    "--base-profile-digest", cold.profileDigest,
+    "--brief"
+  ]);
+  assert.equal(activated.status, 0, activated.stdout || activated.stderr);
+  assert.equal(activated.stderr, "");
+  assert.ok(Buffer.byteLength(activated.stdout) < 2_500, activated.stdout);
+  const output = JSON.parse(activated.stdout).result;
+  assert.deepEqual(
+    output.loadNow.map(({ path: reference }) => reference),
+    ["references/v4-contract-reasoning-kernel.md", "references/runtime-assets.md"]
+  );
+  assert.equal(output.knowledgeActivation.maximumLoadNow, 2);
+  assert.deepEqual(output.knowledgeActivation.routeIds, ["capability:hook-implementation", "capability:runtime-product"]);
+  assert.equal(output.contextBudget.cumulativeEstimatedTokens < 8_000, true, JSON.stringify(output.contextBudget));
+});
+
+test("confirmed activation keeps a third specialist deferred without overflowing the brief", () => {
+  const cold = JSON.parse(contextCli(["--mode", "autopilot", "--brief"]).stdout).result;
+  const argumentsList = [
+    "--mode", "autopilot",
+    "--capability", "browser-game",
+    "--capability", "chainlink-vrf-v2-5",
+    "--capability", "custom-curve",
+    "--surface", "application",
+    "--surface", "contract",
+    "--surface", "external-provider",
+    "--activate-confirmed",
+    "--base-profile-digest", cold.profileDigest
+  ];
+  const activated = contextCli([...argumentsList, "--brief"]);
+  assert.equal(activated.status, 0, activated.stdout || activated.stderr);
+  assert.ok(Buffer.byteLength(activated.stdout) < 2_500, activated.stdout);
+  const output = JSON.parse(activated.stdout).result;
+  assert.deepEqual(
+    output.loadNow.map(({ path: reference }) => reference),
+    ["references/v4-contract-reasoning-kernel.md", "references/chainlink-provider-integration.md"]
+  );
+  const complete = JSON.parse(contextCli(argumentsList).stdout).result;
+  assert.equal(complete.loadLater.some(({ path: reference }) => reference === "references/runtime-assets.md"), true);
+  assert.equal(Object.hasOwn(output.selectors, "packs"), false);
+  assert.equal(Object.hasOwn(output.selectors, "registryProjects"), false);
+  assert.equal(Object.hasOwn(output, "unknowns"), false);
+});
+
+test("confirmed route specialists cover clients, providers, economics, and repository architecture", () => {
+  const cold = JSON.parse(contextCli(["--mode", "autopilot", "--brief"]).stdout).result;
+  for (const fixture of [
+    {
+      args: ["--capability", "v4-swap-client", "--surface", "application"],
+      expected: ["references/v4-sdk-integration.md"]
+    },
+    {
+      args: ["--capability", "chainlink-vrf-v2-5", "--surface", "external-provider"],
+      expected: [
+        "references/chainlink-provider-integration.md",
+        "references/ethereum-production-invariants.md"
+      ]
+    },
+    {
+      args: ["--capability", "continuous-clearing-auction", "--surface", "contract"],
+      expected: ["references/v4-contract-reasoning-kernel.md"]
+    },
+    {
+      args: ["--capability", "project-spec", "--surface", "other"],
+      expected: [],
+      reusedBasePath: "references/business-system-compiler.md"
+    }
+  ]) {
+    const activated = contextCli([
+      "--mode", "autopilot",
+      ...fixture.args,
+      "--activate-confirmed",
+      "--base-profile-digest", cold.profileDigest,
+      "--brief"
+    ]);
+    assert.equal(activated.status, 0, activated.stdout || activated.stderr);
+    const output = JSON.parse(activated.stdout).result;
+    assert.deepEqual(
+      output.loadNow.map(({ path: reference }) => reference),
+      fixture.expected,
+      JSON.stringify(output)
+    );
+    if (fixture.reusedBasePath !== undefined) {
+      assert.deepEqual(output.knowledgeActivation.reusedBasePaths, [fixture.reusedBasePath]);
+      assert.equal(output.routedLater.paths.includes(fixture.reusedBasePath), false);
+    } else {
+      assert.equal(Object.hasOwn(output.knowledgeActivation, "reusedBasePaths"), false);
+    }
+    assert.ok(output.loadNow.length <= 2, JSON.stringify(output.loadNow));
+    assert.equal(output.contextBudget.cumulativeEstimatedTokens < 8_000, true, JSON.stringify(output.contextBudget));
+  }
+});
+
+test("confirmed activation never reloads or recharges a cold reference", () => {
+  const cold = JSON.parse(contextCli(["--mode", "autopilot", "--brief"]).stdout).result;
+  const activated = contextCli([
+    "--mode", "autopilot",
+    "--capability", "project-spec",
+    "--surface", "other",
+    "--activate-confirmed",
+    "--base-profile-digest", cold.profileDigest,
+    "--brief"
+  ]);
+  assert.equal(activated.status, 0, activated.stdout || activated.stderr);
+  const output = JSON.parse(activated.stdout).result;
+  assert.deepEqual(output.loadNow, []);
+  assert.deepEqual(output.knowledgeActivation.reusedBasePaths, ["references/business-system-compiler.md"]);
+  assert.equal(output.routedLater.paths.includes("references/business-system-compiler.md"), false);
+  assert.equal(output.contextBudget.activation.referenceBytes, 0);
+  assert.equal(
+    output.contextBudget.cumulativeBytes,
+    output.contextBudget.base.contentBytes
+      + output.contextBudget.base.briefOutputBytes
+      + output.contextBudget.activation.outputBytes
+  );
+});
+
+test("a confirmed capability cannot suppress an independently confirmed surface route", () => {
+  const cold = JSON.parse(contextCli(["--mode", "autopilot", "--brief"]).stdout).result;
+  const activated = contextCli([
+    "--mode", "autopilot",
+    "--capability", "project-spec",
+    "--surface", "contract",
+    "--activate-confirmed",
+    "--base-profile-digest", cold.profileDigest,
+    "--brief"
+  ]);
+  assert.equal(activated.status, 0, activated.stdout || activated.stderr);
+  const output = JSON.parse(activated.stdout).result;
+  assert.deepEqual(
+    output.loadNow.map(({ path: reference }) => reference),
+    ["references/v4-contract-reasoning-kernel.md"]
+  );
+  assert.deepEqual(
+    output.knowledgeActivation.reusedBasePaths,
+    ["references/business-system-compiler.md"]
+  );
+  assert.deepEqual(output.knowledgeActivation.routeIds, [
+    "capability:open-world-project-compiler",
+    "surface:contract"
+  ]);
+  assert.equal(output.routedLater.paths.includes("references/v4-contract-reasoning-kernel.md"), false);
+  assert.equal(output.contextBudget.activation.referenceBytes, 5_314);
 });
 
 test("confirmed activation rejects empty, family, and stale-base requests without harming eligibility", () => {
@@ -1639,11 +1792,27 @@ test("activation contract is explicit, duplicate-free, hash-bound, and keeps Fee
   const activationSource = fs.readFileSync(activationPath, "utf8");
   parseBoundedLosslessJson(activationSource);
   const activation = JSON.parse(activationSource);
+  const routing = JSON.parse(fs.readFileSync(path.join(skillRoot, "references", "knowledge-routing.json"), "utf8"));
   assert.equal(activation.kind, "programmable-knowledge-activation");
-  assert.equal(activation.selectionSemantics, "confirmed-selector-delta-one-reference");
-  assert.equal(activation.maximumLoadNow, 1);
+  assert.equal(activation.schemaVersion, "1.1.0");
+  assert.equal(activation.selectionSemantics, "confirmed-route-specialists-up-to-two");
+  assert.equal(activation.maximumLoadNow, 2);
   assert.equal(activation.cumulativeEstimatedTokenTarget, 8_000);
   assert.deepEqual(activation.quarantinedReferences, ["programmable-fee-policy-v2.md"]);
+  assert.deepEqual(
+    activation.routeSelections
+      .filter(({ routeKind }) => routeKind === "capability")
+      .map(({ routeId }) => routeId)
+      .sort(),
+    routing.capabilityRoutes.map(({ id }) => id).sort()
+  );
+  assert.deepEqual(
+    activation.routeSelections
+      .filter(({ routeKind }) => routeKind === "surface")
+      .map(({ routeId }) => routeId)
+      .sort(),
+    routing.surfaceRoutes.map(({ id }) => id).sort()
+  );
   assert.deepEqual(
     activation.ordering.map(({ stage, order, path: reference }) => `${stage}:${order}:${reference}`),
     [...activation.ordering]
@@ -1693,9 +1862,20 @@ test("activation contract is explicit, duplicate-free, hash-bound, and keeps Fee
   assert.equal(rejectedQuarantine.status, 2, rejectedQuarantine.stdout || rejectedQuarantine.stderr);
   assert.equal(JSON.parse(rejectedQuarantine.stdout).error.code, "KNOWLEDGE_ACTIVATION_INVALID");
 
+  fs.writeFileSync(path.join(copiedSkill, "references", "knowledge-activation-v1.json"), activationSource);
+  const missingRoute = JSON.parse(activationSource);
+  missingRoute.routeSelections = missingRoute.routeSelections.slice(1);
+  fs.writeFileSync(
+    path.join(copiedSkill, "references", "knowledge-activation-v1.json"),
+    `${JSON.stringify(missingRoute, null, 2)}\n`
+  );
+  const rejectedIncompleteCoverage = contextCliAt(copiedSkill, args);
+  assert.equal(rejectedIncompleteCoverage.status, 2, rejectedIncompleteCoverage.stdout || rejectedIncompleteCoverage.stderr);
+  assert.equal(JSON.parse(rejectedIncompleteCoverage.stdout).error.code, "KNOWLEDGE_ACTIVATION_INVALID");
+
   const duplicate = activationSource.replace(
-    '"maximumLoadNow": 1,',
-    '"maximumLoadNow": 1,\n  "maximumLoadNow": 1,'
+    '"maximumLoadNow": 2,',
+    '"maximumLoadNow": 2,\n  "maximumLoadNow": 2,'
   );
   assert.notEqual(duplicate, activationSource);
   assert.throws(() => parseBoundedLosslessJson(duplicate), /duplicate key/u);

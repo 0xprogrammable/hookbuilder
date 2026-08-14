@@ -235,7 +235,7 @@ function help() {
     "  --pack|--capability|--surface <id>  Add a confirmed selector; repeat as needed.",
     "  --registry-project <id> Add bundled Registry discovery context.",
     "  --brief                 Return a complete bounded routing brief below 2,500 bytes.",
-    "  --activate-confirmed    Load exactly one specialist delta for exact confirmed selectors.",
+    "  --activate-confirmed    Load at most two route specialists for exact selectors.",
     "  --base-profile-digest <digest>  Bind activation to the consumed mode-only profile.",
     "",
     "Examples:",

@@ -12,11 +12,14 @@ All notable Builder changes are recorded here. Historical releases remain immuta
   status, result, full-report SHA-256, finding counts, canonical-output state and evidence boundary while omitting the
   exhaustive inventory and finding arrays. On the committed blocked and green fixtures, stdout changed from 3,371 to
   1,150 bytes (-65.89%) and from 1,225 to 805 bytes (-34.29%), respectively; brief stdout is capped at 2,499 bytes.
-- Added digest-bound confirmed-context activation that loads at most one specialist reference, preserves split-review
-  holds, and keeps the cold/custom-curve/browser-game journeys at 1,399/1,972/1,856 bytes and
-  3,256/5,078/4,704 estimated tokens respectively.
+- Added a bounded natural-intent trigger for complete Uniswap v4 design, build, repair, review, test, upgrade, and submission work
+  without requiring the Programmable brand name; explanation-only and unrelated work remain excluded.
+- Added digest-bound confirmed-context activation that covers every canonical capability and surface route, loads at most one
+  specialist per distinct confirmed capability and at most two references total, preserves split-review
+  holds, and keeps the cold/custom-curve/browser-game/cross-domain journeys at 1,120/1,951/1,827/2,222 bytes and
+  3,183/5,000/4,624/6,052 estimated tokens respectively.
 - Added a non-completion repair-attempt contract and read-only diagnosis path with one observed root failure, bounded
-  retries, exact suppressed commands and a 1,391 bytes / 2,514 estimated-token Repair cold brief.
+  retries, exact suppressed commands and a 1,111 bytes / 2,441 estimated-token Repair cold brief.
 - Added hash-bound structured Builder responses and reference-activation receipts to repository E2E evidence, plus a
   lean daily sentinel reusing five public cases with five positive and five negative trigger prompts.
 
@@ -28,6 +31,8 @@ All notable Builder changes are recorded here. Historical releases remain immuta
   case, and removed 16,731 preloaded bytes from `autopilot` plus 20,538 bytes each from `claims` and `authority`.
 - Kept the complete canonical Project Compiler JSON as the default output; `--brief` is presentation-only and points
   back to the full report.
+- Lowered the portable Builder runtime floor to Node.js 22 and added an exact Node 22 installed-package CI lane while
+  retaining the complete repository, Foundry, and release gates on pinned Node.js 24.
 - Kept the existing all-pass completion receipt unchanged: repair attempts remain `NOT_COMPLETION` and
   `NOT_APPROVAL`, while journey responses and activation receipts are untrusted judge inputs.
 

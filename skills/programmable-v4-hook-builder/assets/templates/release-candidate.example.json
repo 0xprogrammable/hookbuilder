@@ -49,9 +49,19 @@
       "summary": "Add an optional hard-bounded brief Project Compiler view that preserves the full report identity, result and evidence boundary while omitting exhaustive arrays."
     },
     {
+      "id": "natural-v4-intent-triggering",
+      "kind": "feature",
+      "summary": "Trigger on explicit Programmable requests or clear intent to design, build, repair, review, test, upgrade, or submit a complete Uniswap v4 hook or project while excluding explanations, unrelated Solidity work, skill discovery, and non-blockchain use."
+    },
+    {
       "id": "confirmed-context-activation",
       "kind": "feature",
-      "summary": "Bind cold context by digest and activate at most one exact confirmed specialist reference while preserving split-review holds and the frozen Fee V2 quarantine."
+      "summary": "Bind cold context by digest and activate at most one route-owned specialist per distinct confirmed capability, up to two references total, while preserving split-review holds and the frozen Fee V2 quarantine."
+    },
+    {
+      "id": "portable-node22-runtime",
+      "kind": "feature",
+      "summary": "Run the portable Builder and installed-package verification on Node.js 22 or newer while retaining the complete repository, Foundry, and release gate on pinned Node.js 24."
     },
     {
       "id": "bounded-repair-diagnosis",

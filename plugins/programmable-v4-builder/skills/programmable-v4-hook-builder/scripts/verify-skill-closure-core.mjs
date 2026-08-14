@@ -113,23 +113,31 @@ export function validateKnowledgeRoutingClosure(findings, context) {
   } catch (error) {
     findings.push(`${activationRelativePath}: ${error.message}`);
   }
+  const expectedActivationRouteKeys = new Set([
+    ...(routing?.capabilityRoutes ?? []).map(({ id }) => `capability:${id}`),
+    ...(routing?.surfaceRoutes ?? []).map(({ id }) => `surface:${id}`)
+  ]);
+  const activationRouteKeys = (activation?.routeSelections ?? [])
+    .map(({ routeId, routeKind }) => `${routeKind}:${routeId}`);
   if (
-    activation?.schemaVersion !== "1.0.0"
+    activation?.schemaVersion !== "1.1.0"
     || activation?.kind !== "programmable-knowledge-activation"
-    || activation?.selectionSemantics !== "confirmed-selector-delta-one-reference"
-    || activation?.maximumLoadNow !== 1
+    || activation?.selectionSemantics !== "confirmed-route-specialists-up-to-two"
+    || activation?.maximumLoadNow !== 2
     || activation?.cumulativeEstimatedTokenTarget !== 8000
-    || !Array.isArray(activation?.rules)
-    || activation.rules.length < 1
+    || !Array.isArray(activation?.routeSelections)
+    || activation.routeSelections.length !== expectedActivationRouteKeys.size
+    || new Set(activationRouteKeys).size !== activationRouteKeys.length
+    || activationRouteKeys.some((key) => !expectedActivationRouteKeys.has(key))
     || !Array.isArray(activation?.ordering)
     || activation.ordering.length < 1
     || !Array.isArray(activation?.quarantinedReferences)
     || !activation.quarantinedReferences.includes("programmable-fee-policy-v2.md")
-    || activation.rules.some(({ reference }) => activation.quarantinedReferences.includes(reference))
+    || activation.routeSelections.some(({ reference }) => activation.quarantinedReferences.includes(reference))
   ) {
-    findings.push(`${activationRelativePath}: identity, single-delta limit, token target, or Fee V2 quarantine is invalid`);
+    findings.push(`${activationRelativePath}: identity, complete route coverage, two-reference limit, token target, or Fee V2 quarantine is invalid`);
   } else {
-    references.push(...activation.rules.map(({ reference }) => reference));
+    references.push(...activation.routeSelections.map(({ reference }) => reference));
     references.push(...activation.ordering.map(({ path: reference }) => reference));
     references.push(...activation.quarantinedReferences);
   }

@@ -19,27 +19,27 @@
         "expectedActivation": "ACTIVATED"
       },
       {
-        "id": "explicit-build-de",
+        "id": "implicit-build-de",
         "language": "de",
-        "prompt": "Baue mit Programmable einen Uniswap-v4-Hook und prüfe das Projekt lokal.",
+        "prompt": "Baue mir einen vollständigen Uniswap-v4-Hook für dynamische Liquidität und teste das Projekt lokal.",
         "expectedActivation": "ACTIVATED"
       },
       {
         "id": "plain-language-game-en",
         "language": "en",
-        "prompt": "Can Programmable turn this onchain game idea into a complete hook project?",
+        "prompt": "Turn this onchain game idea into a complete Uniswap v4 hook project with source and tests.",
         "expectedActivation": "ACTIVATED"
       },
       {
         "id": "security-review-en",
         "language": "en",
-        "prompt": "Review this Programmable v4 hook and repair the concrete security failures.",
+        "prompt": "Review this Uniswap v4 hook repository, repair the concrete security failures, and rerun its checks.",
         "expectedActivation": "ACTIVATED"
       },
       {
         "id": "upgrade-existing-de",
         "language": "de",
-        "prompt": "Verbessere dieses bestehende Programmable-Hook-Projekt und bereite die Einreichung vor.",
+        "prompt": "Bereite mein fertiges Uniswap-v4-Hook-Projekt für die Einreichung vor und zeige verbleibende Blocker.",
         "expectedActivation": "ACTIVATED"
       }
     ],

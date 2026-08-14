@@ -121,11 +121,11 @@ if (argv.length === 0 || argv[0] === "--help" || argv[0] === "-h") {
 }
 const command = argv[0];
 const nodeMajor = Number.parseInt(process.versions.node.split(".", 1)[0], 10);
-const nodeRuntimeSupported = Number.isInteger(nodeMajor) && nodeMajor >= 24;
+const nodeRuntimeSupported = Number.isInteger(nodeMajor) && nodeMajor >= 22;
 if (command !== "doctor" && !nodeRuntimeSupported) {
   process.exitCode = emitFailure(command, new CliFailure(
-    "NODE_24_OR_NEWER_REQUIRED",
-    "Programmable v4 Builder requires Node.js 24 or newer"
+    "NODE_22_OR_NEWER_REQUIRED",
+    "Programmable v4 Builder requires Node.js 22 or newer"
   ));
 } else if (command === "start" && (argv.slice(1).includes("--help") || argv.slice(1).includes("-h"))) {
   process.stdout.write(`${startHelp()}\n`);

@@ -1,38 +1,282 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "kind": "programmable-knowledge-activation",
-  "selectionSemantics": "confirmed-selector-delta-one-reference",
-  "maximumLoadNow": 1,
+  "selectionSemantics": "confirmed-route-specialists-up-to-two",
+  "maximumLoadNow": 2,
   "cumulativeEstimatedTokenTarget": 8000,
   "quarantinedReferences": [
     "programmable-fee-policy-v2.md"
   ],
-  "rules": [
+  "routeSelections": [
     {
-      "id": "v4-custom-curve-contract-foundation",
+      "id": "capability-open-world-project-compiler",
+      "routeKind": "capability",
+      "routeId": "open-world-project-compiler",
       "stage": 10,
       "order": 10,
-      "capabilityAny": [
-        "custom-curve"
-      ],
-      "surfaceAny": [
-        "contract"
-      ],
+      "reference": "business-system-compiler.md",
+      "reason": "Start with the compact product and repository compiler before schema detail or materialization workflow."
+    },
+    {
+      "id": "capability-capability-composition",
+      "routeKind": "capability",
+      "routeId": "capability-composition",
+      "stage": 10,
+      "order": 20,
+      "reference": "business-system-compiler.md",
+      "reason": "Resolve component ownership and the minimum complete repository before opening broad composition references."
+    },
+    {
+      "id": "capability-owner-defined-project",
+      "routeKind": "capability",
+      "routeId": "owner-defined-project",
+      "stage": 10,
+      "order": 30,
+      "reference": "business-system-compiler.md",
+      "reason": "Preserve novel owner intent through the compact architecture compiler before selecting specialist implementation chapters."
+    },
+    {
+      "id": "capability-v4-semantic-contract",
+      "routeKind": "capability",
+      "routeId": "v4-semantic-contract",
+      "stage": 20,
+      "order": 10,
       "reference": "v4-contract-reasoning-kernel.md",
       "reason": "Start with the compact v4 contract reasoning foundation before patterns, scenarios, or broad security chapters."
     },
     {
-      "id": "browser-game-application-runtime",
+      "id": "capability-canonical-v4-fee",
+      "routeKind": "capability",
+      "routeId": "canonical-v4-fee",
+      "stage": 20,
+      "order": 20,
+      "reference": "v4-contract-reasoning-kernel.md",
+      "reason": "Derive v4 accounting and settlement from the compact kernel before opening the full protocol chapter."
+    },
+    {
+      "id": "capability-hook-implementation",
+      "routeKind": "capability",
+      "routeId": "hook-implementation",
+      "stage": 20,
+      "order": 30,
+      "reference": "v4-contract-reasoning-kernel.md",
+      "reason": "Start hook implementation from exact permissions, deltas, settlement, and invariant derivation."
+    },
+    {
+      "id": "capability-liquidity-position",
+      "routeKind": "capability",
+      "routeId": "liquidity-position",
+      "stage": 25,
+      "order": 10,
+      "reference": "v4-liquidity-and-state.md",
+      "reason": "Resolve position identity, custody, action safety, and coherent state reads before application code."
+    },
+    {
+      "id": "capability-advanced-liquidity",
+      "routeKind": "capability",
+      "routeId": "advanced-liquidity",
+      "stage": 25,
+      "order": 20,
+      "reference": "v4-liquidity-and-state.md",
+      "reason": "Start advanced liquidity work with position, subscriber, custody, and coherent-state invariants."
+    },
+    {
+      "id": "capability-swap-client",
+      "routeKind": "capability",
+      "routeId": "swap-client",
+      "stage": 30,
+      "order": 10,
+      "reference": "v4-sdk-integration.md",
+      "reason": "Bind quote, router, hookData, Permit2, and transaction limits before implementing a swap client."
+    },
+    {
+      "id": "capability-v4-claim-client",
+      "routeKind": "capability",
+      "routeId": "v4-claim-client",
+      "stage": 30,
+      "order": 20,
+      "reference": "v4-sdk-integration.md",
+      "reason": "Resolve claim identity, authority, SDK encoding, and transaction evidence before client implementation."
+    },
+    {
+      "id": "capability-offchain-trust",
+      "routeKind": "capability",
+      "routeId": "offchain-trust",
+      "stage": 30,
+      "order": 30,
+      "reference": "ethereum-production-invariants.md",
+      "reason": "Start offchain dependencies with liveness, replay, provider, finality, and recovery invariants."
+    },
+    {
+      "id": "capability-chainlink-provider",
+      "routeKind": "capability",
+      "routeId": "chainlink-provider",
+      "stage": 30,
+      "order": 40,
+      "reference": "chainlink-provider-integration.md",
+      "reason": "Resolve the exact Chainlink product, chain support, identity, funding, and failure boundary first."
+    },
+    {
+      "id": "capability-runtime-product",
+      "routeKind": "capability",
+      "routeId": "runtime-product",
+      "stage": 30,
+      "order": 50,
+      "reference": "runtime-assets.md",
+      "reason": "Start with the confirmed runtime and asset boundary; do not introduce v4 mechanics without a v4 capability."
+    },
+    {
+      "id": "capability-companion-repository-architecture",
+      "routeKind": "capability",
+      "routeId": "companion-repository-architecture",
+      "stage": 30,
+      "order": 60,
+      "reference": "companion-manifests.md",
+      "reason": "Bind companion ownership, source closure, commands, and failure behavior before repository handoff."
+    },
+    {
+      "id": "capability-discovery-and-provider",
+      "routeKind": "capability",
+      "routeId": "discovery-and-provider",
+      "stage": 30,
+      "order": 70,
+      "reference": "ethereum-production-invariants.md",
+      "reason": "Start discovery work from coherent provider, indexer, reorg, availability, and evidence boundaries."
+    },
+    {
+      "id": "capability-economic-and-lifecycle-invariants",
+      "routeKind": "capability",
+      "routeId": "economic-and-lifecycle-invariants",
+      "stage": 35,
+      "order": 10,
+      "reference": "v4-contract-reasoning-kernel.md",
+      "reason": "Derive state, units, conservation, solvency, rounding, and terminal conditions before economic patterns."
+    },
+    {
+      "id": "capability-token-behavior",
+      "routeKind": "capability",
+      "routeId": "token-behavior",
+      "stage": 35,
+      "order": 20,
+      "reference": "v4-contract-reasoning-kernel.md",
+      "reason": "Start token behavior from explicit authority, accounting, conservation, and adversarial transition invariants."
+    },
+    {
+      "id": "capability-permissioned-pool-model",
+      "routeKind": "capability",
+      "routeId": "permissioned-pool-model",
+      "stage": 35,
+      "order": 30,
+      "reference": "v4-contract-reasoning-kernel.md",
+      "reason": "Resolve PoolKey identity, callback authority, bypass paths, and settlement before permissioned patterns."
+    },
+    {
+      "id": "capability-continuous-clearing-auction-source",
+      "routeKind": "capability",
+      "routeId": "continuous-clearing-auction-source",
+      "stage": 35,
+      "order": 40,
+      "reference": "business-system-compiler.md",
+      "reason": "Compile auction actors, assets, transitions, liveness, exits, and source obligations before opening broad upstream material."
+    },
+    {
+      "id": "capability-evidence-and-security-properties",
+      "routeKind": "capability",
+      "routeId": "evidence-and-security-properties",
+      "stage": 40,
+      "order": 10,
+      "reference": "v4-contract-reasoning-kernel.md",
+      "reason": "Start contract evidence from exact identity, invariants, adversarial paths, and authority boundaries."
+    },
+    {
+      "id": "capability-dependency-reproducibility",
+      "routeKind": "capability",
+      "routeId": "dependency-reproducibility",
+      "stage": 50,
+      "order": 10,
+      "reference": "build-profiles.md",
+      "reason": "Bind compiler, dependency, lockfile, workflow, and source identities before accepting reproducibility evidence."
+    },
+    {
+      "id": "capability-builder-release-evaluation",
+      "routeKind": "capability",
+      "routeId": "builder-release-evaluation",
+      "stage": 50,
+      "order": 20,
+      "reference": "build-profiles.md",
+      "reason": "Start release evaluation from exact build profiles and immutable toolchain evidence before lifecycle detail."
+    },
+    {
+      "id": "surface-application",
+      "routeKind": "surface",
+      "routeId": "application",
+      "stage": 10,
+      "order": 10,
+      "reference": "business-system-compiler.md",
+      "reason": "Compile the application role, dependencies, outputs, and repository boundary before implementation."
+    },
+    {
+      "id": "surface-contract",
+      "routeKind": "surface",
+      "routeId": "contract",
       "stage": 20,
       "order": 10,
-      "capabilityAny": [
-        "browser-game"
-      ],
-      "surfaceAny": [
-        "application"
-      ],
+      "reference": "v4-contract-reasoning-kernel.md",
+      "reason": "Start a confirmed contract surface from exact v4 identity, permissions, accounting, and invariants."
+    },
+    {
+      "id": "surface-runtime",
+      "routeKind": "surface",
+      "routeId": "runtime",
+      "stage": 30,
+      "order": 10,
       "reference": "runtime-assets.md",
-      "reason": "Start with the confirmed browser runtime and asset boundary; do not introduce v4 mechanics without a v4 capability."
+      "reason": "Resolve runtime asset provenance, loading, failure, licensing, and closure before product code."
+    },
+    {
+      "id": "surface-indexer",
+      "routeKind": "surface",
+      "routeId": "indexer",
+      "stage": 30,
+      "order": 20,
+      "reference": "ethereum-production-invariants.md",
+      "reason": "Start indexer work from coherent blocks, reorg handling, bounded replay, and provider evidence."
+    },
+    {
+      "id": "surface-connected-service",
+      "routeKind": "surface",
+      "routeId": "connected-service",
+      "stage": 30,
+      "order": 30,
+      "reference": "companion-manifests.md",
+      "reason": "Bind service ownership, source, commands, dependencies, failure, and recovery before integration."
+    },
+    {
+      "id": "surface-external-provider",
+      "routeKind": "surface",
+      "routeId": "external-provider",
+      "stage": 30,
+      "order": 40,
+      "reference": "ethereum-production-invariants.md",
+      "reason": "Resolve provider identity, freshness, disagreement, finality, outage, and recovery before use."
+    },
+    {
+      "id": "surface-metadata",
+      "routeKind": "surface",
+      "routeId": "metadata",
+      "stage": 30,
+      "order": 50,
+      "reference": "companion-manifests.md",
+      "reason": "Bind metadata ownership, source identity, update policy, availability, and consumer failure behavior."
+    },
+    {
+      "id": "surface-other",
+      "routeKind": "surface",
+      "routeId": "other",
+      "stage": 40,
+      "order": 10,
+      "reference": "business-system-compiler.md",
+      "reason": "Preserve an uncategorized confirmed surface through explicit architecture and repository ownership before specialization."
     }
   ],
   "ordering": [

@@ -303,7 +303,7 @@ test("doctor distinguishes local generation from an actual Git worktree", () => 
     assert.equal(report.githubCli.requiredOnlyForFrozenLegacyApplicationV3, true);
     assert.equal(report.githubCli.authenticationChecked, false);
     assert.equal(report.readyForGitHubApplicationClient, false);
-    assert.equal(report.runtimeCompatibility.node.minimumMajor, 24);
+    assert.equal(report.runtimeCompatibility.node.minimumMajor, 22);
     assert.equal(report.runtimeCompatibility.node.supported, true);
     assert.deepEqual(report.runtimeCompatibility.frozenLegacyApplicationV3.supportedPlatforms, ["darwin", "linux"]);
     assert.equal(
@@ -332,12 +332,12 @@ test("doctor distinguishes local generation from an actual Git worktree", () => 
   }
 });
 
-test("doctor reports the Node 24 blocker for an unsupported runtime", () => {
+test("doctor reports the Node 22 blocker for an unsupported runtime", () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-doctor-node-"));
   const doctor = path.join(scriptsRoot, "doctor.mjs");
   try {
     const bootstrap = [
-      'Object.defineProperty(process.versions, "node", { value: "23.0.0" });',
+      'Object.defineProperty(process.versions, "node", { value: "21.7.3" });',
       `process.argv = [process.execPath, ${JSON.stringify(doctor)}, "--json", "--repository-root", ${JSON.stringify(directory)}];`,
       `await import(${JSON.stringify(pathToFileURL(doctor).href)});`
     ].join("\n");
@@ -349,8 +349,8 @@ test("doctor reports the Node 24 blocker for an unsupported runtime", () => {
     assert.equal(result.status, 1, result.stderr);
     const report = JSON.parse(result.stdout);
     assert.deepEqual(report.runtimeCompatibility.node, {
-      minimumMajor: 24,
-      currentMajor: 23,
+      minimumMajor: 22,
+      currentMajor: 21,
       supported: false
     });
     assert.deepEqual(report.publicBetaBlockers, ["FROZEN_LEGACY_APPLICATION_V3_NOT_CURRENT"]);
