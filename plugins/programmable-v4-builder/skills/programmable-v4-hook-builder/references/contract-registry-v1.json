@@ -689,7 +689,7 @@
         "mode": "direct",
         "moduleByteLength": 1070,
         "moduleSha256": "sha256:c4561640a691f3cf383ad5b5dd04d58bd9a809e93a3a462e36e8cfe564f5d6c4",
-        "closureSha256": "sha256:a0ed3cc2a9a78af1d7889b13803f839941dedf70a3a90acb222d09afce005d78"
+        "closureSha256": "sha256:ecccd8cfa8fa9b9f51cf8d563ebff0be075c5c5557cee69ac498610ca1117a44"
       }
     },
     {
@@ -1879,7 +1879,7 @@
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/github-application-core.mjs",
       "moduleCount": 75,
-      "totalByteLength": 934518,
+      "totalByteLength": 942137,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -2510,10 +2510,14 @@
         },
         {
           "path": "scripts/submit-launch-policy-github.mjs",
-          "byteLength": 8398,
-          "sha256": "sha256:fe7810d2d359978511e676edded097753c5f6c4fcc889087936f54760531f9e6",
+          "byteLength": 16017,
+          "sha256": "sha256:2c1695bc5d475730de330bdf5c9cab15d1878b337243f34aa47b4d4777b28297",
           "localImports": [
             "scripts/github-application-normalizers.mjs",
+            "scripts/github-application-transport-core.mjs",
+            "scripts/github-public-source-api.mjs",
+            "scripts/github-public-source-core.mjs",
+            "scripts/github-public-source-shared.mjs",
             "scripts/metadata-core.mjs",
             "scripts/registry-intake-contract.mjs",
             "scripts/submit-launch-policy-contract.mjs"
@@ -2606,7 +2610,7 @@
           ]
         }
       ],
-      "closureSha256": "sha256:a0ed3cc2a9a78af1d7889b13803f839941dedf70a3a90acb222d09afce005d78"
+      "closureSha256": "sha256:ecccd8cfa8fa9b9f51cf8d563ebff0be075c5c5557cee69ac498610ca1117a44"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -10901,8 +10905,8 @@
     "validatorClosureModuleBindingCount": 1036,
     "validatorClosureDistinctModuleCount": 177,
     "schemaPathsSha256": "sha256:c523d89f3208b09ddc3f9862b232567cb13dc759ebb761669f9b76af9cda6931",
-    "validatorBindingsSha256": "sha256:1e275a996fda94d03e8a393a8429bb2222cefe5c4ad209309b92c6b86e4ec217",
-    "validatorClosuresSha256": "sha256:d631a5d846e662a15c5dc68cab14ff137efd7a2d940c0bceb20e26e13970b130"
+    "validatorBindingsSha256": "sha256:c2634a0981b691c26beabc90aa6d3b86521cd7f0aeb0064fd81e37b82b7cd187",
+    "validatorClosuresSha256": "sha256:4bb9ef411a34a880403dee8b9f4f3139f8cbdf5a7e3ebb0ffddfd386fbea6267"
   },
-  "registrySha256": "sha256:511dea77f6a776dc20ef3f4d76e946f5096e4e5bc0a14cd8e03b870230738718"
+  "registrySha256": "sha256:92b61a885c0948afa0dbabfb4523dcf0be356b1d90519b3ca97a69863f3e3f2f"
 }
