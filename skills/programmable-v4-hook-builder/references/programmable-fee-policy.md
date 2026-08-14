@@ -1,15 +1,11 @@
-# Frozen legacy Programmable volume fee V1
-
-> Historical Submission V1 compatibility only. This document is not current Programmable policy or launch authority.
-> Load it only for exact legacy replay. Current requirements come from applicable Rule IDs in the protected central
-> Submit Launch policy bytes.
+# Mandatory Programmable volume fee
 
 Policy id: `programmable-volume-fee-v1`
 Policy version: `1.1.0`
 Builder candidate: `v0.5.1` (policy unchanged from released `v0.4.0`)
 
-Apply this policy only when replaying the frozen Submission V1 contract. Builder releases `v0.1.1` and `v0.2.0` remain
-reproducible for earlier review records; they do not define current requirements for a new application.
+Apply this policy to every new Programmable launch application. Builder releases `v0.1.1` and `v0.2.0` remain
+reproducible for earlier review records, but they are not the current release for a new launch application.
 
 This policy does not narrow which ideas may be proposed. A missing or incomplete integration produces an architecture
 or changes-required result. It never turns the project category itself into an automatic rejection. It also does not

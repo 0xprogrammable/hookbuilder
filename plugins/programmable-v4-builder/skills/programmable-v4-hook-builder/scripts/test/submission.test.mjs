@@ -2575,7 +2575,7 @@ test("scaffolder creates an isolated package and never touches the model registr
   }
 });
 
-test("tax and automatic-liquidity template capabilities require token mechanics explicitly", () => {
+test("frozen V1 scaffold rejects current tax and automatic-liquidity catalog plans", () => {
   const root = fs.mkdtempSync(path.join(repositoryRoot, ".skill-token-mechanics-bridge-test-"));
   const planDirectory = path.join(root, "builder-plan");
   const destinationRoot = path.join(root, "submissions");
@@ -2610,20 +2610,16 @@ test("tax and automatic-liquidity template capabilities require token mechanics 
       ],
       { cwd: repositoryRoot, encoding: "utf8", shell: false }
     );
-    assert.equal(result.status, 0, result.stderr);
-
-    const submission = JSON.parse(fs.readFileSync(path.join(destinationRoot, "tax-funded-liquidity", "submission.json"), "utf8"));
-    assert.equal(submission.tokenMechanics, null);
-    const report = analyzeSubmission(submission, { schema });
-    assert.ok(report.findings.some(({ code, path }) => (
-      code === "TEMPLATE_TOKEN_MECHANICS_MISSING" && path === "$.tokenMechanics"
-    )), JSON.stringify(report.findings));
+    assert.equal(result.status, 2, result.stderr);
+    assert.match(result.stderr, /frozen legacy V1 scaffold does not accept current catalog plans/u);
+    assert.match(result.stderr, /use project materialize for current builds/u);
+    assert.equal(fs.existsSync(path.join(destinationRoot, "tax-funded-liquidity")), false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("ordinary-launch scaffold derives an ordinary token category", () => {
+test("frozen V1 scaffold rejects a current ordinary-launch catalog plan", () => {
   const root = fs.mkdtempSync(path.join(repositoryRoot, ".skill-ordinary-category-test-"));
   const planDirectory = path.join(root, "builder-plan");
   const destinationRoot = path.join(root, "submissions");
@@ -2639,15 +2635,16 @@ test("ordinary-launch scaffold derives an ordinary token category", () => {
       [path.join(skillRoot, "scripts", "scaffold-submission.mjs"), "ordinary-token", "--destination", destinationRoot, "--template-plan", path.join(planDirectory, "programmable-template.json")],
       { cwd: repositoryRoot, encoding: "utf8", shell: false }
     );
-    assert.equal(result.status, 0, result.stderr);
-    const submission = JSON.parse(fs.readFileSync(path.join(destinationRoot, "ordinary-token", "submission.json"), "utf8"));
-    assert.equal(submission.model.category, "permissionless-token");
+    assert.equal(result.status, 2, result.stderr);
+    assert.match(result.stderr, /frozen legacy V1 scaffold does not accept current catalog plans/u);
+    assert.match(result.stderr, /use project materialize for current builds/u);
+    assert.equal(fs.existsSync(path.join(destinationRoot, "ordinary-token")), false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("scaffolder binds one exact materialized template plan and preserves open capabilities and local tags", () => {
+test("frozen V1 scaffold rejects current custom catalog plans before provenance interpretation", () => {
   const root = fs.mkdtempSync(path.join(repositoryRoot, ".skill-template-bridge-test-"));
   const planDirectory = path.join(root, "builder-plan");
   const destinationRoot = path.join(root, "submissions");
@@ -2683,55 +2680,10 @@ test("scaffolder binds one exact materialized template plan and preserves open c
       ],
       { cwd: repositoryRoot, encoding: "utf8", shell: false }
     );
-    assert.equal(result.status, 0, result.stderr);
-    const submission = JSON.parse(fs.readFileSync(path.join(destinationRoot, "moving-arena", "submission.json"), "utf8"));
-    assert.equal(submission.standardVersion, "1.6.0");
-    assert.equal(submission.builderTemplate.source, "catalog");
-    assert.equal(submission.builderTemplate.templateSelection.starterId, "blank-custom");
-    assert.deepEqual(submission.builderTemplate.templateSelection.ownerProvidedLocalTags, ["browser-fps"]);
-    assert.deepEqual(submission.publicMetadata.localDiscoveryTags, ["browser-fps"]);
-    assert.ok(submission.builderTemplate.templateSelection.localProjectTags.includes("browser-fps"));
-    assert.deepEqual(
-      submission.builderTemplate.templateSelection.selectedCapabilityIds,
-      JSON.parse(fs.readFileSync(planPath, "utf8")).machineCapabilities.knownCapabilityIds
-    );
-    for (const internalId of [
-      ...submission.builderTemplate.templateSelection.selectedPackIds,
-      ...submission.builderTemplate.templateSelection.selectedCapabilityIds
-    ]) {
-      assert.equal(submission.publicMetadata.localDiscoveryTags.includes(internalId), false, internalId);
-    }
-    assert.deepEqual(
-      submission.builderTemplate.templateSelection.customCapabilities.map(({ id, label }) => ({ id, label })),
-      [{ id: "moving-arena", label: "Moving arena changes the next swap rule" }]
-    );
-
-    const forgedCurrentSelection = structuredClone(submission);
-    const removedCapabilityId = forgedCurrentSelection.builderTemplate.templateSelection.selectedCapabilityIds.pop();
-    forgedCurrentSelection.builderTemplate.templateSelection.localProjectTags = forgedCurrentSelection.builderTemplate.templateSelection.localProjectTags
-      .filter((tag) => tag !== removedCapabilityId);
-    const forgedCurrentReport = analyzeSubmission(forgedCurrentSelection, { schema });
-    assert.ok(forgedCurrentReport.findings.some(({ severity, code }) => severity === "blocker" && code === "BUILDER_TEMPLATE_PROVENANCE_INVALID"));
-
-    let report = analyzeSubmission(submission, { schema });
-    assert.equal(report.findings.some(({ code, path }) => (
-      code === "TEMPLATE_CAPABILITY_MISSING_FROM_ARCHITECTURE"
-      && path === "$.builderTemplate.templateSelection.customCapabilities[0].id"
-    )), false);
-    assert.ok(submission.projectCapabilities.some(({ id }) => id === "moving-arena"));
-    assert.ok(submission.capabilityExtensions.some(({ capabilityId }) => capabilityId === "moving-arena"));
-    assert.ok(submission.projectSurfaces.some(({ capabilityIds }) => capabilityIds.includes("moving-arena")));
-    assert.match(
-      fs.readFileSync(path.join(destinationRoot, "moving-arena", "PROPOSAL.md"), "utf8"),
-      /Moving arena changes the next swap rule/u
-    );
-
-    submission.publicMetadata.localDiscoveryTags = [];
-    report = analyzeSubmission(submission, { schema });
-    assert.ok(
-      report.findings.some(({ severity, code }) => severity === "blocker" && code === "TEMPLATE_LOCAL_DISCOVERY_TAG_MISSING"),
-      JSON.stringify(report.findings)
-    );
+    assert.equal(result.status, 2, result.stderr);
+    assert.match(result.stderr, /frozen legacy V1 scaffold does not accept current catalog plans/u);
+    assert.match(result.stderr, /use project materialize for current builds/u);
+    assert.equal(fs.existsSync(path.join(destinationRoot, "moving-arena")), false);
 
     const originalPlan = JSON.parse(fs.readFileSync(planPath, "utf8"));
     const forgedCatalogPlan = structuredClone(originalPlan);
@@ -2763,7 +2715,7 @@ test("scaffolder binds one exact materialized template plan and preserves open c
       { cwd: repositoryRoot, encoding: "utf8", shell: false }
     );
     assert.equal(result.status, 2);
-    assert.match(result.stderr, /exact hash-bound catalog/u);
+    assert.match(result.stderr, /frozen legacy V1 scaffold does not accept current catalog plans/u);
     assert.equal(fs.existsSync(path.join(destinationRoot, "forged-catalog-plan")), false);
 
     const tamperedPlan = structuredClone(originalPlan);
