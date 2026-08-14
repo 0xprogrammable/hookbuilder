@@ -140,10 +140,11 @@ Neither label claims fee conformance, safety, audit, deployment, production read
 descriptor records those claims as false or not claimed. Exact hard-conflict predicates address concrete unsafe
 behavior; they are never category bans.
 
-The generic catalog never carries the frozen legacy Fee V2 owner, rate, policy or enforcement adapters. Those values and
-archived fee Legos exist only in the exact, intent-bound legacy project profile; they cannot be recovered through a
-starter, pack, capability or catalog label. Generic user-requested fee behavior stays project behavior and creates no
-Programmable platform claim unless a future applicable central-policy Rule ID defines one.
+Generic plans cannot select or materialize the frozen legacy Fee V2 owner, rate, policy or enforcement adapters. The
+archived definitions remain inspectable in the catalog, but cannot be recovered through a starter, pack, capability or
+catalog label; only the exact, intent-bound legacy project profile can replay them. Generic user-requested fee behavior
+stays project behavior and creates no Programmable platform claim unless a future applicable central-policy Rule ID
+defines one.
 
 ## Owner-defined capabilities
 
