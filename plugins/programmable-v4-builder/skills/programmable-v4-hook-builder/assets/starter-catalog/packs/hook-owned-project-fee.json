@@ -22,7 +22,7 @@
     "metadata"
   ],
   "requiredFacts": [
-    "Selected project fee, basis and its relationship to any separately selected platform fee",
+    "Selected project fee, basis and its relationship to any other explicitly requested fee",
     "Project beneficiary, mutation rules, liability keys and claim behavior",
     "Executed gross quote-side basis, rounding and partial-fill behavior",
     "Public fee disclosure for every trading surface"
@@ -35,7 +35,7 @@
   ],
   "requiredTests": [
     "Project fee behavior at zero, minimum, ordinary and maximum selected rates",
-    "Any separately selected platform fee composes without double collection",
+    "Any other explicitly requested fee composes without double collection",
     "Beneficiary mutation cannot redirect another selected recipient share",
     "Solvency, claims and pool isolation"
   ],

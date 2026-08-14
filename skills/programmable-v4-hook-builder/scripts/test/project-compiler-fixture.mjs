@@ -24,7 +24,7 @@ import {
   validateProjectSpec
 } from "../project-contracts-core.mjs";
 import { bindLocalReleaseHandoffV1, createNoMarketProjectAuthoring, renderGitHubSubmissionHandoffV1, sealProjectState, validateProjectState } from "../project-state-core.mjs";
-import { validateRepositoryPlan } from "../repository-completion-core.mjs";
+import { validateFrozenLegacyTradeManifestV1RepositoryPlan, validateRepositoryPlan } from "../repository-completion-core.mjs";
 import { validateAgainstSchema } from "../submission-core.mjs";
 import { architectureSnapshotSha256, createOpenWorldDraftPackage } from "../open-world-v2-core.mjs";
 import { expectedTradeRunnerCallsV1, inspectForgeTradeTestRunnerOutputV1, validateV4DeploymentEvidence } from "../v4-deployment-evidence-core.mjs";
@@ -58,7 +58,7 @@ export {
   ARCHITECTURE_ROLES, PRODUCT_GRAPH_NAMES, PROJECT_SPEC_FACETS, projectArtifactSha256,
   validateArchitectureCandidates, validateProductGraph, validateProjectSpec,
   bindLocalReleaseHandoffV1, createNoMarketProjectAuthoring, renderGitHubSubmissionHandoffV1,
-  sealProjectState, validateProjectState, validateRepositoryPlan, validateAgainstSchema,
+  sealProjectState, validateProjectState, validateFrozenLegacyTradeManifestV1RepositoryPlan, validateRepositoryPlan, validateAgainstSchema,
   architectureSnapshotSha256, createOpenWorldDraftPackage, expectedTradeRunnerCallsV1,
   inspectForgeTradeTestRunnerOutputV1, validateV4DeploymentEvidence, canonicalV4PermissionMask,
   TRADE_TEST_SEMANTIC_ADEQUACY_V1, tradeCapabilityManifestSha256V1,

@@ -15,8 +15,8 @@ const USAGE = `Usage:
     --evidence <evidence.json> --contract <ContractName> \\
     --supporting-source hook-factory:<factory.sol> --out <manifest.json> [--force]
 
-The result is structural candidate evidence only. It is not an audit, deployment
-receipt, runtime proof, or substitute for an isolated maintainer rebuild.`;
+Frozen legacy Fee V1 only; no current Programmable requirement.
+Structural evidence is not an audit, runtime/deployment proof, or maintainer rebuild.`;
 
 try {
   const { command, options } = parseArguments(process.argv.slice(2));

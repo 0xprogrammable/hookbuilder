@@ -25,7 +25,7 @@
     "Exact vault standard, asset, share math, source, revision, deployment, runtime, fees, limits, pause, upgrade, governance and loss behavior",
     "Which pool-owned inventory may leave PoolManager accounting, who authorizes it, and how every asset and share liability is namespaced by PoolId",
     "Liquidity buffer, withdrawal queue, recall trigger, maximum delay, failed recall, partial recall, vault loss and insolvency allocation",
-    "Yield beneficiary, Programmable and project fee separation, compounding, rounding, dust, donation and emergency exit policy",
+    "Yield beneficiary, project-defined fee allocation, compounding, rounding, dust, donation and emergency exit policy",
     "Router, quote and partial-fill behavior while inventory is deployed or recall is unavailable"
   ],
   "requiredFiles": [

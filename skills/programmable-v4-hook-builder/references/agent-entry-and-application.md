@@ -1,15 +1,15 @@
 # Agent entry and application contract
 
-This reference separates the active **Public Applicant Beta** from a later **Connected Submission service**. Builders
-keep source externally and use the Skill to prepare one exact six-file application for
-`0xprogrammable/submit-launch` (immutable GitHub ID `1320171831`). The GitHub transport is draft-only, needs no GitHub
-App credential, and proves no approval, wallet control, signature, deployment, or launch. Connected-service contracts
-later in this file are inactive future designs.
+This reference preserves the frozen six-file **Public Applicant Beta** transport and separates it from current central
+policy consumption and a later **Connected Submission service**. The six-file `prepare-pr` path is historical replay
+only; it is not the current/default application transport and its local Fee V1/V2 fields define no current requirement.
+Current work binds protected central policy and workflow-canary contracts. This Task 7A consumer exposes no general
+application transport; a dedicated local `prepare-canary` client arrives in the next consumer step.
 
 ## Contents
 
 - [Product boundary](#product-boundary)
-- [Current Public Applicant Beta](#current-public-applicant-beta)
+- [Frozen Public Applicant Beta](#frozen-public-applicant-beta)
 - [Default entry](#default-entry)
 - [First agent behavior](#first-agent-behavior)
 - [Knowledge ownership](#knowledge-ownership)
@@ -39,18 +39,19 @@ Programmable does not provide a separate chat interface. The builder uses Codex,
 or another capable coding agent. The skill supplies the workflow, universal engineering knowledge, local build schemas,
 validators, and a strict client for exact protected central-policy bytes.
 
-The skill is the technical engine. In the current beta, the website may provide discovery and installation entry
-points, while GitHub hosts the public source and application review thread. A later Connected Submission service may
-add human identity binding, service-backed application status, review results, and an approved launch handoff.
+The skill is the technical engine. The website may provide discovery and installation entry points. The protected
+central workflow-canary contract, rather than the frozen six-file transport below, defines current canary input. A
+later Connected Submission service may add human identity binding, service-backed application status, review results,
+and an approved launch handoff.
 
 The skill must make the declared project reviewable whether it uses a product-selected hook, a no-hook path, or
 additional app, game, service, keeper, or indexer surfaces. Only applicable current central-policy Rule IDs determine
 Programmable requirements. The skill must never promise that generated code is perfect, safe, audited, accepted,
 deployed, or available.
 
-## Current Public Applicant Beta
+## Frozen Public Applicant Beta
 
-The current application boundary is deliberately small:
+The following boundary is retained only for exact historical replay:
 
 ```text
 idea or existing project
@@ -77,7 +78,7 @@ submissions/<application-id>/compatibility-report.json
 submissions/<application-id>/evidence-index.json
 ```
 
-`prepare-pr` performs no GitHub write. `submit` and `update` first return a read-only plan; only the exact confirmed plan
+Legacy `prepare-pr` performs no GitHub write. Legacy `submit` and `update` first return a read-only plan; only the exact confirmed plan
 may create or update the authenticated builder's `submit-launch` fork, branch, and one draft pull request. The client
 binds the exact central commit/tree and reads `docs/builder/intake-status.json` as schema `2` before every write. A
 state or base change invalidates the plan.
@@ -173,7 +174,7 @@ of truth for addresses, approval, deployment, or availability.
 
 The connected-service sections from **Identity model** through **Agent command contract**, plus **Required acceptance
 tests** and **Source-of-truth order**, define a later service-backed release. They are retained as a future product and
-security contract, not as instructions for the current Public GitHub PR Beta. **Portability** applies to both paths.
+security contract, not as instructions for current work or the frozen Public GitHub PR Beta. **Portability** applies to both paths.
 Until an implemented, tested, and activated service contract explicitly says otherwise:
 
 - there is no connected-service application id or remote application draft;
@@ -716,9 +717,9 @@ Before the later Connected Submission flow is available, prove at least:
 
 ## Source-of-truth order
 
-This order applies to the later Connected Submission service. For the current beta, resolve application workflow from
-the central GitHub pull request and its trusted checks, and resolve project source from the exact public GitHub identity
-inside the six-file application record. Neither source can create an approval or launch fact.
+This order applies to the later Connected Submission service. For frozen beta replay, resolve application workflow from
+the historical central GitHub pull request and its trusted checks, and resolve project source from the exact public
+GitHub identity inside the six-file application record. Neither source can create an approval or launch fact.
 
 For the later service, resolve facts in this order:
 

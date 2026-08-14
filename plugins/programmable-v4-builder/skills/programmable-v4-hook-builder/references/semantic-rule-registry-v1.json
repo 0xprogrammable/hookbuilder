@@ -62,7 +62,7 @@
       "category": "fee",
       "id": "builder.fee-rules.v1",
       "canonicalOwnerFile": "scripts/fee-policy-v2-contract.mjs",
-      "trigger": "The Fee Policy V2 contract creates and validates its externally funded rate rule.",
+      "trigger": "Frozen legacy Fee Policy V2 validates its archived rate rule.",
       "tests": {
         "positive": [
           {

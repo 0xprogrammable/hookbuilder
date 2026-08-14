@@ -25,7 +25,7 @@
     "Exact router or PoolManager path and observed-balance accounting for every operation",
     "Who triggers, pauses, rescues or reconfigures execution and what happens after failure",
     "LP position owner, fee beneficiary, removal authority and retirement behavior",
-    "Separation from standard Programmable fee-hook balances, liabilities and claims"
+    "Separation between liquidity inventory and any separately selected project fee balances, liabilities and claims"
   ],
   "requiredFiles": [
     "Token-managed liquidity source",

@@ -6,7 +6,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { parseCli, renderHelp } from "./cli-args.mjs";
 import { normalizeCompanionManifest } from "./companion-manifest-contract.mjs";
-import { inspectLocalGitReadiness, preparePullRequest } from "./cli-prepare-pr.mjs";
+import { preparePullRequest } from "./cli-prepare-pr.mjs";
 import { compactDoctorReport } from "./cli-prepare-pr-readiness.mjs";
 import { runLaunchBundleV2Cli } from "./launch-bundle-v2.mjs";
 import { detectOpenWorldV2Submission, executeOpenWorldV2Check } from "./open-world-v2-validation-core.mjs";
@@ -194,16 +194,8 @@ async function execute(command, options, positionals) {
       ),
       "doctor.mjs"
     );
-    const publicBetaGit = inspectLocalGitReadiness(repositoryRoot);
-    const report = {
-      ...tooling,
-      publicBetaGit,
-      readyForPublicBeta: false,
-      publicBetaNote: publicBetaGit.readyForPreparePrLocal
-        ? "Local Git gates are ready; public GitHub repository, commit and tree reachability remain notChecked until prepare-pr."
-        : "One or more local Git gates block prepare-pr; public reachability remains notChecked."
-    };
-    return new Map([[false, compactDoctorReport(report, publicBetaGit)], [true, report]]).get(options.fullJson);
+    const report = { ...tooling, readyForPublicBeta: false, publicBetaNote: "The six-file/Application V3 transport is frozen legacy; Task 7A evaluates no current application transport." };
+    return new Map([[false, compactDoctorReport(report)], [true, report]]).get(options.fullJson);
   }
   if (command === "scaffold") {
     const [modelId] = positionals;
@@ -458,7 +450,7 @@ function globalHelp() {
     "  doctor        Check local readiness.",
     "  context       Route the confirmed task.",
     "  project       Materialize and verify output.",
-    "  prepare-pr    Prepare read-only PR metadata.",
+    "Frozen legacy only: fee, launch-bundle, package, prepare-pr, scaffold, submit, status, update.",
     "",
     "Start: cli.mjs doctor -> cli.mjs context --mode autopilot -> cli.mjs project --help",
     "Optional templates: cli.mjs templates list",
@@ -468,7 +460,7 @@ function globalHelp() {
 function globalHelpJson() {
   const commands = [...new Set(["launch-bundle-v2", ...delegatedCommands.keys(), ...commandSpecs.keys()])]
     .sort().map((id) => ({ id, help: `cli.mjs ${id} --help` }));
-  return canonicalJson({ schemaVersion: "1.0.0", ok: true, command: "help", result: { goldenPath: ["doctor", "context", "project", "prepare-pr"], commands } });
+  return canonicalJson({ schemaVersion: "1.0.0", ok: true, command: "help", result: { goldenPath: ["doctor", "context", "project"], frozenLegacyCommands: ["application-recheck", "fee", "launch-bundle", "launch-bundle-v2", "package", "prepare-pr", "scaffold", "submit", "status", "update"], commands } });
 }
 function startHelp() {
   return [

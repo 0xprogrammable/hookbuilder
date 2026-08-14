@@ -23,9 +23,9 @@ async function main(argv) {
     process.stdout.write([
       "Usage: launch-bundle.mjs --submission <submission.json> --bindings <launch-bundle-input.json> --repository-root <path> --registry-root <path> --evidence-root <separate-path> [--write <path>]",
       "",
-      "Build deterministic pre-authorization material that exactly maps to Admin DeploymentSpecV1, LaunchExecutorCallV1 and PoolConfigurationV1.",
-      "The command performs no network, RPC, signing, deployment or authorization action. It binds exact local Git objects, file bytes and artifact bytecode; missing provenance fails closed.",
-      "Runtime and deployment evidence remain NOT_RUN/NOT_PROVIDED for independent Admin verification. --bindings and --write are relative to --evidence-root; output never overwrites."
+      "Frozen legacy V1 compatibility only; not a current launch or application path.",
+      "Creates deterministic local V1 pre-authorization artifacts. No network, RPC, signing, deployment or authorization.",
+      "Binds local Git, file and bytecode evidence; missing provenance fails closed. Runtime evidence remains NOT_RUN. Output never overwrites."
     ].join("\n") + "\n");
     return 0;
   }
@@ -53,7 +53,7 @@ async function main(argv) {
   if (structuralFindings.length > 0) {
     throw new LaunchBundleError(
       "SUBMISSION_SCHEMA_INVALID",
-      "submission does not satisfy the current launch-binding schema",
+      "submission does not satisfy the frozen legacy V1 launch-binding schema",
       { findings: structuralFindings.slice(0, 128) }
     );
   }

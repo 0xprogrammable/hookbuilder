@@ -86,13 +86,13 @@
       "id": "contract-priced-sell-and-burn",
       "kind": "pack",
       "path": "packs/contract-priced-sell-and-burn.json",
-      "sha256": "e84278a01670814751419afc1f175753ae783577e7deb631411bdf1da3df686f"
+      "sha256": "d0e26c4fc97e3d6d7faa05f7a38983fc0b6d5ccc440f4fa400848a84a635a91b"
     },
     {
       "id": "contract-priced-sell-and-burn-v4-custom-accounting",
       "kind": "pack",
       "path": "packs/contract-priced-sell-and-burn-v4-custom-accounting.json",
-      "sha256": "580ce54d9d2f13418d409dbefd8f613e6f2e2d035bab6a237a3dfe8431766612"
+      "sha256": "b20eb5d1f20776c9f416d44ef0bb8fb1c23e46fda13b80914b79a36927323940"
     },
     {
       "id": "cross-chain-messaging",
@@ -140,13 +140,13 @@
       "id": "hook-owned-idle-yield",
       "kind": "pack",
       "path": "packs/hook-owned-idle-yield.json",
-      "sha256": "5be5dc1edfbe2d3d7f41a63341adeeedbb1380e0d4f57be39bdbb906c61954f7"
+      "sha256": "134041888e9d168ad55b9123bece8d55c391162c5abee5b31e223ecdc117fdda"
     },
     {
       "id": "hook-owned-project-fee",
       "kind": "pack",
       "path": "packs/hook-owned-project-fee.json",
-      "sha256": "bf6ec7b377f7487bc597a12037efc624ffa7d5b0b4fb6cf23e13955fcf661b1d"
+      "sha256": "0b3df4d29367f386fde2ff299e9604373887a416212e58a8a0dcf00530aeef5c"
     },
     {
       "id": "launch-distribution-vesting-lp-custody",
@@ -242,7 +242,7 @@
       "id": "tax-financed-auto-liquidity",
       "kind": "pack",
       "path": "packs/tax-financed-auto-liquidity.json",
-      "sha256": "cb0a8929e496ee8587371cca5bd5faf2efc1df7bdf46a7757b2d555046f80339"
+      "sha256": "aef0575c4ded4ee4d031bb12a7441add713bd772baf4957bfe1e004c0ea21efd"
     },
     {
       "id": "test-evidence-threat-model",
@@ -260,13 +260,13 @@
       "id": "token-managed-automatic-liquidity",
       "kind": "pack",
       "path": "packs/token-managed-automatic-liquidity.json",
-      "sha256": "1846e71247012f8dc015b527705ec8e9053d39bdb10db89395fb722369ab2d24"
+      "sha256": "7bc7848e399e744d94746ee5cca62cd954603bac175bcb702cc2c25f4fcec849"
     },
     {
       "id": "token-transfer-tax",
       "kind": "pack",
       "path": "packs/token-transfer-tax.json",
-      "sha256": "4ebe082179ab57e67a619ce3becb5c3445c94158c99672e1cc142a6ac33321bc"
+      "sha256": "cca6d006927ad80c4b578b258d31b61f9be7b0c932b6fccda6dfec8f875a0002"
     },
     {
       "id": "v4-claim-client",

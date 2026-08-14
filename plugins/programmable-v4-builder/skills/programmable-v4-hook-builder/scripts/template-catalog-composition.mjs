@@ -218,7 +218,7 @@ export function composeTemplate({
   if (["ordinary-launch", "custom-token-standard-fee-hook"].includes(starter.id) && selected.has("custom-hook-behavior")) {
     fail(
       "CUSTOM_HOOK_STARTER_REQUIRED",
-      `${starter.id} cannot include additional project-defined hook behavior beyond mandatory fee collection, directly or through another pack. Preserve the selected packs and continue with --starter custom-hook.`,
+      `${starter.id} cannot include additional project-defined hook behavior beyond its declared hook boundary, directly or through another pack. Preserve the selected packs and continue with --starter custom-hook.`,
       {
         starterId: starter.id,
         recommendedStarterId: "custom-hook",

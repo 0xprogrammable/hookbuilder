@@ -359,7 +359,7 @@ export function renderMetadata(plan) {
     "",
     "## Economics and controls",
     "",
-    "- [ ] LP fee, mandatory Programmable share, project hook-owned share and transfer tax shown separately",
+    "- [ ] LP fee, every explicitly requested project hook-owned fee and transfer tax shown separately",
     "- [ ] Mint, pause, blacklist, confiscation, upgrade, rescue and payout-redirection powers disclosed",
     "- [ ] External services, assets, signers, keepers and oracles disclosed",
     "- [ ] Affiliations and non-affiliations stated without implying endorsement",

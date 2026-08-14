@@ -16,6 +16,17 @@ const skillRoot = path.resolve(testDirectory, "..", "..");
 const cli = path.join(skillRoot, "scripts", "cli.mjs");
 const catalog = loadTemplateCatalog({ skillRoot });
 
+test("active application routes identify the six-file transport as frozen legacy only", () => {
+  const entry = fs.readFileSync(path.join(skillRoot, "references", "agent-entry-and-application.md"), "utf8");
+  const workflow = fs.readFileSync(path.join(skillRoot, "references", "workflow.md"), "utf8");
+  assert.match(entry, /## Frozen Public Applicant Beta/u);
+  assert.match(entry, /six-file `prepare-pr` path is historical replay/u);
+  assert.doesNotMatch(entry, /## Current Public Applicant Beta/u);
+  assert.match(workflow, /## 8\. Preserve the frozen six-file application transport/u);
+  assert.match(workflow, /not the current\/default\s+application path/u);
+  assert.doesNotMatch(workflow, /## 8\. Prepare the public GitHub application/u);
+});
+
 test("mode-only exploration starts from the compact business compiler without implementation context", () => {
   const result = planKnowledge({ mode: "explore", skillRoot });
   assert.deepEqual(paths(result), ["references/business-system-compiler.md"]);

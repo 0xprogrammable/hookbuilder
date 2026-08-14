@@ -74,7 +74,10 @@
       "items": { "$ref": "#/$defs/capabilityProfile" }
     },
     "tradeCapability": { "$ref": "#/$defs/tradeCapability" },
-    "programmableFee": { "$ref": "#/$defs/programmableFee" },
+    "programmableFee": {
+      "$ref": "#/$defs/programmableFee",
+      "description": "Frozen legacy Fee V2 compatibility subobject. Current/default central-policy validation rejects this field; only the explicitly named frozen legacy replay or migration entrypoint may accept it. This subobject defines no current Programmable requirement."
+    },
     "implementation": { "$ref": "#/$defs/implementation" },
     "fragmentation": { "$ref": "#/$defs/fragmentation" }
   },
@@ -876,6 +879,7 @@
       }
     },
     "programmableFee": {
+      "description": "Exact frozen legacy Fee V2 projection retained for replay and migration only; never current/default policy authority.",
       "type": "object",
       "additionalProperties": false,
       "required": [

@@ -102,7 +102,7 @@
       "contractId": "execution-surface-coverage-v1",
       "schemaPath": "references/execution-surface-coverage-v1.schema.json",
       "schemaId": "urn:programmable:execution-surface-coverage:1.0.0",
-      "lifecycle": "active",
+      "lifecycle": "frozen",
       "payloadDigestProfile": "contract-defined",
       "validator": {
         "modulePath": "scripts/launch-bundle-v2-core.mjs",
@@ -426,7 +426,7 @@
       "contractId": "registry-acceptance-v3",
       "schemaPath": "references/registry-acceptance-v3.schema.json",
       "schemaId": "urn:programmable:registry-acceptance-v3:3.0.0",
-      "lifecycle": "active",
+      "lifecycle": "frozen",
       "payloadDigestProfile": "contract-defined",
       "validator": {
         "modulePath": "scripts/launch-bundle-v2-core.mjs",

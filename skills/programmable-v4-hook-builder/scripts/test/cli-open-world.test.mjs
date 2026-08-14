@@ -44,6 +44,7 @@ test("host-neutral CLI exposes open-world, V2 launch checking, and historical ap
   const launchV1Help = run(["launch-bundle", "--help"]);
   assert.equal(launchV1Help.status, 0, launchV1Help.stderr);
   assert.match(launchV1Help.stdout, /Usage: launch-bundle\.mjs/u);
+  assert.match(launchV1Help.stdout, /Frozen legacy V1 compatibility only/u);
 
   const launchV2Help = run(["launch-bundle-v2", "--help"]);
   assert.equal(launchV2Help.status, 0, launchV2Help.stderr);

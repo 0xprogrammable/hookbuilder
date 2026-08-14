@@ -64,6 +64,7 @@ test("committed contract registry exactly matches its source, schemas, and valid
   const lifecycleByContract = new Map(committed.contracts.map(({ contractId, lifecycle }) => [contractId, lifecycle]));
   for (const contractId of [
     "fee-policy-v2",
+    "execution-surface-coverage-v1",
     "launch-bundle-input-v1",
     "launch-bundle-input-v2",
     "launch-bundle-output-v1",
@@ -71,6 +72,7 @@ test("committed contract registry exactly matches its source, schemas, and valid
     "programmable-trade-execution-v1",
     "public-pr-application-v2",
     "public-pr-application-v3",
+    "registry-acceptance-v3",
     "submission-v1-6",
     "trade-capability-manifest-v1"
   ]) assert.equal(lifecycleByContract.get(contractId), "frozen", contractId);

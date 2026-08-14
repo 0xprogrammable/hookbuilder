@@ -117,11 +117,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/cli.mjs",
-          "observedLines": 544,
-          "observedBytes": 26235,
-          "observedComplexityScore": 105,
+          "observedLines": 536,
+          "observedBytes": 26084,
+          "observedComplexityScore": 104,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.6.0 reviewed open-world-v2 dispatch and concise-or-full diagnostic selection"
+          "reviewRef": "v0.7.0 reviewed central-policy routing and frozen legacy command-surface labels"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/companion-manifest-contract.mjs",
@@ -170,6 +170,14 @@
           "observedComplexityScore": 1,
           "observedMaxBlockDepth": 1,
           "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/github-application.mjs",
+          "observedLines": 175,
+          "observedBytes": 6646,
+          "observedComplexityScore": 32,
+          "observedMaxBlockDepth": 4,
+          "reviewRef": "v0.7.0 reviewed frozen legacy Application V3 write-surface labeling"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-exact-object-resolver.mjs",
@@ -325,11 +333,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/template-catalog-core.mjs",
-          "observedLines": 21,
-          "observedBytes": 620,
+          "observedLines": 20,
+          "observedBytes": 588,
           "observedComplexityScore": 1,
           "observedMaxBlockDepth": 1,
-          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+          "reviewRef": "v0.7.0 reviewed generic catalog Fee V2 authority quarantine"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/verify-package.mjs",
@@ -341,11 +349,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
-          "observedLines": 704,
-          "observedBytes": 35631,
-          "observedComplexityScore": 86,
+          "observedLines": 679,
+          "observedBytes": 33860,
+          "observedComplexityScore": 85,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.5.1 explicit six-file project compiler test inventory under the reviewed package cap"
+          "reviewRef": "v0.7.0 reviewed central-policy closure and frozen legacy authority quarantine"
         }
       ]
     },

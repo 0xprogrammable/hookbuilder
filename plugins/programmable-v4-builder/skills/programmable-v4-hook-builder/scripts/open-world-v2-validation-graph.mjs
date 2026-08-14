@@ -18,6 +18,7 @@ export function validateOpenWorldV2Graph(context) {
     requireSlug,
     validateSchemaBinding
   } = context;
+  const legacyFeeV2Profile = context.validationProfile === "frozen-legacy-fee-v2";
   const { decisions } = context.intentState;
   const collections = Object.create(null);
   for (const [collection, property] of Object.entries(COLLECTION_PROPERTIES)) {
@@ -86,8 +87,8 @@ export function validateOpenWorldV2Graph(context) {
         submission.stage === "prototype" ? "PROTOTYPE_MARKET_EXECUTION_CLASS_UNRESOLVED" : "MARKET_EXECUTION_CLASS_UNRESOLVED",
         `${marketPath}.executionClass`,
         submission.stage === "prototype"
-          ? "Prototype stage must resolve every market execution class and fee scope before implementation readiness."
-          : "The proposal remains eligible, but this market's execution and Programmable fee scope are unresolved.",
+          ? "Prototype stage must resolve every market execution class and explicitly requested project fee before implementation readiness."
+          : "The proposal remains eligible, but this market's execution and any requested project fee behavior are unresolved.",
         {
           route: "INTEGRATION_PENDING",
           classification: "tooling-review",
@@ -129,9 +130,9 @@ export function validateOpenWorldV2Graph(context) {
     }
     const canonicalScopes = requireArray(market.canonicalScopes, `${marketPath}.canonicalScopes`, "MARKET_CANONICAL_SCOPE_REFS_INVALID");
     canonicalScopes.forEach((ref) => requireSlug(ref, `${marketPath}.canonicalScopes`));
-    if (market.executionClass === "programmable-canonical" && submission.programmableFee !== undefined && canonicalScopes.length !== 1) add("blocker", "PROGRAMMABLE_CANONICAL_SCOPE_COUNT_INVALID", `${marketPath}.canonicalScopes`, "A programmable-canonical market with an explicitly selected frozen Fee V2 contract must bind exactly one active Fee V2 scope.", { count: canonicalScopes.length });
-    if (market.executionClass === "programmable-canonical" && submission.programmableFee === undefined && canonicalScopes.length !== 0) add("blocker", "ORPHAN_LEGACY_FEE_SCOPE", `${marketPath}.canonicalScopes`, "A current build without an explicitly selected frozen Fee V2 contract must not materialize local Fee V2 scopes.", { count: canonicalScopes.length });
-    if ((market.executionClass === "external" || market.executionClass === "non-launchable") && canonicalScopes.length !== 0) add("blocker", "NONPROGRAMMABLE_MARKET_SCOPE_FORBIDDEN", `${marketPath}.canonicalScopes`, "External and non-launchable markets must bind zero Programmable fee scopes.", { executionClass: market.executionClass, count: canonicalScopes.length });
+    if (legacyFeeV2Profile && market.executionClass === "programmable-canonical" && canonicalScopes.length !== 1) add("blocker", "PROGRAMMABLE_CANONICAL_SCOPE_COUNT_INVALID", `${marketPath}.canonicalScopes`, "A frozen legacy Fee V2 market must bind exactly one active Fee V2 scope.", { count: canonicalScopes.length });
+    if (!legacyFeeV2Profile && canonicalScopes.length !== 0) add("blocker", "ORPHAN_LEGACY_FEE_SCOPE", `${marketPath}.canonicalScopes`, "A current build must not materialize frozen legacy Fee V2 scopes.", { count: canonicalScopes.length });
+    if (legacyFeeV2Profile && (market.executionClass === "external" || market.executionClass === "non-launchable") && canonicalScopes.length !== 0) add("blocker", "NONPROGRAMMABLE_MARKET_SCOPE_FORBIDDEN", `${marketPath}.canonicalScopes`, "External and non-launchable markets must bind zero frozen legacy Fee V2 scopes.", { executionClass: market.executionClass, count: canonicalScopes.length });
   });
   const tradeCapability = submission.tradeCapability;
   if (!requireObject(tradeCapability, "$.tradeCapability", "TRADE_CAPABILITY_PROJECTION_INVALID")) {
@@ -186,11 +187,12 @@ export function validateOpenWorldV2Graph(context) {
       if (manifest.assurance !== "SOURCE_TEST_CONTRACTS_ONLY_NOT_EXECUTION_PROOF") add("blocker", "TRADE_CAPABILITY_EXECUTION_PROOF_CLAIM_FORBIDDEN", `$.supportingRecords.tradeCapabilities[${index}].manifest.value.assurance`, "Source test contracts are not execution proof, approval, deployment proof, or live-route proof.", { implementationAuthorization: "NOT_GRANTED" });
       const selectedMarket = collections.markets.get(declaration.marketRef);
       if (typeof selectedMarket?.profile?.chainId === "string" && manifest.chain?.chainId !== selectedMarket.profile.chainId) add("blocker", "TRADE_CAPABILITY_CHAIN_ID_MISMATCH", `$.supportingRecords.tradeCapabilities[${index}].manifest.value.chain.chainId`, "Trade-capability manifest chainId must match the selected market profile.");
-      const selectedFeeScopes = (submission.programmableFee?.feeScopes ?? []).filter(({ marketRef }) => marketRef === declaration.marketRef);
-      const manifestFee = manifest.feeBehavior?.programmableFeeV2;
-      if (selectedFeeScopes.length === 0) {
+      if (legacyFeeV2Profile) {
+        const selectedFeeScopes = (submission.programmableFee?.feeScopes ?? []).filter(({ marketRef }) => marketRef === declaration.marketRef);
+        const manifestFee = manifest.feeBehavior?.programmableFeeV2;
+        if (selectedFeeScopes.length === 0) {
         if (manifestFee?.applicability !== "not-applicable") add("blocker", "TRADE_CAPABILITY_FEE_BEHAVIOR_MISMATCH", `$.supportingRecords.tradeCapabilities[${index}].manifest.value.feeBehavior.programmableFeeV2`, "A selected route with no Programmable fee scope must declare exact not-applicable fee behavior.");
-      } else if (selectedFeeScopes.length === 1) {
+        } else if (selectedFeeScopes.length === 1) {
         const feeScope = selectedFeeScopes[0];
         if (
           manifestFee?.applicability !== "applicable"
@@ -209,8 +211,9 @@ export function validateOpenWorldV2Graph(context) {
           || manifestFee?.receiptSha256 !== scopeArtifact.receipt?.sha256
           || manifestFee?.receiptArtifactId !== receipt?.receiptId
         ) add("blocker", "TRADE_CAPABILITY_FEE_RECEIPT_MISMATCH", `$.supportingRecords.tradeCapabilities[${index}].manifest.value.feeBehavior.programmableFeeV2`, "Trade-capability fee behavior must bind the exact typed Fee V2 conformance receipt.", { feeScopeRef: feeScope.id });
-      } else {
-        add("blocker", "TRADE_CAPABILITY_FEE_SCOPE_CARDINALITY_INVALID", `${declarationPath}.marketRef`, "Each selected tradable market must map to at most one active Programmable fee scope.", { marketRef: declaration.marketRef, count: selectedFeeScopes.length });
+        } else {
+          add("blocker", "TRADE_CAPABILITY_FEE_SCOPE_CARDINALITY_INVALID", `${declarationPath}.marketRef`, "Each frozen legacy tradable market must map to at most one Fee V2 scope.", { marketRef: declaration.marketRef, count: selectedFeeScopes.length });
+        }
       }
     }
   }

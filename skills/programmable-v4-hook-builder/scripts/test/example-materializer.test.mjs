@@ -10,7 +10,7 @@ import {
   materializeImplementationLegoExample
 } from "../example-materializer-core.mjs";
 import {
-  materializeTradableReferenceKernel,
+  materializeFrozenLegacyFeeV2ReferenceKernel,
   prepareIsolatedSolidityCompilerCacheV1
 } from "../v4-deployment-evidence-core.mjs";
 import { validateAgainstSchema } from "../submission-core.mjs";
@@ -19,6 +19,7 @@ const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "..", "..");
 const cliPath = path.join(skillRoot, "scripts", "materialize-example.mjs");
 const schema = readJson(path.join(skillRoot, "references", "submission.schema.json"));
+const legacyKernel = (options) => materializeFrozenLegacyFeeV2ReferenceKernel({ ...options, legacyProfileId: "programmable-volume-fee-v2" });
 
 const expectedExamples = [
   "dynamic-lp-fee",
@@ -31,8 +32,8 @@ test("materializes the real V2 trade kernel byte-identically without approval cl
   const first = path.join(os.tmpdir(), `programmable-v2-kernel-a-${process.pid}-${Date.now()}`);
   const second = path.join(os.tmpdir(), `programmable-v2-kernel-b-${process.pid}-${Date.now()}`);
   try {
-    const left = materializeTradableReferenceKernel({ skillRoot, outputRoot: first });
-    const right = materializeTradableReferenceKernel({ skillRoot, outputRoot: second });
+    const left = legacyKernel({ skillRoot, outputRoot: first });
+    const right = legacyKernel({ skillRoot, outputRoot: second });
 
     assert.equal(left.status, "NOT_APPROVED");
     assert.equal(left.assurance, "REFERENCE_KERNEL_SOURCE_AND_TESTS_ONLY");
@@ -108,9 +109,13 @@ test("materializes the real V2 trade kernel byte-identically without approval cl
 });
 
 test("reference-kernel materialization rejects existing destinations and inventory drift", (t) => {
+  assert.throws(
+    () => materializeFrozenLegacyFeeV2ReferenceKernel({ skillRoot, outputRoot: path.join(os.tmpdir(), `ungated-v2-${process.pid}`) }),
+    (error) => error.code === "FROZEN_LEGACY_FEE_V2_PROFILE_REQUIRED"
+  );
   const existing = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-v2-existing-"));
   assert.throws(
-    () => materializeTradableReferenceKernel({ skillRoot, outputRoot: existing }),
+    () => legacyKernel({ skillRoot, outputRoot: existing }),
     /must not already exist/u
   );
 
@@ -121,18 +126,18 @@ test("reference-kernel materialization rejects existing destinations and invento
   });
   const copiedKernel = path.join(copiedSkill, "assets", "reference-kernels", "programmable-volume-fee-v2");
   fs.mkdirSync(path.dirname(copiedKernel), { recursive: true });
-  materializeTradableReferenceKernel({ skillRoot, outputRoot: copiedKernel });
+  legacyKernel({ skillRoot, outputRoot: copiedKernel });
   for (const directory of ["node_modules", "cache", "out"]) {
     fs.mkdirSync(path.join(copiedKernel, directory), { recursive: true });
     fs.writeFileSync(path.join(copiedKernel, directory, "ignored-dust"), directory);
   }
   const dustOutput = path.join(copiedSkill, "dust-output");
-  const dust = materializeTradableReferenceKernel({ skillRoot: copiedSkill, outputRoot: dustOutput });
+  const dust = legacyKernel({ skillRoot: copiedSkill, outputRoot: dustOutput });
   assert.equal(dust.inventorySha256, "sha256:3324a4bc09c058f97ff03e17dd02ac9fe34e8e2aeb63684ff575ba808496f475");
   for (const directory of ["node_modules", "cache", "out"]) assert.equal(fs.existsSync(path.join(dustOutput, directory)), false);
   fs.appendFileSync(path.join(copiedKernel, "README.md"), "drift\n");
   assert.throws(
-    () => materializeTradableReferenceKernel({ skillRoot: copiedSkill, outputRoot: path.join(copiedSkill, "drift-output") }),
+    () => legacyKernel({ skillRoot: copiedSkill, outputRoot: path.join(copiedSkill, "drift-output") }),
     /inventory drift/u
   );
 });

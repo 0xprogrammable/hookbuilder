@@ -50,7 +50,7 @@ test("loads one hash-bound, closed and explicitly non-allowlisting catalog", () 
   const catalog = loadTemplateCatalog({ skillRoot });
   const entries = listTemplateCatalog(catalog);
 
-  assert.equal(catalog.catalogDigest, "d901c227faefcaacedabab2d1f31b1b8e5f19a5a9906cfdfafb2c368b4fad545");
+  assert.equal(catalog.catalogDigest, "86cbe264042766fcb5dd7ee9ef6a76ba697f8c4136a400388fa1a44804843e83");
   assert.equal(entries.length, 48);
   assert.deepEqual(entries.map(({ id }) => id), [...entries.map(({ id }) => id)].sort());
   assert.deepEqual(
@@ -77,6 +77,40 @@ test("loads one hash-bound, closed and explicitly non-allowlisting catalog", () 
   for (const starterId of ["blank-custom", "custom-hook", "custom-token-standard-fee-hook", "ordinary-launch"]) {
     assert.equal(catalog.byId.get(starterId).defaultPacks.includes("programmable-volume-fee"), false);
   }
+});
+
+test("every generic selectable pack renders without branded platform-fee authority", () => {
+  const catalog = loadTemplateCatalog({ skillRoot });
+  const starterIds = ["blank-custom", "custom-hook", "custom-token-standard-fee-hook", "ordinary-launch"];
+  const unselectablePackIds = [];
+  const brandedPlatformRequirement =
+    /Fee V2|Programmable-canonical|mandatory Programmable|mandatory fee collection|0x4957f49620AFf3Adbbe8195a4f633E49cc93376c|10 basis points|10 bps|platform (?:share|liabilit|fee)/iu;
+
+  for (const definition of catalog.definitions.filter(({ kind }) => kind === "pack")) {
+    let plan;
+    for (const starterId of starterIds) {
+      try {
+        plan = composeTemplate({ catalog, starterId, packIds: [definition.id] });
+        break;
+      } catch {}
+    }
+    if (!plan) {
+      unselectablePackIds.push(definition.id);
+      continue;
+    }
+    const rendered = [...renderTemplateFiles(plan, { catalog }).values()].join("\n");
+    assert.doesNotMatch(`${JSON.stringify(plan)}\n${rendered}`, brandedPlatformRequirement, definition.id);
+  }
+
+  assert.deepEqual(unselectablePackIds, [
+    "chainlink-ccip",
+    "chainlink-cre",
+    "chainlink-data-feeds",
+    "chainlink-data-streams",
+    "chainlink-provider",
+    "chainlink-vrf-v2-5",
+    "programmable-volume-fee"
+  ]);
 });
 
 test("SKILL delegates starter identity to the catalog and keeps packs at planning semantics", () => {

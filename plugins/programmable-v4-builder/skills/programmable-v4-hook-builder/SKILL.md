@@ -83,8 +83,8 @@ Only `PROJECT_PREFLIGHT_VALID` for those exact bytes completes Autopilot. `CLEAR
 - Escalate novel, value-bearing or ambiguous slices. Mark unavailable provider gates `EXTERNAL_BLOCKED`.
 - For Programmable admission, resolve the exact protected Submit Launch policy and schema bytes. Local approval,
   alignment, fee, template, and security prose is engineering guidance only and cannot add a launch requirement.
-- After local validation, `prepare-pr` only to `0xprogrammable/submit-launch` (`1320171831`, `main`, status v2). Do not
-  open a Hookbuilder PR or infer submission, acceptance, deployment, discovery or live state.
+- The six-file `prepare-pr` command is frozen legacy replay only. Current work binds protected central policy and canary
+  contracts; Task 7A exposes no general application transport. Never infer submission, acceptance, deployment or live state.
 
 ## Runtime
 
