@@ -125,6 +125,7 @@ export function validateKnowledgeRoutingClosure(findings, context) {
     || activation.ordering.length < 1
     || !Array.isArray(activation?.quarantinedReferences)
     || !activation.quarantinedReferences.includes("programmable-fee-policy-v2.md")
+    || activation.rules.some(({ reference }) => activation.quarantinedReferences.includes(reference))
   ) {
     findings.push(`${activationRelativePath}: identity, single-delta limit, token target, or Fee V2 quarantine is invalid`);
   } else {

@@ -1605,6 +1605,23 @@ test("brief output is bounded for oversized selectors and the no-flag envelope r
   });
   assert.match(output.fullOutputInstruction, /without --brief/u);
 
+  const cold = JSON.parse(contextCli(["--mode", "submit", "--brief"]).stdout).result;
+  const heldActivationArgs = [
+    "--mode", "submit",
+    "--activate-confirmed",
+    "--base-profile-digest", cold.profileDigest,
+    "--brief"
+  ];
+  for (const capability of capabilities) heldActivationArgs.push("--capability", capability);
+  const heldActivation = contextCli(heldActivationArgs);
+  assert.equal(heldActivation.status, 0, heldActivation.stdout || heldActivation.stderr);
+  assert.ok(Buffer.byteLength(heldActivation.stdout) < 2_500, String(Buffer.byteLength(heldActivation.stdout)));
+  const heldOutput = JSON.parse(heldActivation.stdout).result;
+  assert.equal(heldOutput.hold.status, "HOLD_SPLIT_REVIEW");
+  assert.equal(heldOutput.hold.automaticMaterialization, false);
+  assert.equal(heldOutput.kind, "programmable-knowledge-plan");
+  assert.equal(heldActivation.stdout, brief.stdout);
+
   const standard = contextCli(["--mode", "autopilot"]);
   assert.equal(standard.status, 0, standard.stdout || standard.stderr);
   const expected = `${canonicalJson({
@@ -1664,6 +1681,16 @@ test("activation contract is explicit, duplicate-free, hash-bound, and keeps Fee
   const after = JSON.parse(contextCliAt(copiedSkill, args).stdout).result;
   assert.notEqual(after.loadNow[0].sha256, before.loadNow[0].sha256);
   assert.notEqual(after.profileDigest, before.profileDigest);
+
+  const quarantinedRule = activationSource.replace(
+    '"reference": "v4-contract-reasoning-kernel.md",',
+    '"reference": "programmable-fee-policy-v2.md",'
+  );
+  assert.notEqual(quarantinedRule, activationSource);
+  fs.writeFileSync(path.join(copiedSkill, "references", "knowledge-activation-v1.json"), quarantinedRule);
+  const rejectedQuarantine = contextCliAt(copiedSkill, args);
+  assert.equal(rejectedQuarantine.status, 2, rejectedQuarantine.stdout || rejectedQuarantine.stderr);
+  assert.equal(JSON.parse(rejectedQuarantine.stdout).error.code, "KNOWLEDGE_ACTIVATION_INVALID");
 
   const duplicate = activationSource.replace(
     '"maximumLoadNow": 1,',

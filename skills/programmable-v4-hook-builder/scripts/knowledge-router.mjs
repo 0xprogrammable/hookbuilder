@@ -50,9 +50,15 @@ try {
         explicitSurfaces: options.surfaces,
         skillRoot
       });
-      process.stdout.write(options.brief
-        ? renderContextBrief(result, { basePlan })
-        : renderActivatedContext(result, { basePlan }));
+      if (result.kind === "programmable-knowledge-activation") {
+        process.stdout.write(options.brief
+          ? renderContextBrief(result, { basePlan })
+          : renderActivatedContext(result, { basePlan }));
+      } else {
+        process.stdout.write(options.brief
+          ? renderContextBrief(result)
+          : `${canonicalJson({ schemaVersion: "1.0.0", ok: true, command: "context", result })}\n`);
+      }
     } else {
       if (options.baseProfileDigest !== null) usageError("--base-profile-digest requires --activate-confirmed.");
       process.stdout.write(options.brief

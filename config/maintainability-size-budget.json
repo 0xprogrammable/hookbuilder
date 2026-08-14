@@ -205,11 +205,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/knowledge-router.mjs",
-          "observedLines": 254,
-          "observedBytes": 10738,
-          "observedComplexityScore": 59,
-          "observedMaxBlockDepth": 4,
-          "reviewRef": "v0.9.0 reviewed bounded context brief and confirmed single-reference activation CLI"
+          "observedLines": 260,
+          "observedBytes": 11015,
+          "observedComplexityScore": 61,
+          "observedMaxBlockDepth": 5,
+          "reviewRef": "v0.9.0 reviewed bounded activation CLI with fail-closed split-review hold propagation"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/launch-bundle-core.mjs",

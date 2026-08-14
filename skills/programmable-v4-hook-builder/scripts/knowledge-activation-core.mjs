@@ -32,6 +32,7 @@ export function activateConfirmedKnowledge({
       "--base-profile-digest must equal the current mode-only context profile digest."
     );
   }
+  if (routedPlan.status === "HOLD_SPLIT_REVIEW") return routedPlan;
 
   const activation = loadActivationContract(skillRoot);
   const quarantined = new Set(activation.contract.quarantinedReferences.map(toReferencePath));
@@ -359,6 +360,7 @@ function validateActivationContract(contract, skillRoot) {
       || rule.capabilityAny.length < 1
       || rule.surfaceAny.length < 1
       || typeof rule.reference !== "string"
+      || contract.quarantinedReferences.includes(rule.reference)
       || typeof rule.reason !== "string"
       || rule.reason.length < 24
       || rule.reason.length > 300
