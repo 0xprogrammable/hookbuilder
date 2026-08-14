@@ -27,7 +27,7 @@
     "Exact swap and add-liquidity sequence, price limits, slippage, deadline and partial-failure behavior",
     "Who can trigger, pause, rescue or reconfigure execution and how accumulated value exits",
     "LP position owner, fee beneficiary, lock or removal rules and treatment during retirement",
-    "Ordering between tax accounting, platform liabilities, swaps, settlement and liquidity creation"
+    "Ordering between tax accounting, project liabilities, swaps, settlement and liquidity creation"
   ],
   "requiredFiles": [
     "Tax accumulator source",
@@ -40,7 +40,7 @@
     "Accumulator boundaries immediately below, at and above the execution threshold",
     "Repeated, partial, reverted and adversarially ordered execution without double counting",
     "Price manipulation, sandwich, slippage, deadline, zero-liquidity and callback-recursion failures",
-    "Conservation across token tax, platform share, project liabilities and liquidity inventory",
+    "Conservation across token tax, project allocations, project liabilities and liquidity inventory",
     "LP creation, fee collection, removal, rescue, pause and user-exit lifecycle"
   ],
   "risks": [

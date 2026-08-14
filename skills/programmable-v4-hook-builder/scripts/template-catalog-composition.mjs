@@ -1,8 +1,6 @@
 import {
   MAX_CUSTOM_LABEL_BYTES,
   MAX_CUSTOM_LABEL_CODE_POINTS,
-  PROGRAMMABLE_FEE_OWNER,
-  PROGRAMMABLE_PLATFORM_SHARE_BPS,
   assertExactKeys,
   assertId,
   assertLocalTag,
@@ -213,11 +211,14 @@ export function composeTemplate({
   for (const packId of [...selected]) visit(packId);
 
   const selectedPackIds = [...selected].sort(compareUtf8);
+  if (selectedPackIds.includes("programmable-volume-fee")) {
+    fail("FROZEN_LEGACY_FEE_V2_PROFILE_REQUIRED", "The generic template catalog cannot select branded Fee V2 platform economics. Use the exact intent-bound frozen legacy project profile for replay or migration; generic project fee behavior remains available as a custom capability.", { starterId, policyId: "programmable-volume-fee-v2", policyVersion: "2.0.0", eligibilityEffect: "none", automaticAdverseDecision: false });
+  }
   requireExactChainlinkProduct({ selectedPackIds, requestedCapabilityIds });
   if (["ordinary-launch", "custom-token-standard-fee-hook"].includes(starter.id) && selected.has("custom-hook-behavior")) {
     fail(
       "CUSTOM_HOOK_STARTER_REQUIRED",
-      `${starter.id} cannot include additional project-defined hook behavior beyond mandatory fee collection, directly or through another pack. Preserve the selected packs and continue with --starter custom-hook.`,
+      `${starter.id} cannot include additional project-defined hook behavior beyond its declared hook boundary, directly or through another pack. Preserve the selected packs and continue with --starter custom-hook.`,
       {
         starterId: starter.id,
         recommendedStarterId: "custom-hook",
@@ -350,7 +351,6 @@ export function composeTemplate({
     packs: selectedPackIds.map((id) => structuredClone(catalog.byId.get(id))),
     ...(directCapabilityLegos === null ? {} : { directCapabilityLegos }),
     implementationLegos,
-    feePolicy: buildImplementationFeePolicy(),
     customCapabilities: normalizedCustomCapabilities,
     machineCapabilities: {
       semantics: "internal-planning-and-review-only",
@@ -664,20 +664,6 @@ export function buildImplementationLegoSelection({
       "programmable.implementation-lego-selection.v1",
       canonicalJson(preimage)
     )
-  };
-}
-
-export function buildImplementationFeePolicy() {
-  return {
-    schemaVersion: "1.0.0",
-    kind: "programmable-fee-applicability",
-    platformFeeOwner: PROGRAMMABLE_FEE_OWNER,
-    platformShareBps: PROGRAMMABLE_PLATFORM_SHARE_BPS,
-    effectiveTotalFeeFloorBps: PROGRAMMABLE_PLATFORM_SHARE_BPS,
-    selectedTotalFeeZeroOutcome: "effective-total-fee-is-10-bps-for-each-applicable-canonical-scope",
-    canonicalScopeStatus: "declaration-required",
-    feeConformanceStatus: "unresolved-until-scope-specific-code-and-tests",
-    maturityConfersFeeConformance: false
   };
 }
 

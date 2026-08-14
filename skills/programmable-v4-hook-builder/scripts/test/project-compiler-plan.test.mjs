@@ -10,7 +10,7 @@ import {
   ARCHITECTURE_ROLES, PRODUCT_GRAPH_NAMES, PROJECT_SPEC_FACETS, projectArtifactSha256,
   validateArchitectureCandidates, validateProductGraph, validateProjectSpec,
   bindLocalReleaseHandoffV1, createNoMarketProjectAuthoring, renderGitHubSubmissionHandoffV1,
-  sealProjectState, validateProjectState, validateRepositoryPlan, validateAgainstSchema,
+  sealProjectState, validateProjectState, validateFrozenLegacyTradeManifestV1RepositoryPlan, validateRepositoryPlan, validateAgainstSchema,
   architectureSnapshotSha256, createOpenWorldDraftPackage, expectedTradeRunnerCallsV1,
   inspectForgeTradeTestRunnerOutputV1, validateV4DeploymentEvidence, canonicalV4PermissionMask,
   TRADE_TEST_EXECUTION_CALLDATA_FIXTURE_V1, TRADE_TEST_QUOTE_CALLDATA_FIXTURE_V1,
@@ -81,15 +81,16 @@ test("tradable RepositoryPlans project selected standard-v4 and canonical-adapte
     assert.deepEqual(validateProjectSpec(fixture.projectSpec), []);
     assert.deepEqual(validateProductGraph(fixture.projectSpec, fixture.productGraph), []);
     assert.deepEqual(validateArchitectureCandidates(fixture.projectSpec, fixture.productGraph, fixture.architectureCandidates), []);
-    assert.deepEqual(validateRepositoryPlan(fixture.projectSpec, fixture.productGraph, fixture.architectureCandidates, fixture.repositoryPlan), []);
+    assert.ok(validateRepositoryPlan(fixture.projectSpec, fixture.productGraph, fixture.architectureCandidates, fixture.repositoryPlan).some(({ code }) => code === "FROZEN_TRADE_MANIFEST_V1_FORBIDDEN"));
+    assert.deepEqual(validateFrozenLegacyTradeManifestV1RepositoryPlan(fixture.projectSpec, fixture.productGraph, fixture.architectureCandidates, fixture.repositoryPlan), []);
 
     const missingManifest = structuredClone(fixture.repositoryPlan);
     missingManifest.artifacts.configuration = missingManifest.artifacts.configuration.filter(({ kind }) => kind !== "trade-capability-manifest");
-    assert.ok(validateRepositoryPlan(fixture.projectSpec, fixture.productGraph, fixture.architectureCandidates, missingManifest).some(({ code }) => code === "TRADE_CAPABILITY_MANIFEST_REQUIRED"));
+    assert.ok(validateFrozenLegacyTradeManifestV1RepositoryPlan(fixture.projectSpec, fixture.productGraph, fixture.architectureCandidates, missingManifest).some(({ code }) => code === "TRADE_CAPABILITY_MANIFEST_REQUIRED"));
 
     const orphanResult = structuredClone(fixture.repositoryPlan);
     orphanResult.artifacts.evidence.push({ ...orphanResult.artifacts.evidence.find(({ kind }) => kind === "trade-test-result"), id: "orphan-trade-result", path: ".programmable/trade-test-results/orphan.v1.json" });
-    assert.ok(validateRepositoryPlan(fixture.projectSpec, fixture.productGraph, fixture.architectureCandidates, orphanResult).some(({ code }) => code === "TRADE_RESULT_ARTIFACT_CARDINALITY_INVALID"));
+    assert.ok(validateFrozenLegacyTradeManifestV1RepositoryPlan(fixture.projectSpec, fixture.productGraph, fixture.architectureCandidates, orphanResult).some(({ code }) => code === "TRADE_RESULT_ARTIFACT_CARDINALITY_INVALID"));
 
     const unresolvedMarket = structuredClone(fixture.productGraph);
     unresolvedMarket.graphs.system.nodes.find(({ id }) => id === "primary-market").implementationStatus = "external-unresolved";

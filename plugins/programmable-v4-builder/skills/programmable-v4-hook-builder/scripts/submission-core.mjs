@@ -243,6 +243,9 @@ export function analyzeSubmission(submission, { schema } = {}) {
     hasIncludedSwapClient,
     validateDeclaredPath
   };
+  if (schema?.$id === "urn:programmable:v4-hook-submission:1.6.0") {
+    context.legacyFeeContract = "programmable-submission-v1.6-fee";
+  }
 
   analyzeSubmissionModelAndMetadata(context);
   analyzeSubmissionAssetsAndLaunch(context);

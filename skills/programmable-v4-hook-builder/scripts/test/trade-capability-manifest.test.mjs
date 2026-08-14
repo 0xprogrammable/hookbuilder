@@ -16,6 +16,7 @@ import {
   PROGRAMMABLE_TRADE_EXECUTION_V1_SCHEMA_ID,
   ZERO_ADDRESS,
   encodeProgrammableTradeExecutionAbiV1,
+  forgeTradeTestMatchPathV1,
   inspectTradeCapabilityManifestV1,
   tradeCapabilityManifestSha256V1,
   tradeTestResultSha256V1,
@@ -49,6 +50,11 @@ test("Forge test matcher escapes every regular-expression metacharacter", () => 
   assert.equal(matcher.test(signature), true);
   assert.equal(matcher.test(`${signature}suffix`), false);
   assert.equal(matcher.test(signature.replaceAll("\\", "x")), false);
+});
+
+test("Forge test source matcher keeps nested sources inside the declared working directory", () => {
+  assert.equal(forgeTradeTestMatchPathV1("test", "test/integration/Runner.t.sol"), "integration/Runner.t.sol");
+  assert.equal(forgeTradeTestMatchPathV1("test/integration", "test/Runner.t.sol"), null);
 });
 
 test("productive gross quote evidence decodes one positive hook event and rejects absent, zero, or conflicting values", () => {

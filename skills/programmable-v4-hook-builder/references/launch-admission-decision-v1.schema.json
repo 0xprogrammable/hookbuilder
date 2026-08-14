@@ -1,7 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:programmable:launch-admission-decision:1.0.0",
-  "title": "Programmable A1-A11 and P1-P9 launch-admission decision",
+  "title": "Frozen historical Programmable A1-A11 and P1-P9 decision",
+  "description": "Legacy local engineering contract retained for exact historical artifacts. It is non-normative and cannot add or replace a current Submit Launch policy rule or outcome.",
   "type": "object",
   "additionalProperties": false,
   "required": [

@@ -16,8 +16,9 @@ later packaging HEAD; exact intake identity comes from the committed review targ
 | Trusted intake workflow or service |  |  |
 | Pull-request target base |  |  |
 | Validator and package contract |  |  |
-| Builder skill and approval criteria |  |  |
-| Programmable fee policy |  |  |
+| Builder skill revision, engineering guidance only |  |  |
+| Exact central policy, schema, binding, and selected profile |  |  |
+| Optional implementation kernel selected by intent or applicable central Rule ID |  |  |
 | Primary numeric repository id, commit, tree, retained bundle digest |  |  |
 | Companion numeric repository ids, commits, trees |  |  |
 
@@ -45,33 +46,22 @@ and preserve the cause of every earlier attributable failure.
 ## Run-scoped manifest and attestation
 
 Record the unique run id/attempt, immutable subject path and sha256, manifest digest, source/review-target digest,
-workflow/service and revision, trigger and environment, skill/criteria/fee/package/validator/tool/ruleset/suppression
+workflow/service and revision, trigger and environment, skill/central-policy/package/validator/tool/ruleset/suppression
 digests, commands and outcomes, signer identity and scheme, transparency/retention reference, verification result, and
 superseded record. A valid attestation proves exact-byte provenance only; it does not prove correctness, audit,
 approval, deployment, or launchability. Shared mutable `latest` output cannot be the attested authority.
 
-## Launch-admission self-check
+## Central policy evidence
 
-Apply `references/approval-criteria.md` to the exact immutable target. This table is applicant/agent evidence only and
-cannot create maintainer approval.
+Resolve the exact central policy and selected profile described in `references/approval-criteria.md`. Add one row for
+each applicable current Rule ID; do not copy a local gate list or invent a severity, outcome, or evidence demand.
 
-| Gate | Result | Exact evidence or blocker | Resolution owner | Prevention cause and next action |
+| Central Rule ID | Result | Exact evidence or unresolved fact | Responsible party | Next action |
 | --- | --- | --- | --- | --- |
-| A1 Exact source and provenance |  |  |  |  |
-| A2 Executable implementation |  |  |  |  |
-| A3 Complete launch plan |  |  |  |  |
-| A4 v4 authentication, permissions, pool identity |  |  |  |  |
-| A5 Delta, settlement, liability conservation |  |  |  |  |
-| A6 Programmable fee |  |  |  |  |
-| A7 Custody, positions, locks, exits, administration |  |  |  |  |
-| A8 Liveness and bounded history |  |  |  |  |
-| A9 Capability-triggered security |  |  |  |  |
-| A10 Tests, analysis, evidence |  |  |  |  |
-| A11 Specification and public claims |  |  |  |  |
+|  |  |  |  |  |
 
-Record the predicted verdict separately from platform gates. `PLATFORM PENDING` is permitted only when A1-A11 all pass.
-`READY FOR FINAL VERIFICATION` additionally requires the supported maintainer pre-final platform gates. The table is not
-a signed final-verification result.
+This table is applicant or agent evidence only. It is not an audit, approval, deployment, routing decision, or launch
+permit.
 
 ## Prototype evidence
 
@@ -93,22 +83,17 @@ a new numeric id is a new authority and invalidates the prior result.
 | Tests, analysis, or evidence |  |  |  |
 | Proposal, threat model, specification, or public claim |  |  |  |
 | Repository identity, visibility, or retained object |  |  |  |
-| Package, validator, skill, criteria, or fee policy |  |  |  |
+| Package, validator, skill, central policy/schema, or selected implementation kernel |  |  |  |
 | Tool, ruleset, suppression, prompt/model, workflow, manifest, or attested artifact |  |  |  |
 
 Before handoff, render the full decision and reject it if a required PR head, repository id, commit, tree, digest,
 verdict, owner, timestamp, or reachability result is blank, placeholder, malformed, or mixed with another revision.
 
-Record the complete root `programmableFee` policy, canonical PoolKey and quote asset, selected/effective/platform/project
-rates, exact source and test paths, hook mechanism binding, the complete supported/rejected four-quadrant matrix, executed
-gross quote-side cases for supported modes, deterministic pre-movement rejection for unsupported modes, rounding,
-liability/value-flow ids, collection and claim events, and no-cross-pool-netting result. Record owner-only claim tests
-for immutable `0x4957f49620AFf3Adbbe8195a4f633E49cc93376c`, including owner-selected per-claim destinations and failed builder,
-project, administrator, recipient, rescue, sweep, redirect, and mutation attempts.
-Show that `accounting.accrualMode` is `claimable-liability`, `claimAvailability` is `anytime`, and accrual plus partial or
-full owner claims reconcile to the remaining liability and backing balance.
-Record the quote-asset-derived before/after return-delta path for each swap mode and the tested self-call policy. If
-same-pool hook-initiated swaps are fee-enforced internally, bind the exact implementation and regression test.
+When project intent or an applicable current central-policy Rule ID selects the legacy Programmable fee kernel, record
+its complete policy object, canonical PoolKey and quote asset, rates, exact source/test paths, hook mechanism binding,
+supported/rejected quadrants, executed gross quote-side cases, rounding, liabilities, events, claims, isolation, and
+bypass tests. Record its immutable-owner claim tests and the quote-asset-derived before/after return-delta path. Otherwise
+mark this optional kernel not applicable; this template cannot create a fee or launch requirement.
 
 For delegated funding, record the payer/authenticated actor relationship, allowance/Permit2 mode, typed domain and every
 bound field, plus victim-allowance, field-mutation, replay, ERC-1271, revocation, partial-spend, residual-allowance, refund,

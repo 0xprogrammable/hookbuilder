@@ -94,6 +94,7 @@ test("canonical fee status schema chain and version categories exist exactly onc
 test("canonical category owners are immutable even when a distinct production owner exists", () => {
   const registry = loadSemanticRuleRegistry(skillRoot);
   const feeCategory = registry.ruleCategories.find(({ category }) => category === "fee");
+  assert.match(feeCategory.trigger, /Frozen legacy Fee Policy V2/u);
   feeCategory.canonicalOwnerFile = "scripts/fee-conformance-core.mjs";
 
   const validation = validateSemanticRuleRegistry(registry, { skillRoot });

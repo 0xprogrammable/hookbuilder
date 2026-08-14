@@ -185,7 +185,6 @@ export function installOpenWorldMaterialization(runtime) {
     const idea = byPath.get("idea-source.v1.json");
     const intent = byPath.get("intent-contract.v1.json");
     const fidelity = byPath.get("intent-fidelity.v1.json");
-    const feePolicySchema = byPath.get("fee-policy-v2.schema.json");
     const securitySchema = byPath.get("security-assessment-v1.schema.json");
     const security = byPath.get("security-assessment.v1.json");
     const submission = byPath.get("submission.v2.json");
@@ -203,12 +202,11 @@ export function installOpenWorldMaterialization(runtime) {
       || !Array.isArray(fidelity?.traces)
       || fidelity.traces.some((trace) => trace?.status !== "unassessed" || trace?.testRefs?.length !== 0 || trace?.evidenceRefs?.length !== 0)
       || submission?.stage !== "proposal"
-      || submission?.supportingPackage?.feePolicy !== null
-      || submission?.supportingPackage?.feePolicySchema?.path !== "fee-policy-v2.schema.json"
+      || submission?.supportingPackage?.feePolicy !== undefined
+      || submission?.supportingPackage?.feePolicySchema !== undefined
       || submission?.supportingPackage?.securityAssessmentSchema?.path !== "security-assessment-v1.schema.json"
       || submission?.supportingPackage?.securityAssessment?.path !== "security-assessment.v1.json"
-      || submission?.programmableFee?.conformance?.status !== "required"
-      || submission?.programmableFee?.conformance?.evidenceRefs?.length !== 0
+      || submission?.programmableFee !== undefined
       || submission?.implementation?.evidenceRefs?.length !== 0
       || security?.subject?.stage !== "proposal"
       || security?.assessment?.state !== "unassessed"
@@ -216,7 +214,6 @@ export function installOpenWorldMaterialization(runtime) {
       || security?.assessment?.sourceCoverage !== null
       || security?.assessment?.evidenceRefs?.length !== 0
       || security?.layers?.intent?.evidenceRefs?.length !== 0
-      || feePolicySchema?.$id !== submission?.supportingPackage?.feePolicySchema?.schemaId
       || securitySchema?.$id !== submission?.supportingPackage?.securityAssessmentSchema?.schemaId
     ) {
       throw new CliFailure("DRAFT_RESULT_INVALID", "draft core fabricated, changed, or failed to bind unconfirmed source and evidence state");

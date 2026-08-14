@@ -34,10 +34,10 @@ verify, and activate as separate states with separate authorities.
 
 ## Launch-plan integrity
 
-For launch admission, identify the bound launch-plan path and hash. Threat-model omitted or reordered targets, wrong ABI
-arguments, wrong compiler settings, unmined hook addresses, wrong PoolKey or initial price, partial initialization,
-allocation drift, missing liquidity or custody transfer, unavailable platform modules, transaction failure between
-atomicity boundaries, and false postconditions.
+When project intent or an applicable current central-policy Rule ID selects an executable launch plan, identify its path
+and hash. Threat-model omitted or reordered targets, wrong ABI arguments, wrong compiler settings, unmined hook
+addresses, wrong PoolKey or initial price, partial initialization, allocation drift, missing liquidity or custody
+transfer, unavailable platform modules, transaction failure between atomicity boundaries, and false postconditions.
 
 For mutually wired components, model a public first caller substituting a wrong interface-compatible counterpart before,
 during, and after initialization. For CREATE2, model predicted-address preoccupation, changed deployer runtime or
@@ -57,16 +57,16 @@ meaning, hookData validation, exact selector and return shape, nested-action sup
 
 ## Ordinary no-hook boundary, only when `hook.used` is false
 
-Identify `official-launchpad` or `model-specific-no-hook` and state that the project introduces no custom callbacks, hook
-permission mask, or hook CREATE2 address. Explain which behavior remains in the token, router, app, game, or service and
+State that the project introduces no custom callbacks, hook permission mask, or hook CREATE2 address. Explain which
+behavior remains in the token, router, app, game, or service and
 why it does not require atomic PoolManager callback execution. Treat any separately declared contract or offchain
 authority as its own boundary rather than inventing hook controls. For a model-specific path, threat-model transfer and
 sell liveness, tax bounds and recipients, requested-versus-received amounts, automatic swaps, reentrancy, MEV, liquidity
 position custody and exit, mutable authorities, and provider incompatibility.
 
-State that this route remains proposal-only and `programmableFee.collection.status` is
-`pending-hook-integration`. Threat-model a project-specific implementation of the standard Programmable fee-hook profile
-or integration into one custom hook; a router, LP fee, transfer tax, or alternative pool is not a launch-ready substitute.
+Do not invent a fee hook for this route. If preserved intent or an applicable current central-policy Rule ID selects an
+optional fee kernel, threat-model its integration into the actual architecture. Only the exact central policy determines
+eligibility; this template supplies no admission verdict.
 
 For a taxed v4 token, remember that the token observes the shared PoolManager address, not a trustworthy PoolId or
 swap-versus-liquidity label. Model spoofed classifiers and the tax effect on liquidity adds, removals and alternative
@@ -88,10 +88,11 @@ mint, burn, transfer, redemption, dust, and aggregate solvency.
 
 ## Dynamic fees and recipients
 
-For the mandatory Programmable fee, model the canonical-PoolKey binding, executed gross quote-side basis after partial
-fills, every successful supported mode, deterministic pre-movement rejection of unsupported quadrants, floor and
-non-additive split, final combined trader limits, rounding, liability solvency, event reconciliation, and
-alternative-pool/router bypass attempts. The immutable owner and sole claim authority is
+When project intent or an applicable current central-policy Rule ID selects the legacy Programmable fee kernel, model
+the canonical-PoolKey binding, executed gross quote-side basis after partial fills, every successful supported mode,
+deterministic pre-movement rejection of unsupported quadrants, floor and non-additive split, final combined trader
+limits, rounding, liability solvency, event reconciliation, and alternative-pool/router bypass attempts. In that
+optional legacy kernel the immutable owner and sole claim authority is
 `0x4957f49620AFf3Adbbe8195a4f633E49cc93376c`; model unauthorized builder, project, administrator, recipient, rescue,
 sweep, redirect, stored-recipient mutation, owner mutation, and cross-pool-netting attempts. Preserve the owner's
 ability to claim anytime to itself or an owner-selected destination for that claim.

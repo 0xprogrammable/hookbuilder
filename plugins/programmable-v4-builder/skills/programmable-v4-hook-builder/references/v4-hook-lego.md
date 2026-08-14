@@ -10,8 +10,8 @@ remain eligible and enter architecture review with their owner-defined capabilit
 2. Prefer the smallest stable pinned primitive whose exact semantics match.
 3. Inspect the installed source and dependency closure. A repository head, npm tag, docs page, or generated scaffold is
    not the build authority.
-4. Enable only the required hook permissions and compose the mandatory Programmable 10 bps policy into the pool's one
-   fee-enforcing hook.
+4. Enable only the required hook permissions. Compose a fee kernel into the pool's one fee-enforcing hook only when the
+   preserved project intent or an applicable current central-policy Rule ID selects that kernel.
 5. One PoolKey has one hook address. Compose behaviors inside one reviewed hook or through explicit modules; do not
    pretend several independent hook addresses can attach to the same pool.
 6. One hook contract may serve several pools only with exact PoolKey admission and PoolId-namespaced state,
@@ -70,21 +70,22 @@ maker template.
 
 | Product idea | Likely composition |
 | --- | --- |
-| Ordinary token launch | fixed-supply token + standard Programmable fee hook + launch/custody modules |
-| Dynamic tax launch | custom-token starter + transfer-tax accumulator + standard or integrated pool fee hook |
+| Ordinary token launch | fixed-supply token + launch/custody modules |
+| Dynamic tax launch | custom-token starter + transfer-tax accumulator + optional integrated pool accounting selected by the product |
 | Auto-liquidity token | token accumulator + bounded swap/add-liquidity state machine + custody/exit module |
-| Three.js PvP rewards | browser game + authenticated outcome service + claim contract + canonical fee hook |
-| Maps quest | map/location client + evidence or attestation service + bounded claim contract + canonical fee hook |
-| Wallet transaction quest | chain-event indexer + anti-replay eligibility + bounded claim contract + canonical fee hook |
-| Yielding pool inventory | rehypothecation/ERC-4626 module + recall buffer + loss policy + canonical fee accounting |
-| Wrapped-asset pool | conversion base + rate/rounding and exit policy + canonical fee accounting |
+| Three.js PvP rewards | browser game + authenticated outcome service + claim contract |
+| Maps quest | map/location client + evidence or attestation service + bounded claim contract |
+| Wallet transaction quest | chain-event indexer + anti-replay eligibility + bounded claim contract |
+| Yielding pool inventory | rehypothecation/ERC-4626 module + recall buffer + loss policy + selected accounting model |
+| Wrapped-asset pool | conversion base + rate/rounding and exit policy + selected accounting model |
 | External-liquidity pool | adapter registry + exact protocol adapters + quote/execution parity + failure isolation |
 | Active liquidity market | custom accounting/curve + vault inventory + dedicated quoter + liveness and MEV controls |
 | Position automation | PositionManager client + subscriber/keeper + safe explicit liquidity actions + user exit |
 
 Apps, games, maps, services, tokens, hooks, and contracts are project surfaces, not mutually exclusive launch types.
 Compose the surfaces and capabilities needed by the idea. Templates accelerate repeated review questions; they never
-define everything that may be built.
+define everything that may be built. Add a Programmable-specific fee asset only when preserved intent or an applicable
+current central-policy Rule ID selects it; none of the examples above creates that requirement.
 
 ## Composition red flags
 

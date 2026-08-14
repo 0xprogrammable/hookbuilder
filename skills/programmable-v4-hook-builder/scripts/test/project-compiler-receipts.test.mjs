@@ -10,7 +10,7 @@ import {
   ARCHITECTURE_ROLES, PRODUCT_GRAPH_NAMES, PROJECT_SPEC_FACETS, projectArtifactSha256,
   validateArchitectureCandidates, validateProductGraph, validateProjectSpec,
   bindLocalReleaseHandoffV1, createNoMarketProjectAuthoring, renderGitHubSubmissionHandoffV1,
-  sealProjectState, validateProjectState, validateRepositoryPlan, validateAgainstSchema,
+  sealProjectState, validateProjectState, validateFrozenLegacyTradeManifestV1RepositoryPlan, validateRepositoryPlan, validateAgainstSchema,
   architectureSnapshotSha256, createOpenWorldDraftPackage, expectedTradeRunnerCallsV1,
   inspectForgeTradeTestRunnerOutputV1, validateV4DeploymentEvidence, canonicalV4PermissionMask,
   TRADE_TEST_EXECUTION_CALLDATA_FIXTURE_V1, TRADE_TEST_QUOTE_CALLDATA_FIXTURE_V1,
@@ -32,7 +32,7 @@ import {
 
 test("static tradable fixtures retain distinct typed result bindings without executing candidate bytes", async (t) => {
   const fixture = createMaterializedTradableRepository(t);
-  assert.deepEqual(validateRepositoryPlan(
+  assert.deepEqual(validateFrozenLegacyTradeManifestV1RepositoryPlan(
     fixture.bundle.projectSpec,
     fixture.bundle.productGraph,
     fixture.bundle.architectureCandidates,
@@ -47,7 +47,7 @@ test("static tradable fixtures retain distinct typed result bindings without exe
   git(fixture.root, ["add", ".programmable"]);
   git(fixture.root, ["commit", "-qm", "record typed trade execution evidence"]);
   const completed = execution.repositoryPlan;
-  assert.deepEqual(validateRepositoryPlan(
+  assert.deepEqual(validateFrozenLegacyTradeManifestV1RepositoryPlan(
     fixture.bundle.projectSpec,
     fixture.bundle.productGraph,
     fixture.bundle.architectureCandidates,
@@ -75,7 +75,7 @@ test("static tradable fixtures retain distinct typed result bindings without exe
   assert.equal(negativeCall.outputSha256, negativeTest.expectedRevertDataSha256);
   receipt.domainEvidence.resultArtifactSha256 = sha256(Buffer.from("tampered trade result"));
   writeFile(fixture.root, receiptArtifact.path, `${canonicalJsonV2(receipt)}\n`);
-  const mutationFindings = validateRepositoryPlan(
+  const mutationFindings = validateFrozenLegacyTradeManifestV1RepositoryPlan(
     fixture.bundle.projectSpec,
     fixture.bundle.productGraph,
     fixture.bundle.architectureCandidates,

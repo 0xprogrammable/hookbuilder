@@ -5,6 +5,9 @@ green only when an exact candidate commit and its generated receipt contain the 
 does not publish the Builder, accept an application, approve a project, deploy a hook, activate a Registry contract, or
 prove production safety.
 
+All Fee V2 sections below describe the frozen optional legacy package. They apply only when preserved intent or an
+applicable current central-policy Rule ID selects that exact package; they are not current admission requirements.
+
 Use [`OPEN_WORLD_V2_ARCHITECTURE.md`](OPEN_WORLD_V2_ARCHITECTURE.md) as the design contract and
 [`RELEASING.md`](RELEASING.md) for the repository's general immutable release process.
 

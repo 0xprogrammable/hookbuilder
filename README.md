@@ -16,7 +16,7 @@
   <a href="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-F8F0E9?labelColor=010103"></a>
   <a href="https://agentskills.io/specification"><img alt="Agent Skills compatible" src="https://img.shields.io/badge/Agent%20Skills-compatible-F8F0E9?labelColor=010103"></a>
-  <a href="CHANGELOG.md"><img alt="Stable release 0.6.0" src="https://img.shields.io/badge/stable-v0.6.0-F8F0E9?labelColor=010103"></a>
+  <a href="CHANGELOG.md"><img alt="Release package 0.8.0" src="https://img.shields.io/badge/release-v0.8.0-F8F0E9?labelColor=010103"></a>
 </p>
 
 <p align="center">
@@ -29,8 +29,9 @@
 > [!IMPORTANT]
 > **Release status**
 >
-> Stable release `v0.6.0` requires Node.js 24 or newer. Verify the public tag and GitHub release before treating it as
-> published. Package checks and public CI do not establish model behavior, an independent audit, project approval,
+> Release package `v0.8.0` requires Node.js 24 or newer. Its bundled status retains
+> `publicationStateVerified: false`; verify the public tag, GitHub release, and installed bytes before treating it as
+> published or live. Package checks and public CI do not establish model behavior, an independent audit, project approval,
 > deployment, routing, registration, or launch authority.
 
 Programmable v4 Builder is an evidence-first [Agent Skill](https://agentskills.io/specification). It accepts a plain
@@ -43,11 +44,11 @@ authority, deployment, provider support, and public availability.
 
 ## Install the immutable release
 
-After confirming that GitHub exposes the immutable `v0.6.0` release, preview that exact Skill before installing it:
+After confirming that GitHub exposes the immutable `v0.8.0` release, preview that exact Skill before installing it:
 
 ```bash
 gh skill preview 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.6.0
+  programmable-v4-hook-builder@v0.8.0
 ```
 
 Install the same immutable release for Codex:
@@ -57,7 +58,7 @@ gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.6.0
+  --pin v0.8.0
 ```
 
 GitHub's `gh skill` commands are in preview. Clean package placement has been checked for Codex, Claude Code, and
@@ -69,6 +70,9 @@ From the installed Skill directory, verify its package:
 ```bash
 node scripts/verify-skill.mjs --installed
 ```
+
+At the start of each build, `cli.mjs policy` reads the exact current `0xprogrammable/submit-launch:main` build rules.
+Those returned Rule IDs are the only Programmable launch requirements; bundled security guidance cannot add another.
 
 Then give your agent one clear request:
 
@@ -119,6 +123,11 @@ read-only action plan. Only the exact confirmed plan may create the builder's `s
 and one draft pull request. The client reads `docs/builder/intake-status.json` as the released schema-v2 contract and
 stops before any write unless intake permits that exact application or continuation. Do not hand-create an application
 pull request.
+
+`prepare-canary` is a separate hidden, non-production workflow-test path. It returns the exact canonical
+`application.json` bytes and plan digest. Automated local writing currently fails closed because the portable client
+does not yet bundle a descriptor-bound writer; it never writes GitHub or grants launch authority. See the
+[workflow-canary client contract](skills/programmable-v4-hook-builder/references/workflow-canary-application.md).
 
 The older Applicant files in this Hookbuilder repository are frozen legacy continuations. Only pull requests #10,
 #11, #12, #14, #15, #18, #19, and #20 may continue on that path, and only against Hookbuilder `main`. Every new

@@ -1,8 +1,9 @@
 # Maintainability ownership and decomposition map
 
-The current local source tree has no discovered production JavaScript module above 750 physical lines. Former
-orchestrator monoliths now remain as stable public facades over responsibility-specific modules. Public exports,
-diagnostic identities, ordering, and authority stops are regression-tested at each boundary.
+The current local source tree has one reviewed production JavaScript module above 750 physical lines:
+`scripts/cli-central-base.mjs` at 827 lines. It passes an exact no-growth baseline but remains reported legacy size debt;
+the other former orchestrator monoliths remain stable public facades over responsibility-specific modules. Public
+exports, diagnostic identities, ordering, and authority stops are regression-tested at each boundary.
 
 | Facade family | Responsibility owners | Required proof for later changes |
 | --- | --- | --- |
@@ -12,7 +13,7 @@ diagnostic identities, ordering, and authority stops are regression-tested at ea
 | GitHub/Application and Public Claims | Complete namespace groups discovered by the coverage gate | Per-module source hashes, aggregate historical coverage floors, and omission/facade-only anti-gaming tests |
 | Project Compiler and Contract Registry | Typed contracts, bounded local executor, repository-completion validation, and transitive validator closure | Exact receipt trust state, mutation/unresolved/cycle failures, and frozen source/closure digests |
 
-The machine gate currently discovers 321 production modules across its two closed roots. It evaluates immutable-baseline,
+The machine gate currently discovers 327 production modules across its two closed roots. It evaluates immutable-baseline,
 exact reviewed-override, and new-file hard-cap classes; rejects cycles and unresolved relative imports; and applies a
 portable package ceiling. Reviewed overrides lock decomposed facades to their post-split metrics so they cannot regrow
 to historical monolith sizes.

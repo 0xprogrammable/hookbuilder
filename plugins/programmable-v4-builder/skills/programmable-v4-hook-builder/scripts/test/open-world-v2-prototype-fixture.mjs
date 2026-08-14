@@ -6,9 +6,9 @@ import {
   OPEN_WORLD_V2_FEE_NOT_APPLICABLE,
   PROGRAMMABLE_FEE_V2,
   architectureSnapshotSha256,
-  createOpenWorldDraftPackage,
+  createLegacyFeeV2DraftPackage,
   sha256Bytes,
-  validateOpenWorldV2Package
+  validateLegacyFeeV2OpenWorldV2Package as validateOpenWorldV2Package
 } from "../open-world-v2-core.mjs";
 import { canonicalFeeConformanceReceiptBytesV1 } from "../fee-conformance-receipt-v1-core.mjs";
 import { canonicalJson } from "../submission-core.mjs";
@@ -735,7 +735,7 @@ export function createNoMarketOpenWorldV2PrototypeFixture(applicationId) {
 }
 
 function unpackDraft(applicationId, publicIdeaText = "Build an exact canonical onchain game with fee-bearing execution.") {
-  const draft = createOpenWorldDraftPackage({
+  const draft = createLegacyFeeV2DraftPackage({
     applicationId,
     publicIdeaText,
     sourceRef: "test-message"

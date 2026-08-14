@@ -23,6 +23,15 @@ export function validateOpenWorldV2Fee(context) {
   } = context;
   const { assetIds, isCanonicalV4Market } = context.graphState;
   const fee = submission.programmableFee;
+  if (fee === undefined) {
+    const orphanAuthorityIndexes = Array.isArray(submission.authorities)
+      ? submission.authorities
+        .map((authority, index) => ({ authority, index }))
+        .filter(({ authority }) => authority?.id === "programmable-fee-owner" || authority?.kind === "immutable-platform-fee-authority")
+      : [];
+    for (const { index } of orphanAuthorityIndexes) add("blocker", "ORPHAN_LEGACY_FEE_AUTHORITY", `$.authorities[${index}]`, "A platform fee authority may be introduced only by preserved intent that explicitly selects the frozen Fee V2 implementation contract.");
+    return;
+  }
   if (!requireObject(fee, "$.programmableFee", "PROGRAMMABLE_FEE_MISSING")) {
     // All remaining fee checks are guarded below.
   } else {

@@ -25,7 +25,6 @@ const expectedMigrationFiles = [
 ];
 const expectedDraftFiles = [
   "architecture-decisions.v1.json",
-  "fee-policy-v2.schema.json",
   "idea-source.v1.json",
   "intent-contract.v1.json",
   "intent-fidelity.v1.json",
@@ -45,6 +44,7 @@ test("host-neutral CLI exposes open-world, V2 launch checking, and historical ap
   const launchV1Help = run(["launch-bundle", "--help"]);
   assert.equal(launchV1Help.status, 0, launchV1Help.stderr);
   assert.match(launchV1Help.stdout, /Usage: launch-bundle\.mjs/u);
+  assert.match(launchV1Help.stdout, /Frozen legacy V1 compatibility only/u);
 
   const launchV2Help = run(["launch-bundle-v2", "--help"]);
   assert.equal(launchV2Help.status, 0, launchV2Help.stderr);
@@ -60,6 +60,7 @@ test("host-neutral CLI exposes open-world, V2 launch checking, and historical ap
   assert.match(openWorldHelp.stdout, /submit\/update write only after exact digest confirmation/u);
   assert.match(openWorldHelp.stdout, /^  init\b/mu);
   assert.match(openWorldHelp.stdout, /^  validate\b/mu);
+  assert.match(openWorldHelp.stdout, /^  validate-legacy-fee-v2\b/mu);
   assert.match(openWorldHelp.stdout, /^  validate-application\b/mu);
   assert.match(openWorldHelp.stdout, /^  migrate\b/mu);
   assert.match(openWorldHelp.stdout, /^  source-manifest\b/mu);
@@ -75,7 +76,7 @@ test("host-neutral CLI exposes open-world, V2 launch checking, and historical ap
   assert.doesNotMatch(initHelp.stdout, /--idea(?: | <|$)/u);
   assert.match(initHelp.stdout, /preview by default/u);
   assert.match(initHelp.stdout, /unconfirmed proposal/u);
-  assert.match(initHelp.stdout, /scoped fee instance comes only after architecture/u);
+  assert.match(initHelp.stdout, /legacy fee package requires explicit preserved intent or an applicable current central Rule ID/u);
 
   const migrateHelp = run(["open-world", "migrate", "--help"]);
   assert.equal(migrateHelp.status, 0, migrateHelp.stderr);
@@ -243,8 +244,9 @@ test("init captures exact public-safe UTF-8 by hash, previews by default, writes
   });
   assert.deepEqual(security.layers.intent.evidenceRefs, []);
   const submission = JSON.parse(fs.readFileSync(path.join(absoluteOutput, "submission.v2.json"), "utf8"));
-  assert.equal(submission.supportingPackage.feePolicy, null);
-  assert.equal(submission.supportingPackage.feePolicySchema.path, "fee-policy-v2.schema.json");
+  assert.equal(Object.hasOwn(submission.supportingPackage, "feePolicy"), false);
+  assert.equal(Object.hasOwn(submission.supportingPackage, "feePolicySchema"), false);
+  assert.equal(Object.hasOwn(submission, "programmableFee"), false);
   assert.equal(submission.supportingPackage.securityAssessmentSchema.path, "security-assessment-v1.schema.json");
 
   const validated = run([
@@ -275,7 +277,8 @@ test("init captures exact public-safe UTF-8 by hash, previews by default, writes
   assert.equal(prototypeCheck.status, 1, prototypeCheck.stdout || prototypeCheck.stderr);
   const prototypePayload = JSON.parse(prototypeCheck.stdout);
   assert.equal(prototypePayload.error.code, "OPEN_WORLD_PACKAGE_INVALID");
-  assert.ok(prototypePayload.error.details.report.findings.some(({ code }) => code === "PROTOTYPE_FEE_POLICY_INSTANCE_MISSING"));
+  assert.ok(prototypePayload.error.details.report.findings.some(({ code }) => code === "PROTOTYPE_INTENT_CONFIRMATION_MISSING"));
+  assert.equal(prototypePayload.error.details.report.findings.some(({ code }) => code.startsWith("PROGRAMMABLE_FEE_") || code === "PROTOTYPE_FEE_POLICY_INSTANCE_MISSING"), false);
 
   const beforeRefusal = snapshotDirectory(absoluteOutput);
   const refused = run([
@@ -539,9 +542,19 @@ test("migration is a hash-only dry-run by default and writes one new package onl
   assert.deepEqual(fs.readdirSync(absoluteOutput).sort(), expectedMigrationFiles);
   const beforeRefusal = snapshotDirectory(absoluteOutput);
 
-  const validated = run([
+  const currentRejected = run([
     "open-world",
     "validate",
+    output,
+    "--repository-root",
+    fixture.repository
+  ], fixture.repository);
+  assert.notEqual(currentRejected.status, 0, currentRejected.stdout || currentRejected.stderr);
+  assert.equal(JSON.parse(currentRejected.stdout).error.code, "OPEN_WORLD_PACKAGE_INVALID");
+
+  const validated = run([
+    "open-world",
+    "validate-legacy-fee-v2",
     output,
     "--repository-root",
     fixture.repository

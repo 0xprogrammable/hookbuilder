@@ -25,7 +25,7 @@
     "Exempt actors and paths, who can change exemptions, and whether behavior is immutable",
     "Gross amount, net amount, recipient liabilities and every destination of taxed value",
     "PoolManager, router, liquidity, claim and wallet behavior when actual received value differs from requested value",
-    "Public disclosures that distinguish token transfer tax from LP fee, platform share and project hook fee"
+    "Public disclosures that distinguish token transfer tax from LP fees and any separately requested project hook fee"
   ],
   "requiredFiles": [
     "Transfer-tax token source",

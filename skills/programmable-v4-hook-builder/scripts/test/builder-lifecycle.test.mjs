@@ -47,11 +47,11 @@ test("version reports exact local standards without external action and renders 
 
 test("bundled version reports standalone code constants without requiring state", () => {
   const result = bundledVersionStatus();
-  assert.equal(result.installed.releaseVersion, "0.6.0");
+  assert.equal(result.installed.releaseVersion, "0.8.0");
   assert.equal(result.installed.channel, "stable");
   assert.equal(result.installed.publicationState, "release-package");
-  assert.equal(result.installed.standards.skill, "0.6.0");
-  assert.equal(result.installed.standards.engine, "0.6.0");
+  assert.equal(result.installed.standards.skill, "0.8.0");
+  assert.equal(result.installed.standards.engine, "0.8.0");
   assert.equal(result.installed.standards.policy, "1.1.0");
   assert.equal(result.installed.standards.schema, "1.6.0");
   assert.equal(result.installed.standards.submission, "1.6.0");
@@ -597,8 +597,8 @@ test("shipped candidate template remains an incomplete caller declaration", () =
   assert.equal(result.publicationPerformed, false);
   assert.equal(result.callerDeclaredPlanComplete, false);
   assert.deepEqual(result.candidate.plannedRelease.builder, {
-    fromVersion: "0.5.1",
-    toVersion: "0.6.0",
+    fromVersion: "0.7.0",
+    toVersion: "0.8.0",
     semanticClassification: "minor"
   });
   assert.deepEqual(result.candidate.plannedRelease.submissionStandard, { fromVersion: "1.6.0", toVersion: "1.6.0" });
@@ -611,7 +611,9 @@ test("shipped candidate template remains an incomplete caller declaration", () =
   assert.equal(result.candidate.plannedRelease.releaseManifest.callerDeclaredCoordinatesComplete, false);
   assert.equal(result.candidate.plannedRelease.callerDeclaredComplete, false);
   assert.equal(result.candidate.plannedRelease.externallyVerified, false);
-  assert.ok(result.declaredPlanningBlockers.length >= 9);
+  assert.equal(result.declaredPlanningBlockers.length, 8);
+  assert.ok(result.declaredPlanningBlockers.some((entry) => entry.includes("owner-GO")));
+  assert.ok(result.declaredPlanningBlockers.some((entry) => entry.includes("planned release identity")));
   assert.equal(result.externalVerificationRequirements.length, 5);
 });
 
@@ -850,7 +852,7 @@ test("standalone CLI reports bundled version without an installed-state file", (
   });
   assert.equal(result.status, 0, result.stdout || result.stderr);
   const parsed = JSON.parse(result.stdout);
-  assert.equal(parsed.result.installed.releaseVersion, "0.6.0");
+  assert.equal(parsed.result.installed.releaseVersion, "0.8.0");
   assert.equal(parsed.result.installed.publicationState, "release-package");
   assert.equal(parsed.result.versionSource, "bundled-code-constants");
   assert.equal(parsed.result.installedStateOverrideUsed, false);

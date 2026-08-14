@@ -25,7 +25,11 @@ export const PROGRAMMABLE_REGISTRY_SNAPSHOT_IDENTITY = Object.freeze({
   repositoryUri: "https://github.com/0xprogrammable/programmable-registry"
 });
 
-export const REGISTRY_PROJECT_SCHEMA_VERSION = "1.0.0";
+// Submit Launch owns this exact schema. It is a frozen compatibility view whose
+// historical records all carry the original platform-fee projection. A future
+// current/no-fee record format must be published and versioned by Submit Launch,
+// not invented by this consumer.
+export const REGISTRY_FROZEN_LEGACY_PROJECT_SCHEMA_VERSION = "1.0.0";
 export const REGISTRY_INDEX_LEGACY_VERSION = "1.0.0";
 export const REGISTRY_INDEX_CURRENT_VERSION = "1.1.0";
 export const REGISTRY_INDEX_SUPPORTED_VERSIONS = new Set([

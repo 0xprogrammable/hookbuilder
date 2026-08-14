@@ -87,35 +87,51 @@ function continuedCommands(source, prefix) {
   return commands;
 }
 
-test("public Markdown installs resolve only the immutable v0.6.0 stable release", () => {
+test("active Markdown installs resolve only the immutable v0.8.0 release package", () => {
   const documents = markdownFiles(repositoryRoot).map((absolutePath) => ({
     path: path.relative(repositoryRoot, absolutePath),
     source: fs.readFileSync(absolutePath, "utf8")
   }));
-  const installs = documents.flatMap((document) => continuedCommands(
+  const activeDocuments = documents.filter(({ path: documentPath }) => ![
+    "docs/releases/v0.5.1.md",
+    "docs/releases/v0.6.0.md",
+    "docs/releases/v0.7.0.md"
+  ].includes(documentPath)).filter(({ path: documentPath }) => ![
+    "CHANGELOG.md",
+    "docs/UNISWAP_MASTER_SKILL_ADOPTION.md"
+  ].includes(documentPath));
+  const installs = activeDocuments.flatMap((document) => continuedCommands(
     document.source,
     "gh skill install 0xprogrammable/hookbuilder"
   ).map((command) => ({ ...document, command })));
-  const previews = documents.flatMap((document) => continuedCommands(
+  const previews = activeDocuments.flatMap((document) => continuedCommands(
     document.source,
     "gh skill preview 0xprogrammable/hookbuilder"
   ).map((command) => ({ ...document, command })));
 
   assert.ok(installs.length > 0);
   assert.ok(previews.length > 0);
-  for (const { path: documentPath, command } of installs) {
-    assert.match(command, /(?:@v0\.6\.0\b|--pin\s+v0\.6\.0\b)/u, documentPath);
+  for (const { path: documentPath, source, command } of installs) {
+    assert.match(command, /(?:@v0\.8\.0\b|--pin\s+v0\.8\.0\b)/u, documentPath);
+    assert.match(source, /(?:confirm|verify)[\s\S]{0,200}(?:public tag|GitHub exposes|GitHub release|tag and release)/iu, documentPath);
   }
   for (const { path: documentPath, command } of previews) {
-    assert.match(command, /@v0\.6\.0\b/u, documentPath);
+    assert.match(command, /@v0\.8\.0\b/u, documentPath);
   }
 
   const forbiddenActiveClaims = [
-    /\bv(?!0\.6\.0\b)\d+\.\d+(?:\.\d+)?\b[^\n]{0,96}\b(?:is|remains)\s+(?:the\s+)?(?:current|latest|stable|live|published)\b/iu,
-    /\b(?:current|latest|stable|published)\s+(?:public\s+)?(?:release|version|identity|guidance)?[^\n]{0,80}\bv(?!0\.6\.0\b)\d+\.\d+(?:\.\d+)?\b/iu,
-    /\bv(?!0\.6\.0\b)\d+\.\d+(?:\.\d+)?\b[^\n]{0,96}\badds?\s+(?:a\s+)?live\b/iu
+    /\bv(?!0\.8\.0\b)\d+\.\d+(?:\.\d+)?\b[^\n]{0,96}\b(?:is|remains)\s+(?:the\s+)?(?:current|latest|stable|live|published)\b/iu,
+    /\b(?:current|latest|stable|published)\s+(?:public\s+)?(?:release|version|identity|guidance)?[^\n]{0,80}\bv(?!0\.8\.0\b)\d+\.\d+(?:\.\d+)?\b/iu,
+    /\bv(?!0\.8\.0\b)\d+\.\d+(?:\.\d+)?\b[^\n]{0,96}\badds?\s+(?:a\s+)?live\b/iu
   ];
-  for (const { path: documentPath, source } of documents) {
+  const changelog = documents.find(({ path: documentPath }) => documentPath === "CHANGELOG.md")?.source ?? "";
+  const currentChangelogSection = changelog.match(/^## 0\.8\.0[^\n]*\n[\s\S]*?(?=^## 0\.7\.0)/mu)?.[0];
+  assert.ok(currentChangelogSection);
+  const claimDocuments = [
+    ...activeDocuments,
+    { path: "CHANGELOG.md#0.8.0", source: currentChangelogSection }
+  ];
+  for (const { path: documentPath, source } of claimDocuments) {
     for (const line of source.split("\n")) {
       if (/\b(?:historical|unreleased|not released|not published|predecessor|compatibility)\b/iu.test(line)) continue;
       for (const pattern of forbiddenActiveClaims) assert.doesNotMatch(line, pattern, documentPath);
@@ -123,7 +139,7 @@ test("public Markdown installs resolve only the immutable v0.6.0 stable release"
   }
 });
 
-test("stable v0.5.1 history is immutable and v0.6.0 is the release package", () => {
+test("stable v0.5.1 through v0.7.0 history is immutable and v0.8.0 is the release package", () => {
   const versionAuthority = readJson("config/plugin.json");
   const packageDocument = readJson("package.json");
   const packageLock = readJson("package-lock.json");
@@ -131,13 +147,17 @@ test("stable v0.5.1 history is immutable and v0.6.0 is the release package", () 
   const readme = readText("README.md");
   const changelog = readText("CHANGELOG.md");
   const releasing = readText("docs/RELEASING.md");
-  const candidateNotes = readText("docs/releases/v0.6.0.md");
+  const candidateNotes = readText("docs/releases/v0.8.0.md");
+  const releasedNotes = readText("docs/releases/v0.7.0.md");
+  const previousNotes = readText("docs/releases/v0.6.0.md");
   const stableNotes = readText("docs/releases/v0.5.1.md");
   const artifactGenerator = readText("scripts/generate-release-artifacts.mjs");
   const rehearsal = readText("scripts/prepare-release-candidate.mjs");
   const stableSection = changelog.match(/^## 0\.5\.1[^\n]*\n[\s\S]*?(?=^## 0\.5\.0)/mu)?.[0];
+  const previousSection = changelog.match(/^## 0\.6\.0[^\n]*\n[\s\S]*?(?=^## 0\.5\.1)/mu)?.[0];
+  const releasedSection = changelog.match(/^## 0\.7\.0[^\n]*\n[\s\S]*?(?=^## 0\.6\.0)/mu)?.[0];
 
-  assert.equal(versionAuthority.version, "0.6.0");
+  assert.equal(versionAuthority.version, "0.8.0");
   assert.equal(packageDocument.version, versionAuthority.version);
   assert.equal(packageLock.version, versionAuthority.version);
   assert.equal(packageLock.packages[""].version, versionAuthority.version);
@@ -147,23 +167,32 @@ test("stable v0.5.1 history is immutable and v0.6.0 is the release package", () 
   assert.equal(candidate.releaseVersion, versionAuthority.version);
   assert.equal(candidate.channel, "canary");
   assert.equal(candidate.publicState, "not-published");
-  assert.equal(candidate.changeSetComplete, false);
+  assert.equal(candidate.changeSetComplete, true);
+  assert.deepEqual(candidate.unbundledChangeIds, []);
   assert.deepEqual(candidate.plannedRelease.builder, {
-    fromVersion: "0.5.1",
-    toVersion: "0.6.0",
+    fromVersion: "0.7.0",
+    toVersion: "0.8.0",
     semanticClassification: "minor"
   });
 
   assert.equal(sha256Text(stableNotes), "e141136b2f5da9a4140912361c618883342e013c465f567930014a7e5a9415db");
   assert.equal(sha256Text(stableSection), "240e28d7a04e4e55bc81648c30d6ff4bcd78fc393eec16d516804be5224bfbf2");
-  assert.match(readme, /Stable release `v0\.6\.0`/u);
-  assert.match(readme, /--pin v0\.6\.0/u);
+  assert.equal(sha256Text(previousNotes), "ee25a4258d2d9d4147e1d6d23bba60f2ae79b9d59752c10830efafe77b94dfac");
+  assert.equal(sha256Text(previousSection), "4d7c66de2e04a926814422a89940df4590033efeb2a308bf60650f3d82158deb");
+  assert.equal(sha256Text(releasedNotes), "c7e6c94a3defdb4dca13b60c684aa8879896119cc7b08ad3e05b4ed1e089882e");
+  assert.equal(sha256Text(releasedSection), "2ca3ad2da19559ae09e18aadc632afbe81a579c0dc5bb4b32b032f24a5488299");
+  assert.match(readme, /Release package `v0\.8\.0`/u);
+  assert.match(readme, /`publicationStateVerified: false`/u);
+  assert.match(readme, /--pin v0\.8\.0/u);
+  assert.match(changelog, /^## 0\.8\.0 - 2026-08-14$/mu);
+  assert.match(changelog, /^## 0\.7\.0 - 2026-08-14$/mu);
   assert.match(changelog, /^## 0\.6\.0 - 2026-08-13$/mu);
-  assert.match(candidateNotes, /^# Programmable v4 Builder v0\.6\.0$/mu);
-  assert.match(candidateNotes, /This release publishes the exact portable Builder package/u);
-  assert.match(candidateNotes, /releaseCandidate: false/u);
-  assert.match(releasing, /Stable public and installation identity: `v0\.6\.0`/u);
-  assert.match(releasing, /Prior immutable release: `v0\.5\.1`/u);
+  assert.match(candidateNotes, /^# Programmable v4 Builder v0\.8\.0$/mu);
+  assert.match(candidateNotes, /complete Programmable requirement\s+set/u);
+  assert.match(candidateNotes, /`publicationStateVerified: false`/u);
+  assert.match(releasing, /Current release-package and installation identity: `v0\.8\.0`/u);
+  assert.match(releasing, /`publicationStateVerified: false`/u);
+  assert.match(releasing, /Prior immutable releases: `v0\.7\.0`, `v0\.6\.0`, and `v0\.5\.1`/u);
   assert.match(releasing, /Canonical version authority: `config\/plugin\.json`/u);
   assert.doesNotMatch(releasing, /git tag -a "?v0\.5\.1/u);
   assert.doesNotMatch(releasing, /gh release create "?v0\.5\.1/u);
@@ -174,10 +203,55 @@ test("stable v0.5.1 history is immutable and v0.6.0 is the release package", () 
   }
 });
 
+test("v0.8.0 release preparation binds the exact live Submit a Launch policy 1.2 dependency", () => {
+  const candidateNotes = readText("docs/releases/v0.8.0.md");
+  const runtimeSources = [
+    "skills/programmable-v4-hook-builder/scripts/cli-central-base.mjs",
+    "skills/programmable-v4-hook-builder/scripts/cli-central-canary-base.mjs",
+    "skills/programmable-v4-hook-builder/scripts/submit-launch-policy-github.mjs",
+    "skills/programmable-v4-hook-builder/scripts/workflow-canary-application-client.mjs"
+  ].map(readText).join("\n");
+  assert.match(candidateNotes, /policy version: `1\.2\.0`/u);
+  assert.match(candidateNotes, /`2f4f57c8b450489dcd2de29672e31d63ca87ed35`/u);
+  assert.match(candidateNotes, /`33dcc1457e80229fba2236c8a43f29d6ce38317b`/u);
+  assert.match(candidateNotes, /`sha256:868c7a647238461f5bbc6afd15bd974d78a1a77f9a13aa1b81044d0e1ffe01dc`/u);
+  for (const sourcePath of [
+    "policy/launch-policy.v1.json",
+    "policy/schemas/launch-policy.v1.schema.json",
+  ]) assert.ok(candidateNotes.includes(`\`${sourcePath}\``), sourcePath);
+  assert.match(candidateNotes, /not a permanent runtime pin/u);
+  assert.match(candidateNotes, /resolve current protected `main`/u);
+  assert.doesNotMatch(runtimeSources, /2f4f57c8b450489dcd2de29672e31d63ca87ed35/u);
+  assert.doesNotMatch(runtimeSources, /33dcc1457e80229fba2236c8a43f29d6ce38317b/u);
+});
+
+test("current product docs keep central policy authority above the optional legacy fee kernel", () => {
+  const currentDocuments = [
+    "docs/AGENT_SKILL.md",
+    "docs/ARCHITECTURE.md",
+    "docs/KNOWLEDGE_SYSTEM.md",
+    "docs/PLATFORM_INTEGRATION.md",
+    "docs/SECURITY_AND_REVIEW.md",
+    "docs/SECURITY_AUDIT_READINESS.md"
+  ].map((documentPath) => ({ documentPath, source: readText(documentPath) }));
+  for (const { documentPath, source } of currentDocuments) {
+    assert.match(source, /current[\s\S]{0,160}exact central Submit Launch policy/iu, documentPath);
+    assert.match(source, /preserved intent[\s\S]{0,180}(?:current|central-policy)\s+Rule/iu, documentPath);
+  }
+  assert.doesNotMatch(
+    readText("docs/AGENT_SKILL.md"),
+    /enforce the Programmable 10 bps volume-fee invariant on every Programmable execution scope/iu
+  );
+  assert.doesNotMatch(
+    readText("docs/KNOWLEDGE_SYSTEM.md"),
+    /mandatory inclusive 10 bps policy/iu
+  );
+});
+
 test("candidate quantitative docs match generator-backed source inventories", () => {
   const maturity = readText("docs/CODE_MATURITY.md");
   const readiness = readText("docs/SECURITY_AUDIT_READINESS.md");
-  const candidateNotes = readText("docs/releases/v0.6.0.md");
+  const candidateNotes = readText("docs/releases/v0.8.0.md");
   const registry = readJson("skills/programmable-v4-hook-builder/references/contract-registry-v1.json");
   const sizeReport = evaluateSizeBudget({ repositoryRoot, budget: loadSizeBudget(repositoryRoot) });
   const v2Inventory = inventorySolidityTests(path.join(
@@ -191,28 +265,27 @@ test("candidate quantitative docs match generator-backed source inventories", ()
   const productionModuleCount = sizeReport.discovery.discoveredFiles;
 
   assert.equal(sizeReport.status, "SIZE_BUDGET_PASSED");
-  assert.equal(productionModuleCount, 321);
+  assert.equal(productionModuleCount, 327);
   assert.deepEqual(v2Inventory, { unit: 54, fuzz: 1, invariant: 3, invariantPolicy: "required-and-present" });
   assert.equal(registry.inventory.contractCount, 50);
   assert.equal(registry.inventory.validatorClosureCount, 25);
-  assert.equal(registry.inventory.validatorClosureModuleBindingCount, 1032);
-  assert.equal(registry.inventory.validatorClosureDistinctModuleCount, 174);
+  assert.equal(registry.inventory.validatorClosureModuleBindingCount, 1034);
+  assert.equal(registry.inventory.validatorClosureDistinctModuleCount, 176);
   assert.equal(evalTestCount, 9);
 
   for (const document of [maturity, candidateNotes]) {
     assert.match(document, new RegExp(`${productionModuleCount} production`, "u"));
-    assert.match(document, new RegExp(`${registry.inventory.contractCount} (?:portable contracts|schema contracts)`, "u"));
+    assert.match(document, new RegExp(`${registry.inventory.contractCount} (?:portable\\s+contracts|schema\\s+contracts)`, "u"));
     assert.match(document, new RegExp(`${registry.inventory.validatorClosureCount} validator closures`, "u"));
-    assert.match(document, /1,032 transitive\s+(?:module\s+)?bindings/u);
+    assert.match(document, /1,034 transitive\s+(?:module\s+)?bindings/u);
     assert.match(document, new RegExp(`${registry.inventory.validatorClosureDistinctModuleCount} distinct modules`, "u"));
   }
   for (const document of [maturity, readiness, candidateNotes]) {
     assert.match(document, /54 unit, one fuzz and three invariant/u);
-    assert.ok([
-      `${evalTestCount} local test files`,
-      `${evalTestCount} local test source files`,
-      `${evalTestCount} \`evals/tests/*.test.mjs\` files`
-    ].some((value) => document.includes(value)));
+    assert.match(document, new RegExp(
+      `${evalTestCount}\\s+(?:local test files|local test source files|\\x60evals/tests/\\*\\.test\\.mjs\\x60 files)`,
+      "u"
+    ));
   }
 });
 

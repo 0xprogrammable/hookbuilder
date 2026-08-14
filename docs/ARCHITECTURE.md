@@ -23,14 +23,14 @@ In the table below, unprefixed `references/`, `scripts/`, `assets/`, `evals/` an
 | Open-world submission contract | `references/submission-v2.schema.json` | Open assets, markets, hooks, components, lifecycle, fee scopes and product surfaces |
 | Intent package | `references/idea-source-v1.schema.json`, `intent-contract-v1.schema.json`, `architecture-decisions-v1.schema.json`, `intent-fidelity-v1.schema.json` | Exact idea provenance, confirmed intent, explicit decisions and drift visibility |
 | Security assessment | `references/open-world-security-v1.schema.json` and `scripts/open-world-security-core.mjs` | Layered intent, configuration, source and runtime observations; safe-redesign and review routing without self-approval |
-| Fee policy | `references/programmable-fee-policy-v2.md`, `references/fee-policy-v2.schema.json`, `scripts/fee-policy-v2-core.mjs` | Inclusive 10 bps platform economics, exact fee scopes and collection-profile semantics for new projects |
+| Optional legacy fee package | `references/programmable-fee-policy-v2.md`, `references/fee-policy-v2.schema.json`, `scripts/fee-policy-v2-core.mjs` | Frozen inclusive 10 bps implementation semantics only when preserved intent or an applicable current central-policy Rule ID explicitly selects that package |
 | Trade capability | `references/trade-capability-manifest-v1.schema.json`, `programmable-trade-execution-v1.schema.json` and `scripts/trade-capability-manifest-core.mjs` | Per-market PoolKey, router/quoter/Permit2, hook data, direction, slippage, deadline, fee and test contracts; standard Uniswap v4 or canonical adapter, always `NOT_APPROVED` |
 | Historical application | `references/public-pr-application.schema.json` | Frozen pre-V3 application compatibility and immutable history |
 | Candidate application | `references/public-pr-application-v3.schema.json` and `scripts/public-pr-application-v3-core.mjs` | GitHub-only Application V3 intent, review, source and policy closure; not publicly active until the release gates pass |
 | Public Applicant intake | `scripts/registry-intake-contract.mjs` plus the GitHub application client | Generated, draft-only review requests to `0xprogrammable/submit-launch`, immutable repository ID `1320171831`, status schema `2`, exact source/package binding, and no approval, Router, deployment, or launch write |
 | Legacy Hookbuilder intake | Root `submissions/` schema, example and validator | Frozen continuations for Hookbuilder pull requests #10, #11, #12, #14, #15, #18, #19, and #20 only; never a new Applicant route |
 | Large source closure | `references/source-closure-manifest-v1.schema.json` | Ordered, content-addressed manifest and fragment contract for large primary or companion repositories |
-| Registry acceptance | `references/registry-acceptance-v3.schema.json` and `scripts/registry-acceptance-v3-github-core.mjs` | Fresh-review-gated maintainer decision plus bounded central-PR/raw-Git preflight for one exact Application V3 package, the exact acceptance blob, and the current canonical index/project records that still select it as launch-eligible with applicable Fee V2 on stable central main; mocked transport is inspection-only and the platform re-verifies independently |
+| Registry acceptance | `references/registry-acceptance-v3.schema.json` and `scripts/registry-acceptance-v3-github-core.mjs` | Historical Application V3 acceptance architecture; current requirements and outcomes come only from the exact central Submit Launch policy, while mocked transport remains inspection-only and grants no authority |
 | Launch preparation | `references/launch-bundle-input-v2.schema.json`, `launch-bundle-output-v2.schema.json` and `scripts/launch-bundle-v2*.mjs` | Exact multi-repository preparation report that always remains unsigned and `NOT_AUTHORIZED` |
 | Semantic policy | Version-matched validators under `scripts/` | Cross-field findings, evidence states, migration rules and gate ledger |
 | Executable evidence | `scripts/test/` and versioned reference kernels | Unit, integration, negative, lifecycle, fee-conformance and source-closure checks |
@@ -122,11 +122,12 @@ live in the central application package. Their contents bind the already-existin
 no source-owned blob predicts the Git identity that would contain itself. Inline closure binds a bounded path set, while
 manifest closure binds the root and ordered fragments as exact blobs inside the pinned outer repository tree.
 
-The launch path separates three authorities:
+The current decision path starts with the exact central Submit Launch policy and its applicable Rule IDs. Optional
+legacy package and launch architecture then separates these authorities when that package is explicitly selected:
 
-1. the immutable Programmable fee claim owner `0x4957f49620AFf3Adbbe8195a4f633E49cc93376c` receives the inclusive 10 bps liability;
+1. the frozen Fee V2 claim owner `0x4957f49620AFf3Adbbe8195a4f633E49cc93376c` receives its inclusive 10 bps liability only inside that selected package;
 2. maintainers review one exact application and source/evidence closure; and
-3. the independent platform admin wallet `0x2Bb333d48DFAF1596D9036671d2E43168994249E` decides any later launch action.
+3. the independent platform admin wallet `0x2Bb333d48DFAF1596D9036671d2E43168994249E` decides any separately authorized later launch action.
 
 The admin cannot claim, replace, redirect, sweep or net the fee liability. Application review does not itself create
 canonical acceptance. The Registry acceptance record binds the exact application, source, submission, fee, security,

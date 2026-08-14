@@ -5,10 +5,8 @@ import { fileURLToPath } from "node:url";
 import { canonicalJsonSha256V2 } from "./canonical-json-core.mjs";
 import {
   OPEN_WORLD_V2_ARTIFACTS,
-  OPEN_WORLD_V2_FEE_NOT_APPLICABLE,
   OPEN_WORLD_V2_SUBMISSION_FILE,
   OPEN_WORLD_V2_SUPPORTING_ARTIFACTS,
-  PROGRAMMABLE_FEE_V2,
   architectureSnapshotSha256,
   sha256Bytes,
   validateOpenWorldV2Package
@@ -266,12 +264,6 @@ function authorNoMarketSubmission(applicationId, ideaText, sourcePath, testPath)
   submission.tradeCapability = { applicability: "no-market", facetEntryRef: "trade-capability-not-applicable", markets: [] };
   submission.implementation = { sourcePaths: [sourcePath], testPaths: [testPath], evidenceRefs: [] };
   submission.supportingPackage.securityAssessment = null;
-  submission.programmableFee.feeScopes = [];
-  submission.programmableFee.executionScopeRefs = [];
-  submission.programmableFee.collectionProfileSchema = builtinSchema(OPEN_WORLD_V2_FEE_NOT_APPLICABLE.collectionProfileSchemaId);
-  submission.programmableFee.collectionProfile = structuredClone(OPEN_WORLD_V2_FEE_NOT_APPLICABLE.collectionProfile);
-  submission.programmableFee.conformance = { status: "not-applicable", evidenceRefs: [], evidenceDigests: [], scopeArtifacts: [] };
-  submission.supportingPackage.feePolicy = null;
   intentContract.status = "builder-confirmed";
   intentContract.route = { id: "CUSTOM_ARCHITECTURE", reasons: [{ language: "en", text: "The supplied implementation is explicitly classified as a local no-market architecture." }], blockedByRefs: [] };
   intentContract.facts[0] = { ...intentContract.facts[0], kind: "idea-specific-local-implementation", state: "confirmed", semanticPayload: structuredClone(ideaSource), payloadSchema: structuredClone(ideaProfile) };
@@ -288,7 +280,7 @@ function authorNoMarketSubmission(applicationId, ideaText, sourcePath, testPath)
   records.intentFidelity = record(intentFidelity);
   for (const [key, spec] of Object.entries(OPEN_WORLD_V2_ARTIFACTS)) submission.intentPackage[key] = artifactBinding(spec, records[key].bytes);
   const supportingRecords = {};
-  for (const key of ["feePolicySchema", "securityAssessmentSchema"]) {
+  for (const key of ["securityAssessmentSchema"]) {
     const spec = OPEN_WORLD_V2_SUPPORTING_ARTIFACTS[key];
     supportingRecords[key] = record(values[spec.file]);
     submission.supportingPackage[key] = artifactBinding(spec, supportingRecords[key].bytes);

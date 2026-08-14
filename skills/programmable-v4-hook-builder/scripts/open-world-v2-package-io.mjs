@@ -211,6 +211,13 @@ export function validateOpenWorldPackageFromDisk({
   const submission = parseJsonBytes(submissionBytes, submissionFile);
   const supportingRecords = {};
   for (const [key, spec] of Object.entries(supportingArtifacts)) {
+    if (key === "feePolicySchema" && submission.supportingPackage?.feePolicySchema === undefined) {
+      const orphanPath = resolveWithin(root, spec.file);
+      if (fs.existsSync(orphanPath)) throw new OpenWorldV2Error("PACKAGE_ORPHAN_FEE_POLICY_SCHEMA", "fee-policy-v2.schema.json exists without an explicit frozen Fee V2 binding.", {
+        details: { path: spec.file }
+      });
+      continue;
+    }
     if (key === "securityAssessment" && submission.supportingPackage?.securityAssessment === null) {
       const orphanPath = resolveWithin(root, spec.file);
       if (fs.existsSync(orphanPath)) throw new OpenWorldV2Error("PACKAGE_ORPHAN_SECURITY_ASSESSMENT", "security-assessment.v1.json exists but submission.v2.json intentionally defers the derived assessment with a null binding.", {

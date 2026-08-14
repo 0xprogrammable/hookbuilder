@@ -13,7 +13,7 @@ import { PROJECT_COMMAND_MAXIMUM_OUTPUT_BYTES, PROJECT_TRADE_COMMAND_MAXIMUM_OUT
   createProjectCommandReceipt, executeProjectCommands, projectCommandEnvironmentSha256,
   projectCommandMaximumOutputBytes, resolveProjectCommandCwd, resolveProjectCommandTool, sha256Bytes } from "../project-command-executor-core.mjs";
 import { compileProjectBundle, preflightProjectOutput, validateProjectOutput } from "../project-compiler-core.mjs";
-import { TRADABLE_REFERENCE_PROFILE_ID, bindTradableReferenceIntent } from "../project-tradable-authoring-core.mjs";
+import { TRADABLE_LEGACY_POLICY_INTENT_CLAUSE, TRADABLE_REFERENCE_PROFILE_ID, bindTradableReferenceIntent } from "../project-tradable-authoring-core.mjs";
 import {
   ARCHITECTURE_ROLES,
   PRODUCT_GRAPH_NAMES,
@@ -24,7 +24,7 @@ import {
   validateProjectSpec
 } from "../project-contracts-core.mjs";
 import { bindLocalReleaseHandoffV1, createNoMarketProjectAuthoring, renderGitHubSubmissionHandoffV1, sealProjectState, validateProjectState } from "../project-state-core.mjs";
-import { validateRepositoryPlan } from "../repository-completion-core.mjs";
+import { validateFrozenLegacyTradeManifestV1RepositoryPlan, validateRepositoryPlan } from "../repository-completion-core.mjs";
 import { validateAgainstSchema } from "../submission-core.mjs";
 import { architectureSnapshotSha256, createOpenWorldDraftPackage } from "../open-world-v2-core.mjs";
 import { expectedTradeRunnerCallsV1, inspectForgeTradeTestRunnerOutputV1, validateV4DeploymentEvidence } from "../v4-deployment-evidence-core.mjs";
@@ -54,11 +54,11 @@ export {
   createProjectCommandReceipt, executeProjectCommands, projectCommandEnvironmentSha256,
   projectCommandMaximumOutputBytes, sha256Bytes,
   compileProjectBundle, preflightProjectOutput, validateProjectOutput,
-  TRADABLE_REFERENCE_PROFILE_ID, bindTradableReferenceIntent,
+  TRADABLE_LEGACY_POLICY_INTENT_CLAUSE, TRADABLE_REFERENCE_PROFILE_ID, bindTradableReferenceIntent,
   ARCHITECTURE_ROLES, PRODUCT_GRAPH_NAMES, PROJECT_SPEC_FACETS, projectArtifactSha256,
   validateArchitectureCandidates, validateProductGraph, validateProjectSpec,
   bindLocalReleaseHandoffV1, createNoMarketProjectAuthoring, renderGitHubSubmissionHandoffV1,
-  sealProjectState, validateProjectState, validateRepositoryPlan, validateAgainstSchema,
+  sealProjectState, validateProjectState, validateFrozenLegacyTradeManifestV1RepositoryPlan, validateRepositoryPlan, validateAgainstSchema,
   architectureSnapshotSha256, createOpenWorldDraftPackage, expectedTradeRunnerCallsV1,
   inspectForgeTradeTestRunnerOutputV1, validateV4DeploymentEvidence, canonicalV4PermissionMask,
   TRADE_TEST_SEMANTIC_ADEQUACY_V1, tradeCapabilityManifestSha256V1,

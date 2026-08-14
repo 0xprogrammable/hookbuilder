@@ -50,7 +50,7 @@ test("loads one hash-bound, closed and explicitly non-allowlisting catalog", () 
   const catalog = loadTemplateCatalog({ skillRoot });
   const entries = listTemplateCatalog(catalog);
 
-  assert.equal(catalog.catalogDigest, "27a069da4cdc2e2296a199a58373c9f112cd0e1e0c21d836700af6fad505ea23");
+  assert.equal(catalog.catalogDigest, "86cbe264042766fcb5dd7ee9ef6a76ba697f8c4136a400388fa1a44804843e83");
   assert.equal(entries.length, 48);
   assert.deepEqual(entries.map(({ id }) => id), [...entries.map(({ id }) => id)].sort());
   assert.deepEqual(
@@ -74,10 +74,43 @@ test("loads one hash-bound, closed and explicitly non-allowlisting catalog", () 
     "metadata-disclosures",
     "test-evidence-threat-model"
   ]);
-  assert.equal(catalog.byId.get("blank-custom").defaultPacks.includes("programmable-volume-fee"), false);
-  for (const starterId of ["custom-hook", "custom-token-standard-fee-hook", "ordinary-launch"]) {
-    assert.equal(catalog.byId.get(starterId).defaultPacks.includes("programmable-volume-fee"), true);
+  for (const starterId of ["blank-custom", "custom-hook", "custom-token-standard-fee-hook", "ordinary-launch"]) {
+    assert.equal(catalog.byId.get(starterId).defaultPacks.includes("programmable-volume-fee"), false);
   }
+});
+
+test("every generic selectable pack renders without branded platform-fee authority", () => {
+  const catalog = loadTemplateCatalog({ skillRoot });
+  const starterIds = ["blank-custom", "custom-hook", "custom-token-standard-fee-hook", "ordinary-launch"];
+  const unselectablePackIds = [];
+  const brandedPlatformRequirement =
+    /Fee V2|Programmable-canonical|mandatory Programmable|mandatory fee collection|0x4957f49620AFf3Adbbe8195a4f633E49cc93376c|10 basis points|10 bps|platform (?:share|liabilit|fee)/iu;
+
+  for (const definition of catalog.definitions.filter(({ kind }) => kind === "pack")) {
+    let plan;
+    for (const starterId of starterIds) {
+      try {
+        plan = composeTemplate({ catalog, starterId, packIds: [definition.id] });
+        break;
+      } catch {}
+    }
+    if (!plan) {
+      unselectablePackIds.push(definition.id);
+      continue;
+    }
+    const rendered = [...renderTemplateFiles(plan, { catalog }).values()].join("\n");
+    assert.doesNotMatch(`${JSON.stringify(plan)}\n${rendered}`, brandedPlatformRequirement, definition.id);
+  }
+
+  assert.deepEqual(unselectablePackIds, [
+    "chainlink-ccip",
+    "chainlink-cre",
+    "chainlink-data-feeds",
+    "chainlink-data-streams",
+    "chainlink-provider",
+    "chainlink-vrf-v2-5",
+    "programmable-volume-fee"
+  ]);
 });
 
 test("SKILL delegates starter identity to the catalog and keeps packs at planning semantics", () => {
@@ -411,13 +444,13 @@ test("catalog covers the requested broad starter and capability families", () =>
   assert.equal(fee.reviewRoute, "standard-review");
 
   const ordinary = showTemplateDefinition(catalog, "ordinary-launch");
-  assert.ok(ordinary.capabilities.includes("standard-programmable-fee-hook"));
-  assert.match(ordinary.summary, /mandatory standard fee-hook profile/u);
-  assert.match(ordinary.summary, /no additional project-defined hook behavior/u);
+  assert.equal(ordinary.capabilities.includes("standard-programmable-fee-hook"), false);
+  assert.match(ordinary.summary, /without inventing project-defined hook behavior or platform economics/u);
 
   const customHookBehavior = showTemplateDefinition(catalog, "custom-hook-behavior");
   assert.equal(customHookBehavior.label, "Additional project-defined hook behavior");
-  assert.match(customHookBehavior.summary, /beyond the mandatory Programmable fee path/u);
+  assert.match(customHookBehavior.summary, /without assuming a fee path/u);
+  assert.deepEqual(customHookBehavior.requires, []);
 
   const sellAndBurn = showTemplateDefinition(catalog, "contract-priced-sell-and-burn");
   assert.equal(sellAndBurn.acceleratorOnly, true);
@@ -685,23 +718,20 @@ test("ordinary launch materializes only one new closed planning directory", () =
     assert.equal(manifest.selection.starterId, "ordinary-launch");
     assert.deepEqual(manifest.selection.selectedPackIds, [
       "metadata-disclosures",
-      "programmable-volume-fee",
       "test-evidence-threat-model"
     ]);
     assert.equal(manifest.policy.selectionSemantics, "accelerator-only");
     assert.equal(manifest.policy.automaticAdverseDecision, false);
     assert.equal(manifest.machineCapabilities.knownCapabilityIds.includes("canonical-v4-pool"), true);
-    assert.equal(manifest.machineCapabilities.knownCapabilityIds.includes("standard-programmable-fee-hook"), true);
+    assert.equal(manifest.machineCapabilities.knownCapabilityIds.includes("standard-programmable-fee-hook"), false);
     assert.deepEqual(manifest.tagSuggestions.ownerProvidedLocalTags, []);
     assert.equal(Object.hasOwn(manifest.tagSuggestions, "localProjectTags"), false);
     assert.equal(manifest.machineCapabilities.publicDiscoveryTagInference, "forbidden");
     assert.deepEqual(manifest.implementationLegos.entries.map(({ id }) => id), ["token-supply-modes"]);
     assert.equal(manifest.implementationLegos.entries[0].maturity, "code-ready");
     assert.equal(manifest.implementationLegos.entries[0].claims.audited, false);
-    assert.equal(manifest.feePolicy.platformFeeOwner, "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c");
-    assert.equal(manifest.feePolicy.platformShareBps, 10);
-    assert.equal(manifest.feePolicy.effectiveTotalFeeFloorBps, 10);
-    assert.equal(manifest.feePolicy.feeConformanceStatus, "unresolved-until-scope-specific-code-and-tests");
+    assert.equal(Object.hasOwn(manifest, "feePolicy"), false);
+    assert.equal(Object.hasOwn(readJson(path.join(target, "programmable-code-legos.json")), "feePolicy"), false);
     assert.equal(fs.existsSync(path.join(target, "implementation", "token-supply-modes", "src", "TokenSupplyModes.sol")), true);
     assert.match(fs.readFileSync(path.join(target, "METADATA_AND_DISCLOSURES.md"), "utf8"), /GMGN/u);
     assert.match(fs.readFileSync(path.join(target, "PROPOSAL.md"), "utf8"), /accelerator, not an allowlist/u);
@@ -846,7 +876,6 @@ test("token tax and tax-financed automatic liquidity stay token-managed and comp
   assert.deepEqual(plan.selection.autoIncludedPackIds, ["token-managed-automatic-liquidity"]);
   assert.deepEqual(plan.selection.selectedPackIds, [
     "metadata-disclosures",
-    "programmable-volume-fee",
     "tax-financed-auto-liquidity",
     "test-evidence-threat-model",
     "token-managed-automatic-liquidity",
@@ -890,7 +919,8 @@ test("custom-token standard-fee starter materializes token-side behavior without
     assert.equal(manifest.selection.selectedPackIds.includes("token-transfer-tax"), true);
     assert.equal(manifest.selection.selectedPackIds.includes("token-managed-automatic-liquidity"), true);
     assert.equal(manifest.selection.selectedPackIds.includes("custom-hook-behavior"), false);
-    assert.equal(manifest.machineCapabilities.knownCapabilityIds.includes("standard-programmable-fee-hook"), true);
+    assert.equal(manifest.machineCapabilities.knownCapabilityIds.includes("standard-programmable-fee-hook"), false);
+    assert.equal(Object.hasOwn(manifest, "feePolicy"), false);
     assert.deepEqual(manifest.tagSuggestions.ownerProvidedLocalTags, ["auto-liquidity-token"]);
     const tags = fs.readFileSync(path.join(target, "TAGS.md"), "utf8");
     assert.match(tags, /`auto-liquidity-token`/u);
@@ -1227,8 +1257,8 @@ test("implementation Lego manifest is closed, hash-bound and honest about maturi
 test("exact triggers select composable Legos without turning the catalog into an allowlist", () => {
   const catalog = loadTemplateCatalog({ skillRoot });
   const cases = [
-    ["async-swap", ["async-batch-fee-adapter"]],
-    ["contract-priced-sell-and-burn-v4-custom-accounting", ["contract-custom-curve", "zero-amm-fee-adapter"]],
+    ["async-swap", []],
+    ["contract-priced-sell-and-burn-v4-custom-accounting", ["contract-custom-curve"]],
     ["maps-location-quest", ["game-settlement"]],
     ["multi-repo-app-service-indexer", ["reorg-safe-indexer"]],
     ["oracle-keeper", ["oracle-keeper"]],
@@ -1248,6 +1278,21 @@ test("exact triggers select composable Legos without turning the catalog into an
         capabilityIds: plan.machineCapabilities.knownCapabilityIds
       }),
       plan.implementationLegos
+    );
+  }
+
+  for (const capabilityId of ["async-swap", "continuous-clearing-auction", "sync-custom-zero-amm"]) {
+    const plan = composeTemplate({
+      catalog,
+      starterId: "blank-custom",
+      capabilityIds: [capabilityId]
+    });
+    assert.equal(
+      plan.implementationLegos.entries.some(({ id }) =>
+        id === "async-batch-fee-adapter" || id === "zero-amm-fee-adapter"
+      ),
+      false,
+      capabilityId
     );
   }
 
@@ -1271,34 +1316,20 @@ test("exact triggers select composable Legos without turning the catalog into an
   );
 });
 
-test("materialized implementation sources match pinned receipts and fee applicability cannot be weakened", () => {
+test("generic materialization excludes archived branded Fee V2 sources", () => {
   const catalog = loadTemplateCatalog({ skillRoot });
   const plan = composeTemplate({
     catalog,
     starterId: "custom-hook",
     packIds: ["async-swap", "contract-priced-sell-and-burn-v4-custom-accounting"]
   });
-  assert.deepEqual(plan.implementationLegos.entries.map(({ id }) => id), [
-    "async-batch-fee-adapter",
-    "contract-custom-curve",
-    "zero-amm-fee-adapter"
-  ]);
+  assert.deepEqual(plan.implementationLegos.entries.map(({ id }) => id), ["contract-custom-curve"]);
   assert.equal(plan.implementationLegos.entries.every(({ maturity }) => maturity === "experimental"), true);
   assert.equal(
     plan.implementationLegos.entries.every(({ feeApplicability }) => feeApplicability === "canonical-scope-conformance-unresolved"),
     true
   );
-  assert.deepEqual(plan.feePolicy, {
-    schemaVersion: "1.0.0",
-    kind: "programmable-fee-applicability",
-    platformFeeOwner: "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c",
-    platformShareBps: 10,
-    effectiveTotalFeeFloorBps: 10,
-    selectedTotalFeeZeroOutcome: "effective-total-fee-is-10-bps-for-each-applicable-canonical-scope",
-    canonicalScopeStatus: "declaration-required",
-    feeConformanceStatus: "unresolved-until-scope-specific-code-and-tests",
-    maturityConfersFeeConformance: false
-  });
+  assert.equal(Object.hasOwn(plan, "feePolicy"), false);
 
   const files = new Map(renderTemplateFiles(plan, { catalog }));
   for (const entry of plan.implementationLegos.entries) {
@@ -1312,13 +1343,11 @@ test("materialized implementation sources match pinned receipts and fee applicab
   }
   const generatedManifest = JSON.parse(files.get("programmable-code-legos.json"));
   assert.deepEqual(generatedManifest.implementationLegos, plan.implementationLegos);
-  assert.deepEqual(generatedManifest.feePolicy, plan.feePolicy);
+  assert.equal(Object.hasOwn(generatedManifest, "feePolicy"), false);
 
   for (const mutate of [
     (copy) => { copy.implementationLegos.entries[0].claims.audited = true; },
-    (copy) => { copy.implementationLegos.entries[0].files[0].sourceSha256 = "0".repeat(64); },
-    (copy) => { copy.feePolicy.platformShareBps = 0; },
-    (copy) => { copy.feePolicy.platformFeeOwner = "0x0000000000000000000000000000000000000000"; }
+    (copy) => { copy.implementationLegos.entries[0].files[0].sourceSha256 = "0".repeat(64); }
   ]) {
     const tampered = structuredClone(plan);
     mutate(tampered);

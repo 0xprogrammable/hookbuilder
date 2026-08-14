@@ -1,15 +1,15 @@
 {
   "schemaVersion": "1.0.0",
-  "candidateId": "programmable-v4-builder-v0.6.0-local-20260813",
+  "candidateId": "programmable-v4-builder-v0.8.0-local-20260814",
   "privateCandidate": true,
   "publicState": "not-published",
-  "releaseVersion": "0.6.0",
+  "releaseVersion": "0.8.0",
   "channel": "canary",
   "releaseKind": "normal",
   "plannedRelease": {
     "builder": {
-      "fromVersion": "0.5.1",
-      "toVersion": "0.6.0",
+      "fromVersion": "0.7.0",
+      "toVersion": "0.8.0",
       "semanticClassification": "minor"
     },
     "submissionStandard": {
@@ -34,39 +34,27 @@
       "sha256": null
     }
   },
-  "preparedAt": "2026-08-13T12:45:00Z",
-  "requestedReleaseAt": "2026-08-14T11:15:00Z",
-  "changeSetComplete": false,
+  "preparedAt": "2026-08-14T07:40:00Z",
+  "requestedReleaseAt": "2026-08-15T06:04:52Z",
+  "changeSetComplete": true,
   "changes": [
     {
-      "id": "filtered-provider-knowledge",
+      "id": "current-launch-requirements-enforcement",
       "kind": "feature",
-      "summary": "Add source-receipted provider knowledge that is routed only for confirmed provider capabilities and never implies availability, safety, approval, or live state."
+      "summary": "Use every active build Rule ID from the exact protected Submit a Launch policy as the complete Programmable requirement set before context or construction."
     },
     {
-      "id": "shortest-useful-journey",
-      "kind": "feature",
-      "summary": "Target a shorter default journey with deferred specialist context and concise primary findings."
+      "id": "current-policy-provenance-gate",
+      "kind": "security-fix",
+      "summary": "Reject caller-authored, unavailable, stale, or drifted policy records and retain exact repository, commit, tree, blob, byte, and digest provenance."
     },
     {
-      "id": "bounded-execution-safety",
-      "kind": "feature",
-      "summary": "Target explicit execution boundaries, bounded child processes, and clearer authority-denied outcomes without weakening existing gates."
-    },
-    {
-      "id": "measured-efficiency",
+      "id": "submit-launch-policy-1-2-binding",
       "kind": "maintenance",
-      "summary": "Target generator-backed context, module, tool-call, retry, and latency evidence before making efficiency claims."
-    },
-    {
-      "id": "stable-candidate-separation",
-      "kind": "maintenance",
-      "summary": "Historical planning example: preserve immutable v0.5.1 bytes while preparing a distinct unpublished v0.6.0 candidate. This fixture is not current release state."
+      "summary": "Record protected Submit a Launch main at policy 1.2.0 with the single Ethereum and treasury 10 bps requirement while preserving runtime current-main drift detection."
     }
   ],
-  "unbundledChangeIds": [
-    "pending-parallel-lane-integration"
-  ],
+  "unbundledChangeIds": [],
   "evidence": {
     "checksums": {
       "status": "pending",

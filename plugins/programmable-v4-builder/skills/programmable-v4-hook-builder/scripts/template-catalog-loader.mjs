@@ -53,6 +53,11 @@ const listSpec = {
   positionals: { min: 0, max: 0 }
 };
 
+const frozenLegacyFeeV2ImplementationLegoIds = new Set([
+  "async-batch-fee-adapter",
+  "zero-amm-fee-adapter"
+]);
+
 export function parseTemplateCatalogList(args) {
   if (args.includes("--help") || args.includes("-h")) return { help: true, options: null };
   try {
@@ -400,8 +405,12 @@ export function validateImplementationLegoDefinition(definition, entry) {
   assertIdArray(definition.activatesFor.starterIds, `${entry.id}.activatesFor.starterIds`, { maximum: 32, allowEmpty: true });
   assertIdArray(definition.activatesFor.packIds, `${entry.id}.activatesFor.packIds`, { maximum: 64, allowEmpty: true });
   assertIdArray(definition.activatesFor.capabilityIds, `${entry.id}.activatesFor.capabilityIds`, { maximum: 64, allowEmpty: true });
-  if (Object.values(definition.activatesFor).every((values) => values.length === 0)) {
+  const hasNoActivationTrigger = Object.values(definition.activatesFor).every((values) => values.length === 0);
+  if (hasNoActivationTrigger && !frozenLegacyFeeV2ImplementationLegoIds.has(definition.id)) {
     fail("IMPLEMENTATION_LEGO_SCHEMA_INVALID", `Implementation Lego ${entry.id} has no exact activation trigger.`);
+  }
+  if (!hasNoActivationTrigger && frozenLegacyFeeV2ImplementationLegoIds.has(definition.id)) {
+    fail("IMPLEMENTATION_LEGO_POLICY_INVALID", `Frozen legacy Fee V2 implementation Lego ${entry.id} must not have a generic catalog trigger.`);
   }
   assertIdArray(definition.requiresLegos, `${entry.id}.requiresLegos`, { maximum: 16, allowEmpty: true });
   assertIdArray(definition.projectSurfaces, `${entry.id}.projectSurfaces`, { maximum: 16 });
@@ -578,6 +587,9 @@ export function validateCrossReferences(manifest, byId) {
       }
     }
     if (definition.kind === "starter") {
+      if (definition.defaultPacks.includes("programmable-volume-fee")) {
+        fail("CATALOG_POLICY_INVALID", `Starter ${definition.id} cannot select frozen branded Fee V2 platform economics.`);
+      }
       for (const mandatoryPack of manifest.mandatoryPacks) {
         if (!definition.defaultPacks.includes(mandatoryPack)) {
           fail("CATALOG_POLICY_INVALID", `Starter ${definition.id} omits mandatory pack ${mandatoryPack}.`);
