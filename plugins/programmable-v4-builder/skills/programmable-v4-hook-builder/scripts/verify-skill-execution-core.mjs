@@ -23,7 +23,7 @@ launch-plan-graph legacy-strict-json-boundaries official-launchpad open-world-mi
 open-world-regressions open-world-runtime open-world-security open-world-source-signals
 open-world-v2 open-world-v2-module-boundaries ordinary-launch-cli package-dependency-contract
 policy-bundle project-compiler-foundation project-compiler-materialization
-prepare-canary project-compiler-output project-compiler-plan project-compiler-receipts project-executor-safety
+prepare-canary project-compiler-output project-compiler-plan project-compiler-receipts project-executor-safety project-repair-attempt
 project-compiler-v4-deployment project-surfaces public-claims
 raw-git-integrity-core registry-acceptance-v3-github registry-discovery residual-json-boundaries
 resolve-contract-core review-target review-target-contract reviewed-drift-receipt

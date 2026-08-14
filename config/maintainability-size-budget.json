@@ -349,11 +349,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
-          "observedLines": 683,
-          "observedBytes": 34032,
+          "observedLines": 686,
+          "observedBytes": 34162,
           "observedComplexityScore": 85,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.7.0 reviewed central-policy closure and workflow-canary required-file inventory"
+          "reviewRef": "v0.9.0 reviewed project-repair required-file inventory"
         }
       ]
     },
@@ -368,7 +368,7 @@
     "path": "skills/programmable-v4-hook-builder",
     "observedFiles": 640,
     "observedBytes": 9619846,
-    "maxFiles": 677,
+    "maxFiles": 681,
     "maxBytes": 12000000
   }
 }

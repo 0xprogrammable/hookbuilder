@@ -93,7 +93,7 @@ test("project output gate closes unresolved artifacts and rejects identity, face
   ], { encoding: "utf8", shell: false });
   assert.equal(unsupportedBrief.status, 2);
   assert.equal(unsupportedBrief.stdout, "");
-  assert.match(unsupportedBrief.stderr, /--brief is accepted only by validate, validate-output, preflight or require-output/u);
+  assert.match(unsupportedBrief.stderr, /--brief is accepted only by validate, validate-output, preflight, require-output or diagnose/u);
 
   const mutate = (change) => {
     const input = structuredCloneProjectOutputInput(fixture.input);

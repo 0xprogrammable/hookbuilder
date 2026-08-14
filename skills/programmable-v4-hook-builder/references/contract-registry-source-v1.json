@@ -351,6 +351,18 @@
       }
     },
     {
+      "contractId": "project-repair-attempt-v1",
+      "schemaPath": "references/project-repair-attempt-v1.schema.json",
+      "schemaId": "urn:programmable:project-repair-attempt:1.0.0",
+      "lifecycle": "active",
+      "payloadDigestProfile": "contract-defined",
+      "validator": {
+        "modulePath": "scripts/project-repair-attempt-core.mjs",
+        "exportName": "validateProjectRepairAttemptV1",
+        "mode": "direct"
+      }
+    },
+    {
       "contractId": "project-sandbox-receipt-v1",
       "schemaPath": "references/project-sandbox-receipt-v1.schema.json",
       "schemaId": "urn:programmable:project-external-sandbox-receipt:1.0.0",

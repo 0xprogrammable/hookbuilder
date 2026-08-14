@@ -91,8 +91,8 @@ test("source verification partitions every portable test exactly once with bound
     .filter((name) => name.endsWith(".test.mjs"))
     .sort();
   const batches = createDeterministicTestBatches(testFiles);
-  assert.equal(testFiles.length, 84);
-  assert.deepEqual(batches.map((batch) => batch.length), [42, 42]);
+  assert.equal(testFiles.length, 85);
+  assert.deepEqual(batches.map((batch) => batch.length), [43, 42]);
   assert.deepEqual(batches[0], testFiles.filter((_, index) => index % 2 === 0));
   assert.deepEqual(batches[1], testFiles.filter((_, index) => index % 2 === 1));
   assert.deepEqual([...batches.flat()].sort(), testFiles);
@@ -450,7 +450,7 @@ test("portable verifier declares every direct test exactly once", () => {
     .sort()
     .map((name) => `scripts/test/${name}`);
 
-  assert.equal(portableTestPaths.length, 84);
+  assert.equal(portableTestPaths.length, 85);
   assert.equal(new Set(portableTestPaths).size, portableTestPaths.length);
   assert.deepEqual([...portableTestPaths].sort(), discovered);
 });
@@ -524,7 +524,7 @@ test("portable verifier drain-preserves a complete diagnostic payload larger tha
     assert.ok(Buffer.byteLength(result.stderr, "utf8") > 64 * 1024);
     assert.deepEqual(lines.slice(0, -1).sort(), lines.slice(0, -1));
     assert.equal(lines.length, 3);
-    assert.equal(lines[0], `- portable package has ${677 + extraTests.length} files; keep it at or below 677`);
+    assert.equal(lines[0], `- portable package has ${681 + extraTests.length} files; keep it at or below 681`);
     assert.ok(lines[1].startsWith(inventoryPrefix));
     assert.ok(lines[1].endsWith(inventorySuffix));
     assert.deepEqual(
@@ -798,7 +798,7 @@ test("trusted verifier rejects excessive file count before checking candidate sc
     const result = runUntrustedVerifier(candidateRoot);
 
     assert.notEqual(result.status, 0, result.stdout);
-    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 677/);
+    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 681/);
     assert.doesNotMatch(result.stderr, /invalid-syntax|SyntaxError/);
   } finally {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });

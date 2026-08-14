@@ -85,7 +85,7 @@ test("Autopilot starts from the compact compiler with the productive completion 
 
   const help = childProcess.spawnSync(process.execPath, [cli, "project", "--help"], { encoding: "utf8", shell: false });
   assert.equal(help.status, 0, help.stdout || help.stderr);
-  assert.match(help.stdout, /validate\|validate-output\|preflight\|require-output\|execute\|materialize/u);
+  assert.match(help.stdout, /validate\|validate-output\|preflight\|require-output\|execute\|diagnose\|materialize/u);
   for (const option of ["--idea-file", "--application-id", "--classification", "--market-ref", "--reference-profile", "--source-contract", "--test-source", "--output", "--write"]) assert.match(help.stdout, new RegExp(option, "u"), option);
 });
 
@@ -110,7 +110,7 @@ test("user-facing result modes defer the layered response contract without spend
       true,
       mode
     );
-    const coldMode = mode === "explore" || mode === "autopilot";
+    const coldMode = mode === "explore" || mode === "autopilot" || mode === "repair";
     assert.equal(
       result.contextBudget.status,
       coldMode ? "within-target" : "expanded-required-context",
@@ -125,6 +125,21 @@ test("user-facing result modes defer the layered response contract without spend
     maintainerHandoff.loadLater.some(({ path: reference }) => reference === "references/layered-response-contract.md"),
     false
   );
+});
+
+test("Repair starts only from the compact non-completion loop and defers v2 regeneration", () => {
+  const result = planKnowledge({ mode: "repair", skillRoot });
+  assert.deepEqual(paths(result), ["references/repair-loop.md"]);
+  assert.equal(result.loadLater.some(({ path: reference }) => reference === "references/open-world-v2-workflow.md"), true);
+  assert.equal(result.contextBudget.status, "within-target");
+  assert.ok(result.contextBudget.estimatedTokens <= 3000, result.contextBudget.estimatedTokens);
+  const repair = fs.readFileSync(path.join(skillRoot, "references", "repair-loop.md"), "utf8");
+  assert.ok(Buffer.byteLength(repair, "utf8") <= 2000);
+  assert.match(repair, /project diagnose/u);
+  assert.match(repair, /initial attempt plus at most two repair attempts/u);
+  assert.match(repair, /NOT_COMPLETION/u);
+  assert.match(repair, /NOT_APPROVAL/u);
+  assert.match(repair, /PROJECT_PREFLIGHT_VALID/u);
 });
 
 test("knowledge-routing source is duplicate-key-free under strict lossless JSON", () => {

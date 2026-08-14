@@ -233,9 +233,13 @@
       "dynamicRouteTiming": "deferred",
       "dynamicRouteTrigger": "Load capability-specific chapters only after the observed root cause identifies the exact component, trust boundary, or protocol behavior under repair.",
       "initial": [
-        "open-world-v2-workflow.md"
+        "repair-loop.md"
       ],
       "later": [
+        {
+          "reference": "open-world-v2-workflow.md",
+          "trigger": "Load only after diagnosis proves the repair must regenerate a v2 artifact, project-state checkpoint, repository plan, submission package, or output evidence."
+        },
         {
           "reference": "v4-protocol-mechanics.md",
           "trigger": "Load when the repair targets a hook, a canonical v4 pool, or another capability whose behavior depends on exact v4 protocol mechanics."

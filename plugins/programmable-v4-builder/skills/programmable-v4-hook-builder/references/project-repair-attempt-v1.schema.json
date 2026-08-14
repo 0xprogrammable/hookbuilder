@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:programmable:project-repair-attempt:1.0.0",
+  "title": "Programmable project repair attempt",
+  "description": "An Ed25519-signature-bearing, hash-bound failed external sandbox attempt. It proves neither signer trust nor completion; an independently configured trust root remains required.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "payload", "payloadSha256", "signature"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "kind": { "const": "programmable-project-repair-attempt" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "sessionId", "attemptNumber", "previousAttemptPayloadSha256", "request", "launcher", "runtime", "policy", "commands", "result", "authorization"],
+      "properties": {
+        "status": { "enum": ["failed", "tooling-blocked"] },
+        "sessionId": { "$ref": "#/$defs/slug" },
+        "attemptNumber": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "previousAttemptPayloadSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] },
+        "request": { "$ref": "#/$defs/request" },
+        "launcher": { "$ref": "#/$defs/launcher" },
+        "runtime": { "$ref": "#/$defs/runtime" },
+        "policy": { "$ref": "#/$defs/policy" },
+        "commands": { "type": "array", "minItems": 1, "maxItems": 128, "items": { "$ref": "#/$defs/commandObservation" } },
+        "result": { "$ref": "#/$defs/result" },
+        "authorization": { "$ref": "#/$defs/authorization" }
+      }
+    },
+    "payloadSha256": { "$ref": "#/$defs/sha256" },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "keyId", "value"],
+      "properties": {
+        "algorithm": { "const": "ed25519" },
+        "keyId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,160}$" },
+        "value": { "type": "string", "minLength": 80, "maxLength": 128 }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "gitObject": { "type": "string", "pattern": "^(?!0{40}$)[0-9a-f]{40}$" },
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 120 },
+    "repositoryPath": { "type": "string", "minLength": 1, "maxLength": 500, "pattern": "^(?!/)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*\\\\)[^\\u0000-\\u001f\\u007f-\\u009f]+$" },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "path", "sha256", "byteLength"],
+      "properties": {
+        "id": { "$ref": "#/$defs/slug" }, "kind": { "$ref": "#/$defs/slug" }, "path": { "$ref": "#/$defs/repositoryPath" },
+        "sha256": { "$ref": "#/$defs/sha256" }, "byteLength": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 }
+      }
+    },
+    "requestedCommand": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "commandSha256", "argvSha256", "networkAccess", "externalWrites"],
+      "properties": {
+        "id": { "$ref": "#/$defs/slug" }, "commandSha256": { "$ref": "#/$defs/sha256" }, "argvSha256": { "$ref": "#/$defs/sha256" },
+        "networkAccess": { "enum": ["forbidden", "read-only"] }, "externalWrites": { "const": false }
+      }
+    },
+    "request": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "kind", "applicationId", "revision", "source", "executionPlanSha256", "commandsSha256", "commands", "inputArtifactsSha256", "inputArtifacts", "outputPlanPath", "requestSha256"],
+      "properties": {
+        "schemaVersion": { "const": "1.0.0" }, "kind": { "const": "programmable-project-external-sandbox-request" },
+        "applicationId": { "$ref": "#/$defs/slug" }, "revision": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "source": {
+          "type": "object", "additionalProperties": false, "required": ["headCommit", "tree", "branch", "gitStatusSha256"],
+          "properties": {
+            "headCommit": { "$ref": "#/$defs/gitObject" }, "tree": { "$ref": "#/$defs/gitObject" },
+            "branch": { "oneOf": [{ "type": "string", "minLength": 1, "maxLength": 300 }, { "type": "null" }] },
+            "gitStatusSha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "executionPlanSha256": { "$ref": "#/$defs/sha256" }, "commandsSha256": { "$ref": "#/$defs/sha256" },
+        "commands": { "type": "array", "minItems": 1, "maxItems": 128, "items": { "$ref": "#/$defs/requestedCommand" } },
+        "inputArtifactsSha256": { "$ref": "#/$defs/sha256" },
+        "inputArtifacts": { "type": "array", "minItems": 1, "maxItems": 4096, "items": { "$ref": "#/$defs/artifact" } },
+        "outputPlanPath": { "const": ".programmable/repository-plan.v1.json" }, "requestSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "launcher": {
+      "type": "object", "additionalProperties": false, "required": ["id", "version", "binarySha256", "configurationSha256"],
+      "properties": { "id": { "$ref": "#/$defs/slug" }, "version": { "type": "string", "minLength": 1, "maxLength": 120 }, "binarySha256": { "$ref": "#/$defs/sha256" }, "configurationSha256": { "$ref": "#/$defs/sha256" } }
+    },
+    "runtime": {
+      "type": "object", "additionalProperties": false, "required": ["id", "version", "imageSha256", "isolation"],
+      "properties": { "id": { "$ref": "#/$defs/slug" }, "version": { "type": "string", "minLength": 1, "maxLength": 120 }, "imageSha256": { "$ref": "#/$defs/sha256" }, "isolation": { "enum": ["container-separate-user", "remote-vm", "separate-uid"] } }
+    },
+    "policy": {
+      "type": "object", "additionalProperties": false, "required": ["filesystem", "network", "secrets", "externalWrites", "process"],
+      "properties": {
+        "filesystem": {
+          "type": "object", "additionalProperties": false, "required": ["enforced", "sourceReadOnly", "disposableWorkspace", "writeScope", "allowedPathsSha256", "deniedPathsSha256"],
+          "properties": { "enforced": { "const": true }, "sourceReadOnly": { "const": true }, "disposableWorkspace": { "const": true }, "writeScope": { "const": "disposable-output-only" }, "allowedPathsSha256": { "$ref": "#/$defs/sha256" }, "deniedPathsSha256": { "$ref": "#/$defs/sha256" } }
+        },
+        "network": {
+          "type": "object", "additionalProperties": false, "required": ["enforced", "mode", "allowlistSha256"],
+          "properties": { "enforced": { "const": true }, "mode": { "enum": ["forbidden", "read-only-allowlist"] }, "allowlistSha256": { "oneOf": [{ "$ref": "#/$defs/sha256" }, { "type": "null" }] } }
+        },
+        "secrets": { "type": "object", "additionalProperties": false, "required": ["enforced", "inherited", "mounted"], "properties": { "enforced": { "const": true }, "inherited": { "const": false }, "mounted": { "const": false } } },
+        "externalWrites": { "type": "object", "additionalProperties": false, "required": ["enforced", "allowed"], "properties": { "enforced": { "const": true }, "allowed": { "const": false } } },
+        "process": { "type": "object", "additionalProperties": false, "required": ["descendantsReaped"], "properties": { "descendantsReaped": { "const": true } } }
+      }
+    },
+    "commandObservation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "commandSha256", "argvSha256", "status", "exitCode", "signal", "timedOut", "outputExceeded", "stdoutSha256", "stdoutByteLength", "stderrSha256", "stderrByteLength", "networkAccessed", "externalWritesPerformed", "filesystemWritesSha256"],
+      "properties": {
+        "id": { "$ref": "#/$defs/slug" }, "commandSha256": { "$ref": "#/$defs/sha256" }, "argvSha256": { "$ref": "#/$defs/sha256" },
+        "status": { "enum": ["passed", "failed", "not-run", "tooling-blocked"] },
+        "exitCode": { "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 255 }, { "type": "null" }] },
+        "signal": { "oneOf": [{ "type": "string", "pattern": "^SIG[A-Z0-9]{1,24}$" }, { "type": "null" }] },
+        "timedOut": { "type": "boolean" }, "outputExceeded": { "type": "boolean" },
+        "stdoutSha256": { "$ref": "#/$defs/sha256" }, "stdoutByteLength": { "type": "integer", "minimum": 0, "maximum": 134217728 },
+        "stderrSha256": { "$ref": "#/$defs/sha256" }, "stderrByteLength": { "type": "integer", "minimum": 0, "maximum": 134217728 },
+        "networkAccessed": { "type": "boolean" }, "externalWritesPerformed": { "const": false }, "filesystemWritesSha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["executionCompleted", "rootCommandId", "rootStatus", "commandsSha256", "suppressedCommandIds", "completionEligible", "approvalEligible", "preflightUnlock"],
+      "properties": {
+        "executionCompleted": { "const": false }, "rootCommandId": { "$ref": "#/$defs/slug" }, "rootStatus": { "enum": ["failed", "tooling-blocked"] },
+        "commandsSha256": { "$ref": "#/$defs/sha256" }, "suppressedCommandIds": { "type": "array", "maxItems": 127, "uniqueItems": true, "items": { "$ref": "#/$defs/slug" } },
+        "completionEligible": { "const": false }, "approvalEligible": { "const": false }, "preflightUnlock": { "const": false }
+      }
+    },
+    "authorization": {
+      "type": "object", "additionalProperties": false,
+      "required": ["completion", "approval", "audit", "deployment", "publication", "submission", "registryWrite", "externalWrites"],
+      "properties": {
+        "completion": { "const": false }, "approval": { "const": false }, "audit": { "const": false }, "deployment": { "const": false },
+        "publication": { "const": false }, "submission": { "const": false }, "registryWrite": { "const": false }, "externalWrites": { "const": false }
+      }
+    }
+  }
+}

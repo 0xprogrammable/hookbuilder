@@ -690,7 +690,7 @@ export function createMaterializedRepository(t, { extraFiles = [], mutatePlan = 
   const fileContents = new Map([
     ["src/app.mjs", "export const rewardService = true;\n"],
     ["tools/project-stage.mjs", `import fs from "node:fs";\nconst stage = process.argv[2];\nconst targets = { install: "package-lock.json", build: "src/app.mjs", typecheck: "src/app.mjs", lint: ".gitignore", simulation: "deploy/service.json", test: "test/app.test.mjs", evidence: "evidence/architecture.md" };\nconst target = targets[stage];\nif (!target) throw new Error("unknown stage");\nconst bytes = fs.readFileSync(target);\nif (bytes.length === 0) throw new Error("empty stage target");\nprocess.stdout.write(stage + ":" + target + ":" + bytes.length + "\\n");\n`],
-    [".gitignore", "node_modules/\n.programmable/repository-plan.materializing.v1.json\n"],
+    [".gitignore", "node_modules/\n.programmable/repository-plan.materializing.v1.json\n.programmable/project-repair-attempt-*.v1.json\n"],
     ["package-lock.json", "{\"lockfileVersion\":3}\n"],
     ["test/app.test.mjs", "import assert from 'node:assert/strict';\nimport { rewardService } from '../src/app.mjs';\nassert.equal(rewardService, true);\n"],
     ["deploy/service.json", "{\"service\":\"local\"}\n"],

@@ -10,7 +10,7 @@ import { TextDecoder } from "node:util";
 import { canonicalJsonSha256V2, canonicalJsonV2 } from "./canonical-json-core.mjs";
 import { parseCliOrExit } from "./cli-args.mjs";
 import { sha256Bytes } from "./open-world-v2-core.mjs";
-import { executeProjectCommands } from "./project-command-executor-core.mjs";
+import { executeProjectCommands, inspectCleanProjectSource } from "./project-command-executor-core.mjs";
 import { compileProjectBundle, preflightProjectOutput, validateProjectOutput } from "./project-compiler-core.mjs";
 import { validateArchitectureCandidates, validateProductGraph, validateProjectSpec } from "./project-contracts-core.mjs";
 import { createNoMarketProjectAuthoring } from "./project-state-core.mjs";
@@ -18,6 +18,8 @@ import { bindTradableReferenceIntent, TRADABLE_REFERENCE_PROFILE_ID } from "./pr
 import { validateRepositoryPlan } from "./repository-completion-core.mjs";
 import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
 import { sha256 } from "./template-catalog-shared.mjs";
+import { createProjectSandboxRequestV1 } from "./project-sandbox-receipt-core.mjs";
+import { diagnoseProjectRepairAttemptV1 } from "./project-repair-attempt-core.mjs";
 
 const MAINNET_FORK_CANARY = Object.freeze({
   relativePath: "test/ProgrammableVolumeFeeHookV2MainnetForkCanary.t.sol",
@@ -57,8 +59,8 @@ const PROJECT_COMPILER_BRIEF_FIELD_JSON_BYTES = Object.freeze({
 
 const cli = parseCliOrExit({
   command: "project-compiler",
-  usage: "project-compiler <validate|validate-output|preflight|require-output|execute|materialize> [command options]",
-  summary: "Validate project phases and outputs, author a source-bound plan, or fail closed before untrusted execution.",
+  usage: "project-compiler <validate|validate-output|preflight|require-output|execute|diagnose|materialize> [command options]",
+  summary: "Validate project phases and outputs, diagnose a signed failed attempt, author a source-bound plan, or fail closed before untrusted execution.",
   positionals: { min: 1, max: 1, names: ["command"] },
   options: [
     { name: "--repository-root", key: "repositoryRoot", type: "value", valueName: "path", description: "Existing project repository root." },
@@ -67,6 +69,8 @@ const cli = parseCliOrExit({
     { name: "--submission-root", key: "submissionRoot", type: "value", valueName: "repository-path", description: "Repository-relative Open World submission package directory for validate-output." },
     { name: "--plan", key: "plan", type: "value", valueName: "repository-path", description: "Repository-relative materializing repository-plan-v1 JSON path." },
     { name: "--output-plan", key: "outputPlan", type: "value", valueName: "repository-path", description: "Reserved completed-plan path; portable execute validates then requires an external sandbox." },
+    { name: "--attempt", key: "attempt", type: "value", valueName: "file", description: "Current bounded project-repair-attempt-v1 JSON file; may be an external sidecar." },
+    { name: "--previous-attempt", key: "previousAttempts", type: "value", repeatable: true, valueName: "file", description: "Earlier bounded sidecar in chronological order; repeat at most twice." },
     { name: "--idea-file", key: "ideaFile", type: "value", valueName: "utf8-file", description: "Exact natural-language idea source for materialize." },
     { name: "--application-id", key: "applicationId", type: "value", valueName: "slug", description: "Application identity for materialize." },
     { name: "--classification", key: "classification", type: "value", valueName: "no-market|tradable", description: "Explicit trade classification for materialize." },
@@ -76,16 +80,19 @@ const cli = parseCliOrExit({
     { name: "--test-source", key: "testSource", type: "value", valueName: "test-mjs-file", description: "Real node:test source for materialize." },
     { name: "--output", key: "output", type: "value", valueName: "new-directory", description: "New repository directory for materialize." },
     { name: "--write", key: "write", type: "boolean", description: "Write no-market source and a materializing plan; tradable write requires an external sandbox." },
-    { name: "--brief", key: "brief", type: "boolean", description: "Return status, counts, up to three distinct finding-code groups, report identity and evidence boundary; omit for complete canonical JSON." }
+    { name: "--brief", key: "brief", type: "boolean", description: "Return a bounded status, root, next action, report identity and evidence boundary; omit for complete canonical JSON." }
   ]
 });
 
 if (cli.positionals[0] !== "materialize" && cli.options.repositoryRoot === null) failUsage("missing required option --repository-root");
-if (cli.options.brief && !["validate", "validate-output", "preflight", "require-output"].includes(cli.positionals[0])) failUsage("--brief is accepted only by validate, validate-output, preflight or require-output");
+if (cli.options.brief && !["validate", "validate-output", "preflight", "require-output", "diagnose"].includes(cli.positionals[0])) failUsage("--brief is accepted only by validate, validate-output, preflight, require-output or diagnose");
 
 try {
   const repositoryRoot = cli.options.repositoryRoot === null ? null : fs.realpathSync(cli.options.repositoryRoot);
   if (cli.positionals[0] !== "materialize") rejectMaterializeOptions(cli.options);
+  if (cli.positionals[0] !== "diagnose" && (cli.options.attempt !== null || cli.options.previousAttempts.length > 0)) {
+    failUsage("--attempt and --previous-attempt are accepted only by diagnose");
+  }
   if (cli.positionals[0] === "materialize") {
     await materializeProject(cli.options);
   } else if (cli.positionals[0] === "validate") {
@@ -140,6 +147,19 @@ try {
     const result = await executeProjectCommands({ repositoryRoot, repositoryPlan, outputPlanPath: cli.options.outputPlan });
     const { repositoryPlan: _repositoryPlan, ...summary } = result;
     process.stdout.write(`${canonicalJsonV2(summary)}\n`);
+  } else if (cli.positionals[0] === "diagnose") {
+    if (cli.options.plan === null || cli.options.attempt === null) failUsage("diagnose requires --plan and --attempt");
+    if (cli.options.previousAttempts.length > 2) failUsage("diagnose accepts --previous-attempt at most twice");
+    if (cli.options.state !== null || cli.options.previousState !== null || cli.options.submissionRoot !== null || cli.options.outputPlan !== null) {
+      failUsage("diagnose does not accept --state, --previous-state, --submission-root or --output-plan");
+    }
+    const repositoryPlan = readRepositoryJson(repositoryRoot, cli.options.plan);
+    const source = inspectCleanProjectSource(repositoryRoot);
+    const expectedRequest = createProjectSandboxRequestV1({ repositoryPlan, source });
+    const attempt = readRepairAttemptJson(repositoryRoot, cli.options.attempt);
+    const previousAttempts = cli.options.previousAttempts.map((attemptPath) => readRepairAttemptJson(repositoryRoot, attemptPath));
+    const report = diagnoseProjectRepairAttemptV1({ attempt, previousAttempts, expectedRequest });
+    writeProjectRepairDiagnosis(report, cli.options.brief);
   } else {
     failUsage(`unknown command ${cli.positionals[0]}`);
   }
@@ -150,8 +170,8 @@ try {
 }
 
 async function materializeProject(options) {
-  const prohibited = [options.repositoryRoot, options.state, options.previousState, options.submissionRoot, options.plan, options.outputPlan];
-  if (prohibited.some((value) => value !== null)) failUsage("materialize does not accept repository validation or execution options");
+  const prohibited = [options.repositoryRoot, options.state, options.previousState, options.submissionRoot, options.plan, options.outputPlan, options.attempt];
+  if (prohibited.some((value) => value !== null) || options.previousAttempts.length > 0) failUsage("materialize does not accept repository validation, execution, or diagnosis options");
   for (const key of ["ideaFile", "applicationId", "classification", "output"]) if (options[key] === null) failUsage(`materialize requires --${key.replace(/[A-Z]/gu, (letter) => `-${letter.toLowerCase()}`)}`);
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(options.applicationId) || options.applicationId.length > 120) failUsage("--application-id must be a lowercase slug");
   if (!["no-market", "tradable"].includes(options.classification)) failUsage("--classification must be no-market or tradable");
@@ -488,6 +508,48 @@ function writeProjectReport(report, operation, brief) {
   }
   process.stdout.write(`${canonicalJsonV2(report)}\n`);
 }
+function writeProjectRepairDiagnosis(report, brief) {
+  if (!brief) {
+    process.stdout.write(`${canonicalJsonV2(report)}\n`);
+    return;
+  }
+  const suppressedCommandIds = report.root.suppressedCommandIds;
+  const summary = {
+    schemaVersion: "1.0.0",
+    kind: "project-repair-diagnosis-brief",
+    status: report.status,
+    canonicalOutput: false,
+    root: {
+      commandId: report.root.commandId,
+      status: report.root.status,
+      diagnosis: report.root.diagnosis,
+      semanticRootCause: report.root.semanticRootCause,
+      suppressedCommands: {
+        count: suppressedCommandIds.length,
+        idsSha256: canonicalJsonSha256V2(suppressedCommandIds),
+        displayed: suppressedCommandIds.slice(0, 3)
+      }
+    },
+    next: report.next,
+    attemptHistory: {
+      sessionId: report.attemptHistory.sessionId,
+      attemptNumber: report.attemptHistory.attemptNumber,
+      failureCount: report.attemptHistory.failureCount,
+      earlierFailuresPreserved: report.attemptHistory.earlierFailuresPreserved,
+      currentPayloadSha256: report.attemptHistory.payloadSha256.at(-1)
+    },
+    retryPolicy: report.retryPolicy,
+    evidenceBoundary: report.evidenceBoundary,
+    reportSha256: report.reportSha256,
+    fullReport: {
+      available: true,
+      instruction: "Rerun the same command without --brief for the complete canonical JSON report."
+    }
+  };
+  const bytes = Buffer.from(`${canonicalJsonV2(summary)}\n`, "utf8");
+  if (bytes.length > PROJECT_COMPILER_BRIEF_MAX_OUTPUT_BYTES) throw new Error("project repair diagnosis brief exceeds its complete output budget");
+  process.stdout.write(bytes);
+}
 function readInputBytes(inputPath, maximumBytes, label) {
   const resolved = path.resolve(inputPath);
   const stat = fs.lstatSync(resolved);
@@ -583,6 +645,23 @@ function readRepositoryJson(repositoryRoot, repositoryPath) {
   const realRelative = path.relative(repositoryRoot, real);
   if (realRelative.startsWith("..") || path.isAbsolute(realRelative)) throw new Error(`path resolves outside repository root: ${repositoryPath}`);
   return parseBoundedStrictJsonBytes(fs.readFileSync(real));
+}
+
+function readRepairAttemptJson(repositoryRoot, inputPath) {
+  if (typeof inputPath !== "string" || inputPath.length < 1 || inputPath.length > 4_096 || inputPath.includes("\0")) {
+    throw Object.assign(new Error("repair attempt path must be bounded local text"), { code: "PROJECT_REPAIR_INPUT_INVALID" });
+  }
+  const selected = path.isAbsolute(inputPath) ? inputPath : path.resolve(repositoryRoot, inputPath);
+  let stat;
+  try {
+    stat = fs.lstatSync(selected);
+  } catch {
+    throw Object.assign(new Error("repair attempt must be an existing bounded regular non-symlink file"), { code: "PROJECT_REPAIR_INPUT_INVALID" });
+  }
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size < 1 || stat.size > 4 * 1024 * 1024) {
+    throw Object.assign(new Error("repair attempt must be an existing bounded regular non-symlink file"), { code: "PROJECT_REPAIR_INPUT_INVALID" });
+  }
+  return parseBoundedStrictJsonBytes(fs.readFileSync(fs.realpathSync(selected)));
 }
 
 function failUsage(message) {
