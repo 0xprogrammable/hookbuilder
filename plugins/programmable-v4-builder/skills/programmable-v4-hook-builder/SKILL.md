@@ -27,7 +27,7 @@ evidence and authority.
 
 ## Golden path
 
-Resolve `SKILL_ROOT` from this file and `REPOSITORY_ROOT` from the worktree independently:
+`SKILL_ROOT` is this file's directory; `REPOSITORY_ROOT` is the worktree:
 
 ```bash
 BUILDER_CLI="$SKILL_ROOT/scripts/cli.mjs"
@@ -36,7 +36,7 @@ node "$BUILDER_CLI" policy
 node "$BUILDER_CLI" context --mode autopilot --brief
 ```
 
-Complete Programmable rule set: `policy`. Use every `build` Rule ID, add none, and stop if unavailable. Read
+Complete Programmable rule set: `0xprogrammable/submit-launch`. Use every `build` Rule ID, add none, and stop if unavailable. Read
 `loadNow`; save `profileDigest`.
 After an exact selector is confirmed, activate before architecture or code:
 
