@@ -38,7 +38,7 @@ the maturity of Fee V2, routing, or generated projects.
   `PROJECT_EXTERNAL_SANDBOX_REQUIRED`. The external receipt contract binds source/plan/input, launcher/runtime,
   enforced filesystem/network/secret/write/process policy and result hashes to an independently trusted Ed25519 signer.
   No production trust root is configured, so local receipts remain `NOT_PROVEN` and unauthenticated.
-- E2E harness: the repository gate dynamically discovers 10 local test files covering encrypted sealed-after-design
+- E2E harness: the repository gate dynamically discovers 12 local test files covering encrypted sealed-after-design
   cases, hard gates, fresh checkouts, immutable
   judge evidence, workspace/symlink mutation, wrapper closure and external-evidence trust. These are harness tests; all
   six real external evidence classes remain `EXTERNAL_BLOCKED` and `releaseCandidate` remains false.

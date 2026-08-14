@@ -12,7 +12,7 @@
     "check": "node scripts/verify-repository.mjs",
     "test": "node scripts/verify-repository.mjs",
     "test:evals": "node scripts/evals/validate-evals.mjs",
-    "test:evals:e2e": "node --test --test-concurrency=2 evals/tests/e2e-corpus.test.mjs evals/tests/e2e-external-evidence.test.mjs evals/tests/e2e-run-adversarial.test.mjs evals/tests/e2e-run-non-green.test.mjs evals/tests/e2e-run.test.mjs evals/tests/run-blind-forward-tests.test.mjs evals/tests/run-e2e-evals.test.mjs evals/tests/run-model-evals.test.mjs evals/tests/validate-evals.test.mjs evals/tests/validate-forward-tests.test.mjs",
+    "test:evals:e2e": "node --test --test-concurrency=2 evals/tests/e2e-corpus.test.mjs evals/tests/e2e-external-evidence.test.mjs evals/tests/e2e-run-adversarial.test.mjs evals/tests/e2e-run-delayed-output-mutation.test.mjs evals/tests/e2e-run-delayed-workspace-mutation.test.mjs evals/tests/e2e-run-non-green.test.mjs evals/tests/e2e-run.test.mjs evals/tests/run-blind-forward-tests.test.mjs evals/tests/run-e2e-evals.test.mjs evals/tests/run-model-evals.test.mjs evals/tests/validate-evals.test.mjs evals/tests/validate-forward-tests.test.mjs",
     "evals:e2e:validate": "node scripts/evals/run-e2e-evals.mjs --validate-only",
     "test:repository": "node --test test/repository-contract.test.mjs test/release-evidence.test.mjs",
     "test:skill": "node skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",

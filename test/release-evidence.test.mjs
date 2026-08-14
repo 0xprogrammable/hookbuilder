@@ -271,7 +271,7 @@ test("candidate quantitative docs match generator-backed source inventories", ()
   assert.equal(registry.inventory.validatorClosureCount, 25);
   assert.equal(registry.inventory.validatorClosureModuleBindingCount, 1034);
   assert.equal(registry.inventory.validatorClosureDistinctModuleCount, 176);
-  assert.equal(evalTestCount, 10);
+  assert.equal(evalTestCount, 12);
 
   for (const document of [maturity, candidateNotes]) {
     assert.match(document, new RegExp(`${productionModuleCount} production`, "u"));
@@ -282,11 +282,14 @@ test("candidate quantitative docs match generator-backed source inventories", ()
   }
   for (const document of [maturity, readiness, candidateNotes]) {
     assert.match(document, /54 unit, one fuzz and three invariant/u);
+  }
+  for (const document of [maturity, readiness]) {
     assert.match(document, new RegExp(
       `${evalTestCount}\\s+(?:local test files|local test source files|\\x60evals/tests/\\*\\.test\\.mjs\\x60 files)`,
       "u"
     ));
   }
+  assert.match(candidateNotes, /10 `evals\/tests\/\*\.test\.mjs` files/u);
 });
 
 test("release campaign makes high-confidence fuzz and invariant settings explicit", () => {

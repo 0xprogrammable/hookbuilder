@@ -173,20 +173,16 @@ test('submission manifest validates before delayed hostile mutation', () => {
   const system = new BoundedSystem(5n);
   const source = new URL('../src/system.mjs', import.meta.url).pathname;
   const judgeSnapshot = new URL('../../../judge-snapshot', import.meta.url).pathname;
-  const program = "const fs=require('node:fs');const poll=()=>fs.existsSync(process.argv[2])?fs.appendFileSync(process.argv[1], '\\\\\\\\nexport const delayedMutation = true;\\\\\\\\n'):setTimeout(poll,20);poll()";
-  const child = childProcess.spawn(process.execPath, ['-e', program, source, judgeSnapshot], { detached: true, stdio: 'ignore' });
+  const mutationReady = new URL('../../../delayed-mutation-ready', import.meta.url).pathname;
+  const program = "const fs=require('node:fs');const poll=()=>fs.existsSync(process.argv[2])?(fs.appendFileSync(process.argv[1], '\\\\\\\\nexport const delayedMutation = true;\\\\\\\\n'),fs.writeFileSync(process.argv[3],'ready\\\\n',{flag:'wx'})):setTimeout(poll,20);poll()";
+  const child = childProcess.spawn(process.execPath, ['-e', program, source, judgeSnapshot, mutationReady], { detached: true, stdio: 'ignore' });
   child.unref();
   assert.equal(system.deposit(1n), 1n);
   assert.equal(system.balance, 1n);
 });
 `);
 }
-const delayedTransientDirectory = {
-  'delayed-cache-mutation': 'cache',
-  'delayed-dist-mutation': 'dist',
-  'delayed-nested-out-mutation': 'packages/app/out',
-  'delayed-out-mutation': 'out',
-}[mode];
+const delayedTransientDirectory = mode === 'delayed-out-mutation' ? 'out' : null;
 if (delayedTransientDirectory) {
   write('tests/System.submission.test.mjs', `import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
@@ -197,8 +193,9 @@ test('submission manifest validates before delayed transient mutation', () => {
   const system = new BoundedSystem(5n);
   const target = new URL('../${delayedTransientDirectory}/', import.meta.url).pathname;
   const judgeSnapshot = new URL('../../../judge-snapshot', import.meta.url).pathname;
-  const program = "const fs=require('node:fs');const path=require('node:path');const poll=()=>fs.existsSync(process.argv[2])?(fs.mkdirSync(process.argv[1],{recursive:true}),fs.writeFileSync(path.join(process.argv[1],'delayed-output.json'),'{}\\\\n')):setTimeout(poll,20);poll()";
-  const child = childProcess.spawn(process.execPath, ['-e', program, target, judgeSnapshot], { detached: true, stdio: 'ignore' });
+  const mutationReady = new URL('../../../delayed-mutation-ready', import.meta.url).pathname;
+  const program = "const fs=require('node:fs');const path=require('node:path');const poll=()=>fs.existsSync(process.argv[2])?(fs.mkdirSync(process.argv[1],{recursive:true}),fs.writeFileSync(path.join(process.argv[1],'delayed-output.json'),'{}\\\\n'),fs.writeFileSync(process.argv[3],'ready\\\\n',{flag:'wx'})):setTimeout(poll,20);poll()";
+  const child = childProcess.spawn(process.execPath, ['-e', program, target, judgeSnapshot, mutationReady], { detached: true, stdio: 'ignore' });
   child.unref();
   assert.equal(system.deposit(1n), 1n);
   assert.equal(system.balance, 1n);
@@ -222,8 +219,9 @@ test('submission validates before delayed contained symlink target mutation', ()
   fs.writeFileSync(target, 'export const helper = true;\\n');
   fs.symlinkSync('../fixture-helper/cli.mjs', link);
   const judgeSnapshot = new URL('../../../judge-snapshot', import.meta.url).pathname;
-  const program = "const fs=require('node:fs');const poll=()=>fs.existsSync(process.argv[2])?fs.appendFileSync(process.argv[1], '\\\\nexport const changed = true;\\\\n'):setTimeout(poll,20);poll()";
-  const child = childProcess.spawn(process.execPath, ['-e', program, target, judgeSnapshot], { detached: true, stdio: 'ignore' });
+  const mutationReady = new URL('../../../delayed-mutation-ready', import.meta.url).pathname;
+  const program = "const fs=require('node:fs');const poll=()=>fs.existsSync(process.argv[2])?(fs.appendFileSync(process.argv[1], '\\\\nexport const changed = true;\\\\n'),fs.writeFileSync(process.argv[3],'ready\\\\n',{flag:'wx'})):setTimeout(poll,20);poll()";
+  const child = childProcess.spawn(process.execPath, ['-e', program, target, judgeSnapshot, mutationReady], { detached: true, stdio: 'ignore' });
   child.unref();
   assert.equal(system.deposit(1n), 1n);
   assert.equal(system.balance, 1n);

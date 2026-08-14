@@ -13,9 +13,20 @@ function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
+function waitForDelayedMutation() {
+  const marker = path.join(path.dirname(process.cwd()), 'delayed-mutation-ready');
+  const sleeper = new Int32Array(new SharedArrayBuffer(4));
+  const deadline = Date.now() + 1600;
+  while (!fs.existsSync(marker)) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) throw new Error('delayed mutation fixture did not signal readiness');
+    Atomics.wait(sleeper, 0, 0, Math.min(20, remainingMs));
+  }
+}
+
 const mode = option('--mode', 'pass');
 if (mode === 'external-blocked') process.exit(75);
-if (mode === 'slow-pass') Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1600);
+if (mode === 'wait-for-delayed-mutation') waitForDelayedMutation();
 const requestPath = option('--request');
 const outputPath = option('--output');
 const capturePath = option('--capture');
