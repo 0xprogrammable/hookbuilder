@@ -121,6 +121,11 @@ test('canonical eval suite passes deterministic structure validation', () => {
     safetyCaseCount: 46,
     forwardTestCaseCount: 6,
     forwardTestDecisionCaseCount: 3,
+    dailySentinelPublicCaseCount: 5,
+    dailySentinelPositiveTriggerCount: 5,
+    dailySentinelNegativeTriggerCount: 5,
+    dailySentinelQualification: 'STRUCTURE_AND_COVERAGE_ONLY',
+    dailySentinelSha256: '3f54706a354ac181ab23b20cb1ec1a6086032427829f393a3b5d15369bdb514e',
     e2ePublicResponseCaseCount: 47,
     e2eSealedRepositoryEnvelopeCount: 24,
     e2eComparablePublicRepositoryCaseCount: 0,
@@ -134,6 +139,29 @@ test('canonical eval suite passes deterministic structure validation', () => {
     modelEvaluation: 'not-run',
     upstreamCommit: '9660491dc662fea76c2f8565c2f7ba2abf6e8840',
   });
+});
+
+test('daily sentinel reuses public cases and keeps balanced trigger coverage', () => {
+  const sentinel = JSON.parse(fs.readFileSync(path.join(REPOSITORY_ROOT, 'evals/daily-sentinel.json'), 'utf8'));
+  assert.equal(sentinel.qualification, 'STRUCTURE_AND_COVERAGE_ONLY');
+  assert.equal(sentinel.runner, 'reuse-public-response-suite');
+  assert.equal(sentinel.publicCaseIds.length, 5);
+  assert.equal(sentinel.triggerPrompts.positive.length, 5);
+  assert.equal(sentinel.triggerPrompts.negative.length, 5);
+
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
+      const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
+      candidate.publicCaseIds[0] = 'invented-daily-case';
+      candidate.triggerPrompts.negative[0].expectedActivation = 'ACTIVATED';
+      fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /daily sentinel: publicCaseIds\[0\].*existing public case id|daily sentinel: negative\[0\] activation decision drift/u,
+    ),
+  );
 });
 
 test('prompt wrapper rejects every supported Nunjucks raw-block terminator shape', () => {

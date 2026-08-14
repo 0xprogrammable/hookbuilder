@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "programmable-daily-sentinel",
+  "qualification": "STRUCTURE_AND_COVERAGE_ONLY",
+  "runner": "reuse-public-response-suite",
+  "publicCaseIds": [
+    "ordinary-coin-official-launchpad",
+    "german-plain-language-sell-burn-intent",
+    "novel-game-external-service",
+    "unrestricted-drain-hard-fail",
+    "autopilot-complete-measurement-market"
+  ],
+  "triggerPrompts": {
+    "positive": [
+      {
+        "id": "explicit-build-en",
+        "language": "en",
+        "prompt": "Use Programmable to build and test a Uniswap v4 hook for my launch idea.",
+        "expectedActivation": "ACTIVATED"
+      },
+      {
+        "id": "explicit-build-de",
+        "language": "de",
+        "prompt": "Baue mit Programmable einen Uniswap-v4-Hook und prüfe das Projekt lokal.",
+        "expectedActivation": "ACTIVATED"
+      },
+      {
+        "id": "plain-language-game-en",
+        "language": "en",
+        "prompt": "Can Programmable turn this onchain game idea into a complete hook project?",
+        "expectedActivation": "ACTIVATED"
+      },
+      {
+        "id": "security-review-en",
+        "language": "en",
+        "prompt": "Review this Programmable v4 hook and repair the concrete security failures.",
+        "expectedActivation": "ACTIVATED"
+      },
+      {
+        "id": "upgrade-existing-de",
+        "language": "de",
+        "prompt": "Verbessere dieses bestehende Programmable-Hook-Projekt und bereite die Einreichung vor.",
+        "expectedActivation": "ACTIVATED"
+      }
+    ],
+    "negative": [
+      {
+        "id": "generic-v4-question",
+        "language": "en",
+        "prompt": "Explain how Uniswap v4 hook permissions are encoded in an address.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
+        "id": "generic-contract-build",
+        "language": "en",
+        "prompt": "Write a small Solidity ERC20 contract with owner minting for my test project.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
+        "id": "find-codex-skill",
+        "language": "en",
+        "prompt": "Find a Codex skill that can help me review Solidity contracts.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
+        "id": "install-codex-skill",
+        "language": "de",
+        "prompt": "Installiere mir bitte einen vorhandenen Codex Skill für Smart Contracts.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
+        "id": "game-skill-tree",
+        "language": "en",
+        "prompt": "Design a programmable skill tree for a fantasy role playing game character.",
+        "expectedActivation": "NOT_ACTIVATED"
+      }
+    ]
+  }
+}

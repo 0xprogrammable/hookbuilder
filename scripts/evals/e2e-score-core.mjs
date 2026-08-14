@@ -9,6 +9,7 @@ const METHODOLOGY_BLOCKERS = Object.freeze([
   'PUBLIC_REPOSITORY_E2E_POPULATION_MISSING',
   'SEMANTIC_TEST_ADEQUACY_UNPROVEN',
   'TRUSTED_PROVIDER_RECEIPT_VERIFIER_MISSING',
+  'TRUSTED_HOST_ACTIVATION_TRACE_VERIFIER_MISSING',
   'TRUSTED_SANDBOX_ATTESTATION_VERIFIER_MISSING',
 ]);
 
@@ -243,7 +244,7 @@ function metricsForRuns(runs) {
     descendantSubagents: metricDistribution(runs, (run) => combinedToolMetric(run, 'descendantSubagentCount')),
     timeToUsefulMs: metricDistribution(runs, (run) => run.telemetry?.timeToUsefulMs),
     wallTimeMs: metricDistribution(runs, (run) => run.wallTimeMs),
-    questions: metricDistribution(runs, (run) => run.telemetry?.questions),
+    structuredQuestionCount: metricDistribution(runs, (run) => run.telemetry?.structuredQuestionCount),
     escalations: metricDistribution(runs, (run) => run.telemetry?.escalations),
     manualInterventions: metricDistribution(runs, (run) => run.telemetry?.manualInterventions),
     adapterDurationMs: metricDistribution(runs, (run) => run.adapter?.durationMs),
@@ -495,6 +496,7 @@ export function summarizeRuns({
       allRunsPassed,
       pinnedSuiteIdentity,
       trustedSubjectAndStageSandbox,
+      trustedHostActivationTraceVerified: false,
       semanticTestAdequacyEstablished: false,
       independentNovelHoldoutEstablished: false,
       comparablePublicRepositoryPopulationAvailable: false,
@@ -564,6 +566,7 @@ export function externalBlockedScorecard({ corpus, selectedCaseIds, selectedTier
       allRunsPassed: false,
       pinnedSuiteIdentity: false,
       trustedSubjectAndStageSandbox: false,
+      trustedHostActivationTraceVerified: false,
       semanticTestAdequacyEstablished: false,
       independentNovelHoldoutEstablished: false,
       comparablePublicRepositoryPopulationAvailable: false,

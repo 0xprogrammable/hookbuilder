@@ -45,6 +45,7 @@ import { evaluateRunEfficiency, externalBlockedScorecard, summarizeRuns } from '
 const MAX_ADAPTER_OUTPUT_BYTES = 16 * 1024 * 1024;
 const DEFAULT_ADAPTER_TIMEOUT_MS = 20 * 60 * 1000;
 const MAX_REPETITIONS = 10;
+const JOURNEY_EVIDENCE_QUALIFICATION = 'ADAPTER_REPORTED_HOST_ACTIVATION_UNPROVEN_DESCRIPTOR_REFERENCE_BYTES_VERIFIED_PROCESS_ISOLATION_UNPROVEN';
 
 export { E2ERunError } from './e2e-errors.mjs';
 export { externalBlockedScorecard, summarizeRuns } from './e2e-score-core.mjs';
@@ -123,6 +124,8 @@ function initialRunRecord({ evalCase, tierProfile, modelId, repeat, suiteBinding
     adapter,
     sandboxReceipt,
     telemetryProvenance: 'adapter-reported-not-provider-verified',
+    usageProvenance: 'adapter-reported-not-provider-verified',
+    journeyEvidenceQualification: 'NOT_REACHED',
   };
 }
 
@@ -138,6 +141,9 @@ function terminalRun(common, status, reason, partial = {}) {
     usage: partial.usage ?? null,
     telemetry: partial.telemetry ?? null,
     providerReceipt: partial.providerReceipt ?? null,
+    builderResponse: partial.builderResponse ?? null,
+    activationReceipt: partial.activationReceipt ?? null,
+    journeyEvidenceQualification: partial.journeyEvidenceQualification ?? 'NOT_REACHED',
     stages: partial.stages ?? [],
     artifacts: partial.artifacts ?? [],
     generatedRevision: partial.generatedRevision ?? null,
@@ -307,11 +313,17 @@ export function runSingleEvaluation({
     let artifacts;
     try {
       safeWorkspaceFile(agentWorkspace, E2E_AGENT_RESULT_PATH, 'agent result');
-      agentResult = validateAgentResult(readJson(agentResultAbsolutePath, 'agent result'));
+      agentResult = validateAgentResult(readJson(agentResultAbsolutePath, 'agent result'), {
+        installedSkillRoot: installedSkill,
+        expectedPromptSha256: common.casePromptSha256,
+        expectedLanguage: evalCase.language,
+        expectedSkillSha256: binding.skillSha256,
+      });
       providerReceipt = validateProviderReceipt(agentResult.providerReceipt, {
         role: 'subject',
         modelId,
         inputSha256: common.casePromptSha256,
+        responseSha256: sha256(canonicalJson(agentResult.builderResponse)),
       });
       generatedRevision = createFreshVerificationCheckout({ agentWorkspace, verificationWorkspace, isolatedHome: gitHome });
       const inventory = inventoryRepository(verificationWorkspace, { forkRequired: evalCase.forkRequired });
@@ -322,6 +334,10 @@ export function runSingleEvaluation({
         evalCase,
         { workspace: verificationWorkspace, frozenFiles },
       );
+      const declaredArtifactPaths = new Set(Object.values(repositoryContract.artifacts));
+      if (agentResult.builderResponse.body.artifactRefs.some((relativePath) => !declaredArtifactPaths.has(relativePath))) {
+        throw new E2ERunError('AGENT_RESULT_INVALID', 'builder response cites an artifact outside the repository contract');
+      }
       artifacts = artifactRecords(verificationWorkspace, repositoryContract.artifacts);
     } catch (error) {
       if (!(error instanceof E2ERunError)) throw error;
@@ -335,6 +351,9 @@ export function runSingleEvaluation({
         usage: agentResult?.usage,
         telemetry,
         providerReceipt,
+        builderResponse: agentResult?.builderResponse,
+        activationReceipt: agentResult?.activationReceipt,
+        journeyEvidenceQualification: agentResult ? JOURNEY_EVIDENCE_QUALIFICATION : 'NOT_REACHED',
         generatedRevision,
         repositoryInventory,
         artifacts,
@@ -362,6 +381,9 @@ export function runSingleEvaluation({
       usage: { ...agentResult.usage },
       telemetry,
       providerReceipt,
+      builderResponse: agentResult.builderResponse,
+      activationReceipt: agentResult.activationReceipt,
+      journeyEvidenceQualification: JOURNEY_EVIDENCE_QUALIFICATION,
       stages: stageResult.stages,
       stageEvidenceQualification: stageResult.stageEvidenceQualification,
       artifacts,
@@ -410,7 +432,11 @@ export function runSingleEvaluation({
         repositoryCommit: generatedRevision.commit,
         repositoryTree: generatedRevision.tree,
         judgeSnapshotSha256: judgeSnapshot.sha256,
+        builderResponseSha256: sha256(canonicalJson(agentResult.builderResponse)),
+        activationReceiptSha256: sha256(canonicalJson(agentResult.activationReceipt)),
       },
+      builderResponse: agentResult.builderResponse,
+      activationReceipt: agentResult.activationReceipt,
       artifacts,
       stages: stageResult.stages,
       repositoryInventory,
@@ -449,6 +475,9 @@ export function runSingleEvaluation({
       usage: { ...agentResult.usage },
       telemetry,
       providerReceipt,
+      builderResponse: agentResult.builderResponse,
+      activationReceipt: agentResult.activationReceipt,
+      journeyEvidenceQualification: JOURNEY_EVIDENCE_QUALIFICATION,
       stages: stageResult.stages,
       stageEvidenceQualification: stageResult.stageEvidenceQualification,
       artifacts,

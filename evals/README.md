@@ -16,6 +16,10 @@ The local evaluation tooling has three separate boundaries:
    only when the configured provider credential and the exact reviewed local Promptfoo `0.121.11` installation are
    available.
 
+`daily-sentinel.json` is a lean selection manifest, not a fourth evaluation system. It reuses five existing public
+response case IDs and freezes five positive plus five adjacent negative trigger prompts. Local validation checks only
+its shape, registration, language coverage, and activation labels; it does not run a model or establish trigger quality.
+
 Missing model credentials produce an explicit `MODEL_EVALS_SKIPPED` result and no result artifact. Release automation
 must add `--require-provider`; with that flag a skipped model run fails instead of appearing green. An offline structure
 pass is never represented as a model-quality pass, security review, Programmable approval, Uniswap endorsement, deploy,
@@ -99,6 +103,18 @@ forms. The adapter must commit the generated source, tests, repository contract,
 manifest, and submission artifact. A fresh clone then executes, in exact order: install, compile, typecheck, lint, unit,
 negative, fuzz, invariant, fork when applicable, gas, code-size, deployment, and submission.
 
+Agent-result adapter schema `1.2.0` additionally requires the actual structured Builder response and a prompt- and
+skill-bound activation receipt. Every reported loaded reference carries its installed-skill-relative path, SHA-256,
+byte count, activation phase, and reason. The harness validates those bytes against the exact suite-pinned installed
+copy through no-follow file descriptors, derives activated-reference bytes and the zero-or-one structured-decision
+question count itself, requires the non-certifying local outcome/status/next-action text to match a bounded English or
+German template, and rejects inconsistent prompt or response language metadata. The count does not claim to semantically
+classify indirect natural-language questions outside that structured field. Judge-request schema `1.1.0` receives the
+exact response and activation receipt with harness-derived hashes and treats both as untrusted data. This
+proves receipt integrity and installed-file identity at validation time, not that a closed host actually loaded the
+files, that a same-UID process could not race or restore them, or that the response text was independently
+language-classified; those facts remain adapter-reported until a trusted host/provider trace exists.
+
 Each executable stage must invoke a distinct project-bound command. The harness validates tracked stage-specific source
 and tests, nonzero runner results for supported test tools, source immutability checks, and a harness-authored evidence
 receipt bound to the generated Git tree. One no-op script reused for all stages, inline evaluation, constant-assertion
@@ -120,10 +136,11 @@ symlinks fail. Judge-created files, source mutation, symlink-target mutation, or
 identity must differ from every selected subject model.
 
 The scorecard logs commands, exit states, durations, evidence hashes, stdout/stderr hashes, generation and judge token
-claims, context-token claims, tool calls/errors, retries, questions, escalations, manual interventions, and p50/p95
-distributions overall, by tier, and by opaque scenario. Token/tool telemetry and provider receipts are explicitly
-adapter-reported unless an external verifier establishes them. Duplicate provider request/invocation IDs, mixed models,
-mixed skill hashes, or mixed evaluator identities cannot establish repetition provenance.
+claims, context-token claims, tool calls/errors, retries, harness-derived question/reference-byte counts, escalations,
+manual interventions, and p50/p95 distributions overall, by tier, and by opaque scenario. Token/tool telemetry and
+provider receipts remain explicitly adapter-reported unless an external verifier establishes them. Duplicate provider
+request/invocation IDs, mixed models, mixed skill hashes, or mixed evaluator identities cannot establish repetition
+provenance.
 
 `evals/holdout/manifest.json#/efficiencyContract` is the single run-budget owner. Every completed run and the aggregate
 scorecard enforce the preserved 4,000-token cold-start and 8,000-token standard-architecture targets plus total input,

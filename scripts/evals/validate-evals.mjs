@@ -106,6 +106,20 @@ const CASE_KEYS = Object.freeze([
   'safetyCritical',
   'threshold',
 ]);
+const DAILY_SENTINEL_ROOT_KEYS = Object.freeze([
+  'kind',
+  'publicCaseIds',
+  'qualification',
+  'runner',
+  'schemaVersion',
+  'triggerPrompts',
+]);
+const DAILY_SENTINEL_TRIGGER_KEYS = Object.freeze([
+  'expectedActivation',
+  'id',
+  'language',
+  'prompt',
+]);
 
 export class EvalValidationError extends Error {
   constructor(issues) {
@@ -376,6 +390,86 @@ function validatePolicyBoundEvalMirror(repositoryRoot, suiteRoot, issues) {
   }
 }
 
+function validateDailySentinel(repositoryRoot, manifestCases, issues) {
+  const sentinelPath = path.join(repositoryRoot, 'evals/daily-sentinel.json');
+  const { raw, value } = readJson(sentinelPath, issues, 'daily sentinel');
+  if (!value) return null;
+  addIssue(issues, raw === `${JSON.stringify(value, null, 2)}\n`, 'daily sentinel: must use canonical duplicate-key-free JSON');
+  addIssue(issues, exactKeys(value, DAILY_SENTINEL_ROOT_KEYS), 'daily sentinel: root keys drift');
+  addIssue(issues, value.schemaVersion === '1.0.0', 'daily sentinel: schemaVersion must be 1.0.0');
+  addIssue(issues, value.kind === 'programmable-daily-sentinel', 'daily sentinel: kind drift');
+  addIssue(
+    issues,
+    value.qualification === 'STRUCTURE_AND_COVERAGE_ONLY',
+    'daily sentinel: qualification must remain structure-and-coverage-only',
+  );
+  addIssue(
+    issues,
+    value.runner === 'reuse-public-response-suite',
+    'daily sentinel: must reuse the existing public response suite runner',
+  );
+  addIssue(
+    issues,
+    Array.isArray(value.publicCaseIds) && value.publicCaseIds.length === 5,
+    'daily sentinel: exactly five public case ids are required',
+  );
+  const publicCaseIds = value.publicCaseIds ?? [];
+  addIssue(issues, new Set(publicCaseIds).size === publicCaseIds.length, 'daily sentinel: public case ids must be unique');
+  for (const [index, caseId] of publicCaseIds.entries()) {
+    addIssue(
+      issues,
+      typeof caseId === 'string' && manifestCases.has(caseId),
+      `daily sentinel: publicCaseIds[${index}] must reuse an existing public case id`,
+    );
+  }
+  addIssue(
+    issues,
+    exactKeys(value.triggerPrompts, ['negative', 'positive']),
+    'daily sentinel: trigger prompt groups drift',
+  );
+  const seenIds = new Set();
+  const seenPrompts = new Set();
+  for (const [group, expectedActivation] of [['positive', 'ACTIVATED'], ['negative', 'NOT_ACTIVATED']]) {
+    const prompts = value.triggerPrompts?.[group];
+    addIssue(issues, Array.isArray(prompts) && prompts.length === 5, `daily sentinel: ${group} must contain exactly five prompts`);
+    for (const [index, record] of (prompts ?? []).entries()) {
+      const label = `daily sentinel: ${group}[${index}]`;
+      addIssue(issues, exactKeys(record, DAILY_SENTINEL_TRIGGER_KEYS), `${label} keys drift`);
+      addIssue(issues, /^[a-z0-9-]{3,80}$/u.test(record?.id ?? ''), `${label} id is invalid`);
+      addIssue(issues, !seenIds.has(record?.id), `${label} id is duplicated`);
+      seenIds.add(record?.id);
+      addIssue(issues, ['de', 'en'].includes(record?.language), `${label} language must be de or en`);
+      addIssue(
+        issues,
+        typeof record?.prompt === 'string'
+          && Buffer.byteLength(record.prompt, 'utf8') >= 24
+          && Buffer.byteLength(record.prompt, 'utf8') <= 320
+          && !/[\u0000-\u001f\u007f]/u.test(record.prompt),
+        `${label} prompt must be realistic bounded single-line text`,
+      );
+      addIssue(issues, !seenPrompts.has(record?.prompt), `${label} prompt is duplicated`);
+      seenPrompts.add(record?.prompt);
+      addIssue(issues, record?.expectedActivation === expectedActivation, `${label} activation decision drift`);
+      addIssue(
+        issues,
+        group === 'positive' ? /\bProgrammable\b/u.test(record?.prompt ?? '') : !/\bProgrammable\b/u.test(record?.prompt ?? ''),
+        `${label} trigger boundary is ambiguous`,
+      );
+    }
+  }
+  for (const group of ['positive', 'negative']) {
+    const languages = new Set((value.triggerPrompts?.[group] ?? []).map(({ language }) => language));
+    addIssue(issues, languages.has('de') && languages.has('en'), `daily sentinel: ${group} prompts must cover de and en`);
+  }
+  return {
+    publicCaseCount: publicCaseIds.length,
+    positiveTriggerCount: value.triggerPrompts?.positive?.length ?? 0,
+    negativeTriggerCount: value.triggerPrompts?.negative?.length ?? 0,
+    qualification: value.qualification,
+    sha256: crypto.createHash('sha256').update(raw).digest('hex'),
+  };
+}
+
 export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteId = DEFAULT_SUITE_ID } = {}) {
   const issues = [];
   const resolvedRoot = path.resolve(repositoryRoot);
@@ -601,6 +695,8 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
     `suite manifest: ${LEGACY_FEE_V2_CASE_ID} must use ${LEGACY_FEE_V2_CONTEXT_PROFILE}`,
   );
 
+  const dailySentinel = validateDailySentinel(resolvedRoot, manifestCases, issues);
+
   addIssue(issues, configText.includes('file://prompt-wrapper.cjs'), 'promptfoo: canonical prompt wrapper is not registered');
   addIssue(
     issues,
@@ -750,6 +846,11 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
     safetyCaseCount: [...manifestCases.values()].filter((evalCase) => evalCase.safetyCritical).length,
     forwardTestCaseCount: forwardTests.caseCount,
     forwardTestDecisionCaseCount: forwardTests.decisionCaseCount,
+    dailySentinelPublicCaseCount: dailySentinel.publicCaseCount,
+    dailySentinelPositiveTriggerCount: dailySentinel.positiveTriggerCount,
+    dailySentinelNegativeTriggerCount: dailySentinel.negativeTriggerCount,
+    dailySentinelQualification: dailySentinel.qualification,
+    dailySentinelSha256: dailySentinel.sha256,
     e2ePublicResponseCaseCount: e2eStructure.publicResponseEvalCaseCount,
     e2eSealedRepositoryEnvelopeCount: e2eStructure.sealedRepositoryCaseEnvelopeCount,
     e2eComparablePublicRepositoryCaseCount: 0,

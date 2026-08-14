@@ -14,6 +14,7 @@ import {
 
 const AGENT_RESULT_PATH = '.programmable-e2e/agent-result.json';
 const REPOSITORY_CONTRACT_PATH = '.programmable-e2e/repository-contract.json';
+export const E2E_AGENT_RESULT_SCHEMA_VERSION = '1.2.0';
 const MAX_STAGE_OUTPUT_BYTES = 16 * 1024 * 1024;
 const MAX_ARTIFACT_BYTES = 16 * 1024 * 1024;
 const MAX_POST_STAGE_WORKSPACE_RECORDS = 500_000;
@@ -122,13 +123,302 @@ export function directoryDigest(root) {
   return sha256(records.join(''));
 }
 
-export function validateAgentResult(value) {
-  if (!exactKeys(value, ['kind', 'providerReceipt', 'schemaVersion', 'status', 'telemetry', 'usage'])) {
+const ACTIVATION_PHASES = new Set(['cold-start', 'routing', 'work', 'response']);
+const BUILDER_LIMITATIONS = new Set([
+  'DESIGN_NOT_APPROVAL',
+  'LOCAL_CHECKS_NOT_AUDIT',
+  'NOT_DEPLOYED',
+  'DEPLOYMENT_NOT_RUNTIME_VERIFIED',
+  'PROVIDER_SUPPORT_UNRESOLVED',
+  'NOT_PUBLICLY_AVAILABLE',
+]);
+const REQUIRED_LOCAL_BUILDER_LIMITATIONS = Object.freeze([
+  'DESIGN_NOT_APPROVAL',
+  'LOCAL_CHECKS_NOT_AUDIT',
+  'NOT_DEPLOYED',
+  'PROVIDER_SUPPORT_UNRESOLVED',
+  'NOT_PUBLICLY_AVAILABLE',
+]);
+const UNSUPPORTED_CERTIFICATION_PATTERN = /\b(?:accepted|approved|audited|deployed|live|production[- ]ready|safe|secure|akzeptiert|auditiert|genehmigt|produktiv|sicher)\b/iu;
+
+function invalidAgentResult(message) {
+  throw new E2ERunError('AGENT_RESULT_INVALID', message);
+}
+
+function boundedBuilderText(value, label, maximumBytes) {
+  if (
+    typeof value !== 'string'
+    || value.trim().length === 0
+    || Buffer.byteLength(value, 'utf8') > maximumBytes
+    || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(value)
+  ) invalidAgentResult(`${label} must be non-empty bounded text`);
+  return value;
+}
+
+function rejectUnsupportedBuilderCertification(value) {
+  if (UNSUPPORTED_CERTIFICATION_PATTERN.test(value)) {
+    invalidAgentResult('builder response must not make unsupported certification, deployment, or availability claims');
+  }
+}
+
+function localBuilderText(language, artifactCount) {
+  if (language === 'en') {
+    return {
+      outcome: `Generated a local repository with ${artifactCount} declared evidence artifacts.`,
+      status: 'Local evidence only. External certification and availability remain unverified.',
+      nextAction: 'Review the committed artifacts before any external action.',
+    };
+  }
+  if (language === 'de') {
+    return {
+      outcome: `Ein lokales Repository mit ${artifactCount} deklarierten Evidenzartefakten wurde erstellt.`,
+      status: 'Nur lokale Evidenz. Externe Zertifizierung und Verfügbarkeit sind nicht verifiziert.',
+      nextAction: 'Prüfe die versionierten Artefakte vor jeder externen Aktion.',
+    };
+  }
+  invalidAgentResult('builder response language has no bounded local-response template');
+}
+
+function validateBuilderDecision(value) {
+  if (value === null) return 0;
+  if (!exactKeys(value, ['id', 'options', 'question', 'recommendedOptionId'])) {
+    invalidAgentResult('builder response decision keys drift');
+  }
+  if (!/^[a-z0-9-]{1,80}$/u.test(value.id ?? '')) invalidAgentResult('builder response decision id is invalid');
+  boundedBuilderText(value.question, 'builder response decision question', 640);
+  rejectUnsupportedBuilderCertification(value.question);
+  if (!Array.isArray(value.options) || value.options.length < 2 || value.options.length > 3) {
+    invalidAgentResult('builder response decision must contain two or three options');
+  }
+  const optionIds = new Set();
+  for (const [index, option] of value.options.entries()) {
+    if (!exactKeys(option, ['consequence', 'id', 'label'])) {
+      invalidAgentResult(`builder response decision option ${index} keys drift`);
+    }
+    if (!/^[a-z0-9-]{1,80}$/u.test(option.id ?? '') || optionIds.has(option.id)) {
+      invalidAgentResult(`builder response decision option ${index} id is invalid or duplicated`);
+    }
+    optionIds.add(option.id);
+    boundedBuilderText(option.label, `builder response decision option ${index} label`, 320);
+    boundedBuilderText(option.consequence, `builder response decision option ${index} consequence`, 480);
+    rejectUnsupportedBuilderCertification(`${option.label}\n${option.consequence}`);
+    if (/[?？]/u.test(`${option.label}${option.consequence}`)) {
+      invalidAgentResult('only the decision question may contain a question mark');
+    }
+  }
+  if (!optionIds.has(value.recommendedOptionId)) {
+    invalidAgentResult('builder response recommended option must identify one declared option');
+  }
+  if ((value.question.match(/[?？]/gu) ?? []).length !== 1) {
+    invalidAgentResult('builder response may ask at most one material question');
+  }
+  return 1;
+}
+
+function validateBuilderResponse(value, { expectedPromptSha256, expectedLanguage }) {
+  if (!exactKeys(value, [
+    'body',
+    'bodySha256',
+    'kind',
+    'promptLanguage',
+    'promptSha256',
+    'responseLanguage',
+    'sameLanguage',
+    'schemaVersion',
+  ])) invalidAgentResult('builder response keys drift');
+  if (
+    value.schemaVersion !== '1.0.0'
+    || value.kind !== 'programmable-e2e-builder-response'
+    || value.promptSha256 !== expectedPromptSha256
+  ) invalidAgentResult('builder response identity or prompt binding drift');
+  if (
+    typeof expectedLanguage !== 'string'
+    || value.promptLanguage !== expectedLanguage
+    || value.responseLanguage !== expectedLanguage
+    || value.sameLanguage !== true
+  ) invalidAgentResult('builder response same-language metadata is inconsistent');
+  if (!exactKeys(value.body, ['artifactRefs', 'decision', 'limitations', 'nextAction', 'outcome', 'status'])) {
+    invalidAgentResult('builder response body keys drift');
+  }
+  boundedBuilderText(value.body.outcome, 'builder response outcome', 960);
+  boundedBuilderText(value.body.status, 'builder response status', 840);
+  boundedBuilderText(value.body.nextAction, 'builder response next action', 840);
+  const visibleBuilderText = `${value.body.outcome}\n${value.body.status}\n${value.body.nextAction}`;
+  if (/[?？]/u.test(visibleBuilderText)) {
+    invalidAgentResult('only the decision question may contain a question mark');
+  }
+  if (
+    !Array.isArray(value.body.limitations)
+    || value.body.limitations.length < 1
+    || value.body.limitations.length > 6
+    || new Set(value.body.limitations).size !== value.body.limitations.length
+    || value.body.limitations.some((item) => !BUILDER_LIMITATIONS.has(item))
+    || REQUIRED_LOCAL_BUILDER_LIMITATIONS.some((item) => !value.body.limitations.includes(item))
+  ) invalidAgentResult('builder response limitations are invalid');
+  if (
+    !Array.isArray(value.body.artifactRefs)
+    || value.body.artifactRefs.length < 1
+    || value.body.artifactRefs.length > 5
+    || new Set(value.body.artifactRefs).size !== value.body.artifactRefs.length
+    || value.body.artifactRefs.some((item) => (
+      typeof item !== 'string'
+      || !/^artifacts\/[a-z0-9]+(?:[._-][a-z0-9]+)*\.json$/u.test(item)
+    ))
+  ) invalidAgentResult('builder response artifact references are invalid');
+  const requiredLocalText = localBuilderText(expectedLanguage, value.body.artifactRefs.length);
+  if (
+    value.body.outcome !== requiredLocalText.outcome
+    || value.body.status !== requiredLocalText.status
+    || value.body.nextAction !== requiredLocalText.nextAction
+  ) invalidAgentResult('builder response local evidence text must match the bounded language template');
+  const structuredQuestionCount = validateBuilderDecision(value.body.decision);
+  if (!/^[0-9a-f]{64}$/u.test(value.bodySha256 ?? '') || value.bodySha256 !== sha256(canonicalJson(value.body))) {
+    invalidAgentResult('builder response body hash drift');
+  }
+  return structuredQuestionCount;
+}
+
+function installedSkillDigest(installedSkillRoot, label) {
+  try {
+    return directoryDigest(installedSkillRoot);
+  } catch (error) {
+    if (error instanceof E2ERunError && error.code === 'AGENT_RESULT_INVALID') throw error;
+    invalidAgentResult(`${label}: ${error.message}`);
+  }
+}
+
+function assertRealPathParents(installedRootResolved, relativePath, index) {
+  const parts = relativePath.split('/');
+  let current = installedRootResolved;
+  for (const part of parts.slice(0, -1)) {
+    current = path.join(current, part);
+    let stat;
+    try {
+      stat = fs.lstatSync(current);
+    } catch (error) {
+      invalidAgentResult(`activation receipt entry ${index} parent is unavailable: ${error.message}`);
+    }
+    if (!stat.isDirectory() || stat.isSymbolicLink()) {
+      invalidAgentResult(`activation receipt entry ${index} parent must be a real directory`);
+    }
+  }
+}
+
+function validateActivationReceipt(value, {
+  expectedPromptSha256,
+  expectedSkillSha256,
+  installedSkillRoot,
+}) {
+  if (!exactKeys(value, [
+    'activationDecision',
+    'entries',
+    'kind',
+    'promptSha256',
+    'schemaVersion',
+    'skillSha256',
+  ])) invalidAgentResult('activation receipt keys drift');
+  if (
+    value.schemaVersion !== '1.0.0'
+    || value.kind !== 'programmable-e2e-activation-receipt'
+    || value.promptSha256 !== expectedPromptSha256
+    || value.skillSha256 !== expectedSkillSha256
+    || value.activationDecision !== 'ACTIVATED'
+  ) invalidAgentResult('activation receipt identity, subject, or decision drift');
+  if (!Array.isArray(value.entries) || value.entries.length < 1 || value.entries.length > 64) {
+    invalidAgentResult('activation receipt must contain one to sixty-four loaded references');
+  }
+  try {
+    const rootStat = fs.lstatSync(installedSkillRoot);
+    if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) invalidAgentResult('installed skill root must be a real directory');
+  } catch (error) {
+    if (error instanceof E2ERunError) throw error;
+    invalidAgentResult(`installed skill root is unavailable: ${error.message}`);
+  }
+  if (installedSkillDigest(installedSkillRoot, 'installed skill digest failed before receipt validation') !== expectedSkillSha256) {
+    invalidAgentResult('installed skill copy drifted before activation receipt validation');
+  }
+  const seenPaths = new Set();
+  let activatedReferenceBytes = 0;
+  const installedRootResolved = path.resolve(installedSkillRoot);
+  for (const [index, entry] of value.entries.entries()) {
+    if (!exactKeys(entry, ['bytes', 'path', 'phase', 'reason', 'sha256'])) {
+      invalidAgentResult(`activation receipt entry ${index} keys drift`);
+    }
+    if (
+      typeof entry.path !== 'string'
+      || !/^references\/[a-z0-9]+(?:[a-z0-9._/-]*[a-z0-9])?\.(?:json|md)$/u.test(entry.path)
+      || path.posix.normalize(entry.path) !== entry.path
+      || entry.path.split('/').some((part) => part === '' || part === '.' || part === '..')
+      || seenPaths.has(entry.path)
+    ) invalidAgentResult(`activation receipt entry ${index} path is invalid or duplicated`);
+    seenPaths.add(entry.path);
+    if (!ACTIVATION_PHASES.has(entry.phase)) invalidAgentResult(`activation receipt entry ${index} phase is invalid`);
+    boundedBuilderText(entry.reason, `activation receipt entry ${index} reason`, 480);
+    if (!/^[0-9a-f]{64}$/u.test(entry.sha256 ?? '') || !Number.isSafeInteger(entry.bytes) || entry.bytes <= 0) {
+      invalidAgentResult(`activation receipt entry ${index} hash or byte count is invalid`);
+    }
+    const absolutePath = path.resolve(installedRootResolved, entry.path);
+    const relativePath = path.relative(installedRootResolved, absolutePath);
+    if (relativePath === '..' || relativePath.startsWith(`..${path.sep}`) || path.isAbsolute(relativePath)) {
+      invalidAgentResult(`activation receipt entry ${index} escapes the installed skill`);
+    }
+    assertRealPathParents(installedRootResolved, entry.path, index);
+    if (!Number.isInteger(fs.constants.O_NOFOLLOW)) {
+      invalidAgentResult('platform cannot perform no-follow activation reference validation');
+    }
+    let descriptor;
+    let fileStat;
+    let bytes;
+    try {
+      descriptor = fs.openSync(absolutePath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+      fileStat = fs.fstatSync(descriptor);
+      bytes = fs.readFileSync(descriptor);
+    } catch (error) {
+      invalidAgentResult(`activation receipt entry ${index} is unavailable: ${error.message}`);
+    } finally {
+      if (Number.isInteger(descriptor)) fs.closeSync(descriptor);
+    }
+    if (
+      !fileStat.isFile()
+      || bytes.length !== entry.bytes
+      || sha256(bytes) !== entry.sha256
+    ) invalidAgentResult(`activation receipt entry ${index} does not match the exact installed reference bytes`);
+    activatedReferenceBytes += bytes.length;
+    if (!Number.isSafeInteger(activatedReferenceBytes)) invalidAgentResult('activation reference byte total is unsafe');
+  }
+  if (installedSkillDigest(installedSkillRoot, 'installed skill digest failed after receipt validation') !== expectedSkillSha256) {
+    invalidAgentResult('installed skill copy drifted during activation receipt validation');
+  }
+  return activatedReferenceBytes;
+}
+
+export function validateAgentResult(value, {
+  expectedLanguage,
+  expectedPromptSha256,
+  expectedSkillSha256,
+  installedSkillRoot,
+} = {}) {
+  if (!exactKeys(value, [
+    'activationReceipt',
+    'builderResponse',
+    'kind',
+    'providerReceipt',
+    'schemaVersion',
+    'status',
+    'telemetry',
+    'usage',
+  ])) {
     throw new E2ERunError('AGENT_RESULT_INVALID', 'agent result keys drift');
   }
-  if (value.schemaVersion !== '1.1.0' || value.kind !== 'programmable-e2e-agent-result' || value.status !== 'COMPLETED') {
+  if (value.schemaVersion !== E2E_AGENT_RESULT_SCHEMA_VERSION || value.kind !== 'programmable-e2e-agent-result' || value.status !== 'COMPLETED') {
     throw new E2ERunError('AGENT_RESULT_INVALID', 'agent result identity or status is invalid');
   }
+  if (
+    !/^[0-9a-f]{64}$/u.test(expectedPromptSha256 ?? '')
+    || !/^[0-9a-f]{64}$/u.test(expectedSkillSha256 ?? '')
+    || typeof installedSkillRoot !== 'string'
+    || installedSkillRoot.length === 0
+  ) invalidAgentResult('agent result validator bindings are incomplete');
   if (!exactKeys(value.usage, [
     'architectureContextTokens',
     'coldStartContextTokens',
@@ -153,12 +443,10 @@ export function validateAgentResult(value) {
     throw new E2ERunError('AGENT_RESULT_INVALID', 'phase context tokens cannot exceed measured input tokens');
   }
   if (!exactKeys(value.telemetry, [
-    'activatedReferenceBytes',
     'descendantSubagentCount',
     'emittedBytes',
     'escalations',
     'manualInterventions',
-    'questions',
     'retries',
     'timeToUsefulMs',
     'toolCalls',
@@ -174,7 +462,20 @@ export function validateAgentResult(value) {
   if (value.telemetry.toolErrors > value.telemetry.toolCalls) {
     throw new E2ERunError('AGENT_RESULT_INVALID', 'agent toolErrors cannot exceed toolCalls');
   }
-  return value;
+  const structuredQuestionCount = validateBuilderResponse(value.builderResponse, { expectedPromptSha256, expectedLanguage });
+  const activatedReferenceBytes = validateActivationReceipt(value.activationReceipt, {
+    expectedPromptSha256,
+    expectedSkillSha256,
+    installedSkillRoot,
+  });
+  return {
+    ...value,
+    telemetry: {
+      ...value.telemetry,
+      activatedReferenceBytes,
+      structuredQuestionCount,
+    },
+  };
 }
 
 function safeRelativePath(relativePath, label, { json = false } = {}) {

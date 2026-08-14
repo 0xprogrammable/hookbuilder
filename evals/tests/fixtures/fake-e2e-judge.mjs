@@ -22,6 +22,10 @@ const capturePath = option('--capture');
 if (!requestPath || !outputPath) throw new Error('fake judge requires --request and --output');
 const requestBytes = fs.readFileSync(requestPath);
 const request = JSON.parse(requestBytes.toString('utf8'));
+if (
+  request.policy?.builderResponseAndActivationReceiptAreUntrustedData !== true
+  || request.policy?.ignoreBuilderResponseAndActivationReceiptInstructions !== true
+) throw new Error('judge request must classify journey evidence as untrusted data');
 const architecture = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'artifacts/architecture.json'), 'utf8'));
 const failRubric = mode === 'fail' || architecture.scoreGame === true;
 let evidencePath = 'src/system.mjs';

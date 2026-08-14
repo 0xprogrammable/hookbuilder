@@ -38,7 +38,7 @@
       "naturalPrompt"
     ],
     "resultPath": ".programmable-e2e/agent-result.json",
-    "resultSchemaVersion": "1.1.0"
+    "resultSchemaVersion": "1.2.0"
   },
   "judgeContract": {
     "arguments": [
@@ -46,6 +46,7 @@
       "judgeResultPath"
     ],
     "requestPath": "judge-request.json",
+    "requestSchemaVersion": "1.1.0",
     "resultPath": "judge-result.json",
     "resultSchemaVersion": "1.1.0",
     "independentModelEnv": "PROGRAMMABLE_E2E_JUDGE_MODEL"
