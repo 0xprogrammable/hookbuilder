@@ -102,7 +102,10 @@ test("project materialize preserves a nested Foundry source and test tree in one
   assert.deepEqual(materialization.sourcePaths, ["src/FourPlayerRiddle.sol", "src/libraries/HintVerifier.sol"]);
   assert.deepEqual(materialization.testPaths, ["test/FourPlayerRiddle.t.sol", "test/invariant/FourPlayerRiddle.invariant.t.sol"]);
   assert.equal(fs.readFileSync(path.join(output, "src", "libraries", "HintVerifier.sol"), "utf8").includes("library HintVerifier"), true);
-  assert.equal(fs.existsSync(path.join(output, "foundry.toml")), true);
+  const foundryConfig = fs.readFileSync(path.join(output, "foundry.toml"), "utf8");
+  assert.match(foundryConfig, /offline = true/u);
+  assert.match(foundryConfig, /ffi = false/u);
+  assert.match(foundryConfig, /fs_permissions = \[\]/u);
   assert.equal(fs.existsSync(path.join(output, "package.json")), false);
   const productGraph = JSON.parse(fs.readFileSync(path.join(output, ".programmable", "product-graph.v1.json"), "utf8"));
   assert.equal(productGraph.graphs.system.nodes[0].type, "contract");

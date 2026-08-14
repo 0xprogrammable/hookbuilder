@@ -57,6 +57,11 @@ that exact commit and branch. The plan is transient on one specifically ignored 
 `executionPolicy.externalWrites: false`. The portable command below never executes its argv; it validates the source and
 plan boundary, then exits 2 with `PROJECT_EXTERNAL_SANDBOX_REQUIRED`:
 
+For iterative developer feedback only, an already active workspace sandbox may run the generated plan's explicit
+offline format/test commands. Treat that output as unauthenticated `LOCAL_ONLY` evidence: it cannot complete the plan.
+On failure, edit the authored input roots and rematerialize; never patch generated output. Do not invoke `project execute`
+merely to observe its expected external-sandbox blocker, and do not repeat a green command on unchanged bytes.
+
 ```bash
 node "$SKILL_ROOT/scripts/project-compiler.mjs" execute \
   --repository-root "$REPOSITORY_ROOT" \

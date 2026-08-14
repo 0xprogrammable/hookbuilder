@@ -252,6 +252,10 @@ test("global skill boundaries apply v4 mechanics conditionally and distinguish d
   assert.match(skill, /node "\$BUILDER_CLI" policy/u);
   assert.match(skill, /complete Programmable rule set/iu);
   assert.match(skill, /Use every\s+`build` Rule ID, add none, and stop if unavailable/u);
+  assert.match(skill, /Before materializing read no other reference\/full context/u);
+  assert.match(skill, /active workspace sandbox run offline fmt\/test once/u);
+  assert.match(skill, /`LOCAL_ONLY`, never\s+completion/u);
+  assert.match(skill, /Fix inputs and rematerialize on failure\. Never edit output/u);
   assert.doesNotMatch(skill, /hidden mint,\s*confiscation, blacklist, fee, pause, upgrade or payout-redirection power/u);
 });
 

@@ -632,7 +632,7 @@
         "mode": "package-semantic",
         "moduleByteLength": 43474,
         "moduleSha256": "sha256:de29e03eea1cb9ab13b6dc53dd31a81fd4129e20d5c540c33d79c6637d381533",
-        "closureSha256": "sha256:86d16ae06d14c771298ed8d0e09c18e84ee7f3a99c7be8fa9888be8aab117c1d"
+        "closureSha256": "sha256:0ae10c5ab8ee8b0b0dab08438857ff801a2bfeb9c928f2472961e05ab4292590"
       }
     },
     {
@@ -6627,7 +6627,7 @@
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/project-state-core.mjs",
       "moduleCount": 96,
-      "totalByteLength": 1458416,
+      "totalByteLength": 1458450,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -7043,8 +7043,8 @@
         },
         {
           "path": "scripts/project-no-market-authoring-core.mjs",
-          "byteLength": 20438,
-          "sha256": "sha256:05ddf89cc91fd2b108a82616e5e57f64e06a8525d72cc90b5d3afe98ee1a0924",
+          "byteLength": 20472,
+          "sha256": "sha256:d4dce3dc721ae78e77ead043eb51ffd63bfc740d6fcd040d36aee080baa18e69",
           "localImports": [
             "scripts/open-world-v2-core.mjs",
             "scripts/open-world-v2-primitives.mjs",
@@ -7539,7 +7539,7 @@
           ]
         }
       ],
-      "closureSha256": "sha256:86d16ae06d14c771298ed8d0e09c18e84ee7f3a99c7be8fa9888be8aab117c1d"
+      "closureSha256": "sha256:0ae10c5ab8ee8b0b0dab08438857ff801a2bfeb9c928f2472961e05ab4292590"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -10916,8 +10916,8 @@
     "validatorClosureModuleBindingCount": 1037,
     "validatorClosureDistinctModuleCount": 178,
     "schemaPathsSha256": "sha256:c523d89f3208b09ddc3f9862b232567cb13dc759ebb761669f9b76af9cda6931",
-    "validatorBindingsSha256": "sha256:073269d4b8d5c57c7ae1c83e0638f40943aa7cc36561110f70788b725d7dc4d8",
-    "validatorClosuresSha256": "sha256:a6fe597c250e200ee04c04ee3e6cf275b137ceccfc63b5806bf8cb67688fcf64"
+    "validatorBindingsSha256": "sha256:92ad010918a1c36a5b82bc455f53ada3ef8527af9545792b70ebe2fdd7900cea",
+    "validatorClosuresSha256": "sha256:2ca90245d4fcd1e1860a2b2fa33cf54ec2df6d33867073f51cdab6211f3504b5"
   },
-  "registrySha256": "sha256:ad70ec4bbcc440ae10319c7ce613cf852e0b956949ec3f85e9860c1fca6f1396"
+  "registrySha256": "sha256:032e2abfb337d97af19f4c1dad9521d60d9415558bccdfd5634bad619cb3b522"
 }

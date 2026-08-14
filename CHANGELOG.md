@@ -12,8 +12,9 @@ All notable Builder changes are recorded here. Historical releases remain immuta
   status, result, full-report SHA-256, finding counts, canonical-output state and evidence boundary while omitting the
   exhaustive inventory and finding arrays. On the committed blocked and green fixtures, stdout changed from 3,371 to
   1,150 bytes (-65.89%) and from 1,225 to 805 bytes (-34.29%), respectively; brief stdout is capped at 2,499 bytes.
-- Added inert nested Foundry source/test-tree materialization for no-market Ethereum projects, with one exact compiler
-  pragma, bounded stable-file reads, a planned exact toolchain lock, and complete Foundry command/evidence coverage.
+- Added inert nested Foundry source/test-tree materialization for no-market Ethereum projects, with exact compiler
+  pragmas, bounded stable-file reads, FFI/filesystem-disabled offline feedback, a planned exact toolchain lock, and
+  complete Foundry command/evidence coverage without a false completion claim.
 - Added a bounded natural-intent trigger for complete Uniswap v4 design, build, repair, review, test, upgrade, and submission work
   without requiring the Programmable brand name; explanation-only and unrelated work remain excluded.
 - Added digest-bound confirmed-context activation that covers every canonical capability and surface route, loads at most one
@@ -21,7 +22,7 @@ All notable Builder changes are recorded here. Historical releases remain immuta
   holds, and keeps the cold/custom-curve/browser-game/cross-domain journeys at 1,120/1,951/1,827/2,222 bytes and
   3,171/4,988/4,612/6,040 estimated tokens respectively.
 - Added a non-completion repair-attempt contract and read-only diagnosis path with one observed root failure, bounded
-  retries, exact suppressed commands and a 1,111 bytes / 2,429 estimated-token Repair cold brief.
+  retries, exact suppressed commands and a 1,111 bytes / 2,426 estimated-token Repair cold brief.
 - Added hash-bound structured Builder responses and reference-activation receipts to repository E2E evidence, plus a
   lean daily sentinel reusing five public cases with five positive and five negative trigger prompts.
 

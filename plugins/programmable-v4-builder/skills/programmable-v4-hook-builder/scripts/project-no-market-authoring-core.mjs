@@ -71,7 +71,7 @@ export function authorNoMarketRepositoryFilesV1({ applicationId, projectSpec, pr
     files.set("package.json", jsonBytes(packageJson));
     files.set("package-lock.json", jsonBytes(packageLock));
   } else {
-    files.set("foundry.toml", Buffer.from(`[profile.default]\nsrc = "src"\ntest = "test"\nout = "out"\nlibs = ["lib"]\nsolc_version = "${compilerVersion}"\noffline = true\noptimizer = true\noptimizer_runs = 200\n`));
+    files.set("foundry.toml", Buffer.from(`[profile.default]\nsrc = "src"\ntest = "test"\nout = "out"\nlibs = ["lib"]\nsolc_version = "${compilerVersion}"\noffline = true\nffi = false\nfs_permissions = []\noptimizer = true\noptimizer_runs = 200\n`));
   }
   files.set(".gitignore", Buffer.from(`${projectProfile === "node" ? "node_modules/\n" : "cache/\nout/\n"}.programmable/repository-plan.materializing.v1.json\n.programmable/project-repair-attempt-*.v1.json\n`));
   files.set("deploy/local-service.json", jsonBytes({ schemaVersion: "1.0.0", status: "LOCAL_REFERENCE_NOT_DEPLOYED", applicationId, networkAccessed: false, externalActionsPerformed: [] }));

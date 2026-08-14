@@ -71,8 +71,8 @@ each permission, storage/namespace, delta, fee, authority, lifecycle, router, se
 `NO_KNOWN_CONFLICT` means no detected modeled conflict, never approval.
 
 Render the first slice's Design Card; later ideas are non-goals. Checkpoint hashes, unresolved provenance, obligations,
-blockers, resume argv, and false authorizations. Continue to [open-world-v2-workflow.md](open-world-v2-workflow.md) only
-when the selected architecture and required owner facts are stable enough to materialize.
+blockers, resume argv, and false authorizations. For resolved no-market, materialize from `project --help` before the
+[workflow](open-world-v2-workflow.md); open it only on failure. Tradable/unresolved continue when stable.
 
 The materializer maps ProjectSpec `applicable/not-applicable/unresolved` to RepositoryPlan/Submission
 `tradable/no-market/unresolved`; never hand-map it. Transport stays `NOT_SUBMITTED` without public GitHub identity.

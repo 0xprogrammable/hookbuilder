@@ -400,7 +400,7 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
   assert.equal(repairContext.status, 0, repairContext.stderr || repairContext.stdout);
   assert.equal(Buffer.byteLength(repairContext.stdout, "utf8"), 1_111);
   const repairPlan = JSON.parse(repairContext.stdout).result;
-  assert.equal(repairPlan.contextBudget.estimatedTokens, 2_429);
+  assert.equal(repairPlan.contextBudget.estimatedTokens, 2_426);
   assert.deepEqual(repairPlan.loadNow.map(({ path: reference }) => reference), ["references/repair-loop.md"]);
 
   const reusedColdReference = context(
@@ -430,7 +430,7 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
     assert.match(source, /1,951(?: bytes)?[\s\S]{0,180}4,988/u);
     assert.match(source, /1,827(?: bytes)?[\s\S]{0,180}4,612/u);
     assert.match(source, /2,222(?: bytes)?[\s\S]{0,180}6,040/u);
-    assert.match(source, /1,111(?: bytes)?[\s\S]{0,180}2,429/u);
+    assert.match(source, /1,111(?: bytes)?[\s\S]{0,180}2,426/u);
   }
   assert.match(candidateNotes, /preserve[s]? the command exit code[\s\S]{0,180}`reportSha256`/iu);
   assert.match(candidateNotes, /not universal[\s\S]{0,80}model-token/iu);

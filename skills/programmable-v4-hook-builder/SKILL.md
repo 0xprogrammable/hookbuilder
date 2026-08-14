@@ -50,10 +50,10 @@ per capability. Keep cold/cumulative context below 4,000/8,000 tokens; defer the
 Save the exact public prompt bytes unchanged as `$IDEA_FILE`; never rewrite/extract them. Bind them exactly as ProjectSpec and Submission IdeaSource. Compare `minimum-correct`, `v4-native` and `hybrid`, then select the
 least capital, trust and operational surface that preserves intent.
 
-For resolved no-market, author real source/tests and run `project --help`; it is the complete Node/Foundry authoring
-contract, including required Foundry gate-test names. Ethereum uses exact-pragma nested roots. Dry-run, then repeat exactly with
-`--write`: both bind inert bytes. Do not inspect Builder internals, wrap Solidity in JavaScript, execute candidate code,
-or edit the generated repository.
+For no-market, `project --help` is complete. Before materializing read no other reference/full context. Format
+inputs; dry-run then `--write`. In an active workspace sandbox run offline fmt/test once as `LOCAL_ONLY`, never
+completion. Fix inputs and rematerialize on failure. Never edit output, inspect internals, wrap Solidity in JS, or call
+`project execute` without a trusted sandbox.
 
 `programmable-volume-fee-v2` is frozen legacy compatibility. Use it only when exact natural intent names the v4 hook,
 gross-quote-volume fees, immutable registered rates, policy `programmable-volume-fee-v2@2.0.0`, its inclusive 10 bps
