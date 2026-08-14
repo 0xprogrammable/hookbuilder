@@ -12,6 +12,7 @@ import { validateAgainstSchema } from "./restricted-json-schema-core.mjs";
 import { parseBoundedStrictJson } from "./strict-json-core.mjs";
 
 export const SUBMIT_LAUNCH_POLICY_PROFILE_ID = "workflow-canary";
+export const SUBMIT_LAUNCH_BUILD_PROFILE_ID = "build";
 export const SUBMIT_LAUNCH_POLICY_SCHEMA_ID =
   "https://programmable.money/schemas/launch-policy.v1.schema.json";
 export const SUBMIT_LAUNCH_POLICY_BINDING_SCHEMA_VERSION =
@@ -26,6 +27,7 @@ const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const POLICY_ID = /^[a-z0-9][a-z0-9.-]{2,79}$/u;
 const SEMVER = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/u;
 const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
+const trustedPolicyContracts = new WeakSet();
 
 const POLICY_BINDING_KEYS = Object.freeze([
   "schemaVersion",
@@ -104,12 +106,14 @@ export function parseSubmitLaunchPolicyContract(options) {
   validateSelectedProfile(policy);
   deepFreeze(policy);
   deepFreeze(schema);
-  return Object.freeze({
+  const contract = Object.freeze({
     policy,
     schema,
     policySha256: sha256(policyBytes),
     schemaSha256: sha256(schemaBytes)
   });
+  trustedPolicyContracts.add(contract);
+  return contract;
 }
 
 export function parseAndBindSubmitLaunchPolicyContract(options) {
@@ -134,7 +138,9 @@ export function parseAndBindSubmitLaunchPolicyContract(options) {
     schemaGitBlobOid: options.schemaGitBlobOid,
     contract
   });
-  return Object.freeze({ ...contract, ...bindings });
+  const result = Object.freeze({ ...contract, ...bindings });
+  trustedPolicyContracts.add(result);
+  return result;
 }
 
 function buildSubmitLaunchPolicyBindings({
@@ -175,6 +181,10 @@ function buildSubmitLaunchPolicyBindings({
     profileId: SUBMIT_LAUNCH_POLICY_PROFILE_ID,
     sha256: contract.policySha256
   });
+  const buildPolicyBinding = Object.freeze({
+    ...policyBinding,
+    profileId: SUBMIT_LAUNCH_BUILD_PROFILE_ID
+  });
   const policySchemaBinding = Object.freeze({
     schemaVersion: SUBMIT_LAUNCH_POLICY_SCHEMA_BINDING_VERSION,
     repository: SUBMIT_LAUNCH_REPOSITORY,
@@ -187,11 +197,20 @@ function buildSubmitLaunchPolicyBindings({
     sha256: contract.schemaSha256
   });
   normalizeSubmitLaunchPolicyBinding(policyBinding);
+  normalizeSubmitLaunchBuildPolicyBinding(buildPolicyBinding);
   normalizeSubmitLaunchPolicySchemaBinding(policySchemaBinding);
-  return Object.freeze({ policyBinding, policySchemaBinding });
+  return Object.freeze({ buildPolicyBinding, policyBinding, policySchemaBinding });
 }
 
 export function normalizeSubmitLaunchPolicyBinding(value) {
+  return normalizeSubmitLaunchPolicyBindingForProfile(value, SUBMIT_LAUNCH_POLICY_PROFILE_ID);
+}
+
+export function normalizeSubmitLaunchBuildPolicyBinding(value) {
+  return normalizeSubmitLaunchPolicyBindingForProfile(value, SUBMIT_LAUNCH_BUILD_PROFILE_ID);
+}
+
+function normalizeSubmitLaunchPolicyBindingForProfile(value, profileId) {
   requireExactObject(value, POLICY_BINDING_KEYS, "SUBMIT_LAUNCH_POLICY_BINDING_INVALID");
   if (
     value.schemaVersion !== SUBMIT_LAUNCH_POLICY_BINDING_SCHEMA_VERSION
@@ -203,12 +222,21 @@ export function normalizeSubmitLaunchPolicyBinding(value) {
     || !OBJECT_ID.test(value.gitBlobOid ?? "")
     || !POLICY_ID.test(value.policyId ?? "")
     || !SEMVER.test(value.policyVersion ?? "")
-    || value.profileId !== SUBMIT_LAUNCH_POLICY_PROFILE_ID
+    || value.profileId !== profileId
     || !SHA256.test(value.sha256 ?? "")
   ) {
     fail("SUBMIT_LAUNCH_POLICY_BINDING_INVALID", "Submit Launch policy binding is malformed or exceeds consumer authority.");
   }
   return Object.freeze({ ...value });
+}
+
+export function currentSubmitLaunchBuildRequirements(contract) {
+  if (!isPlainObject(contract) || !trustedPolicyContracts.has(contract)) {
+    fail("SUBMIT_LAUNCH_POLICY_CONTRACT_REQUIRED", "Exact validated Submit Launch policy bytes are required.");
+  }
+  return Object.freeze(contract.policy.rules
+    .filter((rule) => rule.status === "active" && rule.profiles.includes(SUBMIT_LAUNCH_BUILD_PROFILE_ID))
+    .map((rule) => deepFreeze(structuredClone(rule))));
 }
 
 export function normalizeSubmitLaunchPolicySchemaBinding(value) {
@@ -281,14 +309,16 @@ function validateBootstrapIdentity(policy) {
 }
 
 function validateSelectedProfile(policy) {
-  const selected = Array.isArray(policy.profiles)
-    ? policy.profiles.filter((profile) => isPlainObject(profile) && profile.id === SUBMIT_LAUNCH_POLICY_PROFILE_ID)
-    : [];
-  if (selected.length !== 1 || selected[0].enabled !== true) {
-    fail(
-      "SUBMIT_LAUNCH_POLICY_INVALID",
-      "Submit Launch policy must enable the fixed workflow-canary consumer profile exactly once."
-    );
+  for (const profileId of [SUBMIT_LAUNCH_BUILD_PROFILE_ID, SUBMIT_LAUNCH_POLICY_PROFILE_ID]) {
+    const selected = Array.isArray(policy.profiles)
+      ? policy.profiles.filter((profile) => isPlainObject(profile) && profile.id === profileId)
+      : [];
+    if (selected.length !== 1 || selected[0].enabled !== true) {
+      fail(
+        "SUBMIT_LAUNCH_POLICY_INVALID",
+        `Submit Launch policy must enable the fixed ${profileId} consumer profile exactly once.`
+      );
+    }
   }
 }
 

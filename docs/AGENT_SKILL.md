@@ -16,8 +16,8 @@ launch authorization, deployment receipt, provider result or Uniswap endorsement
 
 ## Release status
 
-Open-world submission v2, Fee V2, layered security and public application v3 are packaged for the immutable `v0.7.0`
-release. The bundled status retains `publicationStateVerified: false`; this source is not proof that v0.7.0 is published
+Open-world submission v2, Fee V2, layered security and public application v3 are packaged for the immutable `v0.8.0`
+release. The bundled status retains `publicationStateVerified: false`; this source is not proof that v0.8.0 is published
 or live. A verified publication establishes exact package bytes and release artifacts only. It does not establish model behavior,
 an independent audit, Registry acceptance, launch authorization, deployment, routing, or public availability. See
 [`OPEN_WORLD_V2_RELEASE_GATES.md`](OPEN_WORLD_V2_RELEASE_GATES.md) for the still-separate evidence states.
@@ -67,18 +67,18 @@ The canonical package is
 layout. `SKILL.md`, references, schemas, templates, scripts, tests and `LICENSE.txt` form one package; copying only the
 entry file is incomplete.
 
-For reproducible public work, first verify that GitHub exposes the exact `v0.7.0` tag and release, then preview and pin
+For reproducible public work, first verify that GitHub exposes the exact `v0.8.0` tag and release, then preview and pin
 that immutable release:
 
 ```bash
 gh skill preview 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.7.0
+  programmable-v4-hook-builder@v0.8.0
 
 gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.7.0
+  --pin v0.8.0
 ```
 
 Replace `codex` with the supported host name when appropriate. User scope is the beginner default because it keeps the
@@ -94,6 +94,8 @@ Claude Code and GitHub Copilot; it does not launch those hosts. Cursor placement
 remain unverified for this release. Application V3 exact revision preparation supports macOS and Linux only and
 requires Node.js 24+, Git 2.49+ with `git backfill --sparse`, public GitHub reachability, and later authenticated `gh` for
 submission or update. Run `cli.mjs doctor` before repository work.
+Then run `cli.mjs policy` before `context`: it reads the exact current protected Submit a Launch build rules. If that
+read fails, stop instead of substituting a bundled or remembered launch checklist.
 
 See [`PORTABILITY_AND_LIFECYCLE.md`](PORTABILITY_AND_LIFECYCLE.md) for the truthful host/OS/offline matrix and copyable
 install, update, rollback, uninstall, and Codex plugin commands. No package-compatibility statement is behavioral parity;

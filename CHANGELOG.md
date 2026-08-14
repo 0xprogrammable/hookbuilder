@@ -2,6 +2,32 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.8.0 - 2026-08-14
+
+### Added
+
+- Added a closed current-requirements boundary that returns every active central `build` Rule ID with exact protected
+  Submit a Launch repository, commit, tree, blob, byte, schema, and digest provenance.
+
+### Changed
+
+- Made the central build profile the complete Programmable launch requirement set. Bundled security, v4, and EVM
+  guidance remains engineering validation and cannot add a separate platform requirement.
+- Bound release preparation to Submit a Launch policy `1.2.0`, whose single active build rule requires Ethereum mainnet
+  and a 10 bps Programmable treasury share.
+
+### Security
+
+- Reject caller-authored, unavailable, stale, or drifted policy records instead of falling back to bundled criteria.
+- Preserve independent audit, approval, deployment, routing, and launch authorities; production launch remains disabled.
+
+### Evidence boundary
+
+- A successful local build or policy check remains `NOT_APPROVED` and does not prove audit, acceptance, deployment,
+  public routing, real-funds readiness, or launch authority.
+- The package is not public until the exact v0.8.0 tag, GitHub Release, assets, protected CI, and installed bytes are
+  independently verified.
+
 ## 0.7.0 - 2026-08-14
 
 ### Added
@@ -250,7 +276,7 @@ All notable Builder changes are recorded here. Historical releases remain immuta
   passed prototype gates.
 
 Historical candidate note: this candidate was local and unpublished, and its public predecessor at preparation time
-was `v0.4.0`. That announcement was later superseded by `v0.5.1`; current release guidance is `v0.7.0`.
+was `v0.4.0`. That announcement was later superseded by `v0.5.1`; current release guidance is `v0.8.0`.
 
 Compatibility note: a package prepared by `v0.4.0` remains bound to its original platform-repository pull request.
 Continue its status and update journey with the pinned `v0.4.0` client; do not silently move its Git history or package

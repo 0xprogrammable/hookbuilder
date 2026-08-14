@@ -14,8 +14,9 @@ Resolve the fixed repository by numeric id `1320171831`, bind its exact default-
 and schema as regular Git blobs, validate the policy against those schema bytes, and record the closed policy binding.
 Never accept caller-selected policy bytes, repository, branch, path, profile, rule severity, evidence, or outcome.
 
-Use the profile selected by the public workflow. Every Programmable-specific finding must cite a current Rule ID from
-the resolved policy. A local document, prompt, template, fee kernel, test, or model opinion may help build or explain an
+Use the fixed `build` profile for construction and the fixed `workflow-canary` profile only for Canary transport. Every
+Programmable-specific finding must cite a current Rule ID from the resolved policy. A local document, prompt, template,
+fee kernel, test, or model opinion may help build or explain an
 implementation, but cannot add an admission requirement. If the protected policy or schema binding changes while work
 is open, stop with `POLICY_DRIFT` and evaluate the current bytes again.
 

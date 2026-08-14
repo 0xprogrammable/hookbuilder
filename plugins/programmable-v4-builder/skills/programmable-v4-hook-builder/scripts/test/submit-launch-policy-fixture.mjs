@@ -50,12 +50,19 @@ export function makeSubmitLaunchPolicyFixture({
     },
     rules: [{
       applicability: { mode: "always" },
-      enforcement: { handlerId: "fixture-v1", mode: "deterministic", owner: "platform" },
-      evidence: ["fixture-evidence"],
-      id: "CANARY.FIXTURE",
-      introducedIn: "1.0.0",
-      profiles: ["workflow-canary"],
-      requirement: "Fixture rule meaning comes from central bytes.",
+      enforcement: { handlerId: "ethereum-treasury-10-bps-v1", mode: "deterministic", owner: "applicant" },
+      evidence: ["programmable-launch-requirement"],
+      id: "LAUNCH.ETHEREUM_AND_TREASURY_10_BPS",
+      introducedIn: "1.2.0",
+      parameters: {
+        basis: "gross-canonical-pool-volume",
+        chainId: 1,
+        hundredthsOfBip: 1000,
+        network: "ethereum-mainnet",
+        treasury: "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c"
+      },
+      profiles: ["build", "production-launch"],
+      requirement: "A launch must be on Ethereum and route 10 bps of trading volume to the Programmable treasury.",
       retiredIn: null,
       severity: "blocker",
       status: "active"
