@@ -121,7 +121,7 @@
           "observedBytes": 26310,
           "observedComplexityScore": 104,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.7.0 reviewed current build-policy command, frozen legacy labels, and workflow-canary dispatch"
+          "reviewRef": "v0.8.0 reviewed current build-policy command, frozen legacy labels, and workflow-canary dispatch"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/companion-manifest-contract.mjs",

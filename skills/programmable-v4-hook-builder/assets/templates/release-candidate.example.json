@@ -1,15 +1,15 @@
 {
   "schemaVersion": "1.0.0",
-  "candidateId": "programmable-v4-builder-v0.7.0-local-20260814",
+  "candidateId": "programmable-v4-builder-v0.8.0-local-20260814",
   "privateCandidate": true,
   "publicState": "not-published",
-  "releaseVersion": "0.7.0",
+  "releaseVersion": "0.8.0",
   "channel": "canary",
   "releaseKind": "normal",
   "plannedRelease": {
     "builder": {
-      "fromVersion": "0.6.0",
-      "toVersion": "0.7.0",
+      "fromVersion": "0.7.0",
+      "toVersion": "0.8.0",
       "semanticClassification": "minor"
     },
     "submissionStandard": {
@@ -34,34 +34,24 @@
       "sha256": null
     }
   },
-  "preparedAt": "2026-08-14T01:46:00Z",
-  "requestedReleaseAt": "2026-08-14T13:46:20Z",
+  "preparedAt": "2026-08-14T07:40:00Z",
+  "requestedReleaseAt": "2026-08-15T06:04:52Z",
   "changeSetComplete": true,
   "changes": [
     {
-      "id": "central-launch-policy-consumer",
+      "id": "current-launch-requirements-enforcement",
       "kind": "feature",
-      "summary": "Resolve the current Submit a Launch policy and schema from the exact public repository identity, commit, tree, paths, bytes, and digests before Builder decisions."
+      "summary": "Use every active build Rule ID from the exact protected Submit a Launch policy as the complete Programmable requirement set before context or construction."
     },
     {
-      "id": "legacy-policy-quarantine",
+      "id": "current-policy-provenance-gate",
       "kind": "security-fix",
-      "summary": "Remove retired bundled platform rules from current decision authority while retaining explicitly labeled historical compatibility evidence."
+      "summary": "Reject caller-authored, unavailable, stale, or drifted policy records and retain exact repository, commit, tree, blob, byte, and digest provenance."
     },
     {
-      "id": "central-policy-drift-rechecks",
-      "kind": "security-fix",
-      "summary": "Recheck required branch, repository, commit, tree, policy, schema, and output assumptions before a decision or write boundary and fail closed on drift."
-    },
-    {
-      "id": "hidden-workflow-canary-preview",
-      "kind": "feature",
-      "summary": "Prepare one canonical hidden workflow-canary Application V1 preview from the fixed central schema without executing source or granting review, audit, routing, launch, or funds authority."
-    },
-    {
-      "id": "submit-launch-v1-5-binding",
+      "id": "submit-launch-policy-1-2-binding",
       "kind": "maintenance",
-      "summary": "Record the exact Submit a Launch v1.5.0 live-main release-preparation binding while preserving runtime current-main drift detection."
+      "summary": "Record protected Submit a Launch main at policy 1.2.0 with the single Ethereum and treasury 10 bps requirement while preserving runtime current-main drift detection."
     }
   ],
   "unbundledChangeIds": [],
