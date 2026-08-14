@@ -598,6 +598,7 @@
         "wallet-action-rewards"
       ],
       "references": [
+        "consumer-defi-game-exploration.md",
         "project-surfaces-and-capabilities.md",
         "runtime-assets.md"
       ]
@@ -666,6 +667,7 @@
         "game"
       ],
       "references": [
+        "consumer-defi-game-exploration.md",
         "project-surfaces-and-capabilities.md",
         "runtime-assets.md"
       ]

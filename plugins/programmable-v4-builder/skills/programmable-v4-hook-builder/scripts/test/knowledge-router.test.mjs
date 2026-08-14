@@ -628,6 +628,45 @@ test("game compositions do not assume a signed service before the outcome archit
   assert.ok(result.loadNow.length < 12, JSON.stringify(result.loadNow));
 });
 
+test("Explore routes confirmed games through game design, strategic stability and fair-play discussion", () => {
+  const result = planKnowledge({
+    mode: "explore",
+    capabilities: ["browser-game", "game-outcome-rewards"],
+    surfaces: ["game"],
+    skillRoot
+  });
+  const reference = "references/consumer-defi-game-exploration.md";
+  const guidance = fs.readFileSync(path.join(skillRoot, reference), "utf8");
+
+  assert.deepEqual(paths(result), ["references/business-system-compiler.md"]);
+  assert.ok(deferred(result, reference));
+  assert.match(guidance, /## Discussion contract/u);
+  assert.match(guidance, /## Game Design Card/u);
+  assert.match(guidance, /strategic-stability hypothesis/u);
+  assert.match(guidance, /Use `Nash equilibrium` only for a stated model and assumptions/u);
+  assert.match(guidance, /Define fairness rather than claiming it/u);
+  assert.match(guidance, /does not select a token, hook, pool, signer, oracle, randomness provider/u);
+  assert.match(guidance, /model and effort selection belong to the host/u);
+  assert.doesNotMatch(guidance, /^(?:Use|Enable|Set) (?:reasoning effort|Pro mode)/mu);
+});
+
+test("a game surface routes novel mechanics to game exploration without making a product decision", () => {
+  const result = planKnowledge({
+    mode: "explore",
+    capabilities: ["community-reputation-duel"],
+    surfaces: ["game"],
+    skillRoot
+  });
+
+  assert.deepEqual(result.unknownCapabilities, ["community-reputation-duel"]);
+  assert.equal(result.reviewRoute, "architecture-review-required");
+  assert.equal(result.automaticAdverseDecision, false);
+  assert.ok(deferred(result, "references/consumer-defi-game-exploration.md"));
+  assert.equal(result.capabilities.includes("canonical-v4-pool"), false);
+  assert.equal(result.capabilities.includes("randomness"), false);
+  assert.equal(result.capabilities.includes("signed-claim"), false);
+});
+
 test("token behavior routes through open mechanics instead of the one-token v1 compatibility profile", () => {
   const result = planKnowledge({
     mode: "preflight",
