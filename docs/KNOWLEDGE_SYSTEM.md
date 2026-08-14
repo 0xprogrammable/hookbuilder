@@ -53,6 +53,15 @@ node skills/programmable-v4-hook-builder/scripts/cli.mjs context \
   --template-plan path/to/programmable-template.json
 ```
 
+The router validates the complete canonical catalog before selecting context. Every catalog capability and project
+surface must occur in at least one explicit route; missing coverage fails closed with `KNOWLEDGE_ROUTING_INVALID`.
+Genuinely new owner-defined capabilities remain eligible and continue to the open architecture path.
+
+The model-evaluation harness has a separate closed `context-profiles.json` registry. Generic profiles cannot construct
+or preload unregistered, archival, or exact legacy Fee V2 references; the dedicated `legacy-fee-v2` profile is reserved
+for the single `transparent-high-fee-open-world` case. This controls deterministic eval prompt bytes, not production
+model behavior or token use.
+
 For a quick pre-materialization probe, repeat `--pack <catalog-pack-id>`; the router expands each visible pack id into
 its canonical capabilities and project surfaces. On `context`, `--capability` may name either one exact known catalog
 capability or a genuinely new owner-defined behavior: known ids receive their direct Lego receipts, while unknown ids

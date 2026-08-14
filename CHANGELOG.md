@@ -2,6 +2,36 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.9.0 - 2026-08-15
+
+### Added
+
+- Added fail-closed knowledge coverage for every canonical catalog capability, with explicit specialist routes instead
+  of silently omitting context when catalog and routing bytes drift.
+- Added an optional Project Compiler `--brief` view for validation and output preflight commands. It preserves exit
+  status, result, full-report SHA-256, finding counts, canonical-output state and evidence boundary while omitting the
+  exhaustive inventory and finding arrays. On the committed blocked and green fixtures, stdout changed from 3,371 to
+  1,150 bytes (-65.89%) and from 1,225 to 805 bytes (-34.29%), respectively; brief stdout is capped at 2,499 bytes.
+
+### Changed
+
+- Routed newly closed catalog capabilities through explicit applicable existing specialist references without preloading
+  unrelated knowledge or changing unknown owner-defined capability eligibility.
+- Moved eval context selection into one closed registry, reserved the exact legacy Fee V2 reference for its matching
+  case, and removed 16,731 preloaded bytes from `autopilot` plus 20,538 bytes each from `claims` and `authority`.
+- Kept the complete canonical Project Compiler JSON as the default output; `--brief` is presentation-only and points
+  back to the full report.
+
+### Evidence boundary
+
+- These changes do not modify the central Submit a Launch policy, project schemas, audit, approval, deployment,
+  routing, funds or launch authority.
+- Local tests can prove deterministic routing and report projection for their exact fixtures. They do not establish
+  broader model quality, universal token or latency reduction, an independent audit, project acceptance or production
+  readiness.
+- The package is not public until the exact v0.9.0 tag, GitHub Release, assets, protected CI and installed bytes are
+  independently verified.
+
 ## 0.8.0 - 2026-08-14
 
 ### Added
@@ -276,7 +306,7 @@ All notable Builder changes are recorded here. Historical releases remain immuta
   passed prototype gates.
 
 Historical candidate note: this candidate was local and unpublished, and its public predecessor at preparation time
-was `v0.4.0`. That announcement was later superseded by `v0.5.1`; current release guidance is `v0.8.0`.
+was `v0.4.0`. That announcement was later superseded by `v0.5.1`; current release guidance is `v0.9.0`.
 
 Compatibility note: a package prepared by `v0.4.0` remains bound to its original platform-repository pull request.
 Continue its status and update journey with the pinned `v0.4.0` client; do not silently move its Git history or package

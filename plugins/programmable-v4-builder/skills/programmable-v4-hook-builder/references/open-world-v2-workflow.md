@@ -47,6 +47,7 @@ Validate the hash-bound phase without executing its planned commands:
 
 ```bash
 node "$SKILL_ROOT/scripts/project-compiler.mjs" validate \
+  --brief \
   --repository-root "$REPOSITORY_ROOT" \
   --state "$PROJECT_STATE_PATH"
 ```
@@ -77,6 +78,7 @@ by the Open World package:
 
 ```bash
 node "$SKILL_ROOT/scripts/cli.mjs" project require-output \
+  --brief \
   --repository-root "$REPOSITORY_ROOT" \
   --state "$PROJECT_STATE_PATH" \
   --previous-state "$PREVIOUS_STATE_PATH" \

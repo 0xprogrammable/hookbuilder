@@ -66,7 +66,7 @@ test("Autopilot starts from the compact compiler with the productive completion 
   assert.match(coldContext, /NOT_APPROVED/u);
   assert.match(coldContext, /NOT_SUBMITTED/u);
   assert.match(coldContext, /require authority for secrets, cost, signing, deploy, publish, submit, merge or Registry writes/u);
-  assert.match(skill, /project require-output --repository-root "\$NEW_REPOSITORY" --state \.programmable\/project-states\/000006-submission-evidence\.v1\.json --previous-state \.programmable\/project-states\/000005-verification\.v1\.json --submission-root submission/u);
+  assert.match(skill, /project require-output --brief --repository-root "\$NEW_REPOSITORY" --state \.programmable\/project-states\/000006-submission-evidence\.v1\.json --previous-state \.programmable\/project-states\/000005-verification\.v1\.json --submission-root submission/u);
   assert.match(compiler, /project materialize/u);
   assert.match(compiler, /project\s+require-output/u);
   assert.match(compiler, /PROJECT_PREFLIGHT_VALID/u);
@@ -451,6 +451,78 @@ test("every canonical catalog surface has an explicit route and route drift fail
       && error.code === "KNOWLEDGE_ROUTING_INVALID"
       && /external-provider/u.test(error.message)
   );
+});
+
+test("every canonical catalog capability has an explicit route and route drift fails closed", (t) => {
+  const routing = JSON.parse(fs.readFileSync(path.join(skillRoot, "references", "knowledge-routing.json"), "utf8"));
+  const routedCapabilities = new Set(routing.capabilityRoutes.flatMap(({ matches }) => matches));
+  const catalogCapabilities = [...new Set(catalog.definitions.flatMap(({ capabilities }) => capabilities))].sort();
+  assert.deepEqual(catalogCapabilities.filter((capability) => !routedCapabilities.has(capability)), []);
+
+  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "programmable-routing-capability-closure-")));
+  t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const copiedSkill = path.join(temporary, "skill");
+  fs.cpSync(skillRoot, copiedSkill, { recursive: true });
+  const copiedRoutingPath = path.join(copiedSkill, "references", "knowledge-routing.json");
+  const copiedRouting = JSON.parse(fs.readFileSync(copiedRoutingPath, "utf8"));
+  copiedRouting.capabilityRoutes = copiedRouting.capabilityRoutes.map((route) => ({
+    ...route,
+    matches: route.matches.filter((id) => id !== "v4-claim-client")
+  }));
+  fs.writeFileSync(copiedRoutingPath, `${JSON.stringify(copiedRouting, null, 2)}\n`);
+
+  assert.throws(
+    () => planKnowledge({ mode: "prototype", packs: ["v4-claim-client"], skillRoot: copiedSkill }),
+    (error) => error instanceof KnowledgeRouterError
+      && error.code === "KNOWLEDGE_ROUTING_INVALID"
+      && /v4-claim-client/u.test(error.message)
+  );
+});
+
+test("catalog capabilities defer their exact specialist knowledge routes", () => {
+  const cases = [
+    {
+      pack: "limit-orders-twamm",
+      references: [
+        "references/scenario-matrix.md",
+        "references/v4-hook-lego.md",
+        "references/v4-protocol-mechanics.md"
+      ]
+    },
+    {
+      pack: "v4-claim-client",
+      references: [
+        "references/scenario-matrix.md",
+        "references/v4-protocol-mechanics.md",
+        "references/v4-sdk-integration.md"
+      ]
+    },
+    {
+      pack: "continuous-clearing-auction",
+      references: [
+        "references/scenario-matrix.md",
+        "references/upstream-sources.md"
+      ]
+    },
+    {
+      pack: "test-evidence-threat-model",
+      references: ["references/security-and-evidence.md"]
+    }
+  ];
+
+  for (const { pack, references } of cases) {
+    const result = planKnowledge({ mode: "prototype", packs: [pack], skillRoot });
+    assert.deepEqual(paths(result), ["references/open-world-v2-workflow.md"], pack);
+    for (const reference of references) {
+      const route = deferred(result, reference);
+      assert.ok(route, `${pack}:${reference}`);
+      assert.equal(
+        route.reasons.some((reason) => reason.startsWith("capability:")),
+        true,
+        `${pack}:${reference}`
+      );
+    }
+  }
 });
 
 test("every routing-contract match is known and genuinely unlisted ids remain exact", (t) => {

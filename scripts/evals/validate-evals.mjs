@@ -22,6 +22,10 @@ const EXPECTED_UPSTREAM_REPOSITORY = 'https://github.com/Uniswap/uniswap-ai.git'
 const EXPECTED_UPSTREAM_COMMIT = '9660491dc662fea76c2f8565c2f7ba2abf6e8840';
 const SUBJECT_PROVIDER_TEMPLATE = '{{ env.PROGRAMMABLE_EVAL_SUBJECT_PROVIDER }}';
 const JUDGE_PROVIDER_TEMPLATE = '{{ env.PROGRAMMABLE_EVAL_JUDGE_PROVIDER }}';
+const LEGACY_FEE_V2_CASE_ID = 'transparent-high-fee-open-world';
+const LEGACY_FEE_V2_CONTEXT_PROFILE = 'legacy-fee-v2';
+const LEGACY_FEE_V2_REFERENCE = 'references/programmable-fee-policy-v2.md';
+const EXPECTED_PROMPT_WRAPPER_SHA256 = '6dca60f1faae16fdc3f6458380d06334159a9698c5c589e7c976f9e97c30934a';
 const EXPECTED_PROVIDER_CONTRACT = Object.freeze({
   mode: 'explicit-subject-and-judge',
   subjectEnvironmentVariable: 'PROGRAMMABLE_EVAL_SUBJECT_PROVIDER',
@@ -82,6 +86,7 @@ const REQUIRED_CASE_IDS = Object.freeze([
 const ALLOWED_CONTEXT_PROFILES = Object.freeze([
   'launch-selection',
   'architecture',
+  LEGACY_FEE_V2_CONTEXT_PROFILE,
   'security',
   'claims',
   'provenance',
@@ -322,6 +327,7 @@ function validatePolicyBoundEvalMirror(repositoryRoot, suiteRoot, issues) {
   // `file://` loader syntax, so it must not enter the portable skill payload.
   const includeRelative = (relativePath) => relativePath === 'suite.json'
     || relativePath === 'prompt-wrapper.cjs'
+    || relativePath === 'context-profiles.json'
     || relativePath.startsWith('cases/')
     || relativePath.startsWith('rubrics/');
   const liveFiles = walkFiles(suiteRoot)
@@ -377,6 +383,12 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
   const manifestPath = path.join(suiteRoot, 'suite.json');
   const configPath = path.join(suiteRoot, 'promptfoo.yaml');
   const wrapperPath = path.join(suiteRoot, 'prompt-wrapper.cjs');
+  const contextProfilesPath = path.join(suiteRoot, 'context-profiles.json');
+  const skillRoot = path.join(resolvedRoot, 'skills/programmable-v4-hook-builder');
+  const knowledgeRoutingPath = path.join(
+    skillRoot,
+    'references/knowledge-routing.json',
+  );
 
   addIssue(issues, suiteId === DEFAULT_SUITE_ID, `only the canonical suite id ${DEFAULT_SUITE_ID} is accepted`);
 
@@ -392,6 +404,86 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
     wrapperText = fs.readFileSync(wrapperPath, 'utf8');
   } catch (error) {
     issues.push(`prompt wrapper: cannot read ${wrapperPath}: ${error.message}`);
+  }
+  const { value: knowledgeRouting } = readJson(
+    knowledgeRoutingPath,
+    issues,
+    'prompt wrapper knowledge routing',
+  );
+  const { raw: contextProfilesRaw, value: contextProfiles } = readJson(
+    contextProfilesPath,
+    issues,
+    'context profile registry',
+  );
+
+  addIssue(
+    issues,
+    contextProfilesRaw === `${JSON.stringify(contextProfiles, null, 2)}\n`,
+    'context profile registry: must use canonical duplicate-key-free JSON',
+  );
+  addIssue(
+    issues,
+    contextProfiles && exactKeys(contextProfiles, [...ALLOWED_CONTEXT_PROFILES].sort()),
+    'context profile registry: keys must match the closed profile allowlist',
+  );
+  const archivalReferences = new Set(
+    (knowledgeRouting?.archivalReferences ?? [])
+      .flatMap((group) => group?.references ?? []),
+  );
+  for (const profile of ALLOWED_CONTEXT_PROFILES) {
+    const contextFiles = contextProfiles?.[profile];
+    const label = `context profile registry: ${profile}`;
+    addIssue(issues, Array.isArray(contextFiles) && contextFiles.length > 0, `${label} must be a non-empty array`);
+    if (!Array.isArray(contextFiles)) continue;
+    const seenContextFiles = new Set();
+    for (const [index, relativePath] of contextFiles.entries()) {
+      addIssue(issues, typeof relativePath === 'string', `${label}[${index}] must be a string`);
+      if (typeof relativePath !== 'string') continue;
+      addIssue(issues, !seenContextFiles.has(relativePath), `${label} contains duplicate ${relativePath}`);
+      seenContextFiles.add(relativePath);
+      safeRelativeFile(
+        skillRoot,
+        relativePath,
+        /^references\/[a-z0-9]+(?:[-.][a-z0-9]+)*\.(?:md|json)$/u,
+        issues,
+        `${label}[${index}]`,
+      );
+      const referenceName = relativePath.startsWith('references/')
+        ? relativePath.slice('references/'.length)
+        : relativePath;
+      addIssue(
+        issues,
+        !archivalReferences.has(referenceName),
+        `${label} must not load archival reference ${relativePath}`,
+      );
+    }
+    addIssue(
+      issues,
+      contextFiles.includes('references/layered-response-contract.md'),
+      `${label} must load the layered response contract`,
+    );
+    const loadsLegacyFeeV2 = contextFiles.includes(LEGACY_FEE_V2_REFERENCE);
+    addIssue(
+      issues,
+      profile === LEGACY_FEE_V2_CONTEXT_PROFILE ? loadsLegacyFeeV2 : !loadsLegacyFeeV2,
+      profile === LEGACY_FEE_V2_CONTEXT_PROFILE
+        ? `${label} must load programmable-fee-policy-v2.md`
+        : `${label} must not preload programmable-fee-policy-v2.md`,
+    );
+  }
+  for (const profile of ['architecture', LEGACY_FEE_V2_CONTEXT_PROFILE, 'security', 'authority']) {
+    addIssue(
+      issues,
+      contextProfiles?.[profile]?.includes('references/builder-reviewer-alignment.md'),
+      `context profile registry: ${profile} must load builder-reviewer alignment`,
+    );
+  }
+  for (const profile of ['security', 'repository-safety', 'authority']) {
+    addIssue(
+      issues,
+      contextProfiles?.[profile]?.includes('references/execution-gates-and-attestation.md'),
+      `context profile registry: ${profile} must load execution gates`,
+    );
   }
 
   addIssue(
@@ -429,6 +521,11 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
         issues,
         ALLOWED_CONTEXT_PROFILES.includes(evalCase.contextProfile),
         `${label}: unknown context profile ${evalCase.contextProfile}`,
+      );
+      addIssue(
+        issues,
+        evalCase.contextProfile !== LEGACY_FEE_V2_CONTEXT_PROFILE || evalCase.id === LEGACY_FEE_V2_CASE_ID,
+        `${label}: ${LEGACY_FEE_V2_CONTEXT_PROFILE} context profile is reserved for ${LEGACY_FEE_V2_CASE_ID}`,
       );
       addIssue(issues, typeof evalCase.safetyCritical === 'boolean', `${label}: safetyCritical must be boolean`);
       addIssue(
@@ -498,6 +595,11 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
   for (const requiredCase of REQUIRED_CASE_IDS) {
     addIssue(issues, manifestCases.has(requiredCase), `suite manifest: missing required case ${requiredCase}`);
   }
+  addIssue(
+    issues,
+    manifestCases.get(LEGACY_FEE_V2_CASE_ID)?.contextProfile === LEGACY_FEE_V2_CONTEXT_PROFILE,
+    `suite manifest: ${LEGACY_FEE_V2_CASE_ID} must use ${LEGACY_FEE_V2_CONTEXT_PROFILE}`,
+  );
 
   addIssue(issues, configText.includes('file://prompt-wrapper.cjs'), 'promptfoo: canonical prompt wrapper is not registered');
   addIssue(
@@ -544,30 +646,38 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
     }
   }
 
-  addIssue(issues, wrapperText.includes("const contextProfiles = Object.freeze({"), 'prompt wrapper: context allowlist missing');
+  addIssue(
+    issues,
+    wrapperText.includes("const contextProfilesPath = path.join(__dirname, 'context-profiles.json');")
+      && wrapperText.includes("JSON.parse(fs.readFileSync(contextProfilesPath, 'utf8'))"),
+    'prompt wrapper: closed context profile registry loader missing',
+  );
+  addIssue(
+    issues,
+    crypto.createHash('sha256').update(wrapperText).digest('hex') === EXPECTED_PROMPT_WRAPPER_SHA256,
+    'prompt wrapper: exact reviewed structure drift',
+  );
+  addIssue(
+    issues,
+    wrapperText.includes('new Set(Object.values(contextProfiles).flat())')
+      && wrapperText.includes('configuredContextFiles.has(relativePath)'),
+    'prompt wrapper: configured context-file allowlist missing',
+  );
+  addIssue(
+    issues,
+    !/references/iu.test(wrapperText),
+    'prompt wrapper: reference paths must come only from context-profiles.json',
+  );
   addIssue(issues, wrapperText.includes("readCanonicalSkillFile('SKILL.md')"), 'prompt wrapper: canonical SKILL.md missing');
-  addIssue(
-    issues,
-    (wrapperText.match(/'references\/layered-response-contract\.md'/g) ?? []).length === ALLOWED_CONTEXT_PROFILES.length,
-    'prompt wrapper: every context profile must load the layered response contract',
-  );
-  addIssue(
-    issues,
-    (wrapperText.match(/'references\/builder-reviewer-alignment\.md'/g) ?? []).length >= 3,
-    'prompt wrapper: architecture, security and authority profiles must load builder-reviewer alignment',
-  );
-  addIssue(
-    issues,
-    (wrapperText.match(/'references\/execution-gates-and-attestation\.md'/g) ?? []).length >= 3,
-    'prompt wrapper: security, repository-safety and authority profiles must load execution gates',
-  );
   addIssue(issues, wrapperText.includes('Unknown context profile'), 'prompt wrapper: unknown profiles must fail closed');
-  addIssue(issues, wrapperText.includes('Unsafe Nunjucks raw-block terminator'), 'prompt wrapper: raw-block terminators must fail closed');
+  addIssue(
+    issues,
+    wrapperText.includes('const NUNJUCKS_RAW_BLOCK_TERMINATOR = /\\{%-?\\s*endraw\\s*-?%\\}/u;')
+      && wrapperText.includes('NUNJUCKS_RAW_BLOCK_TERMINATOR.test(text)'),
+    'prompt wrapper: complete raw-block terminator grammar must fail closed',
+  );
   addIssue(issues, wrapperText.includes("rawBlock(vars.case_content, 'case content')"), 'prompt wrapper: case content must be template-isolated');
   addIssue(issues, !/vars\.(?:reference|path|file)/.test(wrapperText), 'prompt wrapper: test vars must not select file paths');
-  for (const profile of ALLOWED_CONTEXT_PROFILES) {
-    addIssue(issues, wrapperText.includes(`${profile}:`) || wrapperText.includes(`'${profile}':`), `prompt wrapper: missing profile ${profile}`);
-  }
 
   const rootProject = readJson(path.join(resolvedRoot, 'evals/project.json'), issues, 'evals Nx project').value;
   const suiteProject = readJson(path.join(suiteRoot, 'project.json'), issues, 'suite Nx project').value;

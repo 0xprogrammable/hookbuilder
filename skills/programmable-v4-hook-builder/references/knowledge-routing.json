@@ -444,6 +444,36 @@
       ]
     },
     {
+      "id": "owner-defined-project",
+      "matches": [
+        "owner-defined-capabilities"
+      ],
+      "references": [
+        "business-system-compiler.md",
+        "project-surfaces-and-capabilities.md"
+      ]
+    },
+    {
+      "id": "companion-repository-architecture",
+      "matches": [
+        "companion-repositories"
+      ],
+      "references": [
+        "companion-manifests.md",
+        "project-surfaces-and-capabilities.md"
+      ]
+    },
+    {
+      "id": "evidence-and-security-properties",
+      "matches": [
+        "evidence-plan",
+        "security-properties"
+      ],
+      "references": [
+        "security-and-evidence.md"
+      ]
+    },
+    {
       "id": "builder-release-evaluation",
       "matches": [
         "builder-release-eval",
@@ -498,12 +528,20 @@
       "id": "hook-implementation",
       "matches": [
         "async-swap",
+        "automatic-liquidity",
+        "cross-pool-accounting",
         "custom-accounting",
         "custom-curve",
         "custom-hook-behavior",
         "dynamic-lp-fee",
         "hook-owned-liquidity",
-        "multi-pool-hook"
+        "limit-orders",
+        "long-term-orders",
+        "mev-protection",
+        "multi-pool-hook",
+        "protected-ordering",
+        "sync-custom-zero-amm",
+        "twamm"
       ],
       "references": [
         "v4-protocol-mechanics.md",
@@ -520,6 +558,18 @@
       "references": [
         "v4-sdk-integration.md",
         "v4-protocol-mechanics.md"
+      ]
+    },
+    {
+      "id": "v4-claim-client",
+      "matches": [
+        "erc6909-claim-client",
+        "v4-claim-client"
+      ],
+      "references": [
+        "scenario-matrix.md",
+        "v4-protocol-mechanics.md",
+        "v4-sdk-integration.md"
       ]
     },
     {
@@ -540,8 +590,13 @@
       "id": "advanced-liquidity",
       "matches": [
         "active-liquidity-market",
+        "asset-wrapper-rate",
+        "erc4626-yield",
         "external-liquidity-aggregation",
+        "external-protocol-adapters",
         "hook-owned-idle-yield",
+        "liquidity-recall",
+        "token-owned-liquidity-inventory",
         "wrapped-asset-conversion"
       ],
       "references": [
@@ -552,6 +607,48 @@
       ]
     },
     {
+      "id": "economic-and-lifecycle-invariants",
+      "matches": [
+        "automatic-liquidity",
+        "continuous-clearing-auction",
+        "contract-based-price-formation",
+        "cross-pool-accounting",
+        "erc4626-yield",
+        "external-protocol-adapters",
+        "fixed-supply-token",
+        "launch-distribution",
+        "launch-price-discovery",
+        "limit-orders",
+        "liquidity-incentives",
+        "liquidity-recall",
+        "location-rewards",
+        "long-term-orders",
+        "mev-protection",
+        "ordinary-price-discovery",
+        "price-impact",
+        "protected-ordering",
+        "sell-and-burn",
+        "staking-rewards",
+        "supply-deflation",
+        "sync-custom-zero-amm",
+        "token-owned-liquidity-inventory",
+        "twamm",
+        "vesting-schedules"
+      ],
+      "references": [
+        "scenario-matrix.md"
+      ]
+    },
+    {
+      "id": "continuous-clearing-auction-source",
+      "matches": [
+        "continuous-clearing-auction"
+      ],
+      "references": [
+        "upstream-sources.md"
+      ]
+    },
+    {
       "id": "offchain-trust",
       "matches": [
         "cross-chain-messaging",
@@ -559,6 +656,7 @@
         "external-services",
         "keeper-automation",
         "location-evidence",
+        "location-rewards",
         "offchain-outcome",
         "oracle-data",
         "randomness",
@@ -605,10 +703,15 @@
     {
       "id": "token-behavior",
       "matches": [
+        "automatic-liquidity",
         "custom-token-behavior",
         "fee-on-transfer-token",
+        "fixed-supply-token",
+        "sell-and-burn",
+        "supply-deflation",
         "tax-financed-auto-liquidity",
         "token-managed-automatic-liquidity",
+        "token-owned-liquidity-inventory",
         "token-side-special-behavior",
         "token-tax-accumulator",
         "token-transfer-tax"

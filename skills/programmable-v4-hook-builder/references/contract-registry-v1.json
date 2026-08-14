@@ -611,9 +611,9 @@
         "modulePath": "scripts/project-state-core.mjs",
         "exportName": "validateProjectState",
         "mode": "package-semantic",
-        "moduleByteLength": 49355,
-        "moduleSha256": "sha256:c6de8592f66f2c9480fbb04c3938c534108870a1b753b0cff5ae454f315162ed",
-        "closureSha256": "sha256:54b4026c7fe64d3873dae7f513ef1f3506027ddb2545d41486dacc966c35f9a1"
+        "moduleByteLength": 49363,
+        "moduleSha256": "sha256:ad432aa8d2766d338e07f9b67b6395ee7fce97e01bb52a9d15a6fe60b918143c",
+        "closureSha256": "sha256:656e29a401f8806f7dac4d2231ca372ddc368a5377fadbc670b3502c2c82a5bf"
       }
     },
     {
@@ -6581,7 +6581,7 @@
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/project-state-core.mjs",
       "moduleCount": 95,
-      "totalByteLength": 1443859,
+      "totalByteLength": 1443867,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -6997,8 +6997,8 @@
         },
         {
           "path": "scripts/project-state-core.mjs",
-          "byteLength": 49355,
-          "sha256": "sha256:c6de8592f66f2c9480fbb04c3938c534108870a1b753b0cff5ae454f315162ed",
+          "byteLength": 49363,
+          "sha256": "sha256:ad432aa8d2766d338e07f9b67b6395ee7fce97e01bb52a9d15a6fe60b918143c",
           "localImports": [
             "scripts/canonical-json-core.mjs",
             "scripts/open-world-v2-contracts.mjs",
@@ -7482,7 +7482,7 @@
           ]
         }
       ],
-      "closureSha256": "sha256:54b4026c7fe64d3873dae7f513ef1f3506027ddb2545d41486dacc966c35f9a1"
+      "closureSha256": "sha256:656e29a401f8806f7dac4d2231ca372ddc368a5377fadbc670b3502c2c82a5bf"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -10859,8 +10859,8 @@
     "validatorClosureModuleBindingCount": 1034,
     "validatorClosureDistinctModuleCount": 176,
     "schemaPathsSha256": "sha256:1813d05b83ba916ff6a772cb2ee113cce025bf990e079dd6e0bf4e7b982e417b",
-    "validatorBindingsSha256": "sha256:cf8f275c08fdccaf1d7c23eb1dcbd0db1b37e572446aeb6e87ca281c8ad631ba",
-    "validatorClosuresSha256": "sha256:fa16edbc307c1ef96c328bb9fab5c466469b647cdde8aaabca86db6486930002"
+    "validatorBindingsSha256": "sha256:4a1510929a18967ca58511f7b42d34756cb2256070e60a0edbf364e4bc022dfd",
+    "validatorClosuresSha256": "sha256:35e3b84bbc72347be7fcf5e6d776e10c7e3d67b047349232530abce6299d5c11"
   },
-  "registrySha256": "sha256:235a0bcc313fe71afe589c89036ada84eb4194d298e4568c126d4d01b23e9540"
+  "registrySha256": "sha256:c282ece96aba89d65d5485f0ae24cf8881e8b8b068aaa8ca87b68d5f79a6d6fb"
 }

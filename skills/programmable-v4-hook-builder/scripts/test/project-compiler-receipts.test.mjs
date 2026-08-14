@@ -268,6 +268,37 @@ test("executor receipts survive an evidence-only commit while static completion 
   assert.equal(report.evidenceBoundary.approvalCreated, false);
   assert.equal(report.evidenceBoundary.auditClaimed, false);
 
+  const briefResult = childProcess.spawnSync(process.execPath, [
+    compilerCli,
+    "validate",
+    "--brief",
+    "--repository-root",
+    fixture.root,
+    "--state",
+    fixture.statePath,
+    "--previous-state",
+    fixture.previousStatePath
+  ], { encoding: "utf8", shell: false });
+  assert.equal(briefResult.status, result.status, briefResult.stderr || briefResult.stdout);
+  assert.equal(briefResult.stderr, "");
+  assert.ok(Buffer.byteLength(briefResult.stdout) < 1_200, `brief valid compilation emitted ${Buffer.byteLength(briefResult.stdout)} bytes`);
+  assert.ok(Buffer.byteLength(briefResult.stdout) < Buffer.byteLength(result.stdout));
+  const briefReport = JSON.parse(briefResult.stdout);
+  assert.equal(briefReport.kind, "project-compiler-brief");
+  assert.equal(briefReport.operation, "validate");
+  assert.equal(briefReport.status, report.status);
+  assert.equal(briefReport.reportSha256, report.reportSha256);
+  assert.deepEqual(briefReport.findingCounts, report.findingCounts);
+  assert.deepEqual(briefReport.evidenceBoundary, report.evidenceBoundary);
+  assert.equal(briefReport.canonicalOutput, null);
+  assert.deepEqual(briefReport.findingGroups, { distinct: 0, displayed: 0, omitted: 0, items: [] });
+  assert.equal(Object.hasOwn(briefReport, "inventory"), false);
+  assert.equal(Object.hasOwn(briefReport, "findings"), false);
+  assert.deepEqual(briefReport.fullReport, {
+    available: true,
+    instruction: "Rerun the same command without --brief for the complete canonical JSON report."
+  });
+
   const cloneParent = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-project-clone-"));
   t.after(() => fs.rmSync(cloneParent, { recursive: true, force: true }));
   const cloneRoot = path.join(cloneParent, "project");
@@ -287,6 +318,74 @@ test("executor receipts survive an evidence-only commit while static completion 
   const clonedReport = JSON.parse(clonedValidation.stdout);
   assert.equal(clonedReport.repositoryCompletion, "NOT_PROVEN");
   assert.equal(clonedReport.commandExecutionEvidence, "UNTRUSTED_DETERMINISTIC_RECEIPT_CONTENT_MATCH");
+
+  const currentState = JSON.parse(fs.readFileSync(path.join(fixture.root, fixture.statePath), "utf8"));
+  const previousState = JSON.parse(fs.readFileSync(path.join(fixture.root, fixture.previousStatePath), "utf8"));
+  const { integrity: _integrity, ...adversarialPayload } = currentState;
+  const adversarialKey = `adversarial-${"k".repeat(100_000)}`;
+  adversarialPayload[adversarialKey] = "t".repeat(100_000);
+  const adversarialState = sealProjectState(adversarialPayload, { previousState });
+  writeFile(fixture.root, fixture.statePath, `${canonicalJsonV2(adversarialState)}\n`);
+  const adversarialFull = childProcess.spawnSync(process.execPath, [
+    compilerCli, "validate", "--repository-root", fixture.root,
+    "--state", fixture.statePath, "--previous-state", fixture.previousStatePath
+  ], { encoding: "utf8", shell: false });
+  const adversarialBrief = childProcess.spawnSync(process.execPath, [
+    compilerCli, "validate", "--brief", "--repository-root", fixture.root,
+    "--state", fixture.statePath, "--previous-state", fixture.previousStatePath
+  ], { encoding: "utf8", shell: false });
+  assert.equal(adversarialFull.status, 1, adversarialFull.stderr || adversarialFull.stdout);
+  assert.equal(adversarialBrief.status, adversarialFull.status, adversarialBrief.stderr || adversarialBrief.stdout);
+  assert.equal(adversarialBrief.stderr, "");
+  assert.ok(Buffer.byteLength(adversarialBrief.stdout) < 2_500, `adversarial brief emitted ${Buffer.byteLength(adversarialBrief.stdout)} bytes`);
+  assert.ok(adversarialBrief.stdout.endsWith("\n"));
+  const adversarialFullReport = JSON.parse(adversarialFull.stdout);
+  const adversarialBriefReport = JSON.parse(adversarialBrief.stdout);
+  const fullSchemaCause = adversarialFullReport.findings.find(({ path: findingPath }) => findingPath.endsWith(adversarialKey));
+  const briefSchemaCause = adversarialBriefReport.findingGroups.items.find(({ code }) => code === "PROJECT_STATE_SCHEMA_INVALID");
+  assert.ok(fullSchemaCause);
+  assert.ok(briefSchemaCause);
+  assert.ok(Buffer.byteLength(JSON.stringify(briefSchemaCause.path)) <= 768);
+  assert.ok(briefSchemaCause.path.endsWith(`…[${sha256Bytes(Buffer.from(fullSchemaCause.path, "utf8"))}]`));
+  assert.equal(adversarialBriefReport.reportSha256, adversarialFullReport.reportSha256);
+  assert.deepEqual(adversarialBriefReport.findingCounts, adversarialFullReport.findingCounts);
+  assert.deepEqual(adversarialBriefReport.evidenceBoundary, adversarialFullReport.evidenceBoundary);
+
+  const adversarialText = `untrusted-${"m".repeat(100_000)}`;
+  const adversarialGraph = JSON.parse(fs.readFileSync(path.join(fixture.root, ".programmable/product-graph.v1.json"), "utf8"));
+  const component = adversarialGraph.graphs.component.components[0];
+  component.systemRefs.push(adversarialText);
+  component.authorityRefs.push(adversarialText);
+  component.valueNodeRefs.push(adversarialText);
+  writeFile(fixture.root, ".programmable/product-graph.v1.json", `${canonicalJsonV2(adversarialGraph)}\n`);
+  const fallbackFull = childProcess.spawnSync(process.execPath, [
+    compilerCli, "validate", "--repository-root", fixture.root,
+    "--state", fixture.statePath, "--previous-state", fixture.previousStatePath
+  ], { encoding: "utf8", shell: false, maxBuffer: 4_000_000 });
+  const fallbackBrief = childProcess.spawnSync(process.execPath, [
+    compilerCli, "validate", "--brief", "--repository-root", fixture.root,
+    "--state", fixture.statePath, "--previous-state", fixture.previousStatePath
+  ], { encoding: "utf8", shell: false, maxBuffer: 4_000_000 });
+  assert.equal(fallbackFull.status, 1, fallbackFull.stderr || fallbackFull.stdout);
+  assert.equal(fallbackBrief.status, fallbackFull.status, fallbackBrief.stderr || fallbackBrief.stdout);
+  assert.equal(fallbackBrief.stderr, "");
+  assert.ok(Buffer.byteLength(fallbackBrief.stdout) < 2_500, `fallback brief emitted ${Buffer.byteLength(fallbackBrief.stdout)} bytes`);
+  assert.ok(fallbackBrief.stdout.endsWith("\n"));
+  const fallbackFullReport = JSON.parse(fallbackFull.stdout);
+  const fallbackBriefReport = JSON.parse(fallbackBrief.stdout);
+  assert.deepEqual(fallbackBriefReport.budgetFallback, {
+    applied: true,
+    reason: "FINDING_GROUP_DETAILS_EXCEEDED_BRIEF_OUTPUT_BUDGET",
+    maximumOutputBytes: 2_499,
+    attemptedOutputBytes: fallbackBriefReport.budgetFallback.attemptedOutputBytes
+  });
+  assert.ok(fallbackBriefReport.budgetFallback.attemptedOutputBytes > 2_499);
+  assert.deepEqual(fallbackBriefReport.findingGroups.items, []);
+  assert.equal(fallbackBriefReport.findingGroups.displayed, 0);
+  assert.equal(fallbackBriefReport.findingGroups.omitted, fallbackBriefReport.findingGroups.distinct);
+  assert.equal(fallbackBriefReport.reportSha256, fallbackFullReport.reportSha256);
+  assert.deepEqual(fallbackBriefReport.findingCounts, fallbackFullReport.findingCounts);
+  assert.deepEqual(fallbackBriefReport.evidenceBoundary, fallbackFullReport.evidenceBoundary);
 
   const changed = path.join(fixture.root, "src/app.mjs");
   fs.appendFileSync(changed, "// drift\n");

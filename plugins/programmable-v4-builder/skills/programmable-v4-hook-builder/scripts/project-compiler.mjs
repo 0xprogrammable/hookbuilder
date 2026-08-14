@@ -47,6 +47,13 @@ const MAINNET_FORK_RAW_RESULT = Object.freeze({
   schemaVersion: "1.0.0",
   status: "LOCAL_READ_ONLY_FORK_EVIDENCE_NOT_APPROVAL"
 });
+const PROJECT_COMPILER_BRIEF_MAX_OUTPUT_BYTES = 2_499;
+const PROJECT_COMPILER_BRIEF_FIELD_JSON_BYTES = Object.freeze({
+  severity: 64,
+  code: 160,
+  path: 768,
+  message: 768
+});
 
 const cli = parseCliOrExit({
   command: "project-compiler",
@@ -68,11 +75,13 @@ const cli = parseCliOrExit({
     { name: "--source-contract", key: "sourceContract", type: "value", valueName: "mjs-file", description: "Idea-specific local source module for materialize." },
     { name: "--test-source", key: "testSource", type: "value", valueName: "test-mjs-file", description: "Real node:test source for materialize." },
     { name: "--output", key: "output", type: "value", valueName: "new-directory", description: "New repository directory for materialize." },
-    { name: "--write", key: "write", type: "boolean", description: "Write no-market source and a materializing plan; tradable write requires an external sandbox." }
+    { name: "--write", key: "write", type: "boolean", description: "Write no-market source and a materializing plan; tradable write requires an external sandbox." },
+    { name: "--brief", key: "brief", type: "boolean", description: "Return status, counts, up to three distinct finding-code groups, report identity and evidence boundary; omit for complete canonical JSON." }
   ]
 });
 
 if (cli.positionals[0] !== "materialize" && cli.options.repositoryRoot === null) failUsage("missing required option --repository-root");
+if (cli.options.brief && !["validate", "validate-output", "preflight", "require-output"].includes(cli.positionals[0])) failUsage("--brief is accepted only by validate, validate-output, preflight or require-output");
 
 try {
   const repositoryRoot = cli.options.repositoryRoot === null ? null : fs.realpathSync(cli.options.repositoryRoot);
@@ -89,7 +98,7 @@ try {
       binding === null ? undefined : readRepositoryJson(repositoryRoot, binding.path)
     ]));
     const report = compileProjectBundle({ ...bound, projectState, previousState }, { repositoryRoot, verifyRepositoryFiles: true });
-    process.stdout.write(`${canonicalJsonV2(report)}\n`);
+    writeProjectReport(report, "validate", cli.options.brief);
     if (report.status !== "PROJECT_COMPILATION_VALID") process.exitCode = 1;
   } else if (cli.positionals[0] === "validate-output") {
     if (cli.options.state === null || cli.options.submissionRoot === null) failUsage("validate-output requires --state and --submission-root");
@@ -107,7 +116,7 @@ try {
       repositoryRoot,
       submissionRoot: resolveRepositoryDirectory(repositoryRoot, cli.options.submissionRoot)
     });
-    process.stdout.write(`${canonicalJsonV2(report)}\n`);
+    writeProjectReport(report, "validate-output", cli.options.brief);
     if (report.status !== "PROJECT_OUTPUT_VALID") process.exitCode = 1;
   } else if (["preflight", "require-output"].includes(cli.positionals[0])) {
     const strict = cli.positionals[0] === "require-output";
@@ -122,7 +131,7 @@ try {
       previousStatePath: cli.options.previousState,
       submissionRoot: cli.options.submissionRoot
     });
-    process.stdout.write(`${canonicalJsonV2(report)}\n`);
+    writeProjectReport(report, cli.positionals[0], cli.options.brief);
     if (strict ? report.status !== "PROJECT_PREFLIGHT_VALID" : !["PROJECT_PREFLIGHT_VALID", "PROJECT_PREFLIGHT_CLEAR"].includes(report.status)) process.exitCode = 1;
   } else if (cli.positionals[0] === "execute") {
     if (cli.options.plan === null || cli.options.outputPlan === null) failUsage("execute requires --plan and --output-plan");
@@ -386,6 +395,98 @@ export function inspectForkCanary(stdout, context = {}) {
 
 function rejectMaterializeOptions(options) {
   if ([options.ideaFile, options.applicationId, options.classification, options.marketRef, options.referenceProfile, options.sourceContract, options.testSource, options.output].some((value) => value !== null) || options.write) failUsage("materialize authoring options are accepted only by the materialize command");
+}
+function summarizeProjectCompilerReport(report, operation) {
+  const findings = Array.isArray(report.findings)
+    ? report.findings.filter((finding) => finding !== null && typeof finding === "object" && !Array.isArray(finding))
+    : [];
+  const groups = new Map();
+  for (const finding of findings) {
+    const code = typeof finding.code === "string" && finding.code.length > 0
+      ? finding.code
+      : "UNCLASSIFIED_FINDING";
+    const existing = groups.get(code);
+    if (existing) {
+      existing.occurrences += 1;
+      continue;
+    }
+    groups.set(code, {
+      severity: boundedBriefFindingText(typeof finding.severity === "string" ? finding.severity : "unknown", PROJECT_COMPILER_BRIEF_FIELD_JSON_BYTES.severity),
+      code: boundedBriefFindingText(code, PROJECT_COMPILER_BRIEF_FIELD_JSON_BYTES.code),
+      path: typeof finding.path === "string" ? boundedBriefFindingText(finding.path, PROJECT_COMPILER_BRIEF_FIELD_JSON_BYTES.path) : null,
+      message: boundedBriefFindingText(typeof finding.message === "string" ? finding.message : "Inspect the complete canonical report.", PROJECT_COMPILER_BRIEF_FIELD_JSON_BYTES.message),
+      occurrences: 1
+    });
+  }
+  const primary = [...groups.values()].slice(0, 3).map((finding) => ({
+    ...finding,
+    additionalLocations: finding.occurrences - 1
+  }));
+  return {
+    schemaVersion: "1.0.0",
+    kind: "project-compiler-brief",
+    operation,
+    status: report.status ?? null,
+    canonicalOutput: typeof report.canonicalOutput === "boolean" ? report.canonicalOutput : null,
+    reportSha256: report.reportSha256 ?? null,
+    findingCounts: report.findingCounts ?? null,
+    findingGroups: {
+      distinct: groups.size,
+      displayed: primary.length,
+      omitted: Math.max(0, groups.size - primary.length),
+      items: primary
+    },
+    evidenceBoundary: report.evidenceBoundary ?? null,
+    fullReport: {
+      available: true,
+      instruction: "Rerun the same command without --brief for the complete canonical JSON report."
+    }
+  };
+}
+function boundedBriefFindingText(value, maximumJsonBytes) {
+  if (Buffer.byteLength(JSON.stringify(value), "utf8") <= maximumJsonBytes) return value;
+  const suffix = `…[${sha256Bytes(Buffer.from(value, "utf8"))}]`;
+  let bounded = "";
+  let encodedBytes = Buffer.byteLength(JSON.stringify(suffix), "utf8");
+  for (const scalar of value) {
+    const scalarBytes = Buffer.byteLength(JSON.stringify(scalar), "utf8") - 2;
+    if (encodedBytes + scalarBytes > maximumJsonBytes) break;
+    bounded += scalar;
+    encodedBytes += scalarBytes;
+  }
+  const result = `${bounded}${suffix}`;
+  if (Buffer.byteLength(JSON.stringify(result), "utf8") > maximumJsonBytes) throw new Error("project compiler brief field budget invariant failed");
+  return result;
+}
+function projectCompilerBriefBytes(report, operation) {
+  const summary = summarizeProjectCompilerReport(report, operation);
+  let bytes = Buffer.from(`${canonicalJsonV2(summary)}\n`, "utf8");
+  if (bytes.length <= PROJECT_COMPILER_BRIEF_MAX_OUTPUT_BYTES) return bytes;
+  const fallback = {
+    ...summary,
+    findingGroups: {
+      distinct: summary.findingGroups.distinct,
+      displayed: 0,
+      omitted: summary.findingGroups.distinct,
+      items: []
+    },
+    budgetFallback: {
+      applied: true,
+      reason: "FINDING_GROUP_DETAILS_EXCEEDED_BRIEF_OUTPUT_BUDGET",
+      maximumOutputBytes: PROJECT_COMPILER_BRIEF_MAX_OUTPUT_BYTES,
+      attemptedOutputBytes: bytes.length
+    }
+  };
+  bytes = Buffer.from(`${canonicalJsonV2(fallback)}\n`, "utf8");
+  if (bytes.length > PROJECT_COMPILER_BRIEF_MAX_OUTPUT_BYTES) throw new Error("project compiler brief fallback exceeds its complete output budget");
+  return bytes;
+}
+function writeProjectReport(report, operation, brief) {
+  if (brief) {
+    process.stdout.write(projectCompilerBriefBytes(report, operation));
+    return;
+  }
+  process.stdout.write(`${canonicalJsonV2(report)}\n`);
 }
 function readInputBytes(inputPath, maximumBytes, label) {
   const resolved = path.resolve(inputPath);

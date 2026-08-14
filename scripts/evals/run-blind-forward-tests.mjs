@@ -608,7 +608,7 @@ export function validateGitHubSubmissionHandoff({
       localVerificationCommands: {
         install: expectedClassification === "tradable" ? "npm ci --ignore-scripts --prefer-offline --no-audit --no-fund" : "node tools/project-stage.mjs install",
         check: expectedClassification === "tradable" ? "node tools/run-project-gate.mjs evidence" : "npm test",
-        requireOutput: `node \"$SKILL_ROOT/scripts/cli.mjs\" project require-output --repository-root . --state ${FINAL_STATE} --previous-state ${PREVIOUS_STATE} --submission-root submission`,
+        requireOutput: `node \"$SKILL_ROOT/scripts/cli.mjs\" project require-output --brief --repository-root . --state ${FINAL_STATE} --previous-state ${PREVIOUS_STATE} --submission-root submission`,
       },
       evidenceBoundary: {
         githubWritePerformed: false,

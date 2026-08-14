@@ -63,7 +63,7 @@ Do not claim complete output from a plan-only repository. Require output only af
 sandbox has produced authenticated, hash-bound command/output evidence and the immutable state chain:
 
 ```bash
-node "$SKILL_ROOT/scripts/cli.mjs" project require-output --repository-root "$NEW_REPOSITORY" --state .programmable/project-states/000006-submission-evidence.v1.json --previous-state .programmable/project-states/000005-verification.v1.json --submission-root submission
+node "$SKILL_ROOT/scripts/cli.mjs" project require-output --brief --repository-root "$NEW_REPOSITORY" --state .programmable/project-states/000006-submission-evidence.v1.json --previous-state .programmable/project-states/000005-verification.v1.json --submission-root submission
 ```
 
 Only `PROJECT_PREFLIGHT_VALID` for those exact bytes completes Autopilot. `CLEAR` is source-only;
