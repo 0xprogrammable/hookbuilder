@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -273,10 +272,7 @@ test("canonical event buffer deep-copies records, prunes below one anchor and re
   );
 });
 
-const forgeAvailability = spawnSync("forge", ["--version"], { encoding: "utf8", shell: false });
-test("async fee scaffold preserves remainder across batches and rejects fill replay", {
-  skip: forgeAvailability.status === 0 ? false : "Foundry is unavailable"
-}, () => {
+test("generic async scaffold cannot materialize the archived branded Fee V2 adapter", () => {
   const catalog = loadTemplateCatalog({ skillRoot });
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-async-lego-"));
   const target = path.join(root, "materialized");
@@ -287,19 +283,9 @@ test("async fee scaffold preserves remainder across batches and rejects fill rep
       packIds: ["async-swap"],
       targetDirectory: target
     });
-    const result = spawnSync("forge", [
-      "test",
-      "--offline",
-      "--root",
-      path.join(target, "implementation", "async-batch-fee-adapter")
-    ], {
-      encoding: "utf8",
-      shell: false,
-      timeout: 60_000,
-      env: { PATH: process.env.PATH }
-    });
-    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-    assert.match(result.stdout, /3 passed/u);
+    assert.equal(fs.existsSync(path.join(target, "implementation", "async-batch-fee-adapter")), false);
+    const plan = JSON.parse(fs.readFileSync(path.join(target, "programmable-code-legos.json"), "utf8"));
+    assert.equal(plan.implementationLegos.entries.some(({ id }) => id === "async-batch-fee-adapter"), false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

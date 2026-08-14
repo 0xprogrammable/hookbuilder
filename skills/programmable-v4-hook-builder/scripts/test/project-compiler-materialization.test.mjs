@@ -99,7 +99,7 @@ test("no-market write treats supplied source and tests as bytes and never import
 });
 
 
-test("project preflight rejects forged authority and exact blind trade claims while ignoring unrelated JSON", (t) => {
+test("project preflight rejects forged authority and frozen trade-manifest V1 claims while ignoring unrelated JSON", (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-project-preflight-adapter-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   writeFile(root, "config/settings.json", `${canonicalJsonV2({ feature: true })}\n`);
@@ -143,8 +143,8 @@ test("project preflight rejects forged authority and exact blind trade claims wh
   assert.deepEqual(report.inventory.map(({ path: artifactPath }) => artifactPath), ["config/trade-capability.v1.json"]);
   assert.ok(report.findings.some(({ code, details }) => (
     code === "PROJECT_PREFLIGHT_MACHINE_ARTIFACT_INVALID"
-    && details.kind === "trade-capability-manifest-v1"
-    && details.validatorCodes.includes("TRADE_CAPABILITY_MANIFEST_SCHEMA_INVALID")
+    && details.kind === "frozen-trade-capability-manifest-v1"
+    && details.validatorCodes.includes("FROZEN_TRADE_MANIFEST_V1_CURRENT_PREFLIGHT_FORBIDDEN_SCHEMA_INVALID")
   )));
   assert.match(report.reportSha256, /^sha256:[0-9a-f]{64}$/u);
 
@@ -198,7 +198,9 @@ test("project preflight rejects forged authority and exact blind trade claims wh
   assert.equal(standardReport.status, "PROJECT_PREFLIGHT_BLOCKED");
   assert.deepEqual(standardReport.inventory.map(({ path: artifactPath }) => artifactPath), ["config/trade-capability.json"]);
   assert.ok(standardReport.findings.some(({ code, details }) => (
-    code === "PROJECT_PREFLIGHT_MACHINE_ARTIFACT_INVALID" && details.kind === "trade-capability-manifest-v1"
+    code === "PROJECT_PREFLIGHT_MACHINE_ARTIFACT_INVALID"
+    && details.kind === "frozen-trade-capability-manifest-v1"
+    && details.validatorCodes.includes("FROZEN_TRADE_MANIFEST_V1_CURRENT_PREFLIGHT_FORBIDDEN_SCHEMA_INVALID")
   )));
 });
 

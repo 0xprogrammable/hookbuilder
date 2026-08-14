@@ -6,11 +6,12 @@ import { createOpenWorldRuntime } from "../open-world-runtime.mjs";
 test("the decomposed open-world runtime installs every historical command function exactly once", () => {
   const runtime = createOpenWorldRuntime();
   assert.equal(Object.getPrototypeOf(runtime), null);
-  assert.equal(Object.keys(runtime).length, 202);
+  assert.equal(Object.keys(runtime).length, 203);
   assert.ok(Object.values(runtime).every((value) => typeof value === "function"));
   for (const name of [
     "executeInit",
     "executeValidate",
+    "executeValidateLegacyFeeV2",
     "executeValidateApplication",
     "executeMigrate",
     "executeApplication",

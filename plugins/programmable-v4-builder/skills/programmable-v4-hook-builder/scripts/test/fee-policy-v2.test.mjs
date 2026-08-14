@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
@@ -34,12 +33,6 @@ import {
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "../..");
-
-function canonicalJson(value) {
-  if (value === null || typeof value !== "object") return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map((entry) => canonicalJson(entry)).join(",")}]`;
-  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
-}
 
 test("v2 fixes only the platform share and removes the artificial 10 percent ceiling", () => {
   assert.equal(FEE_POLICY_V2_ID, "programmable-volume-fee-v2");
@@ -479,19 +472,11 @@ test("policy document binds profiles scope owner and solvency semantics", () => 
     "uint256-rate-custom-reviewed-segregated-funding-only"
   );
 
-  const expectedTemplateSchemaBytes = Buffer.from(`${canonicalJson(schema)}\n`, "utf8");
   const templateRoot = path.join(skillRoot, "assets", "templates", "open-world-v2", "new-idea");
-  const templateSchemaBytes = fs.readFileSync(path.join(templateRoot, "fee-policy-v2.schema.json"));
-  assert.deepEqual(templateSchemaBytes, expectedTemplateSchemaBytes);
   const templateSubmission = JSON.parse(fs.readFileSync(path.join(templateRoot, "submission.v2.json"), "utf8"));
-  assert.equal(
-    templateSubmission.supportingPackage.feePolicySchema.byteLength,
-    expectedTemplateSchemaBytes.length
-  );
-  assert.equal(
-    templateSubmission.supportingPackage.feePolicySchema.sha256,
-    `sha256:${crypto.createHash("sha256").update(expectedTemplateSchemaBytes).digest("hex")}`
-  );
+  assert.equal(fs.existsSync(path.join(templateRoot, "fee-policy-v2.schema.json")), false);
+  assert.equal(Object.hasOwn(templateSubmission.supportingPackage, "feePolicySchema"), false);
+  assert.equal(Object.hasOwn(templateSubmission, "programmableFee"), false);
 
   const kernelEvidence = JSON.parse(fs.readFileSync(path.join(
     skillRoot,
