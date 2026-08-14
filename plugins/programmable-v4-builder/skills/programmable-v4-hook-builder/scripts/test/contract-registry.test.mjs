@@ -210,6 +210,7 @@ test("new public machine contracts bind their canonical semantic validators", ()
     ["fee-policy-v2", { modulePath: "scripts/fee-policy-v2-contract.mjs", exportName: "validateFeePolicyV2", mode: "direct" }],
     ["product-graph-v1", { modulePath: "scripts/project-contracts-core.mjs", exportName: "validateProductGraph", mode: "package-semantic" }],
     ["programmable-trade-execution-v1", { modulePath: "scripts/trade-capability-manifest-core.mjs", exportName: "validateProgrammableTradeExecutionEnvelopeV1", mode: "direct" }],
+    ["project-repair-attempt-v1", { modulePath: "scripts/project-repair-attempt-core.mjs", exportName: "validateProjectRepairAttemptV1", mode: "direct" }],
     ["project-spec-v1", { modulePath: "scripts/project-contracts-core.mjs", exportName: "validateProjectSpec", mode: "direct" }],
     ["project-sandbox-receipt-v1", { modulePath: "scripts/project-sandbox-receipt-core.mjs", exportName: "validateProjectSandboxReceiptV1", mode: "direct" }],
     ["project-state-v1", { modulePath: "scripts/project-state-core.mjs", exportName: "validateProjectState", mode: "package-semantic" }],

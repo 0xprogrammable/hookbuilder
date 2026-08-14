@@ -73,7 +73,7 @@ export function attachMeasuredContextBudget(resultWithoutBudget, {
 }
 
 export function buildKnowledgeSelectorInventory({ routing, catalog }) {
-  assertCatalogSurfaceRoutingComplete({ routing, catalog });
+  assertCatalogKnowledgeRoutingComplete({ routing, catalog });
   const capabilityIds = [...new Set([
     ...catalog.definitions.flatMap((definition) => definition.capabilities),
     ...routing.capabilityRoutes.flatMap((route) => route.matches)
@@ -102,11 +102,22 @@ export function buildKnowledgeSelectorInventory({ routing, catalog }) {
 
 export function loadRoutedCatalog(skillRoot, routing) {
   const catalog = loadTemplateCatalog({ skillRoot });
-  assertCatalogSurfaceRoutingComplete({ routing, catalog });
+  assertCatalogKnowledgeRoutingComplete({ routing, catalog });
   return catalog;
 }
 
-export function assertCatalogSurfaceRoutingComplete({ routing, catalog }) {
+export function assertCatalogKnowledgeRoutingComplete({ routing, catalog }) {
+  const routedCapabilityIds = new Set(routing.capabilityRoutes.flatMap(({ matches }) => matches));
+  const missingCapabilityIds = [...new Set(catalog.definitions.flatMap(({ capabilities }) => capabilities))]
+    .filter((capabilityId) => !routedCapabilityIds.has(capabilityId))
+    .sort(compareUtf8);
+  if (missingCapabilityIds.length > 0) {
+    fail(
+      "KNOWLEDGE_ROUTING_INVALID",
+      `Canonical catalog capabilities have no knowledge route: ${missingCapabilityIds.join(", ")}.`
+    );
+  }
+
   const routedSurfaceIds = new Set(routing.surfaceRoutes.flatMap(({ matches }) => matches));
   const missingSurfaceIds = [...new Set(catalog.definitions.flatMap(({ projectSurfaces }) => projectSurfaces))]
     .filter((surfaceId) => !routedSurfaceIds.has(surfaceId))

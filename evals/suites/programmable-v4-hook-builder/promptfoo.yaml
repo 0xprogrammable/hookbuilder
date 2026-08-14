@@ -140,7 +140,7 @@ tests:
   - description: 'Allows disclosed fees above the standard kernel ceiling without changing the selected total'
     vars:
       case_id: transparent-high-fee-open-world
-      context_profile: architecture
+      context_profile: legacy-fee-v2
       case_content: file://cases/transparent-high-fee-open-world.md
     assert:
       - type: llm-rubric

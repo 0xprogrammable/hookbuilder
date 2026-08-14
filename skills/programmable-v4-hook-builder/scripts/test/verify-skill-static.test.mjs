@@ -91,8 +91,8 @@ test("source verification partitions every portable test exactly once with bound
     .filter((name) => name.endsWith(".test.mjs"))
     .sort();
   const batches = createDeterministicTestBatches(testFiles);
-  assert.equal(testFiles.length, 84);
-  assert.deepEqual(batches.map((batch) => batch.length), [42, 42]);
+  assert.equal(testFiles.length, 85);
+  assert.deepEqual(batches.map((batch) => batch.length), [43, 42]);
   assert.deepEqual(batches[0], testFiles.filter((_, index) => index % 2 === 0));
   assert.deepEqual(batches[1], testFiles.filter((_, index) => index % 2 === 1));
   assert.deepEqual([...batches.flat()].sort(), testFiles);
@@ -450,7 +450,7 @@ test("portable verifier declares every direct test exactly once", () => {
     .sort()
     .map((name) => `scripts/test/${name}`);
 
-  assert.equal(portableTestPaths.length, 84);
+  assert.equal(portableTestPaths.length, 85);
   assert.equal(new Set(portableTestPaths).size, portableTestPaths.length);
   assert.deepEqual([...portableTestPaths].sort(), discovered);
 });
@@ -462,9 +462,9 @@ test("portable verifier deletion-guards its exact required inventory in one boun
     .update(`${requiredPaths.join("\n")}\n`)
     .digest("hex");
 
-  assert.equal(requiredPaths.length, 403);
+  assert.equal(requiredPaths.length, 409);
   assert.equal(new Set(requiredPaths).size, requiredPaths.length);
-  assert.equal(inventorySha256, "2089d5b0cf4a26d52d975948c2e4f98f48c7cade8b9acaca3be629086158322e");
+  assert.equal(inventorySha256, "1d1174ee28c37fc389dce9f12f6ed213c001150bcb33b24e7f140dbd5325edfb");
   for (const requiredPath of requiredPaths) {
     const entry = fs.lstatSync(path.join(skillRoot, requiredPath));
     assert.ok(entry.isFile(), `${requiredPath} must be a regular file`);
@@ -524,7 +524,7 @@ test("portable verifier drain-preserves a complete diagnostic payload larger tha
     assert.ok(Buffer.byteLength(result.stderr, "utf8") > 64 * 1024);
     assert.deepEqual(lines.slice(0, -1).sort(), lines.slice(0, -1));
     assert.equal(lines.length, 3);
-    assert.equal(lines[0], `- portable package has ${677 + extraTests.length} files; keep it at or below 677`);
+    assert.equal(lines[0], `- portable package has ${685 + extraTests.length} files; keep it at or below 685`);
     assert.ok(lines[1].startsWith(inventoryPrefix));
     assert.ok(lines[1].endsWith(inventorySuffix));
     assert.deepEqual(
@@ -798,7 +798,7 @@ test("trusted verifier rejects excessive file count before checking candidate sc
     const result = runUntrustedVerifier(candidateRoot);
 
     assert.notEqual(result.status, 0, result.stdout);
-    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 677/);
+    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 685/);
     assert.doesNotMatch(result.stderr, /invalid-syntax|SyntaxError/);
   } finally {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
@@ -1111,9 +1111,9 @@ test("installed verifier accepts current pinned gh skill GitHub provenance", () 
   }
 });
 
-test("portable verifier rejects runtimes below Node 24 before scanning package bytes", () => {
+test("portable verifier rejects runtimes below Node 22 before scanning package bytes", () => {
   const bootstrap = [
-    'Object.defineProperty(process.versions, "node", { value: "22.23.1" });',
+    'Object.defineProperty(process.versions, "node", { value: "21.7.3" });',
     `process.argv = [process.execPath, ${JSON.stringify(verifier)}, "--installed"];`,
     `await import(${JSON.stringify(pathToFileURL(verifier).href)});`
   ].join("\n");
@@ -1124,7 +1124,7 @@ test("portable verifier rejects runtimes below Node 24 before scanning package b
   );
   assert.equal(result.status, 1, result.stdout || result.stderr);
   assert.equal(result.stdout, "");
-  assert.match(result.stderr, /NODE_24_OR_NEWER_REQUIRED/u);
+  assert.match(result.stderr, /NODE_22_OR_NEWER_REQUIRED/u);
 });
 
 test("installed metadata parser accepts exact unpinned GitHub and quoted local profiles", () => {

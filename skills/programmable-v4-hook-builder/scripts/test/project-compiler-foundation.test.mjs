@@ -45,7 +45,7 @@ test("local GitHub handoff binds exact no-market Submission bytes, report, comma
   assert.deepEqual(payload.submission, { automaticMaterialization: false, byteLength: authored.files.get("submission/submission.v2.json").length, path: "submission/submission.v2.json", reportSha256: canonicalJsonSha256V2(authored.submissionReport), reportStatus: "REVIEW_REQUIRED", sha256: sha256Bytes(authored.files.get("submission/submission.v2.json")) });
   assert.equal(payload.status, "NOT_SUBMITTED"); assert.equal(payload.requiresHumanConfirmation, true);
   assert.equal(payload.externalRepository.numericRepositoryId.status, "UNRESOLVED_EXTERNAL_REQUIRED"); assert.equal(payload.externalRepository.canonicalRepositoryUri.status, "UNRESOLVED_EXTERNAL_REQUIRED");
-  assert.equal(payload.localVerificationCommands.install, "node tools/project-stage.mjs install"); assert.equal(payload.localVerificationCommands.check, "npm test"); assert.match(payload.localVerificationCommands.requireOutput, /project require-output .*submission-evidence.*verification.*submission/u);
+  assert.equal(payload.localVerificationCommands.install, "node tools/project-stage.mjs install"); assert.equal(payload.localVerificationCommands.check, "npm test"); assert.match(payload.localVerificationCommands.requireOutput, /project require-output --brief .*submission-evidence.*verification.*submission/u);
   assert.deepEqual(payload.evidenceBoundary, { approvalCreated: false, auditClaimed: false, deploymentPerformed: false, externalActionsPerformed: [], githubWritePerformed: false, launchPerformed: false, publicationPerformed: false });
   const artifact = authored.repositoryPlan.artifacts.documentation.find(({ path: artifactPath }) => artifactPath === "GITHUB-SUBMISSION.md");
   assert.equal(artifact.sha256, sha256Bytes(bytes)); assert.equal(artifact.byteLength, bytes.length);
@@ -191,6 +191,10 @@ test("tradable materialize profile mismatch fails before output and aligned dry-
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const idea = path.join(root, "idea.txt"), output = path.join(root, "output"), base = [unifiedCli, "project", "materialize", "--idea-file", idea, "--application-id", "volume-fee-reference", "--classification", "tradable", "--market-ref", "primary-market", "--reference-profile", TRADABLE_REFERENCE_PROFILE_ID, "--output", output];
   fs.writeFileSync(idea, "A cooperative commit-reveal riddle game for two players.\n");
+  const oversizedMarket = [...base];
+  oversizedMarket[oversizedMarket.indexOf("--market-ref") + 1] = "m".repeat(121);
+  const rejectedMarket = childProcess.spawnSync(process.execPath, oversizedMarket, { encoding: "utf8", shell: false });
+  assert.equal(rejectedMarket.status, 2); assert.match(rejectedMarket.stderr, /market-ref as a lowercase slug of at most 120 characters/u); assert.equal(fs.existsSync(output), false);
   const rejected = childProcess.spawnSync(process.execPath, base, { encoding: "utf8", shell: false });
   assert.equal(rejected.status, 2); assert.match(rejected.stderr, /TRADABLE_REFERENCE_PROFILE_MISMATCH/u); assert.equal(fs.existsSync(output), false);
   fs.writeFileSync(idea, "Build a Uniswap v4 hook that charges a fixed fee on executed gross quote volume. Keep buy and sell rates immutable after registration.\n");

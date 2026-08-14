@@ -11,6 +11,7 @@ export const SUBJECT_MODEL = 'fixture-small-subject-v1';
 export const JUDGE_MODEL = 'fixture-independent-judge-v1';
 export const FIXTURE_CASE = Object.freeze({
   id: 'hc-fixture0000000000000000',
+  language: 'en',
   prompt: 'Build a bounded state machine with deposits and withdrawals, clear artifacts, negative tests, fuzzing, invariants, deployment checks, and a submission manifest without external side effects.',
   rubric: Object.freeze({
     required: Object.freeze([

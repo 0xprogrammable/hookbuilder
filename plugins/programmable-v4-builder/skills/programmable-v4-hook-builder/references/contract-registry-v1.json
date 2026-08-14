@@ -4,8 +4,8 @@
   "canonicalJsonProfile": "urn:programmable:canonical-json:2.0.0",
   "source": {
     "path": "references/contract-registry-source-v1.json",
-    "byteLength": 22627,
-    "sha256": "sha256:fbf33bf063801045b8a1ec0489453129b8edd60f314cb4825391eb3d5c3e8ddb"
+    "byteLength": 23082,
+    "sha256": "sha256:e8bf491acebc992218899474e430f6266791af723d47ca6f9ce0c0829dc148c8"
   },
   "contracts": [
     {
@@ -560,6 +560,25 @@
       }
     },
     {
+      "contractId": "project-repair-attempt-v1",
+      "lifecycle": "active",
+      "payloadDigestProfile": "contract-defined",
+      "schema": {
+        "id": "urn:programmable:project-repair-attempt:1.0.0",
+        "path": "references/project-repair-attempt-v1.schema.json",
+        "byteLength": 9943,
+        "sha256": "sha256:7588952fed72210ca354b7b5618346c1b16afd5a0ef4c5b43c0182ce4003ee9b"
+      },
+      "validator": {
+        "modulePath": "scripts/project-repair-attempt-core.mjs",
+        "exportName": "validateProjectRepairAttemptV1",
+        "mode": "direct",
+        "moduleByteLength": 27636,
+        "moduleSha256": "sha256:d21302a198c961d963bc4c94c6cb08fe30b52e7041678cdb3d3598a1e70423d6",
+        "closureSha256": "sha256:c38cbf4b8d66657b2903ab5b0cc21bef1e87ff8e1fddfa65daa1b45e9efd8077"
+      }
+    },
+    {
       "contractId": "project-sandbox-receipt-v1",
       "lifecycle": "active",
       "payloadDigestProfile": "contract-defined",
@@ -611,9 +630,9 @@
         "modulePath": "scripts/project-state-core.mjs",
         "exportName": "validateProjectState",
         "mode": "package-semantic",
-        "moduleByteLength": 49355,
-        "moduleSha256": "sha256:c6de8592f66f2c9480fbb04c3938c534108870a1b753b0cff5ae454f315162ed",
-        "closureSha256": "sha256:54b4026c7fe64d3873dae7f513ef1f3506027ddb2545d41486dacc966c35f9a1"
+        "moduleByteLength": 43474,
+        "moduleSha256": "sha256:de29e03eea1cb9ab13b6dc53dd31a81fd4129e20d5c540c33d79c6637d381533",
+        "closureSha256": "sha256:0ae10c5ab8ee8b0b0dab08438857ff801a2bfeb9c928f2472961e05ab4292590"
       }
     },
     {
@@ -670,7 +689,7 @@
         "mode": "direct",
         "moduleByteLength": 1070,
         "moduleSha256": "sha256:c4561640a691f3cf383ad5b5dd04d58bd9a809e93a3a462e36e8cfe564f5d6c4",
-        "closureSha256": "sha256:a0ed3cc2a9a78af1d7889b13803f839941dedf70a3a90acb222d09afce005d78"
+        "closureSha256": "sha256:ecccd8cfa8fa9b9f51cf8d563ebff0be075c5c5557cee69ac498610ca1117a44"
       }
     },
     {
@@ -1860,7 +1879,7 @@
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/github-application-core.mjs",
       "moduleCount": 75,
-      "totalByteLength": 934518,
+      "totalByteLength": 942137,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -2491,10 +2510,14 @@
         },
         {
           "path": "scripts/submit-launch-policy-github.mjs",
-          "byteLength": 8398,
-          "sha256": "sha256:fe7810d2d359978511e676edded097753c5f6c4fcc889087936f54760531f9e6",
+          "byteLength": 16017,
+          "sha256": "sha256:2c1695bc5d475730de330bdf5c9cab15d1878b337243f34aa47b4d4777b28297",
           "localImports": [
             "scripts/github-application-normalizers.mjs",
+            "scripts/github-application-transport-core.mjs",
+            "scripts/github-public-source-api.mjs",
+            "scripts/github-public-source-core.mjs",
+            "scripts/github-public-source-shared.mjs",
             "scripts/metadata-core.mjs",
             "scripts/registry-intake-contract.mjs",
             "scripts/submit-launch-policy-contract.mjs"
@@ -2587,7 +2610,7 @@
           ]
         }
       ],
-      "closureSha256": "sha256:a0ed3cc2a9a78af1d7889b13803f839941dedf70a3a90acb222d09afce005d78"
+      "closureSha256": "sha256:ecccd8cfa8fa9b9f51cf8d563ebff0be075c5c5557cee69ac498610ca1117a44"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -6533,6 +6556,29 @@
     },
     {
       "profile": "static-local-esm-import-closure-v1",
+      "rootModulePath": "scripts/project-repair-attempt-core.mjs",
+      "moduleCount": 2,
+      "totalByteLength": 33983,
+      "modules": [
+        {
+          "path": "scripts/canonical-json-core.mjs",
+          "byteLength": 6347,
+          "sha256": "sha256:b51c529d7777876ecd88bfd70e721b805dcf4c17944b45659e0a218f8dcc1cde",
+          "localImports": []
+        },
+        {
+          "path": "scripts/project-repair-attempt-core.mjs",
+          "byteLength": 27636,
+          "sha256": "sha256:d21302a198c961d963bc4c94c6cb08fe30b52e7041678cdb3d3598a1e70423d6",
+          "localImports": [
+            "scripts/canonical-json-core.mjs"
+          ]
+        }
+      ],
+      "closureSha256": "sha256:c38cbf4b8d66657b2903ab5b0cc21bef1e87ff8e1fddfa65daa1b45e9efd8077"
+    },
+    {
+      "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/project-sandbox-receipt-core.mjs",
       "moduleCount": 5,
       "totalByteLength": 70506,
@@ -6580,8 +6626,8 @@
     {
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/project-state-core.mjs",
-      "moduleCount": 95,
-      "totalByteLength": 1443859,
+      "moduleCount": 96,
+      "totalByteLength": 1458450,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -6996,9 +7042,19 @@
           ]
         },
         {
+          "path": "scripts/project-no-market-authoring-core.mjs",
+          "byteLength": 20472,
+          "sha256": "sha256:d4dce3dc721ae78e77ead043eb51ffd63bfc740d6fcd040d36aee080baa18e69",
+          "localImports": [
+            "scripts/open-world-v2-core.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/project-contracts-core.mjs"
+          ]
+        },
+        {
           "path": "scripts/project-state-core.mjs",
-          "byteLength": 49355,
-          "sha256": "sha256:c6de8592f66f2c9480fbb04c3938c534108870a1b753b0cff5ae454f315162ed",
+          "byteLength": 43474,
+          "sha256": "sha256:de29e03eea1cb9ab13b6dc53dd31a81fd4129e20d5c540c33d79c6637d381533",
           "localImports": [
             "scripts/canonical-json-core.mjs",
             "scripts/open-world-v2-contracts.mjs",
@@ -7006,6 +7062,7 @@
             "scripts/open-world-v2-draft-core.mjs",
             "scripts/open-world-v2-primitives.mjs",
             "scripts/project-contracts-core.mjs",
+            "scripts/project-no-market-authoring-core.mjs",
             "scripts/submission-core.mjs"
           ]
         },
@@ -7482,7 +7539,7 @@
           ]
         }
       ],
-      "closureSha256": "sha256:54b4026c7fe64d3873dae7f513ef1f3506027ddb2545d41486dacc966c35f9a1"
+      "closureSha256": "sha256:0ae10c5ab8ee8b0b0dab08438857ff801a2bfeb9c928f2472961e05ab4292590"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -10849,18 +10906,18 @@
     }
   ],
   "inventory": {
-    "contractCount": 50,
-    "schemaCount": 50,
-    "activeContractCount": 35,
+    "contractCount": 51,
+    "schemaCount": 51,
+    "activeContractCount": 36,
     "frozenContractCount": 15,
-    "validatorBindingCount": 50,
-    "validatorModuleCount": 25,
-    "validatorClosureCount": 25,
-    "validatorClosureModuleBindingCount": 1034,
-    "validatorClosureDistinctModuleCount": 176,
-    "schemaPathsSha256": "sha256:1813d05b83ba916ff6a772cb2ee113cce025bf990e079dd6e0bf4e7b982e417b",
-    "validatorBindingsSha256": "sha256:cf8f275c08fdccaf1d7c23eb1dcbd0db1b37e572446aeb6e87ca281c8ad631ba",
-    "validatorClosuresSha256": "sha256:fa16edbc307c1ef96c328bb9fab5c466469b647cdde8aaabca86db6486930002"
+    "validatorBindingCount": 51,
+    "validatorModuleCount": 26,
+    "validatorClosureCount": 26,
+    "validatorClosureModuleBindingCount": 1037,
+    "validatorClosureDistinctModuleCount": 178,
+    "schemaPathsSha256": "sha256:c523d89f3208b09ddc3f9862b232567cb13dc759ebb761669f9b76af9cda6931",
+    "validatorBindingsSha256": "sha256:92ad010918a1c36a5b82bc455f53ada3ef8527af9545792b70ebe2fdd7900cea",
+    "validatorClosuresSha256": "sha256:2ca90245d4fcd1e1860a2b2fa33cf54ec2df6d33867073f51cdab6211f3504b5"
   },
-  "registrySha256": "sha256:235a0bcc313fe71afe589c89036ada84eb4194d298e4568c126d4d01b23e9540"
+  "registrySha256": "sha256:032e2abfb337d97af19f4c1dad9521d60d9415558bccdfd5634bad619cb3b522"
 }

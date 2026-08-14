@@ -64,9 +64,9 @@ test("doctor defaults to a concise readiness result and preserves full JSON on r
   }
 });
 
-test("CLI blocks every non-doctor command below Node 24 without blocking doctor dispatch", () => {
+test("CLI supports Node 22 and blocks every non-doctor command below it", () => {
   const bootstrap = (args) => [
-    'Object.defineProperty(process.versions, "node", { value: "22.23.1" });',
+    'Object.defineProperty(process.versions, "node", { value: "21.7.3" });',
     `process.argv = [process.execPath, ${JSON.stringify(cli)}, ...${JSON.stringify(args)}];`,
     `await import(${JSON.stringify(pathToFileURL(cli).href)});`
   ].join("\n");
@@ -77,7 +77,20 @@ test("CLI blocks every non-doctor command below Node 24 without blocking doctor 
   );
   assert.equal(blocked.status, 2, blocked.stdout || blocked.stderr);
   assert.equal(blocked.stderr, "");
-  assert.equal(JSON.parse(blocked.stdout).error.code, "NODE_24_OR_NEWER_REQUIRED");
+  assert.equal(JSON.parse(blocked.stdout).error.code, "NODE_22_OR_NEWER_REQUIRED");
+
+  const supportedBootstrap = (args) => [
+    'Object.defineProperty(process.versions, "node", { value: "22.23.1" });',
+    `process.argv = [process.execPath, ${JSON.stringify(cli)}, ...${JSON.stringify(args)}];`,
+    `await import(${JSON.stringify(pathToFileURL(cli).href)});`
+  ].join("\n");
+  const supported = childProcess.spawnSync(
+    process.execPath,
+    ["--input-type=module", "--eval", supportedBootstrap(["context", "--help"])],
+    { cwd: skillRoot, encoding: "utf8", shell: false }
+  );
+  assert.equal(supported.status, 0, supported.stdout || supported.stderr);
+  assert.match(supported.stdout, /Return the smallest local reference profile/u);
 
   const fixture = createRepository();
   try {

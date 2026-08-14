@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { performance } from "node:perf_hooks";
 
 import { normalizeContent } from "./github-application-normalizers.mjs";
 import {
@@ -7,12 +8,30 @@ import {
   normalizeRepository,
   validateCentralRepository
 } from "./github-application-normalizers.mjs";
+import { createGhTransport } from "./github-application-transport-core.mjs";
+import { createBoundedSemaphore, requestGitHubJson } from "./github-public-source-api.mjs";
+import {
+  createGitHubPublicFetchTransportV1,
+  GITHUB_PUBLIC_SOURCE_CONTRACT_V1,
+  GitHubPublicSourceError
+} from "./github-public-source-core.mjs";
+import {
+  assertPlainObject,
+  normalizeDisplayText,
+  normalizeGitObjectId,
+  normalizeOpaqueId,
+  validateRepositoryHtmlUrl
+} from "./github-public-source-shared.mjs";
 import { hasForbiddenInvisibleOrBidi } from "./metadata-core.mjs";
 import {
+  SUBMIT_LAUNCH_API_URL,
   SUBMIT_LAUNCH_POLICY_PATH,
   SUBMIT_LAUNCH_POLICY_SCHEMA_PATH,
   SUBMIT_LAUNCH_BASE_BRANCH,
-  SUBMIT_LAUNCH_REPOSITORY
+  SUBMIT_LAUNCH_REPOSITORY,
+  SUBMIT_LAUNCH_REPOSITORY_ID,
+  SUBMIT_LAUNCH_REPOSITORY_NAME,
+  SUBMIT_LAUNCH_REPOSITORY_OWNER
 } from "./registry-intake-contract.mjs";
 import {
   MAX_SUBMIT_LAUNCH_POLICY_BYTES,
@@ -23,6 +42,13 @@ import {
 
 const OBJECT_ID = /^[0-9a-f]{40}$/u;
 const REGULAR_BLOB_MODE = "100644";
+const PUBLIC_POLICY_REQUEST_BUDGET = 8;
+const PUBLIC_POLICY_RESPONSE_BYTE_BUDGET = 16 * 1024 * 1024;
+const AUTHENTICATED_READ_FALLBACK_CODES = new Set([
+  "GITHUB_GET_RETRY_EXHAUSTED",
+  "GITHUB_RATE_LIMITED",
+  "GITHUB_REQUEST_FAILED"
+]);
 
 export async function resolveSubmitLaunchPolicyFromVerifiedGitObjects(options) {
   requireExactOptions(options, ["baseCommit", "baseTree", "readTree", "readBlob"]);
@@ -127,6 +153,142 @@ export async function resolveSubmitLaunchPolicyWithTransport(options) {
       return normalizeContent(response, filePath, maximum);
     }
   });
+}
+
+export async function resolveSubmitLaunchPolicyWithPublicTransport(options = {}) {
+  if (
+    options === null
+    || typeof options !== "object"
+    || Array.isArray(options)
+    || Object.keys(options).some((key) => key !== "transport")
+    || (options.transport !== undefined && typeof options.transport !== "function")
+  ) {
+    throw new GitHubPublicSourceError("INVALID_OPTIONS", "public Submit Launch policy options are invalid");
+  }
+  const state = {
+    deadline: performance.now() + GITHUB_PUBLIC_SOURCE_CONTRACT_V1.limits.defaultTimeoutMs,
+    requestsRemaining: PUBLIC_POLICY_REQUEST_BUDGET,
+    responseBytesRemaining: PUBLIC_POLICY_RESPONSE_BYTE_BUDGET,
+    treeRequestSemaphore: createBoundedSemaphore(1),
+    transport: options.transport ?? createGitHubPublicFetchTransportV1()
+  };
+  const repository = await requestGitHubJson(publicRepositoryPath(), "repository", state);
+  validatePublicRepository(repository);
+  const reference = await requestGitHubJson(
+    `${publicRepositoryPath()}/git/ref/heads/${SUBMIT_LAUNCH_BASE_BRANCH}`,
+    "commit",
+    state
+  );
+  const baseCommit = validatePublicReference(reference);
+  const commit = await requestGitHubJson(
+    `${publicRepositoryPath()}/git/commits/${baseCommit}`,
+    "commit",
+    state
+  );
+  const baseTree = validatePublicCommit(commit, baseCommit);
+
+  return resolveSubmitLaunchPolicyFromVerifiedGitObjects({
+    baseCommit,
+    baseTree,
+    readTree: (tree) => requestGitHubJson(`${publicRepositoryPath()}/git/trees/${tree}`, "tree", state),
+    readBlob: async (blob, filePath) => normalizePublicBlob(
+      await requestGitHubJson(`${publicRepositoryPath()}/git/blobs/${blob}`, "blob", state),
+      blob,
+      filePath
+    )
+  });
+}
+
+export async function resolveCurrentSubmitLaunchPolicy(options = {}) {
+  if (
+    options === null
+    || typeof options !== "object"
+    || Array.isArray(options)
+    || Object.keys(options).some((key) => !new Set(["authenticatedTransport", "publicTransport"]).has(key))
+    || (options.authenticatedTransport !== undefined && (options.authenticatedTransport === null || typeof options.authenticatedTransport !== "object"))
+    || (options.publicTransport !== undefined && typeof options.publicTransport !== "function")
+  ) {
+    throw new GitHubPublicSourceError("INVALID_OPTIONS", "current Submit Launch policy options are invalid");
+  }
+  try {
+    return await resolveSubmitLaunchPolicyWithTransport({
+      transport: options.authenticatedTransport ?? createGhTransport()
+    });
+  } catch (error) {
+    if (!AUTHENTICATED_READ_FALLBACK_CODES.has(error?.cause?.code)) throw error;
+    return resolveSubmitLaunchPolicyWithPublicTransport(
+      options.publicTransport === undefined ? {} : { transport: options.publicTransport }
+    );
+  }
+}
+
+function publicRepositoryPath() {
+  return new URL(SUBMIT_LAUNCH_API_URL).pathname;
+}
+
+function validatePublicRepository(value) {
+  assertPlainObject(value, "GITHUB_PROTOCOL_ERROR", "Submit Launch repository response must be an object");
+  const repositoryId = normalizeOpaqueId(value.id, "Submit Launch repository id", "GITHUB_PROTOCOL_ERROR", true);
+  if (repositoryId !== SUBMIT_LAUNCH_REPOSITORY_ID) {
+    throw new GitHubPublicSourceError("GITHUB_REPOSITORY_ID_MISMATCH", "Submit Launch repository identity did not match");
+  }
+  if (value.private !== false || value.visibility !== "public") {
+    throw new GitHubPublicSourceError("GITHUB_PUBLIC_REPOSITORY_UNAVAILABLE", "Submit Launch public repository is unavailable");
+  }
+  if (value.full_name !== SUBMIT_LAUNCH_REPOSITORY) {
+    throw new GitHubPublicSourceError("GITHUB_REPOSITORY_LOCATOR_MISMATCH", "Submit Launch repository locator did not match");
+  }
+  validateRepositoryHtmlUrl(value.html_url, SUBMIT_LAUNCH_REPOSITORY_OWNER, SUBMIT_LAUNCH_REPOSITORY_NAME);
+  if (normalizeDisplayText(value.default_branch, 255, "Submit Launch default branch") !== SUBMIT_LAUNCH_BASE_BRANCH) {
+    throw new GitHubPublicSourceError("GITHUB_REPOSITORY_LOCATOR_MISMATCH", "Submit Launch default branch did not match");
+  }
+}
+
+function validatePublicReference(value) {
+  assertPlainObject(value, "GITHUB_PROTOCOL_ERROR", "Submit Launch branch response must be an object");
+  assertPlainObject(value.object, "GITHUB_PROTOCOL_ERROR", "Submit Launch branch object must be an object");
+  if (value.ref !== `refs/heads/${SUBMIT_LAUNCH_BASE_BRANCH}` || value.object.type !== "commit") {
+    throw new GitHubPublicSourceError("GITHUB_COMMIT_MISMATCH", "Submit Launch branch did not resolve to its exact commit");
+  }
+  return normalizeGitObjectId(value.object.sha, "Submit Launch branch commit", "GITHUB_PROTOCOL_ERROR");
+}
+
+function validatePublicCommit(value, expectedCommit) {
+  assertPlainObject(value, "GITHUB_PROTOCOL_ERROR", "Submit Launch commit response must be an object");
+  assertPlainObject(value.tree, "GITHUB_PROTOCOL_ERROR", "Submit Launch commit tree must be an object");
+  const commit = normalizeGitObjectId(value.sha, "Submit Launch commit", "GITHUB_PROTOCOL_ERROR");
+  if (commit !== expectedCommit) {
+    throw new GitHubPublicSourceError("GITHUB_COMMIT_MISMATCH", "Submit Launch commit response did not match its branch");
+  }
+  return normalizeGitObjectId(value.tree.sha, "Submit Launch root tree", "GITHUB_PROTOCOL_ERROR");
+}
+
+function normalizePublicBlob(value, expectedBlob, filePath) {
+  assertPlainObject(value, "GITHUB_PROTOCOL_ERROR", `Submit Launch blob ${filePath} must be an object`);
+  const blob = normalizeGitObjectId(value.sha, `Submit Launch blob ${filePath}`, "GITHUB_PROTOCOL_ERROR");
+  if (blob !== expectedBlob || value.encoding !== "base64" || typeof value.content !== "string") {
+    throw new GitHubPublicSourceError("GITHUB_PROTOCOL_ERROR", `Submit Launch blob ${filePath} identity was invalid`);
+  }
+  const size = Number(normalizeOpaqueId(value.size, `Submit Launch blob ${filePath} size`, "GITHUB_PROTOCOL_ERROR", true));
+  const maximum = filePath === SUBMIT_LAUNCH_POLICY_PATH
+    ? MAX_SUBMIT_LAUNCH_POLICY_BYTES
+    : filePath === SUBMIT_LAUNCH_POLICY_SCHEMA_PATH
+      ? MAX_SUBMIT_LAUNCH_POLICY_SCHEMA_BYTES
+      : 0;
+  const encoded = value.content.replace(/\s+/gu, "");
+  if (
+    maximum === 0
+    || size > maximum
+    || encoded.length % 4 !== 0
+    || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(encoded)
+  ) {
+    throw new GitHubPublicSourceError("GITHUB_PROTOCOL_ERROR", `Submit Launch blob ${filePath} encoding was invalid`);
+  }
+  const bytes = Buffer.from(encoded, "base64");
+  if (bytes.length !== size || bytes.length > maximum || bytes.toString("base64") !== encoded) {
+    throw new GitHubPublicSourceError("GITHUB_PROTOCOL_ERROR", `Submit Launch blob ${filePath} size was invalid`);
+  }
+  return bytes;
 }
 
 async function resolvePath({ baseTree, filePath, loadTree }) {

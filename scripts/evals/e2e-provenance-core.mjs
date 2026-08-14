@@ -103,7 +103,12 @@ function boundedString(value, label, { min = 1, max = 256 } = {}) {
   return value;
 }
 
-export function validateProviderReceipt(value, { role, modelId, inputSha256 }) {
+export function validateProviderReceipt(value, {
+  role,
+  modelId,
+  inputSha256,
+  responseSha256 = null,
+}) {
   if (!exactKeys(value, [
     'completedAt', 'inputSha256', 'invocationId', 'kind', 'model', 'modelRevision', 'provenance',
     'provider', 'requestId', 'responseSha256', 'sampling', 'schemaVersion', 'startedAt',
@@ -115,6 +120,7 @@ export function validateProviderReceipt(value, { role, modelId, inputSha256 }) {
     || value.model !== modelId
     || value.inputSha256 !== inputSha256
     || !HASH_PATTERN.test(value.responseSha256 ?? '')
+    || (responseSha256 !== null && value.responseSha256 !== responseSha256)
   ) throw new E2ERunError('PROVIDER_RECEIPT_INVALID', `${role} provider receipt binding drift`);
   for (const key of ['provider', 'model', 'modelRevision', 'requestId', 'invocationId']) boundedString(value[key], `${role}.${key}`);
   if (!exactKeys(value.sampling, ['seed', 'temperature', 'topP'])) {

@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 
-// Reviewed v0.7.0 growth: bounded workflow-canary client, tests, reference, and exact protected-schema snapshot.
-export const MAX_PORTABLE_FILES = 677;
+// Reviewed v0.9.0 growth: the repair-attempt contract/test/loop plus the hash-bound activation contract,
+// compact v4 reasoning kernel, and deterministic activation/brief implementation.
+export const MAX_PORTABLE_FILES = 685;
 
 export function createPortableFilesystem(skillRoot) {
   function relative(target) {

@@ -55,7 +55,45 @@ test("project output gate closes unresolved artifacts and rejects identity, face
     "submission"
   ], { encoding: "utf8", shell: false });
   assert.equal(delegated.status, 1, delegated.stderr || delegated.stdout);
-  assert.equal(JSON.parse(delegated.stdout).status, "PROJECT_OUTPUT_DRAFT_UNRESOLVED");
+  const delegatedReport = JSON.parse(delegated.stdout);
+  assert.equal(delegatedReport.status, "PROJECT_OUTPUT_DRAFT_UNRESOLVED");
+
+  const delegatedBrief = childProcess.spawnSync(process.execPath, [
+    unifiedCli,
+    "project",
+    "validate-output",
+    "--brief",
+    "--repository-root",
+    fixture.root,
+    "--state",
+    ".programmable/project-states/000004-repository-materialization.v1.json",
+    "--previous-state",
+    ".programmable/project-states/000003-architecture-selection.v1.json",
+    "--submission-root",
+    "submission"
+  ], { encoding: "utf8", shell: false });
+  assert.equal(delegatedBrief.status, delegated.status, delegatedBrief.stderr || delegatedBrief.stdout);
+  assert.equal(delegatedBrief.stderr, "");
+  const delegatedBriefReport = JSON.parse(delegatedBrief.stdout);
+  assert.equal(delegatedBriefReport.operation, "validate-output");
+  assert.equal(delegatedBriefReport.status, delegatedReport.status);
+  assert.equal(delegatedBriefReport.reportSha256, delegatedReport.reportSha256);
+  assert.deepEqual(delegatedBriefReport.findingCounts, delegatedReport.findingCounts);
+  assert.deepEqual(delegatedBriefReport.evidenceBoundary, delegatedReport.evidenceBoundary);
+  assert.equal(Object.hasOwn(delegatedBriefReport, "inventory"), false);
+  assert.equal(Object.hasOwn(delegatedBriefReport, "findings"), false);
+
+  const unsupportedBrief = childProcess.spawnSync(process.execPath, [
+    unifiedCli,
+    "project",
+    "execute",
+    "--brief",
+    "--repository-root",
+    fixture.root
+  ], { encoding: "utf8", shell: false });
+  assert.equal(unsupportedBrief.status, 2);
+  assert.equal(unsupportedBrief.stdout, "");
+  assert.match(unsupportedBrief.stderr, /--brief is accepted only by materialize, validate, validate-output, preflight, require-output or diagnose/u);
 
   const mutate = (change) => {
     const input = structuredCloneProjectOutputInput(fixture.input);
@@ -128,6 +166,48 @@ test("project output gate blocks legacy-receipt completion and forbids manufactu
     submissionRoot: "submission"
   });
   assert.equal(canonicalJsonV2(directPreflight), canonicalJsonV2(preflightReport));
+  assert.equal(preflight.stdout, `${canonicalJsonV2(directPreflight)}\n`);
+
+  const strictFull = childProcess.spawnSync(process.execPath, [
+    unifiedCli,
+    "project",
+    "require-output",
+    "--repository-root",
+    project.root,
+    "--state",
+    project.statePath,
+    "--previous-state",
+    project.previousStatePath,
+    "--submission-root",
+    "submission"
+  ], { encoding: "utf8", shell: false });
+  const strictBrief = childProcess.spawnSync(process.execPath, [
+    unifiedCli,
+    "project",
+    "require-output",
+    "--brief",
+    "--repository-root",
+    project.root,
+    "--state",
+    project.statePath,
+    "--previous-state",
+    project.previousStatePath,
+    "--submission-root",
+    "submission"
+  ], { encoding: "utf8", shell: false });
+  assert.equal(strictFull.status, preflight.status, strictFull.stderr || strictFull.stdout);
+  assert.equal(strictFull.stdout, preflight.stdout);
+  assert.equal(strictBrief.status, strictFull.status, strictBrief.stderr || strictBrief.stdout);
+  assert.equal(strictBrief.stderr, "");
+  assert.ok(Buffer.byteLength(strictBrief.stdout) < 2_500, `brief blocked require-output emitted ${Buffer.byteLength(strictBrief.stdout)} bytes`);
+  const strictBriefReport = JSON.parse(strictBrief.stdout);
+  assert.equal(strictBriefReport.operation, "require-output");
+  assert.equal(strictBriefReport.status, preflightReport.status);
+  assert.equal(strictBriefReport.reportSha256, preflightReport.reportSha256);
+  assert.deepEqual(strictBriefReport.findingCounts, preflightReport.findingCounts);
+  assert.deepEqual(strictBriefReport.evidenceBoundary, preflightReport.evidenceBoundary);
+  assert.equal(Object.hasOwn(strictBriefReport, "inventory"), false);
+  assert.equal(Object.hasOwn(strictBriefReport, "findings"), false);
 
   const materializing = structuredCloneProjectOutputInput(input);
   materializing.repositoryPlan.completionStatus = "materializing";
@@ -191,6 +271,34 @@ test("project output gate blocks legacy-receipt completion and forbids manufactu
   assert.ok(poisonedReport.findings.some(({ code, path: findingPath, details }) => code === "PROJECT_PREFLIGHT_MACHINE_ARTIFACT_INVALID"
     && findingPath === "$.files.extras/foreign.trade-capability.v1.json"
     && details?.validatorCodes?.includes("FROZEN_TRADE_MANIFEST_V1_CURRENT_PREFLIGHT_FORBIDDEN_SCHEMA_INVALID")));
+
+  const poisonedBrief = childProcess.spawnSync(process.execPath, [
+    unifiedCli, "project", "preflight", "--brief", "--repository-root", poisoned.root,
+    "--state", poisoned.statePath, "--previous-state", poisoned.previousStatePath, "--submission-root", "submission"
+  ], { encoding: "utf8", shell: false });
+  assert.equal(poisonedBrief.status, poisonedPreflight.status, poisonedBrief.stderr || poisonedBrief.stdout);
+  assert.equal(poisonedBrief.stderr, "");
+  assert.ok(Buffer.byteLength(poisonedBrief.stdout) < 2_500, `brief blocked preflight emitted ${Buffer.byteLength(poisonedBrief.stdout)} bytes`);
+  assert.ok(Buffer.byteLength(poisonedBrief.stdout) < Buffer.byteLength(poisonedPreflight.stdout));
+  const briefReport = JSON.parse(poisonedBrief.stdout);
+  assert.equal(briefReport.kind, "project-compiler-brief");
+  assert.equal(briefReport.operation, "preflight");
+  assert.equal(briefReport.status, poisonedReport.status);
+  assert.equal(briefReport.reportSha256, poisonedReport.reportSha256);
+  assert.deepEqual(briefReport.findingCounts, poisonedReport.findingCounts);
+  assert.deepEqual(briefReport.evidenceBoundary, poisonedReport.evidenceBoundary);
+  assert.equal(briefReport.canonicalOutput, poisonedReport.canonicalOutput);
+  assert.ok(briefReport.findingGroups.items.length <= 3);
+  assert.equal(new Set(briefReport.findingGroups.items.map(({ code }) => code)).size, briefReport.findingGroups.items.length);
+  assert.equal(briefReport.findingGroups.displayed, briefReport.findingGroups.items.length);
+  assert.equal(briefReport.findingGroups.distinct, new Set(poisonedReport.findings.map(({ code }) => code)).size);
+  assert.equal(briefReport.findingGroups.omitted, briefReport.findingGroups.distinct - briefReport.findingGroups.displayed);
+  assert.equal(Object.hasOwn(briefReport, "inventory"), false);
+  assert.equal(Object.hasOwn(briefReport, "findings"), false);
+  assert.deepEqual(briefReport.fullReport, {
+    available: true,
+    instruction: "Rerun the same command without --brief for the complete canonical JSON report."
+  });
 });
 
 

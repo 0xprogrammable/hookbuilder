@@ -2,6 +2,57 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.9.0 - 2026-08-15
+
+### Added
+
+- Added fail-closed knowledge coverage for every canonical catalog capability, with explicit specialist routes instead
+  of silently omitting context when catalog and routing bytes drift.
+- Added an optional Project Compiler `--brief` view for validation and output preflight commands. It preserves exit
+  status, result, full-report SHA-256, finding counts, canonical-output state and evidence boundary while omitting the
+  exhaustive inventory and finding arrays. On the committed blocked and green fixtures, stdout changed from 3,371 to
+  1,150 bytes (-65.89%) and from 1,225 to 805 bytes (-34.29%), respectively; brief stdout is capped at 2,499 bytes.
+- Added inert nested Foundry source/test-tree materialization for no-market Ethereum projects, with exact compiler
+  pragmas, bounded stable-file reads, FFI/filesystem-disabled offline feedback, a planned exact toolchain lock, and
+  complete Foundry command/evidence coverage without a false completion claim. Its dry-run and write paths now accept
+  the same 2,499-byte `--brief` boundary, preserving the full report and evidence identities while digesting large
+  path inventories.
+- Added a bounded natural-intent trigger for complete Uniswap v4 design, build, repair, review, test, upgrade, and submission work
+  without requiring the Programmable brand name; explanation-only and unrelated work remain excluded.
+- Added digest-bound confirmed-context activation that covers every canonical capability and surface route, loads at most one
+  specialist per distinct confirmed capability and at most two references total, preserves split-review
+  holds, and keeps the cold/custom-curve/browser-game/cross-domain journeys at 1,120/1,951/1,827/2,222 bytes and
+  3,171/4,988/4,612/6,040 estimated tokens respectively.
+- Added a non-completion repair-attempt contract and read-only diagnosis path with one observed root failure, bounded
+  retries, exact suppressed commands and a 1,111 bytes / 2,426 estimated-token Repair cold brief.
+- Added hash-bound structured Builder responses and reference-activation receipts to repository E2E evidence, plus a
+  lean daily sentinel reusing five public cases with five positive and five negative trigger prompts.
+
+### Changed
+
+- Routed newly closed catalog capabilities through explicit applicable existing specialist references without preloading
+  unrelated knowledge or changing unknown owner-defined capability eligibility.
+- Moved eval context selection into one closed registry, reserved the exact legacy Fee V2 reference for its matching
+  case, and removed 16,731 preloaded bytes from `autopilot` plus 20,538 bytes each from `claims` and `authority`.
+- Kept the complete canonical Project Compiler JSON as the default output; `--brief` is presentation-only and points
+  back to the full report.
+- Lowered the portable Builder runtime floor to Node.js 22 and added an exact Node 22 installed-package CI lane while
+  retaining the complete repository, Foundry, and release gates on pinned Node.js 24.
+- Kept the existing all-pass completion receipt unchanged: repair attempts remain `NOT_COMPLETION` and
+  `NOT_APPROVAL`, while journey responses and activation receipts are untrusted judge inputs.
+
+### Evidence boundary
+
+- These changes do not modify the central Submit a Launch policy, existing project-state schemas or completion
+  semantics, audit, approval, deployment, routing, funds or launch authority.
+- Local tests can prove deterministic routing and report projection for their exact fixtures. They do not establish
+  broader model quality, universal token or latency reduction, an independent audit, project acceptance or production
+  readiness.
+- No provider/model run proves host-native activation or conversation quality; same-UID process isolation and trusted
+  host/sandbox execution remain externally blocked.
+- The package is not public until the exact v0.9.0 tag, GitHub Release, assets, protected CI and installed bytes are
+  independently verified.
+
 ## 0.8.0 - 2026-08-14
 
 ### Added
@@ -276,7 +327,7 @@ All notable Builder changes are recorded here. Historical releases remain immuta
   passed prototype gates.
 
 Historical candidate note: this candidate was local and unpublished, and its public predecessor at preparation time
-was `v0.4.0`. That announcement was later superseded by `v0.5.1`; current release guidance is `v0.8.0`.
+was `v0.4.0`. That announcement was later superseded by `v0.5.1`; current release guidance is `v0.9.0`.
 
 Compatibility note: a package prepared by `v0.4.0` remains bound to its original platform-repository pull request.
 Continue its status and update journey with the pinned `v0.4.0` client; do not silently move its Git history or package

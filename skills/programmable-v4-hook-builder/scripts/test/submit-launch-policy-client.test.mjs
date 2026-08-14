@@ -14,7 +14,9 @@ import {
   parseSubmitLaunchPolicyContract
 } from "../submit-launch-policy-contract.mjs";
 import {
+  resolveCurrentSubmitLaunchPolicy,
   resolveSubmitLaunchPolicyFromVerifiedGitObjects,
+  resolveSubmitLaunchPolicyWithPublicTransport,
   resolveSubmitLaunchPolicyWithTransport
 } from "../submit-launch-policy-github.mjs";
 import { canonicalJson } from "../submission-core.mjs";
@@ -369,6 +371,73 @@ test("GitHub transport resolution uses fixed paths and verifies Git blob identit
   );
 });
 
+test("public policy resolution needs no gh login and keeps every request anonymous and read-only", async () => {
+  const fixture = makeSubmitLaunchPolicyFixture();
+  const requests = [];
+  const routes = new Map([
+    ["https://api.github.com/repos/0xprogrammable/submit-launch", centralPublicRepositoryResponse()],
+    ["https://api.github.com/repos/0xprogrammable/submit-launch/git/ref/heads/main", {
+      ref: "refs/heads/main",
+      object: { type: "commit", sha: BASE_COMMIT }
+    }],
+    ["https://api.github.com/repos/0xprogrammable/submit-launch/git/commits/1111111111111111111111111111111111111111", {
+      sha: BASE_COMMIT,
+      tree: { sha: BASE_TREE }
+    }],
+    ["https://api.github.com/repos/0xprogrammable/submit-launch/git/trees/2222222222222222222222222222222222222222", await fixture.readTree(BASE_TREE)],
+    ["https://api.github.com/repos/0xprogrammable/submit-launch/git/trees/3333333333333333333333333333333333333333", await fixture.readTree(POLICY_TREE)],
+    ["https://api.github.com/repos/0xprogrammable/submit-launch/git/trees/4444444444444444444444444444444444444444", await fixture.readTree(SCHEMAS_TREE)],
+    [`https://api.github.com/repos/0xprogrammable/submit-launch/git/blobs/${fixture.policyBlob}`, gitBlobResponse(fixture.policyBlob, fixture.policyBytes)],
+    [`https://api.github.com/repos/0xprogrammable/submit-launch/git/blobs/${fixture.schemaBlob}`, gitBlobResponse(fixture.schemaBlob, fixture.schemaBytes)]
+  ]);
+  const transport = async (request) => {
+    requests.push(request);
+    assert.equal(request.method, "GET");
+    assert.equal(request.redirect, "error");
+    assert.deepEqual(Object.keys(request.headers).sort(), ["Accept", "User-Agent", "X-GitHub-Api-Version"].sort());
+    assert.equal(Object.keys(request.headers).some((name) => /auth|cookie|token/iu.test(name)), false);
+    assert.equal(routes.has(request.url), true, request.url);
+    return {
+      status: 200,
+      headers: { "content-type": "application/json" },
+      body: Buffer.from(JSON.stringify(routes.get(request.url)), "utf8"),
+      redirected: false,
+      responseUrl: request.url
+    };
+  };
+
+  const resolved = await resolveSubmitLaunchPolicyWithPublicTransport({ transport });
+
+  assert.equal(resolved.policyBinding.sha256, digest(fixture.policyBytes));
+  assert.equal(resolved.policyBinding.baseCommit, BASE_COMMIT);
+  assert.equal(resolved.policyBinding.baseTree, BASE_TREE);
+  assert.equal(requests.length, 8);
+
+  const unavailableAuthenticatedTransport = authenticatedPolicyTransport({
+    getRepository: async () => {
+      throw Object.assign(new Error("authenticated read unavailable"), { code: "GITHUB_GET_RETRY_EXHAUSTED" });
+    }
+  });
+  const fallback = await resolveCurrentSubmitLaunchPolicy({
+    authenticatedTransport: unavailableAuthenticatedTransport,
+    publicTransport: transport
+  });
+  assert.equal(fallback.policyBinding.sha256, digest(fixture.policyBytes));
+  assert.equal(requests.length, 16);
+
+  const mismatchedAuthenticatedTransport = authenticatedPolicyTransport({
+    getRepository: async () => ({ ...centralRepositoryResponse(), id: 999999999 })
+  });
+  await assert.rejects(
+    () => resolveCurrentSubmitLaunchPolicy({
+      authenticatedTransport: mismatchedAuthenticatedTransport,
+      publicTransport: transport
+    }),
+    hasCode("SUBMIT_LAUNCH_POLICY_GIT_OBJECT_INVALID")
+  );
+  assert.equal(requests.length, 16);
+});
+
 test("binding comparison reports policy drift for any exact policy or schema change", () => {
   const fixture = makeSubmitLaunchPolicyFixture();
   const first = makeResolvedContract(fixture);
@@ -463,6 +532,37 @@ function centralRepositoryResponse() {
     default_branch: "main",
     owner: { id: 309941960, login: "0xprogrammable" },
     permissions: {}
+  };
+}
+
+function authenticatedPolicyTransport(overrides = {}) {
+  return {
+    getRepository: async () => centralRepositoryResponse(),
+    getRef: async () => ({ ref: "refs/heads/main", object: { type: "commit", sha: BASE_COMMIT } }),
+    getGitCommit: async () => ({ sha: BASE_COMMIT, tree: { sha: BASE_TREE } }),
+    getGitTree: async () => ({ sha: BASE_TREE, truncated: false, tree: [] }),
+    getContent: async () => null,
+    ...overrides
+  };
+}
+
+function centralPublicRepositoryResponse() {
+  return {
+    id: 1320171831,
+    full_name: "0xprogrammable/submit-launch",
+    html_url: "https://github.com/0xprogrammable/submit-launch",
+    private: false,
+    visibility: "public",
+    default_branch: "main"
+  };
+}
+
+function gitBlobResponse(sha, bytes) {
+  return {
+    sha,
+    size: bytes.length,
+    encoding: "base64",
+    content: bytes.toString("base64")
   };
 }
 

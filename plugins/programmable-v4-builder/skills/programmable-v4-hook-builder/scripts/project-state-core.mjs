@@ -15,6 +15,7 @@ import { bundledSchemas } from "./open-world-v2-contracts.mjs";
 import { createOpenWorldDraftPackage } from "./open-world-v2-draft-core.mjs";
 import { canonicalJson } from "./open-world-v2-primitives.mjs";
 import { PROJECT_SPEC_FACETS, projectArtifactSha256 } from "./project-contracts-core.mjs";
+import { authorNoMarketRepositoryFilesV1, authorNoMarketRepositoryPlanV1, normalizeNoMarketAuthoringFiles } from "./project-no-market-authoring-core.mjs";
 import { validateAgainstSchema } from "./submission-core.mjs";
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -84,19 +85,26 @@ export function sealProjectState(payload, { previousState = null } = {}) {
   };
 }
 
-export function createNoMarketProjectAuthoring({ applicationId, ideaText, sourcePath, sourceBytes, testPath, testBytes } = {}) {
+export function createNoMarketProjectAuthoring({ applicationId, ideaText, projectProfile = "node", compilerVersion = null, sourcePath, sourceBytes, testPath, testBytes, sourceFiles = null, testFiles = null } = {}) {
+  const sources = normalizeNoMarketAuthoringFiles(sourceFiles, sourcePath, sourceBytes, "src/");
+  const tests = normalizeNoMarketAuthoringFiles(testFiles, testPath, testBytes, "test/");
+  if (!new Set(["node", "foundry"]).has(projectProfile)) throw new TypeError("no-market project profile must be node or foundry");
+  if (projectProfile === "node" && (sources.length !== 1 || tests.length !== 1 || compilerVersion !== null)) throw new TypeError("node authoring requires one source, one test, and no Solidity compiler version");
+  if (projectProfile === "foundry" && (!/^0\.[0-9]+\.[0-9]+$/u.test(compilerVersion ?? "") || !sources.some(({ path: filePath }) => filePath.endsWith(".sol")) || !tests.some(({ path: filePath }) => filePath.endsWith(".t.sol")))) throw new TypeError("foundry authoring requires exact compiler, Solidity source, and Solidity test bindings");
+  const sourcePaths = sources.map(({ path: filePath }) => filePath);
+  const testPaths = tests.map(({ path: filePath }) => filePath);
   const projectSpec = authorProjectSpec(applicationId, ideaText);
-  const productGraph = authorProductGraph(projectSpec, sourcePath, testPath);
+  const productGraph = authorProductGraph(projectSpec, { projectProfile, sourcePaths, testPaths });
   const architectureCandidates = authorArchitectures(projectSpec, productGraph);
-  const submissionPackage = authorNoMarketSubmission(applicationId, ideaText, sourcePath, testPath);
-  const files = authorRepositoryFiles({ applicationId, projectSpec, sourcePath, sourceBytes, testPath, testBytes, submissionPackage });
-  const repositoryPlan = authorRepositoryPlan({ projectSpec, productGraph, architectureCandidates, files, sourcePath, testPath });
+  const submissionPackage = authorNoMarketSubmission(applicationId, ideaText, projectProfile, sourcePaths, testPaths);
+  const files = authorNoMarketRepositoryFilesV1({ applicationId, projectSpec, projectProfile, compilerVersion, sources, tests, submissionPackage });
+  const repositoryPlan = authorNoMarketRepositoryPlanV1({ projectSpec, productGraph, architectureCandidates, files, projectProfile, sourcePaths, testPaths });
   const authored = { projectSpec, productGraph, architectureCandidates, repositoryPlan, files, submissionReport: submissionPackage.report };
-  bindLocalReleaseHandoffV1({ authored, applicationId, classification: "no-market", marketRef: null, ideaSha256: projectSpec.intent.sha256 });
+  bindLocalReleaseHandoffV1({ authored, applicationId, classification: "no-market", projectProfile, marketRef: null, ideaSha256: projectSpec.intent.sha256 });
   return authored;
 }
 
-export function bindLocalReleaseHandoffV1({ authored, applicationId, classification, marketRef = null, ideaSha256, repositoryRoot = null, tradeEvidence = null } = {}) {
+export function bindLocalReleaseHandoffV1({ authored, applicationId, classification, projectProfile = "node", marketRef = null, ideaSha256, repositoryRoot = null, tradeEvidence = null } = {}) {
   if (!(authored?.files instanceof Map)) throw new TypeError("authored.files must be a Map");
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(applicationId ?? "") || !["no-market", "tradable"].includes(classification)) throw new TypeError("local handoff identity is invalid");
   if ((classification === "tradable") !== (typeof marketRef === "string" && marketRef.length > 0)) throw new TypeError("local handoff market identity is invalid");
@@ -106,7 +114,7 @@ export function bindLocalReleaseHandoffV1({ authored, applicationId, classificat
   const markets = submission.tradeCapability?.markets ?? [];
   if (authored.projectSpec?.intent?.sha256 !== ideaSha256 || originalIdea?.sha256 !== ideaSha256 || originalIdea?.publicTextUtf8 !== authored.projectSpec.intent.verbatimText || sha256Bytes(ideaBytes) !== ideaBinding.sha256 || ideaBytes.length !== ideaBinding.byteLength || submission.applicationId !== applicationId || submission.tradeCapability?.applicability !== classification || (classification === "tradable" ? markets.length !== 1 || markets[0].marketRef !== marketRef : markets.length !== 0)) throw new Error("handoff identity mismatch");
   if (!/^sha256:[0-9a-f]{64}$/u.test(ideaSha256 ?? "") || typeof report?.status !== "string" || typeof report?.automaticMaterialization !== "boolean") throw new Error("handoff report incomplete");
-  const handoff = renderGitHubSubmissionHandoffV1({ applicationId, classification, marketRef, ideaSha256, submissionBytes, report, tradeStatus: classification === "tradable" ? tradeEvidence?.status : "NOT_APPLICABLE" });
+  const handoff = renderGitHubSubmissionHandoffV1({ applicationId, classification, projectProfile, marketRef, ideaSha256, submissionBytes, report, tradeStatus: classification === "tradable" ? tradeEvidence?.status : "NOT_APPLICABLE" });
   authored.files.set("GITHUB-SUBMISSION.md", handoff);
   if (classification === "no-market") {
     const artifact = authored.repositoryPlan?.artifacts?.documentation?.find(({ path: artifactPath }) => artifactPath === "GITHUB-SUBMISSION.md");
@@ -119,7 +127,7 @@ export function bindLocalReleaseHandoffV1({ authored, applicationId, classificat
   return authored;
 }
 
-export function renderGitHubSubmissionHandoffV1({ applicationId, classification, marketRef = null, ideaSha256, submissionBytes, report, tradeStatus } = {}) {
+export function renderGitHubSubmissionHandoffV1({ applicationId, classification, projectProfile = "node", marketRef = null, ideaSha256, submissionBytes, report, tradeStatus } = {}) {
   if (!Buffer.isBuffer(submissionBytes) || !/^sha256:[0-9a-f]{64}$/u.test(ideaSha256 ?? "")) throw new TypeError("handoff requires exact idea and Submission bytes");
   if (classification === "tradable" && tradeStatus !== "NOT_APPROVED") throw new Error("tradable handoff must remain NOT_APPROVED");
   const state = ".programmable/project-states/000006-submission-evidence.v1.json", previous = ".programmable/project-states/000005-verification.v1.json";
@@ -134,8 +142,8 @@ export function renderGitHubSubmissionHandoffV1({ applicationId, classification,
     },
     localVerificationCommands: {
       install: classification === "tradable" ? "npm ci --ignore-scripts --prefer-offline --no-audit --no-fund" : "node tools/project-stage.mjs install",
-      check: classification === "tradable" ? "node tools/run-project-gate.mjs evidence" : "npm test",
-      requireOutput: `node \"$SKILL_ROOT/scripts/cli.mjs\" project require-output --repository-root . --state ${state} --previous-state ${previous} --submission-root submission`
+      check: classification === "tradable" ? "node tools/run-project-gate.mjs evidence" : projectProfile === "foundry" ? "forge test --offline" : "npm test",
+      requireOutput: `node \"$SKILL_ROOT/scripts/cli.mjs\" project require-output --brief --repository-root . --state ${state} --previous-state ${previous} --submission-root submission`
     },
     evidenceBoundary: { githubWritePerformed: false, externalActionsPerformed: [], approvalCreated: false, auditClaimed: false, deploymentPerformed: false, publicationPerformed: false, launchPerformed: false }
   };
@@ -216,7 +224,7 @@ function authorProjectSpec(applicationId, ideaText) {
   return { schemaVersion: "1.0.0", applicationId, revision: 1, intent: { encoding: "utf-8", verbatimText: ideaText, byteLength: ideaBytes.length, sha256: sha256Bytes(ideaBytes) }, facets, extensions: [] };
 }
 
-function authorProductGraph(projectSpec, sourcePath, testPath) {
+function authorProductGraph(projectSpec, { projectProfile, sourcePaths, testPaths }) {
   const facetEntryRefs = Object.values(projectSpec.facets).flatMap(({ entries }) => entries.filter(({ applicability }) => applicability !== "not-applicable").map(({ id }) => id));
   const invariant = "bounded-state-conservation";
   const failure = "local-kernel-failure";
@@ -224,14 +232,14 @@ function authorProductGraph(projectSpec, sourcePath, testPath) {
   return {
     schemaVersion: "1.0.0", applicationId: projectSpec.applicationId, revision: projectSpec.revision, projectSpecSha256: projectArtifactSha256(projectSpec),
     graphs: {
-      system: { applicability: "applicable", justification: "One local kernel is the smallest implementation boundary.", nodes: [{ id: "local-kernel", label: "Idea-specific local kernel", type: "service", protocolRole: "none", implementationStatus: "planned", facetEntryRefs }], edges: [] },
+      system: { applicability: "applicable", justification: "One local kernel is the smallest implementation boundary.", nodes: [{ id: "local-kernel", label: "Idea-specific local kernel", type: projectProfile === "foundry" ? "contract" : "service", protocolRole: "none", implementationStatus: "planned", facetEntryRefs }], edges: [] },
       state: { applicability: "applicable", justification: "The kernel has explicit available and completed states.", states: [{ id: "available-state", label: "Available", initial: true, terminal: false, entryAuthorityRefs: ["local-user"], invariantRefs: [invariant] }, { id: "completed-state", label: "Completed", initial: false, terminal: true, entryAuthorityRefs: ["local-user"], invariantRefs: [invariant] }], transitions: [{ id: "complete-transition", from: "available-state", to: "completed-state", trigger: "The idea-specific completion condition succeeds.", guards: ["The local input passes the authored contract guards."], effects: ["The bounded state transition is recorded."], authorityRefs: ["local-user"], failureRef: failure }] },
       value: { applicability: "applicable", justification: "No financial asset or market value is created; only local records move.", nodes: [{ id: "input-record", label: "Input record", type: "source", assetRefs: ["local-record"], custodyRef: null }, { id: "completed-record", label: "Completed record", type: "sink", assetRefs: ["local-record"], custodyRef: null }], edges: [{ id: "record-transition", from: "input-record", to: "completed-record", assetRef: "local-record", amountModel: "One bounded local record.", purpose: "Represent the idea-specific state transition.", authorityRefs: ["local-user"], liabilityEffect: "none", backingRef: null, failureDestinationRef: null, conservationInvariantRef: invariant }] },
       authority: { applicability: "applicable", justification: "Only the local caller invokes the generated reference behavior.", nodes: [{ id: "local-user", label: "Local caller", type: "user", mutable: false, trustAssumption: "The caller supplies locally tested inputs." }], edges: [{ id: "local-user-controls-kernel", authorityRef: "local-user", targetRef: "local-kernel", capability: "invoke", scope: "Local reference execution only.", revocable: false, delayModel: "Immediate." }] },
       trust: { applicability: "applicable", justification: "Untrusted input crosses one local validation boundary.", zones: [{ id: "caller-zone", label: "Caller", trustModel: "Input is untrusted.", memberRefs: ["local-user"] }, { id: "kernel-zone", label: "Kernel", trustModel: "Behavior is limited to the supplied source and tests.", memberRefs: ["local-kernel"] }], boundaries: [{ id: "caller-kernel-boundary", fromZone: "caller-zone", toZone: "kernel-zone", assumption: "Input guards are exercised by the supplied tests.", failureRef: failure, mitigationRefs: [invariant] }] },
-      component: { applicability: "applicable", justification: "One source module is the complete local reference component.", components: [{ id: "service-component", label: "Idea-specific service component", type: "backend", disposition: "build", systemRefs: ["local-kernel"], responsibilities: ["Implement only the supplied no-market idea behavior."], interfaceRefs: [], authorityRefs: ["local-user"], valueNodeRefs: ["input-record", "completed-record"], artifactRefs: [sourcePath] }], edges: [] },
-      deployment: { applicability: "applicable", justification: "A local non-deployed target records the execution boundary.", targets: [{ id: "local-deployment", label: "Local Node runtime", type: "service", systemRef: "local-kernel", chainRef: null, artifactPath: "deploy/local-service.json", addressStatus: "not-applicable", address: null, evidenceRefs: [] }], edges: [] },
-      invariant: { applicability: "applicable", justification: "The authored test binds the expected state transition.", invariants: [{ id: invariant, kind: "lifecycle", statement: "A failed invocation cannot silently become a completed local record.", scopeRefs: ["service-component", "local-kernel"], testRefs: [testPath], failureRef: failure }], dependencies: [] },
+      component: { applicability: "applicable", justification: projectProfile === "foundry" ? "The bound Solidity tree is the local contract component." : "One source module is the complete local reference component.", components: [{ id: "service-component", label: "Idea-specific service component", type: projectProfile === "foundry" ? "game-contract" : "backend", disposition: "build", systemRefs: ["local-kernel"], responsibilities: ["Implement only the supplied no-market idea behavior."], interfaceRefs: [], authorityRefs: ["local-user"], valueNodeRefs: ["input-record", "completed-record"], artifactRefs: sourcePaths }], edges: [] },
+      deployment: { applicability: "applicable", justification: "A local non-deployed target records the execution boundary.", targets: [{ id: "local-deployment", label: projectProfile === "foundry" ? "Local Foundry contract target" : "Local Node runtime", type: projectProfile === "foundry" ? "contract" : "service", systemRef: "local-kernel", chainRef: projectProfile === "foundry" ? "ethereum-mainnet" : null, artifactPath: "deploy/local-service.json", addressStatus: "not-applicable", address: null, evidenceRefs: [] }], edges: [] },
+      invariant: { applicability: "applicable", justification: "The authored tests bind the expected state transition.", invariants: [{ id: invariant, kind: "lifecycle", statement: "A failed invocation cannot silently become a completed local record.", scopeRefs: ["service-component", "local-kernel"], testRefs: testPaths, failureRef: failure }], dependencies: [] },
       failureRecovery: { applicability: "applicable", justification: "Local failure is explicit and does not trigger an external action.", failures: [{ id: failure, label: "Local kernel failure", severity: "high", trigger: "The authored contract rejects input or its test fails.", affectedRefs: ["service-component", "local-kernel"], detection: "A required local command exits nonzero.", recoveryRef: recovery }], recoveries: [{ id: recovery, label: "Restore local state", authorityRefs: ["local-user"], steps: ["Preserve inputs, correct source or tests, and create a new revision."], restoresInvariantRefs: [invariant], terminalDisposition: "resume" }], edges: [{ id: "local-recovery-edge", failureRef: failure, recoveryRef: recovery, preconditions: ["No external action was performed."] }] }
     }, extensions: []
   };
@@ -244,7 +252,7 @@ function authorArchitectures(projectSpec, productGraph) {
   return { schemaVersion: "1.0.0", applicationId: projectSpec.applicationId, revision: projectSpec.revision, projectSpecSha256: projectArtifactSha256(projectSpec), productGraphSha256: projectArtifactSha256(productGraph), candidates: [candidate("minimum-correct-candidate", "minimum-correct", "modeled", "lower"), candidate("v4-native-candidate", "v4-native", "inapplicable", "not-applicable"), candidate("hybrid-candidate", "hybrid", "inapplicable", "not-applicable")], selection: { candidateId: "minimum-correct-candidate", rationale: "The idea-specific local source and tests preserve the no-market boundary with the least machinery.", decisiveGateRefs: ["minimum-correct-candidate-gate"] } };
 }
 
-function authorNoMarketSubmission(applicationId, ideaText, sourcePath, testPath) {
+function authorNoMarketSubmission(applicationId, ideaText, projectProfile, sourcePaths, testPaths) {
   const draft = createOpenWorldDraftPackage({ applicationId, publicIdeaText: ideaText });
   if (draft.materializationAllowed !== true) throw Object.assign(new Error("Open World draft authoring failed"), { code: "NO_MARKET_DRAFT_INVALID" });
   const values = Object.fromEntries(draft.files.map((file) => [file.path, JSON.parse(file.content)]));
@@ -258,18 +266,18 @@ function authorNoMarketSubmission(applicationId, ideaText, sourcePath, testPath)
   const ideaProfile = { kind: "repository", schemaId: bundledSchemas.ideaSource.$id, path: ideaSchemaPath, sha256: sha256Bytes(ideaSchemaBytes), byteLength: ideaSchemaBytes.length };
   submission.stage = "prototype";
   submission.project = { name: applicationId, summary: { language: "en", text: "An idea-specific local reference implementation with no token, market, pool, hook, route, or fee-bearing execution scope." }, repository: null, license: "MIT" };
-  submission.targets = [{ id: "local-node-runtime", kind: "idea-bound-local-runtime", profileSchema: structuredClone(ideaProfile), profile: structuredClone(ideaSource) }];
-  submission.components = [{ id: "local-kernel", kind: "idea-specific-local-kernel", profileSchema: structuredClone(ideaProfile), profile: structuredClone(ideaSource), implementationRefs: [sourcePath], authorityRefs: [] }];
+  submission.targets = [{ id: projectProfile === "foundry" ? "local-foundry-contract" : "local-node-runtime", kind: projectProfile === "foundry" ? "idea-bound-local-contract" : "idea-bound-local-runtime", profileSchema: structuredClone(ideaProfile), profile: structuredClone(ideaSource) }];
+  submission.components = [{ id: "local-kernel", kind: "idea-specific-local-kernel", profileSchema: structuredClone(ideaProfile), profile: structuredClone(ideaSource), implementationRefs: sourcePaths, authorityRefs: [] }];
   submission.assets = []; submission.markets = []; submission.hooks = []; submission.lifecyclePhases = []; submission.valueFlows = []; submission.capabilityProfiles = [];
   submission.tradeCapability = { applicability: "no-market", facetEntryRef: "trade-capability-not-applicable", markets: [] };
-  submission.implementation = { sourcePaths: [sourcePath], testPaths: [testPath], evidenceRefs: [] };
+  submission.implementation = { sourcePaths, testPaths, evidenceRefs: [] };
   submission.supportingPackage.securityAssessment = null;
   intentContract.status = "builder-confirmed";
   intentContract.route = { id: "CUSTOM_ARCHITECTURE", reasons: [{ language: "en", text: "The supplied implementation is explicitly classified as a local no-market architecture." }], blockedByRefs: [] };
   intentContract.facts[0] = { ...intentContract.facts[0], kind: "idea-specific-local-implementation", state: "confirmed", semanticPayload: structuredClone(ideaSource), payloadSchema: structuredClone(ideaProfile) };
   intentContract.confirmation = { state: "builder-confirmed", ideaEntryId: "original-idea", confirmedFactIds: [intentContract.facts[0].id], delegatedDefaultFactIds: [] };
   intentFidelity.overallStatus = "preserved";
-  intentFidelity.traces[0] = { ...intentFidelity.traces[0], status: "preserved", architectureRefs: [{ collection: "components", id: "local-kernel" }], implementationRefs: [sourcePath], testRefs: [testPath], difference: null };
+  intentFidelity.traces[0] = { ...intentFidelity.traces[0], status: "preserved", architectureRefs: [{ collection: "components", id: "local-kernel" }], implementationRefs: sourcePaths, testRefs: testPaths, difference: null };
   const records = { ideaSource, intentContract, architectureDecisions, intentFidelity };
   records.ideaSource = record(records.ideaSource);
   intentContract.ideaSourceSha256 = records.ideaSource.sha256;
@@ -298,57 +306,6 @@ function authorNoMarketSubmission(applicationId, ideaText, sourcePath, testPath)
   for (const [key, spec] of Object.entries(OPEN_WORLD_V2_ARTIFACTS)) files.set(spec.file, records[key].bytes);
   for (const [key, spec] of Object.entries(OPEN_WORLD_V2_SUPPORTING_ARTIFACTS)) if (supportingRecords[key]) files.set(spec.file, supportingRecords[key].bytes);
   return { submission, files, report };
-}
-
-function authorRepositoryFiles({ applicationId, projectSpec, sourcePath, sourceBytes, testPath, testBytes, submissionPackage }) {
-  const files = new Map([[sourcePath, Buffer.from(sourceBytes)], [testPath, Buffer.from(testBytes)]]);
-  const stageTool = `import crypto from "node:crypto";\nimport fs from "node:fs";\nconst stage = process.argv[2];\nconst targets = { install: "package-lock.json", typecheck: ${JSON.stringify(sourcePath)}, evidence: "evidence/architecture.md" };\nconst target = targets[stage];\nif (!target) throw new Error("unknown stage");\nconst bytes = fs.readFileSync(target);\nif (bytes.length === 0) throw new Error("empty required artifact");\nprocess.stdout.write(stage + ":" + target + ":sha256:" + crypto.createHash("sha256").update(bytes).digest("hex") + "\\n");\n`;
-  const simulationTool = `const moduleValue = await import(new URL(${JSON.stringify(`../${sourcePath}`)}, import.meta.url));\nif (Object.keys(moduleValue).length === 0) throw new Error("source contract exports no behavior");\nprocess.stdout.write("simulation:module-load-and-export-boundary:ok\\n");\n`;
-  const packageJson = { name: applicationId, version: "0.0.0", private: true, type: "module", license: "MIT", scripts: { test: `node --test ${testPath}` } };
-  const packageLock = { name: applicationId, version: "0.0.0", lockfileVersion: 3, requires: true, packages: { "": { name: applicationId, version: "0.0.0", license: "MIT" } } };
-  const license = "MIT License\n\nCopyright (c) 2026 Output Authors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n";
-  files.set("tools/project-stage.mjs", Buffer.from(stageTool));
-  files.set("tools/project-simulation.mjs", Buffer.from(simulationTool));
-  files.set(".gitignore", Buffer.from("node_modules/\n.programmable/repository-plan.materializing.v1.json\n"));
-  files.set("package.json", jsonBytes(packageJson));
-  files.set("package-lock.json", jsonBytes(packageLock));
-  files.set("deploy/local-service.json", jsonBytes({ schemaVersion: "1.0.0", status: "LOCAL_REFERENCE_NOT_DEPLOYED", applicationId, networkAccessed: false, externalActionsPerformed: [] }));
-  files.set("evidence/architecture.md", Buffer.from("# Architecture evidence\n\nThe supplied source and tests are bound as one local no-market reference. No token, market, pool, hook, quote, execution route, deployment, approval, or audit is claimed.\n"));
-  files.set("README.md", Buffer.from(`# ${applicationId}\n\nIdea-bound local no-market reference output. Intent SHA-256: ${projectSpec.intent.sha256}.\n\nRun \`npm test\` for the supplied behavioral tests. This repository is not an approval, audit, deployment, or production claim.\n`));
-  files.set("GITHUB-SUBMISSION.md", Buffer.from("# GitHub submission handoff\n\nstatus: NOT_SUBMITTED\nrequiresHumanConfirmation: true\n\nA public Application V3 transport cannot be authored until a real GitHub numeric repository ID, canonical repository URI, commit object ID, and tree object ID exist. This local output performs no GitHub write, submission, publication, approval, or launch action.\n"));
-  files.set("LICENSE", Buffer.from(license));
-  for (const [relativePath, bytes] of submissionPackage.files) files.set(`submission/${relativePath}`, Buffer.from(bytes));
-  return files;
-}
-
-function authorRepositoryPlan({ projectSpec, productGraph, architectureCandidates, files, sourcePath, testPath }) {
-  const artifact = (id, artifactPath, kind) => ({ id, path: artifactPath, kind, systemRefs: ["service-component"], required: true, status: "verified", sha256: sha256Bytes(files.get(artifactPath)), byteLength: files.get(artifactPath).length });
-  const receipt = (id) => ({ id: `${id}-receipt`, path: `.programmable/command-receipts/${id}.v1.json`, kind: "command-receipt", systemRefs: ["service-component"], required: true, status: "planned", sha256: null, byteLength: null });
-  const command = (id, kind, argv) => ({ id, kind, argv, cwd: ".", required: true, timeoutMs: 30000, executionPolicy: { networkAccess: "forbidden", externalWrites: false } });
-  const commands = [
-    command("install-command", "install", ["node", "tools/project-stage.mjs", "install"]),
-    command("build-command", "build", ["node", "--check", sourcePath]),
-    command("typecheck-command", "typecheck", ["node", "tools/project-stage.mjs", "typecheck"]),
-    command("lint-command", "lint", ["node", "--check", testPath]),
-    command("simulation-command", "simulation", ["node", "tools/project-simulation.mjs"]),
-    command("test-command", "test", ["node", "--test", "--test-reporter=dot", testPath]),
-    command("evidence-command", "evidence", ["node", "tools/project-stage.mjs", "evidence"])
-  ];
-  const submissionPaths = [...files.keys()].filter((filePath) => filePath.startsWith("submission/")).sort();
-  return {
-    schemaVersion: "1.0.0", applicationId: projectSpec.applicationId, revision: projectSpec.revision, projectSpecSha256: projectArtifactSha256(projectSpec), architectureCandidatesSha256: projectArtifactSha256(architectureCandidates), productGraphSha256: projectArtifactSha256(productGraph), selectedArchitectureId: architectureCandidates.selection.candidateId,
-    repository: { root: ".", branch: null, headCommit: null }, completionStatus: "materializing",
-    artifacts: {
-      source: [artifact("source-contract", sourcePath, "application-source"), artifact("stage-tool", "tools/project-stage.mjs", "verification-source"), artifact("simulation-tool", "tools/project-simulation.mjs", "simulation-source")],
-      configuration: [artifact("gitignore", ".gitignore", "repository-configuration"), artifact("package-configuration", "package.json", "repository-configuration")],
-      dependencyLocks: [artifact("dependency-lock", "package-lock.json", "dependency-lock")], tests: [artifact("behavior-test", testPath, "unit-test")],
-      deploymentInputs: [artifact("local-deployment-input", "deploy/local-service.json", "service-deployment-input")],
-      evidence: [artifact("architecture-evidence", "evidence/architecture.md", "architecture-evidence"), ...commands.map(({ id }) => receipt(id))],
-      documentation: [artifact("readme", "README.md", "readme"), artifact("github-submission-handoff", "GITHUB-SUBMISSION.md", "submission-transport-plan"), artifact("mit-license", "LICENSE", "license"), ...submissionPaths.map((artifactPath, index) => artifact(`submission-package-${String(index + 1).padStart(2, "0")}`, artifactPath, artifactPath.endsWith("submission.v2.json") ? "submission-v2" : "submission-package-artifact"))]
-    },
-    tradeCapability: { applicability: "no-market", markets: [] }, v4HookSemanticContracts: [], commands, commandResults: [],
-    completionClaim: { scope: "local-repository-evidence-only", approvalCreated: false, auditClaimed: false, productionClaimed: false, externalActionsPerformed: [] }, authorization: noProjectAuthorization()
-  };
 }
 
 function record(value) {

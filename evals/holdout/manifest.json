@@ -38,7 +38,7 @@
       "naturalPrompt"
     ],
     "resultPath": ".programmable-e2e/agent-result.json",
-    "resultSchemaVersion": "1.1.0"
+    "resultSchemaVersion": "1.2.0"
   },
   "judgeContract": {
     "arguments": [
@@ -46,6 +46,7 @@
       "judgeResultPath"
     ],
     "requestPath": "judge-request.json",
+    "requestSchemaVersion": "1.1.0",
     "resultPath": "judge-result.json",
     "resultSchemaVersion": "1.1.0",
     "independentModelEnv": "PROGRAMMABLE_E2E_JUDGE_MODEL"
@@ -158,7 +159,7 @@
       "sha256": "86badcdfd647b92f0af14f542845c8594fe83fbf2997af2da58206a0ad3345e8"
     }
   ],
-  "publicCorpusSha256": "8531f0dc8221b894b77486f8c5663f67d56fb73f0ee707b88bb9af2c286839be",
+  "publicCorpusSha256": "b8f6716f47aa62eae2a0c16ca31f6f8b0e041ef8c5b145261e5d1a2fa2c8ea9f",
   "holdoutCorpusSha256": "a5ff5c220b2d9fe943fe5d453efa199856c4e2ff0e278bc5b3cfec341e9f1d9b",
-  "combinedCorpusSha256": "cc320a4ba6ecb1d269c1821ad94b6d315d8c3bf712256cc032abea479c7b6a8c"
+  "combinedCorpusSha256": "d0fa913a849b2b00a7e2cf973f5d11fa0b4c89d9fa7dc5d162914309aea99bc1"
 }

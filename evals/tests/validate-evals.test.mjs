@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -13,6 +15,10 @@ import {
 
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = path.resolve(TEST_DIRECTORY, '../..');
+const buildPrompt = createRequire(import.meta.url)(path.join(
+  REPOSITORY_ROOT,
+  'evals/suites/programmable-v4-hook-builder/prompt-wrapper.cjs',
+));
 
 function withTemporaryRepository(mutate, assertion) {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'programmable-evals-test-'));
@@ -43,6 +49,69 @@ function expectInvalid(temporaryRoot, messagePattern) {
   );
 }
 
+function writePromptWrapperAndMirror(temporaryRoot, wrapper) {
+  const wrapperPath = path.join(
+    temporaryRoot,
+    'evals/suites/programmable-v4-hook-builder/prompt-wrapper.cjs',
+  );
+  fs.writeFileSync(wrapperPath, wrapper);
+
+  const archivePath = path.join(
+    temporaryRoot,
+    'skills/programmable-v4-hook-builder/assets/test-vectors/blind-eval-definitions-v1.json',
+  );
+  const archive = JSON.parse(fs.readFileSync(archivePath, 'utf8'));
+  const wrapperEntry = archive.files.find(({ path: relativePath }) => relativePath === 'prompt-wrapper.cjs');
+  wrapperEntry.content = wrapper;
+  wrapperEntry.sha256 = `sha256:${crypto.createHash('sha256').update(wrapper).digest('hex')}`;
+  fs.writeFileSync(archivePath, `${JSON.stringify(archive, null, 2)}\n`);
+}
+
+function writeSuiteAndMirror(temporaryRoot, manifest) {
+  const suite = `${JSON.stringify(manifest, null, 2)}\n`;
+  const suitePath = path.join(
+    temporaryRoot,
+    'evals/suites/programmable-v4-hook-builder/suite.json',
+  );
+  fs.writeFileSync(suitePath, suite);
+
+  const archivePath = path.join(
+    temporaryRoot,
+    'skills/programmable-v4-hook-builder/assets/test-vectors/blind-eval-definitions-v1.json',
+  );
+  const archive = JSON.parse(fs.readFileSync(archivePath, 'utf8'));
+  const suiteEntry = archive.files.find(({ path: relativePath }) => relativePath === 'suite.json');
+  suiteEntry.content = suite;
+  suiteEntry.sha256 = `sha256:${crypto.createHash('sha256').update(suite).digest('hex')}`;
+  fs.writeFileSync(archivePath, `${JSON.stringify(archive, null, 2)}\n`);
+}
+
+function writeContextProfilesAndMirror(temporaryRoot, value) {
+  const content = typeof value === 'string' ? value : `${JSON.stringify(value, null, 2)}\n`;
+  const contextProfilesPath = path.join(
+    temporaryRoot,
+    'evals/suites/programmable-v4-hook-builder/context-profiles.json',
+  );
+  fs.writeFileSync(contextProfilesPath, content);
+
+  const archivePath = path.join(
+    temporaryRoot,
+    'skills/programmable-v4-hook-builder/assets/test-vectors/blind-eval-definitions-v1.json',
+  );
+  const archive = JSON.parse(fs.readFileSync(archivePath, 'utf8'));
+  let contextProfilesEntry = archive.files.find(
+    ({ path: relativePath }) => relativePath === 'context-profiles.json',
+  );
+  if (!contextProfilesEntry) {
+    contextProfilesEntry = { path: 'context-profiles.json', sha256: '', content: '' };
+    archive.files.push(contextProfilesEntry);
+    archive.files.sort((left, right) => left.path.localeCompare(right.path));
+  }
+  contextProfilesEntry.content = content;
+  contextProfilesEntry.sha256 = `sha256:${crypto.createHash('sha256').update(content).digest('hex')}`;
+  fs.writeFileSync(archivePath, `${JSON.stringify(archive, null, 2)}\n`);
+}
+
 test('canonical eval suite passes deterministic structure validation', () => {
   const result = validateSuite({ repositoryRoot: REPOSITORY_ROOT });
   assert.deepEqual(result, {
@@ -52,19 +121,108 @@ test('canonical eval suite passes deterministic structure validation', () => {
     safetyCaseCount: 46,
     forwardTestCaseCount: 6,
     forwardTestDecisionCaseCount: 3,
+    dailySentinelPublicCaseCount: 5,
+    dailySentinelPositiveTriggerCount: 5,
+    dailySentinelNegativeTriggerCount: 5,
+    dailySentinelQualification: 'STRUCTURE_AND_COVERAGE_ONLY',
+    dailySentinelSha256: '4f677d0221b7b1a27eada449f1853b7b68c40f6b4c038025d5146786fe8dde02',
     e2ePublicResponseCaseCount: 47,
     e2eSealedRepositoryEnvelopeCount: 24,
     e2eComparablePublicRepositoryCaseCount: 0,
     e2eCrossMethodRatioClaimed: false,
     e2ePayloadValidation: 'requires-external-key-and-trusted-execution',
     e2eTierProfiles: ['frontier', 'mid', 'small'],
-    e2ePublicResponseCorpusSha256: '8531f0dc8221b894b77486f8c5663f67d56fb73f0ee707b88bb9af2c286839be',
+    e2ePublicResponseCorpusSha256: 'b8f6716f47aa62eae2a0c16ca31f6f8b0e041ef8c5b145261e5d1a2fa2c8ea9f',
     e2eSealedRepositoryCorpusSha256: 'a5ff5c220b2d9fe943fe5d453efa199856c4e2ff0e278bc5b3cfec341e9f1d9b',
-    e2eCrossMethodInventorySha256: 'cc320a4ba6ecb1d269c1821ad94b6d315d8c3bf712256cc032abea479c7b6a8c',
+    e2eCrossMethodInventorySha256: 'd0fa913a849b2b00a7e2cf973f5d11fa0b4c89d9fa7dc5d162914309aea99bc1',
     e2eModelExecution: 'not-run',
     modelEvaluation: 'not-run',
     upstreamCommit: '9660491dc662fea76c2f8565c2f7ba2abf6e8840',
   });
+});
+
+test('daily sentinel reuses public cases and keeps balanced trigger coverage', () => {
+  const sentinel = JSON.parse(fs.readFileSync(path.join(REPOSITORY_ROOT, 'evals/daily-sentinel.json'), 'utf8'));
+  assert.equal(sentinel.qualification, 'STRUCTURE_AND_COVERAGE_ONLY');
+  assert.equal(sentinel.runner, 'reuse-public-response-suite');
+  assert.equal(sentinel.publicCaseIds.length, 5);
+  assert.equal(sentinel.triggerPrompts.positive.length, 5);
+  assert.equal(sentinel.triggerPrompts.negative.length, 5);
+  assert.equal(
+    sentinel.triggerPrompts.positive.filter(({ prompt }) => /\bProgrammable\b/u.test(prompt)).length,
+    1,
+    'exactly one explicit branded trigger must remain covered',
+  );
+  assert.equal(
+    sentinel.triggerPrompts.positive.filter(({ prompt }) => !/\bProgrammable\b/u.test(prompt)).length,
+    4,
+    'the trigger corpus must contain exactly four natural v4 build intents without the brand name',
+  );
+  for (const { prompt } of sentinel.triggerPrompts.positive.filter(({ prompt }) => !/\bProgrammable\b/u.test(prompt))) {
+    assert.match(prompt, /\bUniswap(?:[\s-]+)v4\b/iu);
+    assert.match(prompt, /\b(?:design|build|turn|repair|review|test|upgrade|prepare|bau(?:e|en|t)?|bereit(?:e|en|t)?)\b/iu);
+  }
+  assert.ok(
+    sentinel.triggerPrompts.negative.every(({ prompt }) => !/\bProgrammable\b/u.test(prompt)),
+    'adjacent unbranded questions must stay outside the skill',
+  );
+
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
+      const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
+      candidate.publicCaseIds[0] = 'invented-daily-case';
+      candidate.triggerPrompts.negative[0].expectedActivation = 'ACTIVATED';
+      fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /daily sentinel: publicCaseIds\[0\].*existing public case id|daily sentinel: negative\[0\] activation decision drift/u,
+    ),
+  );
+
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
+      const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
+      for (const record of candidate.triggerPrompts.positive) {
+        if (!/\bProgrammable\b/u.test(record.prompt)) record.prompt = `Use Programmable. ${record.prompt}`;
+      }
+      fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /positive prompts must contain exactly one explicit Programmable trigger|positive prompts must contain exactly four implicit v4 build intents/u,
+    ),
+  );
+
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
+      const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
+      candidate.triggerPrompts.positive.find(({ id }) => id === 'plain-language-game-en').prompt =
+        'Build a generic TypeScript utility with tests.';
+      fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /implicit positive\[\d+\] must name Uniswap v4 and a build, repair, review, test, or submission action/u,
+    ),
+  );
+});
+
+test('prompt wrapper rejects every supported Nunjucks raw-block terminator shape', () => {
+  for (const terminator of ['{% endraw %}', '{%endraw%}', '{%\tendraw\n%}', '{%- endraw -%}']) {
+    assert.throws(
+      () => buildPrompt({ vars: { context_profile: 'launch-selection', case_content: `untrusted ${terminator} content` } }),
+      /Unsafe Nunjucks raw-block terminator in case content/u,
+      terminator,
+    );
+  }
+  assert.match(
+    buildPrompt({ vars: { context_profile: 'launch-selection', case_content: 'Explain an ordinary hook idea.' } }),
+    /Explain an ordinary hook idea\./u,
+  );
 });
 
 test('blind open-world corpus stays registered as exact binary safety cases', () => {
@@ -176,19 +334,167 @@ test('promptfoo registration drift fails closed', () => {
 test('every model context profile must load the layered response contract', () => {
   withTemporaryRepository(
     (temporaryRoot) => {
+      const contextProfilesPath = path.join(
+        temporaryRoot,
+        'evals/suites/programmable-v4-hook-builder/context-profiles.json',
+      );
+      const contextProfiles = JSON.parse(fs.readFileSync(contextProfilesPath, 'utf8'));
+      contextProfiles['launch-selection'] = contextProfiles['launch-selection']
+        .filter((relativePath) => relativePath !== 'references/layered-response-contract.md');
+      writeContextProfilesAndMirror(temporaryRoot, contextProfiles);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /launch-selection must load the layered response contract/,
+    ),
+  );
+});
+
+test('model context profiles cannot load references declared archival by the knowledge router', () => {
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const contextProfilesPath = path.join(
+        temporaryRoot,
+        'evals/suites/programmable-v4-hook-builder/context-profiles.json',
+      );
+      const contextProfiles = JSON.parse(fs.readFileSync(contextProfilesPath, 'utf8'));
+      contextProfiles.claims.push('references/compatibility-standard.md');
+      writeContextProfilesAndMirror(temporaryRoot, contextProfiles);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /claims must not load archival reference references\/compatibility-standard\.md/,
+    ),
+  );
+});
+
+test('prompt wrapper cannot construct a context reference by concatenation', () => {
+  withTemporaryRepository(
+    (temporaryRoot) => {
       const wrapperPath = path.join(
         temporaryRoot,
         'evals/suites/programmable-v4-hook-builder/prompt-wrapper.cjs',
       );
-      const wrapper = fs.readFileSync(wrapperPath, 'utf8');
-      fs.writeFileSync(
-        wrapperPath,
-        wrapper.replace("    'references/layered-response-contract.md',\n", ''),
+      const wrapper = fs.readFileSync(wrapperPath, 'utf8').replace(
+        'const configuredContextFiles = new Set(Object.values(contextProfiles).flat());\n',
+        "const configuredContextFiles = new Set(Object.values(contextProfiles).flat());\ncontextProfiles.claims.push('references/' + 'compatibility-standard.md');\n",
       );
+      writePromptWrapperAndMirror(temporaryRoot, wrapper);
     },
     (temporaryRoot) => expectInvalid(
       temporaryRoot,
-      /every context profile must load the layered response contract/,
+      /reference paths must come only from context-profiles\.json/,
+    ),
+  );
+});
+
+test('prompt wrapper cannot construct a context reference by interpolation', () => {
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const wrapperPath = path.join(
+        temporaryRoot,
+        'evals/suites/programmable-v4-hook-builder/prompt-wrapper.cjs',
+      );
+      const wrapper = fs.readFileSync(wrapperPath, 'utf8')
+        .replace(
+          'const configuredContextFiles = new Set(Object.values(contextProfiles).flat());\n',
+          "const configuredContextFiles = new Set(Object.values(contextProfiles).flat());\nconst archivedContextName = 'compatibility-standard.md';\n",
+        )
+        .replace(
+          "const archivedContextName = 'compatibility-standard.md';\n",
+          "const archivedContextName = 'compatibility-standard.md';\ncontextProfiles.claims.push(`references/${archivedContextName}`);\n",
+        );
+      writePromptWrapperAndMirror(temporaryRoot, wrapper);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /reference paths must come only from context-profiles\.json/,
+    ),
+  );
+});
+
+test('prompt wrapper rejects split-string allowlist injection followed by a direct read', () => {
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const wrapperPath = path.join(
+        temporaryRoot,
+        'evals/suites/programmable-v4-hook-builder/prompt-wrapper.cjs',
+      );
+      const wrapper = fs.readFileSync(wrapperPath, 'utf8').replace(
+        'const configuredContextFiles = new Set(Object.values(contextProfiles).flat());\n',
+        "const configuredContextFiles = new Set(Object.values(contextProfiles).flat());\nconst hiddenContextPath = 'ref' + 'erences/' + 'compatibility-standard.md';\nconfiguredContextFiles.add(hiddenContextPath);\nreadCanonicalSkillFile(hiddenContextPath);\n",
+      );
+      writePromptWrapperAndMirror(temporaryRoot, wrapper);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /prompt wrapper: exact reviewed structure drift/,
+    ),
+  );
+});
+
+test('non-exact eval contexts cannot preload the exact legacy Fee V2 reference', () => {
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const contextProfilesPath = path.join(
+        temporaryRoot,
+        'evals/suites/programmable-v4-hook-builder/context-profiles.json',
+      );
+      const contextProfiles = JSON.parse(fs.readFileSync(contextProfilesPath, 'utf8'));
+      contextProfiles.claims.push('references/programmable-fee-policy-v2.md');
+      writeContextProfilesAndMirror(temporaryRoot, contextProfiles);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /context profile registry: claims must not preload programmable-fee-policy-v2\.md/,
+    ),
+  );
+});
+
+test('context profile registry rejects duplicate JSON keys', () => {
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const contextProfilesPath = path.join(
+        temporaryRoot,
+        'evals/suites/programmable-v4-hook-builder/context-profiles.json',
+      );
+      const contextProfiles = fs.readFileSync(contextProfilesPath, 'utf8').replace(
+        '  "architecture": [\n',
+        '  "architecture": [],\n  "architecture": [\n',
+      );
+      writeContextProfilesAndMirror(temporaryRoot, contextProfiles);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /context profile registry: must use canonical duplicate-key-free JSON/,
+    ),
+  );
+});
+
+test('the exact legacy Fee V2 eval profile is reserved for transparent-high-fee-open-world', () => {
+  const manifestPath = path.join(
+    REPOSITORY_ROOT,
+    'evals/suites/programmable-v4-hook-builder/suite.json',
+  );
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const legacyCases = manifest.cases
+    .filter((evalCase) => evalCase.contextProfile === 'legacy-fee-v2')
+    .map((evalCase) => evalCase.id);
+  assert.deepEqual(legacyCases, ['transparent-high-fee-open-world']);
+
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const temporaryManifestPath = path.join(
+        temporaryRoot,
+        'evals/suites/programmable-v4-hook-builder/suite.json',
+      );
+      const temporaryManifest = JSON.parse(fs.readFileSync(temporaryManifestPath, 'utf8'));
+      temporaryManifest.cases.find((evalCase) => evalCase.id === 'novel-game-external-service').contextProfile = 'legacy-fee-v2';
+      writeSuiteAndMirror(temporaryRoot, temporaryManifest);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /legacy-fee-v2 context profile is reserved for transparent-high-fee-open-world/,
     ),
   );
 });

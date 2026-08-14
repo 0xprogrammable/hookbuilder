@@ -51,7 +51,7 @@ npm run quality:size
 ```
 
 The gate discovers every production `.mjs` module below `scripts/quality` and the builder's `scripts` directory, excluding
-the builder test directory: 327 modules in the current generated observation. It evaluates every discovered module against
+the builder test directory: 329 modules in the current generated observation. It evaluates every discovered module against
 an immutable historical no-growth manifest, an exact reviewed override or the stricter new-file line, byte, lexical-
 complexity and block-depth caps in `config/maintainability-size-budget.json`. It also reports static relative-import cycles
 and unresolved relative imports, and measures the complete portable package against its reviewed file/byte limits while

@@ -203,15 +203,23 @@ function validateContracts(manifest, issues) {
     exactKeys(manifest.adapterContract, ['arguments', 'resultPath', 'resultSchemaVersion'])
       && JSON.stringify(manifest.adapterContract.arguments) === JSON.stringify(['installedSkillPath', 'naturalPrompt'])
       && manifest.adapterContract.resultPath === '.programmable-e2e/agent-result.json'
-      && manifest.adapterContract.resultSchemaVersion === '1.1.0',
+      && manifest.adapterContract.resultSchemaVersion === '1.2.0',
     'adapter contract must expose only installedSkillPath and naturalPrompt',
   );
   addIssue(
     issues,
-    exactKeys(manifest.judgeContract, ['arguments', 'independentModelEnv', 'requestPath', 'resultPath', 'resultSchemaVersion'])
+    exactKeys(manifest.judgeContract, [
+      'arguments',
+      'independentModelEnv',
+      'requestPath',
+      'requestSchemaVersion',
+      'resultPath',
+      'resultSchemaVersion',
+    ])
       && JSON.stringify(manifest.judgeContract.arguments) === JSON.stringify(['evaluationRequestPath', 'judgeResultPath'])
       && manifest.judgeContract.independentModelEnv === 'PROGRAMMABLE_E2E_JUDGE_MODEL'
       && manifest.judgeContract.requestPath === 'judge-request.json'
+      && manifest.judgeContract.requestSchemaVersion === '1.1.0'
       && manifest.judgeContract.resultPath === 'judge-result.json'
       && manifest.judgeContract.resultSchemaVersion === '1.1.0',
     'judge contract must remain independent and hash-bind its request and result paths',

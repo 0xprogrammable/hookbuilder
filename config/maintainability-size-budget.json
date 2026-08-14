@@ -204,6 +204,14 @@
           "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
         },
         {
+          "path": "skills/programmable-v4-hook-builder/scripts/knowledge-router.mjs",
+          "observedLines": 260,
+          "observedBytes": 11015,
+          "observedComplexityScore": 61,
+          "observedMaxBlockDepth": 5,
+          "reviewRef": "v0.9.0 reviewed bounded activation CLI with fail-closed split-review hold propagation"
+        },
+        {
           "path": "skills/programmable-v4-hook-builder/scripts/launch-bundle-core.mjs",
           "observedLines": 14,
           "observedBytes": 381,
@@ -349,11 +357,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
-          "observedLines": 683,
-          "observedBytes": 34032,
+          "observedLines": 688,
+          "observedBytes": 34255,
           "observedComplexityScore": 85,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.7.0 reviewed central-policy closure and workflow-canary required-file inventory"
+          "reviewRef": "v0.9.0 reviewed activation, compact reasoning-kernel, and project-repair required-file inventory"
         }
       ]
     },
@@ -368,7 +376,7 @@
     "path": "skills/programmable-v4-hook-builder",
     "observedFiles": 640,
     "observedBytes": 9619846,
-    "maxFiles": 677,
+    "maxFiles": 685,
     "maxBytes": 12000000
   }
 }

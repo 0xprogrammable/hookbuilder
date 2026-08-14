@@ -53,7 +53,7 @@
       "id": "transparent-high-fee-open-world",
       "prompt": "cases/transparent-high-fee-open-world.md",
       "rubric": "rubrics/transparent-high-fee-open-world.txt",
-      "contextProfile": "architecture",
+      "contextProfile": "legacy-fee-v2",
       "safetyCritical": true,
       "threshold": 1.0
     },

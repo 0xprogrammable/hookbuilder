@@ -18,8 +18,8 @@ import { markdownHeadingAnchors, parseCanonicalYamlMapping, redactInstalledLocal
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const canonicalSkillRoot = path.resolve(scriptDirectory, "..");
 const nodeMajor = Number.parseInt(process.versions.node.split(".", 1)[0], 10);
-if (!Number.isInteger(nodeMajor) || nodeMajor < 24) {
-  console.error("verify-skill.mjs: NODE_24_OR_NEWER_REQUIRED");
+if (!Number.isInteger(nodeMajor) || nodeMajor < 22) {
+  console.error("verify-skill.mjs: NODE_22_OR_NEWER_REQUIRED");
   process.exit(1);
 }
 const MAX_PORTABLE_BYTES = 12_000_000;
@@ -108,6 +108,8 @@ const required = [
   "references/intent-fidelity-v1.schema.json",
   "references/intake-playbook.md",
   "references/knowledge-routing.json",
+  "references/knowledge-activation-v1.json",
+  "references/v4-contract-reasoning-kernel.md",
   "references/delegated-payer-sponsor-intent-v1.schema.json",
   "references/launch-admission-decision-v1.schema.json",
   "references/normative-property-manifest-v1.json",
@@ -147,11 +149,13 @@ const required = [
   "references/open-world-security-v1.schema.json",
   "references/programmable-trade-execution-v1.schema.json",
   "references/product-graph-v1.schema.json",
+  "references/project-repair-attempt-v1.schema.json",
   "references/project-spec-v1.schema.json",
   "references/project-sandbox-receipt-v1.schema.json",
   "references/project-state-v1.schema.json",
   "references/project-toolchain-lock-v1.schema.json",
   "references/repository-plan-v1.schema.json",
+  "references/repair-loop.md",
   "references/semantic-rule-registry-v1.json",
   "references/semantic-rule-registry-v1.schema.json",
   "references/contract-registry-source-v1.json",
@@ -343,6 +347,7 @@ const required = [
   "scripts/project-surfaces-core.mjs",
   "scripts/project-command-executor-core.mjs",
   "scripts/project-sandbox-receipt-core.mjs",
+  "scripts/project-repair-attempt-core.mjs",
   "scripts/project-compiler-core.mjs",
   "scripts/project-compiler.mjs",
   "scripts/project-tradable-authoring-core.mjs",

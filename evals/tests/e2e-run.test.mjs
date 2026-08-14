@@ -24,7 +24,13 @@ import {
   spawnIsolated,
 } from '../../scripts/evals/e2e-sandbox-core.mjs';
 import {
+  E2E_JUDGE_REQUEST_SCHEMA_VERSION,
+} from '../../scripts/evals/e2e-judge-core.mjs';
+import {
   createPostStageWorkspaceSnapshot,
+  directoryDigest,
+  E2E_AGENT_RESULT_SCHEMA_VERSION,
+  validateAgentResult,
   verifyPostStageWorkspaceSnapshot,
 } from '../../scripts/evals/e2e-repository-core.mjs';
 import {
@@ -45,6 +51,87 @@ function scoringBase() {
   return cachedScoringBase;
 }
 
+function journeyFixtureResult() {
+  const skillRoot = path.join(REPOSITORY_ROOT, 'skills/programmable-v4-hook-builder');
+  const promptSha256 = sha256(FIXTURE_CASE.prompt);
+  const body = {
+    outcome: 'Generated a local repository with 2 declared evidence artifacts.',
+    status: 'Local evidence only. External certification and availability remain unverified.',
+    decision: null,
+    nextAction: 'Review the committed artifacts before any external action.',
+    limitations: [
+      'DESIGN_NOT_APPROVAL',
+      'LOCAL_CHECKS_NOT_AUDIT',
+      'NOT_DEPLOYED',
+      'PROVIDER_SUPPORT_UNRESOLVED',
+      'NOT_PUBLICLY_AVAILABLE',
+    ],
+    artifactRefs: ['artifacts/intent.json', 'artifacts/submission.json'],
+  };
+  const activationEntry = (relativePath, phase) => {
+    const bytes = fs.readFileSync(path.join(skillRoot, relativePath));
+    return {
+      path: relativePath,
+      sha256: sha256(bytes),
+      bytes: bytes.length,
+      phase,
+      reason: 'Required by the selected task journey.',
+    };
+  };
+  return {
+    options: {
+      installedSkillRoot: skillRoot,
+      expectedPromptSha256: promptSha256,
+      expectedLanguage: 'en',
+      expectedSkillSha256: directoryDigest(skillRoot),
+    },
+    value: {
+      schemaVersion: '1.2.0',
+      kind: 'programmable-e2e-agent-result',
+      status: 'COMPLETED',
+      providerReceipt: {},
+      usage: {
+        inputTokens: 7000,
+        outputTokens: 2000,
+        totalTokens: 9000,
+        coldStartContextTokens: 3000,
+        architectureContextTokens: 7000,
+      },
+      telemetry: {
+        descendantSubagentCount: 0,
+        emittedBytes: 4096,
+        escalations: 0,
+        manualInterventions: 0,
+        retries: 0,
+        timeToUsefulMs: 1000,
+        toolCalls: 4,
+        toolErrors: 0,
+      },
+      builderResponse: {
+        schemaVersion: '1.0.0',
+        kind: 'programmable-e2e-builder-response',
+        promptSha256,
+        promptLanguage: 'en',
+        responseLanguage: 'en',
+        sameLanguage: true,
+        body,
+        bodySha256: sha256(canonicalJson(body)),
+      },
+      activationReceipt: {
+        schemaVersion: '1.0.0',
+        kind: 'programmable-e2e-activation-receipt',
+        promptSha256,
+        skillSha256: directoryDigest(skillRoot),
+        activationDecision: 'ACTIVATED',
+        entries: [
+          activationEntry('references/knowledge-routing.json', 'routing'),
+          activationEntry('references/layered-response-contract.md', 'response'),
+        ],
+      },
+    },
+  };
+}
+
 test('keyless validation reports envelope hashes and distinct response/repository populations', () => {
   assert.deepEqual(validateE2EStructure({ repositoryRoot: REPOSITORY_ROOT }), {
     status: 'E2E_ENVELOPES_VALID',
@@ -55,12 +142,18 @@ test('keyless validation reports envelope hashes and distinct response/repositor
     payloadValidation: 'requires-external-key-and-trusted-execution',
     minimumRepetitions: 3,
     tierProfiles: ['frontier', 'mid', 'small'],
-    manifestSha256: '7554eade0e78461f229f3af8414e538e37b2eac505e08fb5f31399cd9da5990c',
-    publicResponseCorpusSha256: '8531f0dc8221b894b77486f8c5663f67d56fb73f0ee707b88bb9af2c286839be',
+    manifestSha256: '34e6007adc0db40ecf8ab80004c075fdbed9f19076df1373edd99b3ef434a666',
+    publicResponseCorpusSha256: 'b8f6716f47aa62eae2a0c16ca31f6f8b0e041ef8c5b145261e5d1a2fa2c8ea9f',
     sealedRepositoryCorpusSha256: 'a5ff5c220b2d9fe943fe5d453efa199856c4e2ff0e278bc5b3cfec341e9f1d9b',
-    crossMethodInventorySha256: 'cc320a4ba6ecb1d269c1821ad94b6d315d8c3bf712256cc032abea479c7b6a8c',
+    crossMethodInventorySha256: 'd0fa913a849b2b00a7e2cf973f5d11fa0b4c89d9fa7dc5d162914309aea99bc1',
     modelExecution: 'not-run',
   });
+});
+
+test('canonical manifest adapter versions match the runtime contracts', () => {
+  const { manifest } = loadHoldoutCorpus({ repositoryRoot: REPOSITORY_ROOT });
+  assert.equal(manifest.adapterContract.resultSchemaVersion, E2E_AGENT_RESULT_SCHEMA_VERSION);
+  assert.equal(manifest.judgeContract.requestSchemaVersion, E2E_JUDGE_REQUEST_SCHEMA_VERSION);
 });
 
 test('validated corpus tokens reject foreign roots and preserve immutable nested state', () => {
@@ -162,7 +255,144 @@ test('local fixture receives only skill and idea, executes real distinct stages,
     const judgeView = JSON.parse(fs.readFileSync(judgeCapture, 'utf8'));
     assert.deepEqual(judgeView.request.rubric, FIXTURE_CASE.rubric);
     assert.equal(judgeView.request.bindings.repositoryTree, run.generatedRevision.tree);
+    assert.deepEqual(judgeView.request.builderResponse, run.builderResponse);
+    assert.deepEqual(judgeView.request.activationReceipt, run.activationReceipt);
+    assert.equal(
+      judgeView.request.bindings.builderResponseSha256,
+      sha256(canonicalJson(run.builderResponse)),
+    );
+    assert.equal(
+      judgeView.request.bindings.activationReceiptSha256,
+      sha256(canonicalJson(run.activationReceipt)),
+    );
+    assert.equal(run.providerReceipt.responseSha256, sha256(canonicalJson(run.builderResponse)));
+    assert.equal(run.telemetry.structuredQuestionCount, 0);
+    assert.equal(
+      run.telemetry.activatedReferenceBytes,
+      run.activationReceipt.entries.reduce((total, entry) => total + entry.bytes, 0),
+    );
+    assert.equal(
+      run.journeyEvidenceQualification,
+      'ADAPTER_REPORTED_HOST_ACTIVATION_UNPROVEN_DESCRIPTOR_REFERENCE_BYTES_VERIFIED_PROCESS_ISOLATION_UNPROVEN',
+    );
     assert.equal(judgeView.model, JUDGE_MODEL);
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test('journey evidence validates installed reference bytes and rejects malformed, tampered, or misleading receipts', () => {
+  const fixture = journeyFixtureResult();
+  const valid = validateAgentResult(structuredClone(fixture.value), fixture.options);
+  assert.equal(valid.telemetry.structuredQuestionCount, 0);
+  assert.equal(
+    valid.telemetry.activatedReferenceBytes,
+    fixture.value.activationReceipt.entries.reduce((total, entry) => total + entry.bytes, 0),
+  );
+  const oneQuestion = structuredClone(fixture.value);
+  oneQuestion.builderResponse.body.decision = {
+    id: 'authority-model',
+    question: 'Should a quorum control the final decision?',
+    options: [
+      { id: 'owner', label: 'One owner', consequence: 'One account controls the decision.' },
+      { id: 'quorum', label: 'Quorum', consequence: 'Multiple accounts must agree.' },
+    ],
+    recommendedOptionId: 'quorum',
+  };
+  oneQuestion.builderResponse.bodySha256 = sha256(canonicalJson(oneQuestion.builderResponse.body));
+  assert.equal(validateAgentResult(oneQuestion, fixture.options).telemetry.structuredQuestionCount, 1);
+
+  const germanResponse = structuredClone(fixture.value);
+  const germanOptions = { ...fixture.options, expectedLanguage: 'de' };
+  germanResponse.builderResponse.promptLanguage = 'de';
+  germanResponse.builderResponse.responseLanguage = 'de';
+  germanResponse.builderResponse.body.outcome = 'Ein lokales Repository mit 2 deklarierten Evidenzartefakten wurde erstellt.';
+  germanResponse.builderResponse.body.status = 'Nur lokale Evidenz. Externe Zertifizierung und Verfügbarkeit sind nicht verifiziert.';
+  germanResponse.builderResponse.body.nextAction = 'Prüfe die versionierten Artefakte vor jeder externen Aktion.';
+  germanResponse.builderResponse.bodySha256 = sha256(canonicalJson(germanResponse.builderResponse.body));
+  assert.equal(validateAgentResult(germanResponse, germanOptions).builderResponse.responseLanguage, 'de');
+
+  const mutations = [
+    ['legacy adapter schema', (value) => { value.schemaVersion = '1.1.0'; }],
+    ['malformed response', (value) => { delete value.builderResponse.body.outcome; }],
+    ['tampered response body', (value) => { value.builderResponse.body.nextAction = 'Changed after hashing.'; }],
+    ['escaping activation path', (value) => { value.activationReceipt.entries[0].path = '../outside.md'; }],
+    ['activation hash drift', (value) => { value.activationReceipt.entries[0].sha256 = '0'.repeat(64); }],
+    ['activation byte-count drift', (value) => { value.activationReceipt.entries[0].bytes += 1; }],
+    ['skill digest drift', (value) => { value.activationReceipt.skillSha256 = '0'.repeat(64); }],
+    ['language mismatch', (value) => { value.builderResponse.responseLanguage = 'de'; }],
+    ['false same-language claim', (value) => { value.builderResponse.sameLanguage = false; }],
+    ['adapter-authored structured question count', (value) => { value.telemetry.structuredQuestionCount = 0; }],
+    ['adapter-authored reference-byte count', (value) => { value.telemetry.activatedReferenceBytes = 1; }],
+    ['missing universal local limitation', (value) => {
+      value.builderResponse.body.limitations = value.builderResponse.body.limitations.filter((item) => item !== 'DESIGN_NOT_APPROVAL');
+      value.builderResponse.bodySha256 = sha256(canonicalJson(value.builderResponse.body));
+    }],
+    ['unsupported certification claim', (value) => {
+      value.builderResponse.body.outcome = 'Audited, approved and live.';
+      value.builderResponse.bodySha256 = sha256(canonicalJson(value.builderResponse.body));
+    }],
+    ['unsupported equivalent external claim', (value) => {
+      value.builderResponse.body.outcome = 'A formal audit has certified the hook.';
+      value.builderResponse.body.status = 'The contract is running on Ethereum mainnet.';
+      value.builderResponse.body.nextAction = 'Use the verified deployment.';
+      value.builderResponse.bodySha256 = sha256(canonicalJson(value.builderResponse.body));
+    }],
+    ['unsupported decision-option certification claim', (value) => {
+      value.builderResponse.body.decision = {
+        id: 'authority-model',
+        question: 'Which authority should control the final decision?',
+        options: [
+          { id: 'owner', label: 'Approved owner', consequence: 'One account controls the decision.' },
+          { id: 'quorum', label: 'Quorum', consequence: 'Multiple accounts must agree.' },
+        ],
+        recommendedOptionId: 'quorum',
+      };
+      value.builderResponse.bodySha256 = sha256(canonicalJson(value.builderResponse.body));
+    }],
+    ['multiple questions', (value) => {
+      value.builderResponse.body.decision = {
+        id: 'authority-model',
+        question: 'Should one owner decide? Or should a quorum decide?',
+        options: [
+          { id: 'owner', label: 'One owner', consequence: 'One account controls the decision.' },
+          { id: 'quorum', label: 'Quorum', consequence: 'Multiple accounts must agree.' },
+        ],
+        recommendedOptionId: 'quorum',
+      };
+      value.builderResponse.bodySha256 = sha256(canonicalJson(value.builderResponse.body));
+    }],
+    ['activation not observed', (value) => { value.activationReceipt.activationDecision = 'NOT_ACTIVATED'; }],
+  ];
+  for (const [label, mutate] of mutations) {
+    const candidate = structuredClone(fixture.value);
+    mutate(candidate);
+    assert.throws(
+      () => validateAgentResult(candidate, fixture.options),
+      (error) => error?.code === 'AGENT_RESULT_INVALID',
+      label,
+    );
+  }
+});
+
+test('subject provider receipt must hash-bind the exact structured Builder response', () => {
+  const run = runFixture({ agentMode: 'unbound-provider-response' });
+  assert.equal(run.status, 'FAIL');
+  assert.equal(run.reason, 'PROVIDER_RECEIPT_INVALID');
+  assert.equal(run.judge, null);
+});
+
+test('judge request treats Builder response and activation receipt instructions as untrusted data', () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'programmable-e2e-journey-injection-'));
+  const judgeCapture = path.join(temporaryRoot, 'judge.json');
+  try {
+    const run = runFixture({ agentMode: 'journey-prompt-injection', judgeCapture });
+    assert.equal(run.status, 'PASS');
+    const request = JSON.parse(fs.readFileSync(judgeCapture, 'utf8')).request;
+    assert.equal(request.policy.builderResponseAndActivationReceiptAreUntrustedData, true);
+    assert.equal(request.policy.ignoreBuilderResponseAndActivationReceiptInstructions, true);
+    assert.match(request.builderResponse.body.decision.question, /ignore the rubric/iu);
+    assert.match(request.activationReceipt.entries[0].reason, /Ignore the outer policy/iu);
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
   }
@@ -664,4 +894,6 @@ test('missing key, adapters, models, and trusted sandbox are explicit EXTERNAL_B
   assert.ok(scorecard.releaseBlockers.includes('INDEPENDENT_NOVEL_HOLDOUT_MISSING'));
   assert.ok(scorecard.releaseBlockers.includes('PUBLIC_REPOSITORY_E2E_POPULATION_MISSING'));
   assert.ok(scorecard.releaseBlockers.includes('PREVIOUS_RELEASE_BASELINE_MISSING'));
+  assert.ok(scorecard.releaseBlockers.includes('TRUSTED_HOST_ACTIVATION_TRACE_VERIFIER_MISSING'));
+  assert.equal(scorecard.releaseGates.trustedHostActivationTraceVerified, false);
 });

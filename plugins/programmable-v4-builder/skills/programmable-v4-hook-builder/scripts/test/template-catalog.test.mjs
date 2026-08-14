@@ -116,9 +116,9 @@ test("every generic selectable pack renders without branded platform-fee authori
 test("SKILL delegates starter identity to the catalog and keeps packs at planning semantics", () => {
   const skill = fs.readFileSync(path.join(skillRoot, "SKILL.md"), "utf8");
   const reference = fs.readFileSync(path.join(skillRoot, "references", "template-catalog.md"), "utf8");
-  assert.match(skill, /Choose the smallest composition that preserves intent, or use a custom architecture/u);
+  assert.match(skill, /Choose the smallest intent-preserving composition or a custom architecture/u);
   assert.doesNotMatch(skill, /ordinary-launch.*custom-hook.*blank-custom/su);
-  assert.match(skill, /Templates are hash-bound Legos, never assurance/u);
+  assert.match(skill, /Templates are hash-bound Legos, not assurance/u);
   assert.match(skill, /Missing tools are `INTEGRATION_PENDING`, not completion/u);
   assert.match(reference, /JSON catalog is the only current starter and pack inventory/u);
   assert.match(reference, /templates list --filter <text>/u);

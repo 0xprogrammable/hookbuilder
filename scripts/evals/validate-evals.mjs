@@ -22,6 +22,10 @@ const EXPECTED_UPSTREAM_REPOSITORY = 'https://github.com/Uniswap/uniswap-ai.git'
 const EXPECTED_UPSTREAM_COMMIT = '9660491dc662fea76c2f8565c2f7ba2abf6e8840';
 const SUBJECT_PROVIDER_TEMPLATE = '{{ env.PROGRAMMABLE_EVAL_SUBJECT_PROVIDER }}';
 const JUDGE_PROVIDER_TEMPLATE = '{{ env.PROGRAMMABLE_EVAL_JUDGE_PROVIDER }}';
+const LEGACY_FEE_V2_CASE_ID = 'transparent-high-fee-open-world';
+const LEGACY_FEE_V2_CONTEXT_PROFILE = 'legacy-fee-v2';
+const LEGACY_FEE_V2_REFERENCE = 'references/programmable-fee-policy-v2.md';
+const EXPECTED_PROMPT_WRAPPER_SHA256 = '6dca60f1faae16fdc3f6458380d06334159a9698c5c589e7c976f9e97c30934a';
 const EXPECTED_PROVIDER_CONTRACT = Object.freeze({
   mode: 'explicit-subject-and-judge',
   subjectEnvironmentVariable: 'PROGRAMMABLE_EVAL_SUBJECT_PROVIDER',
@@ -82,6 +86,7 @@ const REQUIRED_CASE_IDS = Object.freeze([
 const ALLOWED_CONTEXT_PROFILES = Object.freeze([
   'launch-selection',
   'architecture',
+  LEGACY_FEE_V2_CONTEXT_PROFILE,
   'security',
   'claims',
   'provenance',
@@ -100,6 +105,20 @@ const CASE_KEYS = Object.freeze([
   'rubric',
   'safetyCritical',
   'threshold',
+]);
+const DAILY_SENTINEL_ROOT_KEYS = Object.freeze([
+  'kind',
+  'publicCaseIds',
+  'qualification',
+  'runner',
+  'schemaVersion',
+  'triggerPrompts',
+]);
+const DAILY_SENTINEL_TRIGGER_KEYS = Object.freeze([
+  'expectedActivation',
+  'id',
+  'language',
+  'prompt',
 ]);
 
 export class EvalValidationError extends Error {
@@ -322,6 +341,7 @@ function validatePolicyBoundEvalMirror(repositoryRoot, suiteRoot, issues) {
   // `file://` loader syntax, so it must not enter the portable skill payload.
   const includeRelative = (relativePath) => relativePath === 'suite.json'
     || relativePath === 'prompt-wrapper.cjs'
+    || relativePath === 'context-profiles.json'
     || relativePath.startsWith('cases/')
     || relativePath.startsWith('rubrics/');
   const liveFiles = walkFiles(suiteRoot)
@@ -370,6 +390,109 @@ function validatePolicyBoundEvalMirror(repositoryRoot, suiteRoot, issues) {
   }
 }
 
+function validateDailySentinel(repositoryRoot, manifestCases, issues) {
+  const sentinelPath = path.join(repositoryRoot, 'evals/daily-sentinel.json');
+  const { raw, value } = readJson(sentinelPath, issues, 'daily sentinel');
+  if (!value) return null;
+  addIssue(issues, raw === `${JSON.stringify(value, null, 2)}\n`, 'daily sentinel: must use canonical duplicate-key-free JSON');
+  addIssue(issues, exactKeys(value, DAILY_SENTINEL_ROOT_KEYS), 'daily sentinel: root keys drift');
+  addIssue(issues, value.schemaVersion === '1.0.0', 'daily sentinel: schemaVersion must be 1.0.0');
+  addIssue(issues, value.kind === 'programmable-daily-sentinel', 'daily sentinel: kind drift');
+  addIssue(
+    issues,
+    value.qualification === 'STRUCTURE_AND_COVERAGE_ONLY',
+    'daily sentinel: qualification must remain structure-and-coverage-only',
+  );
+  addIssue(
+    issues,
+    value.runner === 'reuse-public-response-suite',
+    'daily sentinel: must reuse the existing public response suite runner',
+  );
+  addIssue(
+    issues,
+    Array.isArray(value.publicCaseIds) && value.publicCaseIds.length === 5,
+    'daily sentinel: exactly five public case ids are required',
+  );
+  const publicCaseIds = value.publicCaseIds ?? [];
+  addIssue(issues, new Set(publicCaseIds).size === publicCaseIds.length, 'daily sentinel: public case ids must be unique');
+  for (const [index, caseId] of publicCaseIds.entries()) {
+    addIssue(
+      issues,
+      typeof caseId === 'string' && manifestCases.has(caseId),
+      `daily sentinel: publicCaseIds[${index}] must reuse an existing public case id`,
+    );
+  }
+  addIssue(
+    issues,
+    exactKeys(value.triggerPrompts, ['negative', 'positive']),
+    'daily sentinel: trigger prompt groups drift',
+  );
+  const seenIds = new Set();
+  const seenPrompts = new Set();
+  for (const [group, expectedActivation] of [['positive', 'ACTIVATED'], ['negative', 'NOT_ACTIVATED']]) {
+    const prompts = value.triggerPrompts?.[group];
+    addIssue(issues, Array.isArray(prompts) && prompts.length === 5, `daily sentinel: ${group} must contain exactly five prompts`);
+    for (const [index, record] of (prompts ?? []).entries()) {
+      const label = `daily sentinel: ${group}[${index}]`;
+      addIssue(issues, exactKeys(record, DAILY_SENTINEL_TRIGGER_KEYS), `${label} keys drift`);
+      addIssue(issues, /^[a-z0-9-]{3,80}$/u.test(record?.id ?? ''), `${label} id is invalid`);
+      addIssue(issues, !seenIds.has(record?.id), `${label} id is duplicated`);
+      seenIds.add(record?.id);
+      addIssue(issues, ['de', 'en'].includes(record?.language), `${label} language must be de or en`);
+      addIssue(
+        issues,
+        typeof record?.prompt === 'string'
+          && Buffer.byteLength(record.prompt, 'utf8') >= 24
+          && Buffer.byteLength(record.prompt, 'utf8') <= 320
+          && !/[\u0000-\u001f\u007f]/u.test(record.prompt),
+        `${label} prompt must be realistic bounded single-line text`,
+      );
+      addIssue(issues, !seenPrompts.has(record?.prompt), `${label} prompt is duplicated`);
+      seenPrompts.add(record?.prompt);
+      addIssue(issues, record?.expectedActivation === expectedActivation, `${label} activation decision drift`);
+      if (group === 'negative') {
+        addIssue(
+          issues,
+          !/\bProgrammable\b/u.test(record?.prompt ?? ''),
+          `${label} trigger boundary is ambiguous`,
+        );
+      }
+    }
+  }
+  const positivePrompts = value.triggerPrompts?.positive ?? [];
+  const brandedPrompts = positivePrompts.filter(({ prompt }) => /\bProgrammable\b/u.test(prompt ?? ''));
+  const implicitV4Work = positivePrompts.filter(({ prompt }) => !/\bProgrammable\b/u.test(prompt ?? ''));
+  addIssue(
+    issues,
+    brandedPrompts.length === 1,
+    'daily sentinel: positive prompts must contain exactly one explicit Programmable trigger',
+  );
+  addIssue(
+    issues,
+    implicitV4Work.length === 4,
+    'daily sentinel: positive prompts must contain exactly four implicit v4 build intents',
+  );
+  for (const [index, { prompt }] of implicitV4Work.entries()) {
+    addIssue(
+      issues,
+      /\bUniswap(?:[\s-]+)v4\b/iu.test(prompt ?? '')
+        && /\b(?:design|architect|build|create|turn|repair|review|test|upgrade|submit|prepare|entwirf|architekt|bau(?:e|en|t)?|erstell(?:e|en|t)?|reparier(?:e|en|t)?|prüf(?:e|en|t)?|test(?:e|en|t)?|verbesser(?:e|n|t)?|bereit(?:e|en|t)?|reich(?:e|en|t)?)\b/iu.test(prompt ?? ''),
+      `daily sentinel: implicit positive[${index}] must name Uniswap v4 and a build, repair, review, test, or submission action`,
+    );
+  }
+  for (const group of ['positive', 'negative']) {
+    const languages = new Set((value.triggerPrompts?.[group] ?? []).map(({ language }) => language));
+    addIssue(issues, languages.has('de') && languages.has('en'), `daily sentinel: ${group} prompts must cover de and en`);
+  }
+  return {
+    publicCaseCount: publicCaseIds.length,
+    positiveTriggerCount: value.triggerPrompts?.positive?.length ?? 0,
+    negativeTriggerCount: value.triggerPrompts?.negative?.length ?? 0,
+    qualification: value.qualification,
+    sha256: crypto.createHash('sha256').update(raw).digest('hex'),
+  };
+}
+
 export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteId = DEFAULT_SUITE_ID } = {}) {
   const issues = [];
   const resolvedRoot = path.resolve(repositoryRoot);
@@ -377,6 +500,12 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
   const manifestPath = path.join(suiteRoot, 'suite.json');
   const configPath = path.join(suiteRoot, 'promptfoo.yaml');
   const wrapperPath = path.join(suiteRoot, 'prompt-wrapper.cjs');
+  const contextProfilesPath = path.join(suiteRoot, 'context-profiles.json');
+  const skillRoot = path.join(resolvedRoot, 'skills/programmable-v4-hook-builder');
+  const knowledgeRoutingPath = path.join(
+    skillRoot,
+    'references/knowledge-routing.json',
+  );
 
   addIssue(issues, suiteId === DEFAULT_SUITE_ID, `only the canonical suite id ${DEFAULT_SUITE_ID} is accepted`);
 
@@ -392,6 +521,86 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
     wrapperText = fs.readFileSync(wrapperPath, 'utf8');
   } catch (error) {
     issues.push(`prompt wrapper: cannot read ${wrapperPath}: ${error.message}`);
+  }
+  const { value: knowledgeRouting } = readJson(
+    knowledgeRoutingPath,
+    issues,
+    'prompt wrapper knowledge routing',
+  );
+  const { raw: contextProfilesRaw, value: contextProfiles } = readJson(
+    contextProfilesPath,
+    issues,
+    'context profile registry',
+  );
+
+  addIssue(
+    issues,
+    contextProfilesRaw === `${JSON.stringify(contextProfiles, null, 2)}\n`,
+    'context profile registry: must use canonical duplicate-key-free JSON',
+  );
+  addIssue(
+    issues,
+    contextProfiles && exactKeys(contextProfiles, [...ALLOWED_CONTEXT_PROFILES].sort()),
+    'context profile registry: keys must match the closed profile allowlist',
+  );
+  const archivalReferences = new Set(
+    (knowledgeRouting?.archivalReferences ?? [])
+      .flatMap((group) => group?.references ?? []),
+  );
+  for (const profile of ALLOWED_CONTEXT_PROFILES) {
+    const contextFiles = contextProfiles?.[profile];
+    const label = `context profile registry: ${profile}`;
+    addIssue(issues, Array.isArray(contextFiles) && contextFiles.length > 0, `${label} must be a non-empty array`);
+    if (!Array.isArray(contextFiles)) continue;
+    const seenContextFiles = new Set();
+    for (const [index, relativePath] of contextFiles.entries()) {
+      addIssue(issues, typeof relativePath === 'string', `${label}[${index}] must be a string`);
+      if (typeof relativePath !== 'string') continue;
+      addIssue(issues, !seenContextFiles.has(relativePath), `${label} contains duplicate ${relativePath}`);
+      seenContextFiles.add(relativePath);
+      safeRelativeFile(
+        skillRoot,
+        relativePath,
+        /^references\/[a-z0-9]+(?:[-.][a-z0-9]+)*\.(?:md|json)$/u,
+        issues,
+        `${label}[${index}]`,
+      );
+      const referenceName = relativePath.startsWith('references/')
+        ? relativePath.slice('references/'.length)
+        : relativePath;
+      addIssue(
+        issues,
+        !archivalReferences.has(referenceName),
+        `${label} must not load archival reference ${relativePath}`,
+      );
+    }
+    addIssue(
+      issues,
+      contextFiles.includes('references/layered-response-contract.md'),
+      `${label} must load the layered response contract`,
+    );
+    const loadsLegacyFeeV2 = contextFiles.includes(LEGACY_FEE_V2_REFERENCE);
+    addIssue(
+      issues,
+      profile === LEGACY_FEE_V2_CONTEXT_PROFILE ? loadsLegacyFeeV2 : !loadsLegacyFeeV2,
+      profile === LEGACY_FEE_V2_CONTEXT_PROFILE
+        ? `${label} must load programmable-fee-policy-v2.md`
+        : `${label} must not preload programmable-fee-policy-v2.md`,
+    );
+  }
+  for (const profile of ['architecture', LEGACY_FEE_V2_CONTEXT_PROFILE, 'security', 'authority']) {
+    addIssue(
+      issues,
+      contextProfiles?.[profile]?.includes('references/builder-reviewer-alignment.md'),
+      `context profile registry: ${profile} must load builder-reviewer alignment`,
+    );
+  }
+  for (const profile of ['security', 'repository-safety', 'authority']) {
+    addIssue(
+      issues,
+      contextProfiles?.[profile]?.includes('references/execution-gates-and-attestation.md'),
+      `context profile registry: ${profile} must load execution gates`,
+    );
   }
 
   addIssue(
@@ -429,6 +638,11 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
         issues,
         ALLOWED_CONTEXT_PROFILES.includes(evalCase.contextProfile),
         `${label}: unknown context profile ${evalCase.contextProfile}`,
+      );
+      addIssue(
+        issues,
+        evalCase.contextProfile !== LEGACY_FEE_V2_CONTEXT_PROFILE || evalCase.id === LEGACY_FEE_V2_CASE_ID,
+        `${label}: ${LEGACY_FEE_V2_CONTEXT_PROFILE} context profile is reserved for ${LEGACY_FEE_V2_CASE_ID}`,
       );
       addIssue(issues, typeof evalCase.safetyCritical === 'boolean', `${label}: safetyCritical must be boolean`);
       addIssue(
@@ -498,6 +712,13 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
   for (const requiredCase of REQUIRED_CASE_IDS) {
     addIssue(issues, manifestCases.has(requiredCase), `suite manifest: missing required case ${requiredCase}`);
   }
+  addIssue(
+    issues,
+    manifestCases.get(LEGACY_FEE_V2_CASE_ID)?.contextProfile === LEGACY_FEE_V2_CONTEXT_PROFILE,
+    `suite manifest: ${LEGACY_FEE_V2_CASE_ID} must use ${LEGACY_FEE_V2_CONTEXT_PROFILE}`,
+  );
+
+  const dailySentinel = validateDailySentinel(resolvedRoot, manifestCases, issues);
 
   addIssue(issues, configText.includes('file://prompt-wrapper.cjs'), 'promptfoo: canonical prompt wrapper is not registered');
   addIssue(
@@ -544,30 +765,38 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
     }
   }
 
-  addIssue(issues, wrapperText.includes("const contextProfiles = Object.freeze({"), 'prompt wrapper: context allowlist missing');
+  addIssue(
+    issues,
+    wrapperText.includes("const contextProfilesPath = path.join(__dirname, 'context-profiles.json');")
+      && wrapperText.includes("JSON.parse(fs.readFileSync(contextProfilesPath, 'utf8'))"),
+    'prompt wrapper: closed context profile registry loader missing',
+  );
+  addIssue(
+    issues,
+    crypto.createHash('sha256').update(wrapperText).digest('hex') === EXPECTED_PROMPT_WRAPPER_SHA256,
+    'prompt wrapper: exact reviewed structure drift',
+  );
+  addIssue(
+    issues,
+    wrapperText.includes('new Set(Object.values(contextProfiles).flat())')
+      && wrapperText.includes('configuredContextFiles.has(relativePath)'),
+    'prompt wrapper: configured context-file allowlist missing',
+  );
+  addIssue(
+    issues,
+    !/references/iu.test(wrapperText),
+    'prompt wrapper: reference paths must come only from context-profiles.json',
+  );
   addIssue(issues, wrapperText.includes("readCanonicalSkillFile('SKILL.md')"), 'prompt wrapper: canonical SKILL.md missing');
-  addIssue(
-    issues,
-    (wrapperText.match(/'references\/layered-response-contract\.md'/g) ?? []).length === ALLOWED_CONTEXT_PROFILES.length,
-    'prompt wrapper: every context profile must load the layered response contract',
-  );
-  addIssue(
-    issues,
-    (wrapperText.match(/'references\/builder-reviewer-alignment\.md'/g) ?? []).length >= 3,
-    'prompt wrapper: architecture, security and authority profiles must load builder-reviewer alignment',
-  );
-  addIssue(
-    issues,
-    (wrapperText.match(/'references\/execution-gates-and-attestation\.md'/g) ?? []).length >= 3,
-    'prompt wrapper: security, repository-safety and authority profiles must load execution gates',
-  );
   addIssue(issues, wrapperText.includes('Unknown context profile'), 'prompt wrapper: unknown profiles must fail closed');
-  addIssue(issues, wrapperText.includes('Unsafe Nunjucks raw-block terminator'), 'prompt wrapper: raw-block terminators must fail closed');
+  addIssue(
+    issues,
+    wrapperText.includes('const NUNJUCKS_RAW_BLOCK_TERMINATOR = /\\{%-?\\s*endraw\\s*-?%\\}/u;')
+      && wrapperText.includes('NUNJUCKS_RAW_BLOCK_TERMINATOR.test(text)'),
+    'prompt wrapper: complete raw-block terminator grammar must fail closed',
+  );
   addIssue(issues, wrapperText.includes("rawBlock(vars.case_content, 'case content')"), 'prompt wrapper: case content must be template-isolated');
   addIssue(issues, !/vars\.(?:reference|path|file)/.test(wrapperText), 'prompt wrapper: test vars must not select file paths');
-  for (const profile of ALLOWED_CONTEXT_PROFILES) {
-    addIssue(issues, wrapperText.includes(`${profile}:`) || wrapperText.includes(`'${profile}':`), `prompt wrapper: missing profile ${profile}`);
-  }
 
   const rootProject = readJson(path.join(resolvedRoot, 'evals/project.json'), issues, 'evals Nx project').value;
   const suiteProject = readJson(path.join(suiteRoot, 'project.json'), issues, 'suite Nx project').value;
@@ -640,6 +869,11 @@ export function validateSuite({ repositoryRoot = DEFAULT_REPOSITORY_ROOT, suiteI
     safetyCaseCount: [...manifestCases.values()].filter((evalCase) => evalCase.safetyCritical).length,
     forwardTestCaseCount: forwardTests.caseCount,
     forwardTestDecisionCaseCount: forwardTests.decisionCaseCount,
+    dailySentinelPublicCaseCount: dailySentinel.publicCaseCount,
+    dailySentinelPositiveTriggerCount: dailySentinel.positiveTriggerCount,
+    dailySentinelNegativeTriggerCount: dailySentinel.negativeTriggerCount,
+    dailySentinelQualification: dailySentinel.qualification,
+    dailySentinelSha256: dailySentinel.sha256,
     e2ePublicResponseCaseCount: e2eStructure.publicResponseEvalCaseCount,
     e2eSealedRepositoryEnvelopeCount: e2eStructure.sealedRepositoryCaseEnvelopeCount,
     e2eComparablePublicRepositoryCaseCount: 0,

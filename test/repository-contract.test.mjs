@@ -171,7 +171,7 @@ test("canonical config version and generated package identities agree", () => {
   assert.equal(packageDocument.homepage, "https://github.com/0xprogrammable/hookbuilder#readme");
   assert.equal(Object.hasOwn(packageDocument, "dependencies"), false);
   assert.equal(Object.hasOwn(packageDocument, "devDependencies"), false);
-  assert.equal(metadata.version, "0.8.0");
+  assert.equal(metadata.version, "0.9.0");
   assert.equal(packageLock.name, packageDocument.name);
   assert.equal(packageLock.version, packageDocument.version);
   assert.equal(packageLock.packages[""].name, packageDocument.name);
@@ -241,13 +241,21 @@ test("global skill boundaries apply v4 mechanics conditionally and distinguish d
     path.join(repositoryRoot, "skills", "programmable-v4-hook-builder", "SKILL.md"),
     "utf8"
   );
+  assert.match(
+    skill,
+    /description: Use only to .*complete Programmable or Uniswap v4 project\. Never use for questions\/explanations, even about v4;/u
+  );
   assert.match(skill, /For v4 start with all 14 permissions disabled\./u);
   assert.match(skill, /for canonical v4 cover all four direction\/exactness\s+quadrants and prove support or pre-effects rejection\./u);
   assert.match(skill, /Hidden mint, seizure, fee, pause, upgrade or payout redirection conflicts/u);
   assert.match(skill, /disclosed powers require review/iu);
-  assert.match(skill, /cli\.mjs policy/u);
-  assert.match(skill, /complete Programmable rule set/u);
+  assert.match(skill, /node "\$BUILDER_CLI" policy/u);
+  assert.match(skill, /complete Programmable rule set/iu);
   assert.match(skill, /Use every\s+`build` Rule ID, add none, and stop if unavailable/u);
+  assert.match(skill, /Before materializing read no other reference\/full context/u);
+  assert.match(skill, /active workspace sandbox run offline fmt\/test once/u);
+  assert.match(skill, /`LOCAL_ONLY`, never\s+completion/u);
+  assert.match(skill, /Fix inputs and rematerialize on failure\. Never edit output/u);
   assert.doesNotMatch(skill, /hidden mint,\s*confiscation, blacklist, fee, pause, upgrade or payout-redirection power/u);
 });
 
@@ -265,7 +273,7 @@ test("plugin manifests are generated from canonical metadata and package version
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(result.stdout);
   assert.equal(report.status, "PLUGIN_MANIFESTS_VALID");
-  assert.equal(report.version, "0.8.0");
+  assert.equal(report.version, "0.9.0");
   assert.deepEqual(report.outputs, [
     ".codex-plugin/plugin.json",
     ".agents/plugins/marketplace.json",
@@ -512,7 +520,7 @@ test("CI deterministically covers both Programmable fee reference kernels", () =
   assert.match(workflow, /^\s*CI_ROUTING_REF: \$\{\{ github\.event_name == 'pull_request' && github\.base_ref \|\| github\.ref_name \}\}$/mu);
   assert.doesNotMatch(workflow, /--ref "\$\{\{/u);
   assert.match(workflow, /Preserve exhaustive checks while a protected base predates routing outputs/u);
-  assert.match(workflow, /ROUTED_REPOSITORY_NODES='\[24\]'/u);
+  assert.match(workflow, /ROUTED_REPOSITORY_NODES='\[22,24\]'/u);
   assert.match(workflow, /ROUTED_REFERENCE_KERNEL_REQUIRED=true/u);
   assert.match(workflow, /ROUTED_CODEQL_REQUIRED=true/u);
   assert.match(workflow, /ROUTED_PLATFORM_LANE_REQUIRED=true/u);
@@ -529,11 +537,10 @@ test("CI deterministically covers both Programmable fee reference kernels", () =
   assert.match(repositoryJob, /^\s*name: Repository and skill \/ Node \$\{\{ matrix\.node \}\}$/mu);
   assert.match(repositoryJob, /^\s*if: \$\{\{ needs\.plan\.outputs\.platform_lane_required == 'true' \}\}$/mu);
   assert.match(repositoryJob, /^\s*node: \$\{\{ fromJSON\(needs\.plan\.outputs\.repository_nodes\) \}\}$/mu);
-  assert.match(repositoryJob, /name: Verify the one-time Node 24 transition on a legacy matrix lane/u);
-  assert.match(repositoryJob, /^\s*if: matrix\.node != 24$/mu);
-  assert.ok(repositoryJob.includes(`grep -F '"node": ">=24"' package.json`));
-  assert.ok(repositoryJob.includes(`grep -F 'repositoryNodes: [24]' scripts/ci/applicant-fast-lane-core.mjs`));
-  assert.ok(repositoryJob.includes(`grep -F "ROUTED_REPOSITORY_NODES='[24]'" .github/workflows/ci.yml`));
+  assert.match(repositoryJob, /name: Verify portable Skill compatibility on Node 22/u);
+  assert.match(repositoryJob, /^\s*if: matrix\.node == 22$/mu);
+  assert.ok(repositoryJob.includes("node skills/programmable-v4-hook-builder/scripts/cli.mjs context --mode autopilot --brief"));
+  assert.ok(repositoryJob.includes("node skills/programmable-v4-hook-builder/scripts/verify-skill.mjs --installed"));
   assert.equal((repositoryJob.match(/^\s*if: matrix\.node == 24$/gmu) ?? []).length, 5);
   const foundryInstall = repositoryJob.indexOf("Install Foundry");
   const compilerPreload = repositoryJob.indexOf("Preload the portable-test Solidity compiler");
@@ -667,7 +674,7 @@ test("release output containment rejects an in-repository ..x directory and perm
     process.execPath,
     [
       script,
-      "--tag", "v0.8.0",
+      "--tag", "v0.9.0",
       "--output-dir", path.join(repositoryRoot, "..x-release-output"),
       "--kernel-evidence", evidence
     ],
@@ -681,7 +688,7 @@ test("release output containment rejects an in-repository ..x directory and perm
   fs.writeFileSync(path.join(outside, "sentinel"), "keep non-empty\n");
   const escaped = childProcess.spawnSync(
     process.execPath,
-    [script, "--tag", "v0.8.0", "--output-dir", outside, "--kernel-evidence", evidence],
+    [script, "--tag", "v0.9.0", "--output-dir", outside, "--kernel-evidence", evidence],
     { cwd: repositoryRoot, encoding: "utf8", shell: false, stdio: ["ignore", "pipe", "pipe"] }
   );
   assert.notEqual(escaped.status, 0);

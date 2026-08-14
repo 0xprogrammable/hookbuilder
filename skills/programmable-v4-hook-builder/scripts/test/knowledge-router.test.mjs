@@ -55,18 +55,22 @@ test("Autopilot starts from the compact compiler with the productive completion 
   const skill = fs.readFileSync(path.join(skillRoot, "SKILL.md"), "utf8");
   const compiler = fs.readFileSync(path.join(skillRoot, "references", "business-system-compiler.md"), "utf8");
   const coldContext = [skill, ...result.loadNow.map(({ path: reference }) => fs.readFileSync(path.join(skillRoot, reference), "utf8"))].join("\n");
-  assert.match(skill, /context --mode autopilot/u);
+  assert.match(skill, /context --mode autopilot --brief/u);
+  assert.match(skill, /node "\$BUILDER_CLI" context --mode autopilot --capability "\$CONFIRMED_CAPABILITY" --activate-confirmed --base-profile-digest "\$BASE_PROFILE_DIGEST" --brief/u);
+  assert.match(skill, /after isolated failure run `context --mode repair --brief`/u);
+  assert.match(skill, /before architecture or code/u);
   assert.doesNotMatch(skill, /context --mode explore --capability owner-defined-capability/u);
-  assert.match(skill, /project materialize --idea-file "\$IDEA_FILE" --application-id "\$APPLICATION_ID" --classification no-market --source-contract "\$SOURCE_CONTRACT" --test-source "\$TEST_SOURCE" --output "\$NEW_REPOSITORY"/u);
+  assert.match(skill, /For no-market, `project --help` is complete\.[\s\S]*Format\s+inputs; dry-run then `--write`/u);
+  assert.doesNotMatch(skill, /--classification no-market --source-contract "\$SOURCE_CONTRACT" --test-source "\$TEST_SOURCE"/u);
   assert.match(coldContext, /project materialize --idea-file "\$IDEA_FILE" --application-id "\$APPLICATION_ID" --classification tradable --market-ref "\$MARKET_REF" --reference-profile programmable-volume-fee-v2 --output "\$NEW_REPOSITORY"/u);
   assert.match(coldContext, /exact natural intent names the v4 hook,[\s\S]*gross-quote-volume fees,[\s\S]*policy `programmable-volume-fee-v2@2\.0\.0`, its inclusive 10 bps[\s\S]*claimant `0x4957f49620AFf3Adbbe8195a4f633E49cc93376c`/u);
-  assert.match(coldContext, /Save the exact received public prompt bytes unchanged as `\$IDEA_FILE`; never rewrite\/extract them\. Bind those same bytes exactly as ProjectSpec and Submission IdeaSource/u);
+  assert.match(coldContext, /Save the exact public prompt bytes unchanged as `\$IDEA_FILE`; never rewrite\/extract them\. Bind them exactly as ProjectSpec and Submission IdeaSource/u);
   assert.doesNotMatch(coldContext, /(?:independent audit findings?|known findings?|expected solutions?|finding [1-4])/iu);
   assert.doesNotMatch(coldContext, /(?:Reference fee kernel|ProgrammableVolumeFeeHookV2\.sol|known exploit|audit report)/iu);
   assert.match(coldContext, /NOT_APPROVED/u);
   assert.match(coldContext, /NOT_SUBMITTED/u);
   assert.match(coldContext, /require authority for secrets, cost, signing, deploy, publish, submit, merge or Registry writes/u);
-  assert.match(skill, /project require-output --repository-root "\$NEW_REPOSITORY" --state \.programmable\/project-states\/000006-submission-evidence\.v1\.json --previous-state \.programmable\/project-states\/000005-verification\.v1\.json --submission-root submission/u);
+  assert.match(skill, /project require-output --brief --repository-root "\$NEW_REPOSITORY" --state \.programmable\/project-states\/000006-submission-evidence\.v1\.json --previous-state \.programmable\/project-states\/000005-verification\.v1\.json --submission-root submission/u);
   assert.match(compiler, /project materialize/u);
   assert.match(compiler, /project\s+require-output/u);
   assert.match(compiler, /PROJECT_PREFLIGHT_VALID/u);
@@ -85,7 +89,7 @@ test("Autopilot starts from the compact compiler with the productive completion 
 
   const help = childProcess.spawnSync(process.execPath, [cli, "project", "--help"], { encoding: "utf8", shell: false });
   assert.equal(help.status, 0, help.stdout || help.stderr);
-  assert.match(help.stdout, /validate\|validate-output\|preflight\|require-output\|execute\|materialize/u);
+  assert.match(help.stdout, /validate\|validate-output\|preflight\|require-output\|execute\|diagnose\|materialize/u);
   for (const option of ["--idea-file", "--application-id", "--classification", "--market-ref", "--reference-profile", "--source-contract", "--test-source", "--output", "--write"]) assert.match(help.stdout, new RegExp(option, "u"), option);
 });
 
@@ -110,7 +114,7 @@ test("user-facing result modes defer the layered response contract without spend
       true,
       mode
     );
-    const coldMode = mode === "explore" || mode === "autopilot";
+    const coldMode = mode === "explore" || mode === "autopilot" || mode === "repair";
     assert.equal(
       result.contextBudget.status,
       coldMode ? "within-target" : "expanded-required-context",
@@ -125,6 +129,21 @@ test("user-facing result modes defer the layered response contract without spend
     maintainerHandoff.loadLater.some(({ path: reference }) => reference === "references/layered-response-contract.md"),
     false
   );
+});
+
+test("Repair starts only from the compact non-completion loop and defers v2 regeneration", () => {
+  const result = planKnowledge({ mode: "repair", skillRoot });
+  assert.deepEqual(paths(result), ["references/repair-loop.md"]);
+  assert.equal(result.loadLater.some(({ path: reference }) => reference === "references/open-world-v2-workflow.md"), true);
+  assert.equal(result.contextBudget.status, "within-target");
+  assert.ok(result.contextBudget.estimatedTokens <= 3000, result.contextBudget.estimatedTokens);
+  const repair = fs.readFileSync(path.join(skillRoot, "references", "repair-loop.md"), "utf8");
+  assert.ok(Buffer.byteLength(repair, "utf8") <= 2000);
+  assert.match(repair, /project diagnose/u);
+  assert.match(repair, /initial and at most two later failures/u);
+  assert.match(repair, /NOT_COMPLETION/u);
+  assert.match(repair, /NOT_APPROVAL/u);
+  assert.match(repair, /PROJECT_PREFLIGHT_VALID/u);
 });
 
 test("knowledge-routing source is duplicate-key-free under strict lossless JSON", () => {
@@ -169,6 +188,11 @@ test("every installed Markdown reference is routed, linked, or explicitly archiv
     ...routing.surfaceRoutes.flatMap(({ references }) => references),
     ...routing.unknownCapabilityReferences
   ]);
+  const activation = JSON.parse(fs.readFileSync(
+    path.join(skillRoot, "references", "knowledge-activation-v1.json"),
+    "utf8"
+  ));
+  for (const reference of activation.routeSelections.map(({ reference }) => reference)) routed.add(reference);
   const archival = new Set(routing.archivalReferences.flatMap(({ references }) => references));
   assert.deepEqual([...archival].sort(), [
     "compatibility-standard.md",
@@ -451,6 +475,78 @@ test("every canonical catalog surface has an explicit route and route drift fail
       && error.code === "KNOWLEDGE_ROUTING_INVALID"
       && /external-provider/u.test(error.message)
   );
+});
+
+test("every canonical catalog capability has an explicit route and route drift fails closed", (t) => {
+  const routing = JSON.parse(fs.readFileSync(path.join(skillRoot, "references", "knowledge-routing.json"), "utf8"));
+  const routedCapabilities = new Set(routing.capabilityRoutes.flatMap(({ matches }) => matches));
+  const catalogCapabilities = [...new Set(catalog.definitions.flatMap(({ capabilities }) => capabilities))].sort();
+  assert.deepEqual(catalogCapabilities.filter((capability) => !routedCapabilities.has(capability)), []);
+
+  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "programmable-routing-capability-closure-")));
+  t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const copiedSkill = path.join(temporary, "skill");
+  fs.cpSync(skillRoot, copiedSkill, { recursive: true });
+  const copiedRoutingPath = path.join(copiedSkill, "references", "knowledge-routing.json");
+  const copiedRouting = JSON.parse(fs.readFileSync(copiedRoutingPath, "utf8"));
+  copiedRouting.capabilityRoutes = copiedRouting.capabilityRoutes.map((route) => ({
+    ...route,
+    matches: route.matches.filter((id) => id !== "v4-claim-client")
+  }));
+  fs.writeFileSync(copiedRoutingPath, `${JSON.stringify(copiedRouting, null, 2)}\n`);
+
+  assert.throws(
+    () => planKnowledge({ mode: "prototype", packs: ["v4-claim-client"], skillRoot: copiedSkill }),
+    (error) => error instanceof KnowledgeRouterError
+      && error.code === "KNOWLEDGE_ROUTING_INVALID"
+      && /v4-claim-client/u.test(error.message)
+  );
+});
+
+test("catalog capabilities defer their exact specialist knowledge routes", () => {
+  const cases = [
+    {
+      pack: "limit-orders-twamm",
+      references: [
+        "references/scenario-matrix.md",
+        "references/v4-hook-lego.md",
+        "references/v4-protocol-mechanics.md"
+      ]
+    },
+    {
+      pack: "v4-claim-client",
+      references: [
+        "references/scenario-matrix.md",
+        "references/v4-protocol-mechanics.md",
+        "references/v4-sdk-integration.md"
+      ]
+    },
+    {
+      pack: "continuous-clearing-auction",
+      references: [
+        "references/scenario-matrix.md",
+        "references/upstream-sources.md"
+      ]
+    },
+    {
+      pack: "test-evidence-threat-model",
+      references: ["references/security-and-evidence.md"]
+    }
+  ];
+
+  for (const { pack, references } of cases) {
+    const result = planKnowledge({ mode: "prototype", packs: [pack], skillRoot });
+    assert.deepEqual(paths(result), ["references/open-world-v2-workflow.md"], pack);
+    for (const reference of references) {
+      const route = deferred(result, reference);
+      assert.ok(route, `${pack}:${reference}`);
+      assert.equal(
+        route.reasons.some((reason) => reason.startsWith("capability:")),
+        true,
+        `${pack}:${reference}`
+      );
+    }
+  }
 });
 
 test("every routing-contract match is known and genuinely unlisted ids remain exact", (t) => {
@@ -1390,8 +1486,415 @@ test("context CLI emits the complete typed split-review plan for 257 capabilitie
   assert.match(help.stdout, /HOLD_SPLIT_REVIEW/u);
 });
 
+test("confirmed activation is digest-bound, delta-only, and promotes the compact v4 reasoning kernel first", () => {
+  const cold = contextCli(["--mode", "autopilot", "--brief"]);
+  assert.equal(cold.status, 0, cold.stdout || cold.stderr);
+  assert.ok(Buffer.byteLength(cold.stdout) < 2_500);
+  const coldOutput = JSON.parse(cold.stdout);
+
+  const activated = contextCli([
+    "--mode", "autopilot",
+    "--capability", "custom-curve",
+    "--surface", "contract",
+    "--activate-confirmed",
+    "--base-profile-digest", coldOutput.result.profileDigest,
+    "--brief"
+  ]);
+  assert.equal(activated.status, 0, activated.stdout || activated.stderr);
+  assert.equal(activated.stderr, "");
+  assert.ok(Buffer.byteLength(activated.stdout) < 2_500, activated.stdout);
+  const output = JSON.parse(activated.stdout).result;
+  assert.equal(output.kind, "programmable-knowledge-activation");
+  assert.equal(output.mode, "autopilot");
+  assert.deepEqual(output.selectors.capabilities.ids, ["custom-curve"]);
+  assert.deepEqual(output.selectors.surfaces.ids, ["contract"]);
+  assert.equal(Object.hasOwn(output, "unknowns"), false);
+  assert.equal(output.baseProfileDigest, coldOutput.result.profileDigest);
+  assert.match(output.selectionDigest, /^[a-f0-9]{64}$/u);
+  assert.match(output.profileDigest, /^[a-f0-9]{64}$/u);
+  assert.equal(output.loadNow.length, 1);
+  assert.equal(output.loadNow[0].path, "references/v4-contract-reasoning-kernel.md");
+  assert.match(output.loadNow[0].sha256, /^[a-f0-9]{64}$/u);
+  assert.ok(output.loadNow[0].bytes > 0 && output.loadNow[0].bytes <= 6_000);
+  assert.equal(output.loadNow[0].reasons.includes("capability:custom-curve"), true);
+  assert.equal(output.loadNow[0].reasons.includes("activation-route:capability:hook-implementation"), true);
+  assert.equal(output.loadNow.some(({ path: reference }) => reference === "references/business-system-compiler.md"), false);
+  assert.equal(output.contextBudget.phase, "confirmed-activation-delta");
+  assert.equal(output.contextBudget.cumulativeEstimatedTokens < 8_000, true, JSON.stringify(output.contextBudget));
+  assert.match(output.fullOutputInstruction, /without --brief/u);
+
+  const repeated = contextCli([
+    "--mode", "autopilot",
+    "--surface", "contract",
+    "--capability", "custom-curve",
+    "--activate-confirmed",
+    "--base-profile-digest", coldOutput.result.profileDigest,
+    "--brief"
+  ]);
+  assert.equal(repeated.status, 0, repeated.stdout || repeated.stderr);
+  assert.equal(repeated.stdout, activated.stdout);
+});
+
+test("confirmed browser-game application activation never introduces v4 context", () => {
+  const cold = JSON.parse(contextCli(["--mode", "autopilot", "--brief"]).stdout).result;
+  const activated = contextCli([
+    "--mode", "autopilot",
+    "--capability", "browser-game",
+    "--surface", "application",
+    "--activate-confirmed",
+    "--base-profile-digest", cold.profileDigest
+  ]);
+  assert.equal(activated.status, 0, activated.stdout || activated.stderr);
+  const output = JSON.parse(activated.stdout).result;
+  assert.deepEqual(output.loadNow.map(({ path: reference }) => reference), ["references/runtime-assets.md"]);
+  assert.equal(
+    [...output.loadNow, ...output.loadLater].some(({ path: reference }) => /v4-(?:protocol|hook|sdk|liquidity)/u.test(reference)),
+    false
+  );
+  assert.equal(output.loadLater[0].path, "references/project-surfaces-and-capabilities.md");
+});
+
+test("confirmed cross-domain activation loads two route-owned specialists under the cumulative budget", () => {
+  const cold = JSON.parse(contextCli(["--mode", "autopilot", "--brief"]).stdout).result;
+  const activated = contextCli([
+    "--mode", "autopilot",
+    "--capability", "browser-game",
+    "--capability", "custom-curve",
+    "--surface", "application",
+    "--surface", "contract",
+    "--activate-confirmed",
+    "--base-profile-digest", cold.profileDigest,
+    "--brief"
+  ]);
+  assert.equal(activated.status, 0, activated.stdout || activated.stderr);
+  assert.equal(activated.stderr, "");
+  assert.ok(Buffer.byteLength(activated.stdout) < 2_500, activated.stdout);
+  const output = JSON.parse(activated.stdout).result;
+  assert.deepEqual(
+    output.loadNow.map(({ path: reference }) => reference),
+    ["references/v4-contract-reasoning-kernel.md", "references/runtime-assets.md"]
+  );
+  assert.equal(output.knowledgeActivation.maximumLoadNow, 2);
+  assert.deepEqual(output.knowledgeActivation.routeIds, ["capability:hook-implementation", "capability:runtime-product"]);
+  assert.equal(output.contextBudget.cumulativeEstimatedTokens < 8_000, true, JSON.stringify(output.contextBudget));
+});
+
+test("confirmed activation keeps a third specialist deferred without overflowing the brief", () => {
+  const cold = JSON.parse(contextCli(["--mode", "autopilot", "--brief"]).stdout).result;
+  const argumentsList = [
+    "--mode", "autopilot",
+    "--capability", "browser-game",
+    "--capability", "chainlink-vrf-v2-5",
+    "--capability", "custom-curve",
+    "--surface", "application",
+    "--surface", "contract",
+    "--surface", "external-provider",
+    "--activate-confirmed",
+    "--base-profile-digest", cold.profileDigest
+  ];
+  const activated = contextCli([...argumentsList, "--brief"]);
+  assert.equal(activated.status, 0, activated.stdout || activated.stderr);
+  assert.ok(Buffer.byteLength(activated.stdout) < 2_500, activated.stdout);
+  const output = JSON.parse(activated.stdout).result;
+  assert.deepEqual(
+    output.loadNow.map(({ path: reference }) => reference),
+    ["references/v4-contract-reasoning-kernel.md", "references/chainlink-provider-integration.md"]
+  );
+  const complete = JSON.parse(contextCli(argumentsList).stdout).result;
+  assert.equal(complete.loadLater.some(({ path: reference }) => reference === "references/runtime-assets.md"), true);
+  assert.equal(Object.hasOwn(output.selectors, "packs"), false);
+  assert.equal(Object.hasOwn(output.selectors, "registryProjects"), false);
+  assert.equal(Object.hasOwn(output, "unknowns"), false);
+});
+
+test("confirmed route specialists cover clients, providers, economics, and repository architecture", () => {
+  const cold = JSON.parse(contextCli(["--mode", "autopilot", "--brief"]).stdout).result;
+  for (const fixture of [
+    {
+      args: ["--capability", "v4-swap-client", "--surface", "application"],
+      expected: ["references/v4-sdk-integration.md"]
+    },
+    {
+      args: ["--capability", "chainlink-vrf-v2-5", "--surface", "external-provider"],
+      expected: [
+        "references/chainlink-provider-integration.md",
+        "references/ethereum-production-invariants.md"
+      ]
+    },
+    {
+      args: ["--capability", "continuous-clearing-auction", "--surface", "contract"],
+      expected: ["references/v4-contract-reasoning-kernel.md"]
+    },
+    {
+      args: ["--capability", "project-spec", "--surface", "other"],
+      expected: [],
+      reusedBasePath: "references/business-system-compiler.md"
+    }
+  ]) {
+    const activated = contextCli([
+      "--mode", "autopilot",
+      ...fixture.args,
+      "--activate-confirmed",
+      "--base-profile-digest", cold.profileDigest,
+      "--brief"
+    ]);
+    assert.equal(activated.status, 0, activated.stdout || activated.stderr);
+    const output = JSON.parse(activated.stdout).result;
+    assert.deepEqual(
+      output.loadNow.map(({ path: reference }) => reference),
+      fixture.expected,
+      JSON.stringify(output)
+    );
+    if (fixture.reusedBasePath !== undefined) {
+      assert.deepEqual(output.knowledgeActivation.reusedBasePaths, [fixture.reusedBasePath]);
+      assert.equal(output.routedLater.paths.includes(fixture.reusedBasePath), false);
+    } else {
+      assert.equal(Object.hasOwn(output.knowledgeActivation, "reusedBasePaths"), false);
+    }
+    assert.ok(output.loadNow.length <= 2, JSON.stringify(output.loadNow));
+    assert.equal(output.contextBudget.cumulativeEstimatedTokens < 8_000, true, JSON.stringify(output.contextBudget));
+  }
+});
+
+test("confirmed activation never reloads or recharges a cold reference", () => {
+  const cold = JSON.parse(contextCli(["--mode", "autopilot", "--brief"]).stdout).result;
+  const activated = contextCli([
+    "--mode", "autopilot",
+    "--capability", "project-spec",
+    "--surface", "other",
+    "--activate-confirmed",
+    "--base-profile-digest", cold.profileDigest,
+    "--brief"
+  ]);
+  assert.equal(activated.status, 0, activated.stdout || activated.stderr);
+  const output = JSON.parse(activated.stdout).result;
+  assert.deepEqual(output.loadNow, []);
+  assert.deepEqual(output.knowledgeActivation.reusedBasePaths, ["references/business-system-compiler.md"]);
+  assert.equal(output.routedLater.paths.includes("references/business-system-compiler.md"), false);
+  assert.equal(output.contextBudget.activation.referenceBytes, 0);
+  assert.equal(
+    output.contextBudget.cumulativeBytes,
+    output.contextBudget.base.contentBytes
+      + output.contextBudget.base.briefOutputBytes
+      + output.contextBudget.activation.outputBytes
+  );
+});
+
+test("a confirmed capability cannot suppress an independently confirmed surface route", () => {
+  const cold = JSON.parse(contextCli(["--mode", "autopilot", "--brief"]).stdout).result;
+  const activated = contextCli([
+    "--mode", "autopilot",
+    "--capability", "project-spec",
+    "--surface", "contract",
+    "--activate-confirmed",
+    "--base-profile-digest", cold.profileDigest,
+    "--brief"
+  ]);
+  assert.equal(activated.status, 0, activated.stdout || activated.stderr);
+  const output = JSON.parse(activated.stdout).result;
+  assert.deepEqual(
+    output.loadNow.map(({ path: reference }) => reference),
+    ["references/v4-contract-reasoning-kernel.md"]
+  );
+  assert.deepEqual(
+    output.knowledgeActivation.reusedBasePaths,
+    ["references/business-system-compiler.md"]
+  );
+  assert.deepEqual(output.knowledgeActivation.routeIds, [
+    "capability:open-world-project-compiler",
+    "surface:contract"
+  ]);
+  assert.equal(output.routedLater.paths.includes("references/v4-contract-reasoning-kernel.md"), false);
+  assert.equal(output.contextBudget.activation.referenceBytes, 5_314);
+});
+
+test("confirmed activation rejects empty, family, and stale-base requests without harming eligibility", () => {
+  const cold = JSON.parse(contextCli(["--mode", "autopilot", "--brief"]).stdout).result;
+  for (const args of [
+    ["--mode", "autopilot", "--activate-confirmed", "--base-profile-digest", cold.profileDigest],
+    ["--mode", "autopilot", "--capability", "hook-implementation", "--activate-confirmed", "--base-profile-digest", cold.profileDigest],
+    ["--mode", "autopilot", "--capability", "custom-curve", "--activate-confirmed", "--base-profile-digest", "0".repeat(64)]
+  ]) {
+    const rejected = contextCli(args);
+    assert.equal(rejected.status, 2, rejected.stdout || rejected.stderr);
+    const output = JSON.parse(rejected.stdout);
+    assert.equal(output.ok, false);
+    assert.equal(output.error.details?.automaticAdverseDecision ?? false, false);
+  }
+
+  const novel = contextCli([
+    "--mode", "autopilot",
+    "--capability", "owner-defined-telepathy",
+    "--activate-confirmed",
+    "--base-profile-digest", cold.profileDigest,
+    "--brief"
+  ]);
+  assert.equal(novel.status, 0, novel.stdout || novel.stderr);
+  const novelOutput = JSON.parse(novel.stdout).result;
+  assert.equal(novelOutput.reviewRoute, "architecture-review-required");
+  assert.equal(novelOutput.ideaEligibility, "ELIGIBLE_FOR_REVIEW");
+  assert.deepEqual(novelOutput.unknowns.capabilities.ids, ["owner-defined-telepathy"]);
+  assert.equal(novelOutput.automaticAdverseDecision, false);
+  assert.equal(novelOutput.loadNow.length, 1);
+});
+
+test("brief output is bounded for oversized selectors and the no-flag envelope remains canonical", () => {
+  const capabilities = numberedIds("brief-capability", 257);
+  const briefArgs = ["--mode", "submit", "--brief"];
+  for (const capability of capabilities) briefArgs.push("--capability", capability);
+  const brief = contextCli(briefArgs);
+  assert.equal(brief.status, 0, brief.stdout || brief.stderr);
+  assert.ok(Buffer.byteLength(brief.stdout) < 2_500, String(Buffer.byteLength(brief.stdout)));
+  const output = JSON.parse(brief.stdout).result;
+  assert.equal(output.selectors.capabilities.count, 257);
+  assert.ok(output.selectors.capabilities.omitted > 0);
+  assert.match(output.selectors.capabilities.sha256, /^[a-f0-9]{64}$/u);
+  assert.equal(output.unknowns.capabilities.count, 257);
+  assert.deepEqual(output.hold, {
+    code: "KNOWLEDGE_SPLIT_REVIEW_REQUIRED",
+    status: "HOLD_SPLIT_REVIEW",
+    ideaEligibility: "ELIGIBLE_FOR_REVIEW",
+    designEligible: true,
+    automaticAdverseDecision: false,
+    automaticMaterialization: false
+  });
+  assert.match(output.fullOutputInstruction, /without --brief/u);
+
+  const cold = JSON.parse(contextCli(["--mode", "submit", "--brief"]).stdout).result;
+  const heldActivationArgs = [
+    "--mode", "submit",
+    "--activate-confirmed",
+    "--base-profile-digest", cold.profileDigest,
+    "--brief"
+  ];
+  for (const capability of capabilities) heldActivationArgs.push("--capability", capability);
+  const heldActivation = contextCli(heldActivationArgs);
+  assert.equal(heldActivation.status, 0, heldActivation.stdout || heldActivation.stderr);
+  assert.ok(Buffer.byteLength(heldActivation.stdout) < 2_500, String(Buffer.byteLength(heldActivation.stdout)));
+  const heldOutput = JSON.parse(heldActivation.stdout).result;
+  assert.equal(heldOutput.hold.status, "HOLD_SPLIT_REVIEW");
+  assert.equal(heldOutput.hold.automaticMaterialization, false);
+  assert.equal(heldOutput.kind, "programmable-knowledge-plan");
+  assert.equal(heldActivation.stdout, brief.stdout);
+
+  const standard = contextCli(["--mode", "autopilot"]);
+  assert.equal(standard.status, 0, standard.stdout || standard.stderr);
+  const expected = `${canonicalJson({
+    schemaVersion: "1.0.0",
+    ok: true,
+    command: "context",
+    result: planKnowledge({ mode: "autopilot", skillRoot })
+  })}\n`;
+  assert.equal(standard.stdout, expected);
+});
+
+test("activation contract is explicit, duplicate-free, hash-bound, and keeps Fee V2 quarantined", (t) => {
+  const activationPath = path.join(skillRoot, "references", "knowledge-activation-v1.json");
+  const activationSource = fs.readFileSync(activationPath, "utf8");
+  parseBoundedLosslessJson(activationSource);
+  const activation = JSON.parse(activationSource);
+  const routing = JSON.parse(fs.readFileSync(path.join(skillRoot, "references", "knowledge-routing.json"), "utf8"));
+  assert.equal(activation.kind, "programmable-knowledge-activation");
+  assert.equal(activation.schemaVersion, "1.1.0");
+  assert.equal(activation.selectionSemantics, "confirmed-route-specialists-up-to-two");
+  assert.equal(activation.maximumLoadNow, 2);
+  assert.equal(activation.cumulativeEstimatedTokenTarget, 8_000);
+  assert.deepEqual(activation.quarantinedReferences, ["programmable-fee-policy-v2.md"]);
+  assert.deepEqual(
+    activation.routeSelections
+      .filter(({ routeKind }) => routeKind === "capability")
+      .map(({ routeId }) => routeId)
+      .sort(),
+    routing.capabilityRoutes.map(({ id }) => id).sort()
+  );
+  assert.deepEqual(
+    activation.routeSelections
+      .filter(({ routeKind }) => routeKind === "surface")
+      .map(({ routeId }) => routeId)
+      .sort(),
+    routing.surfaceRoutes.map(({ id }) => id).sort()
+  );
+  assert.deepEqual(
+    activation.ordering.map(({ stage, order, path: reference }) => `${stage}:${order}:${reference}`),
+    [...activation.ordering]
+      .sort((left, right) => left.stage - right.stage || left.order - right.order || Buffer.compare(Buffer.from(left.path), Buffer.from(right.path)))
+      .map(({ stage, order, path: reference }) => `${stage}:${order}:${reference}`)
+  );
+
+  const cold = JSON.parse(contextCli(["--mode", "autopilot", "--brief"]).stdout).result;
+  const fee = contextCli([
+    "--mode", "autopilot",
+    "--capability", "standard-programmable-fee-hook",
+    "--surface", "contract",
+    "--activate-confirmed",
+    "--base-profile-digest", cold.profileDigest
+  ]);
+  assert.equal(fee.status, 0, fee.stdout || fee.stderr);
+  const feeOutput = JSON.parse(fee.stdout).result;
+  assert.equal(feeOutput.loadNow.some(({ path: reference }) => reference === "references/programmable-fee-policy-v2.md"), false);
+  assert.equal(feeOutput.loadLater.some(({ path: reference }) => reference === "references/programmable-fee-policy-v2.md"), false);
+  assert.equal(feeOutput.deferredCatalog.some(({ path: reference }) => reference === "references/programmable-fee-policy-v2.md"), true);
+
+  const temporary = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "programmable-activation-binding-")));
+  t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+  const copiedSkill = path.join(temporary, "skill");
+  fs.cpSync(skillRoot, copiedSkill, { recursive: true });
+  const copiedCold = JSON.parse(contextCliAt(copiedSkill, ["--mode", "autopilot", "--brief"]).stdout).result;
+  const args = [
+    "--mode", "autopilot",
+    "--capability", "custom-curve",
+    "--surface", "contract",
+    "--activate-confirmed",
+    "--base-profile-digest", copiedCold.profileDigest
+  ];
+  const before = JSON.parse(contextCliAt(copiedSkill, args).stdout).result;
+  fs.appendFileSync(path.join(copiedSkill, "references", "v4-contract-reasoning-kernel.md"), "\nBinding mutation.\n");
+  const after = JSON.parse(contextCliAt(copiedSkill, args).stdout).result;
+  assert.notEqual(after.loadNow[0].sha256, before.loadNow[0].sha256);
+  assert.notEqual(after.profileDigest, before.profileDigest);
+
+  const quarantinedRule = activationSource.replace(
+    '"reference": "v4-contract-reasoning-kernel.md",',
+    '"reference": "programmable-fee-policy-v2.md",'
+  );
+  assert.notEqual(quarantinedRule, activationSource);
+  fs.writeFileSync(path.join(copiedSkill, "references", "knowledge-activation-v1.json"), quarantinedRule);
+  const rejectedQuarantine = contextCliAt(copiedSkill, args);
+  assert.equal(rejectedQuarantine.status, 2, rejectedQuarantine.stdout || rejectedQuarantine.stderr);
+  assert.equal(JSON.parse(rejectedQuarantine.stdout).error.code, "KNOWLEDGE_ACTIVATION_INVALID");
+
+  fs.writeFileSync(path.join(copiedSkill, "references", "knowledge-activation-v1.json"), activationSource);
+  const missingRoute = JSON.parse(activationSource);
+  missingRoute.routeSelections = missingRoute.routeSelections.slice(1);
+  fs.writeFileSync(
+    path.join(copiedSkill, "references", "knowledge-activation-v1.json"),
+    `${JSON.stringify(missingRoute, null, 2)}\n`
+  );
+  const rejectedIncompleteCoverage = contextCliAt(copiedSkill, args);
+  assert.equal(rejectedIncompleteCoverage.status, 2, rejectedIncompleteCoverage.stdout || rejectedIncompleteCoverage.stderr);
+  assert.equal(JSON.parse(rejectedIncompleteCoverage.stdout).error.code, "KNOWLEDGE_ACTIVATION_INVALID");
+
+  const duplicate = activationSource.replace(
+    '"maximumLoadNow": 2,',
+    '"maximumLoadNow": 2,\n  "maximumLoadNow": 2,'
+  );
+  assert.notEqual(duplicate, activationSource);
+  assert.throws(() => parseBoundedLosslessJson(duplicate), /duplicate key/u);
+});
+
 function paths(result) {
   return result.loadNow.map(({ path: reference }) => reference);
+}
+
+function contextCli(args) {
+  return contextCliAt(skillRoot, args);
+}
+
+function contextCliAt(root, args) {
+  return childProcess.spawnSync(process.execPath, [path.join(root, "scripts", "cli.mjs"), "context", ...args], {
+    encoding: "utf8",
+    shell: false
+  });
 }
 
 function deferred(result, reference) {

@@ -3,12 +3,11 @@
 import process from "node:process";
 
 import { CliFailure, emitFailure, emitSuccess } from "./cli-runtime.mjs";
-import { createGhTransport } from "./github-application-transport-core.mjs";
 import {
   currentSubmitLaunchBuildRequirements,
   normalizeSubmitLaunchBuildPolicyBinding
 } from "./submit-launch-policy-contract.mjs";
-import { resolveSubmitLaunchPolicyWithTransport } from "./submit-launch-policy-github.mjs";
+import { resolveCurrentSubmitLaunchPolicy } from "./submit-launch-policy-github.mjs";
 
 const usage = `Usage: current-launch-requirements.mjs
 
@@ -25,7 +24,7 @@ if (args.length === 1 && new Set(["--help", "-h"]).has(args[0])) {
   ));
 } else {
   try {
-    const resolved = await resolveSubmitLaunchPolicyWithTransport({ transport: createGhTransport() });
+    const resolved = await resolveCurrentSubmitLaunchPolicy();
     const policyBinding = normalizeSubmitLaunchBuildPolicyBinding(resolved.buildPolicyBinding);
     const requirements = currentSubmitLaunchBuildRequirements(resolved);
     emitSuccess("policy", {
