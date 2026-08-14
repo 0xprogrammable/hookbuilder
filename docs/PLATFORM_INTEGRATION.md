@@ -67,9 +67,13 @@ arrays and limit of eight companion repositories describe the historical v1 inta
 limits on open-world v2, silently rewritten into v3, or used as evidence that a v2 application was accepted. A v2/v3
 migration creates a new revision with explicit lineage and no inherited approval.
 
-## Economic and administrative identities
+## Optional legacy economic and administrative identities
 
-The immutable Programmable fee owner and sole claim authority is:
+Current Programmable requirements come only from the exact central Submit Launch policy and applicable Rule IDs. The
+identities and economics below belong to the frozen Fee V2 package and apply only when preserved intent or a current
+Rule explicitly selects that exact package. They are not universal launch requirements.
+
+Inside that selected package, the immutable fee owner and sole claim authority is:
 
 ```text
 0x4957f49620AFf3Adbbe8195a4f633E49cc93376c
@@ -81,7 +85,7 @@ The separate platform administration wallet is:
 0x2Bb333d48DFAF1596D9036671d2E43168994249E
 ```
 
-For every `programmable-canonical` Fee V2 execution scope, exactly 10 bps of executed gross quote-side volume belongs
+For every `programmable-canonical` Fee V2 execution scope inside that selected package, exactly 10 bps of executed gross quote-side volume belongs
 to the immutable fee owner. A builder-selected total charge is inclusive: a selected 3% is split into 0.1% for
 Programmable and 2.9% for the project, not raised to 3.1%; a zero project fee still produces the 0.1% platform share.
 The admin may operate only explicitly assigned platform controls and may never claim, redirect, sweep or replace that

@@ -20,6 +20,7 @@ import {
   showRegistryProject
 } from "../registry-discovery-core.mjs";
 import { canonicalJson } from "../submission-core.mjs";
+import { validateProjectRecord } from "../registry-discovery-validation.mjs";
 
 // The portable verifier deliberately runs the aggregate suite with the
 // installed skill root as its working directory. Resolve package fixtures from
@@ -126,6 +127,19 @@ test("show and compare return hash-verified full records with explicit boundarie
   const comparison = await compareRegistryProjects(session, "classic", "deep");
   assert.deepEqual(comparison.common.capabilities, ["locked-liquidity", "programmable-volume-fee"]);
   assert.match(comparison.trustBoundary, /not a compatibility/u);
+});
+
+test("Registry discovery preserves frozen Submit-owned v1 economics and rejects unowned future versions", () => {
+  const legacy = structuredClone(snapshot.projects[0].record);
+  const summary = structuredClone(snapshot.index.records.find(({ id }) => id === legacy.id));
+  const driftedLegacy = structuredClone(legacy);
+  delete driftedLegacy.economics.programmableFee;
+  assert.throws(() => validateProjectRecord(driftedLegacy, summary), hasCode("REGISTRY_RECORD_INVALID"));
+
+  const unownedFutureNoFee = structuredClone(legacy);
+  unownedFutureNoFee.schemaVersion = "2.0.0";
+  unownedFutureNoFee.economics = { summary: "Project-owned economics are described without a local platform fee requirement." };
+  assert.throws(() => validateProjectRecord(unownedFutureNoFee, summary), hasCode("REGISTRY_RECORD_INVALID"));
 });
 
 test("offline snapshot tampering fails closed before discovery", (t) => {

@@ -2,6 +2,64 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.8.0 - 2026-08-14
+
+### Added
+
+- Added a closed current-requirements boundary that returns every active central `build` Rule ID with exact protected
+  Submit a Launch repository, commit, tree, blob, byte, schema, and digest provenance.
+
+### Changed
+
+- Made the central build profile the complete Programmable launch requirement set. Bundled security, v4, and EVM
+  guidance remains engineering validation and cannot add a separate platform requirement.
+- Bound release preparation to Submit a Launch policy `1.2.0`, whose single active build rule requires Ethereum mainnet
+  and a 10 bps Programmable treasury share.
+
+### Security
+
+- Reject caller-authored, unavailable, stale, or drifted policy records instead of falling back to bundled criteria.
+- Preserve independent audit, approval, deployment, routing, and launch authorities; production launch remains disabled.
+
+### Evidence boundary
+
+- A successful local build or policy check remains `NOT_APPROVED` and does not prove audit, acceptance, deployment,
+  public routing, real-funds readiness, or launch authority.
+- The package is not public until the exact v0.8.0 tag, GitHub Release, assets, protected CI, and installed bytes are
+  independently verified.
+
+## 0.7.0 - 2026-08-14
+
+### Added
+
+- Added a central Submit a Launch policy and schema client that binds the exact repository identity, branch, commit,
+  tree, path, bytes, and digest used for each decision.
+- Added a preview-only `prepare-canary` flow that derives one canonical hidden workflow-canary Application V1 from the
+  exact central schema and reports its exact bytes and SHA-256 digest.
+
+### Changed
+
+- Replaced current bundled platform-policy decisions with the central Submit a Launch policy while keeping frozen V1
+  and retired V2 material explicitly historical and non-authoritative.
+- Routed Builder output, application preparation, fee applicability, and related checks through one central-policy
+  boundary so a policy revision is consumed without duplicating current launch rules across agents.
+
+### Security
+
+- Recheck the required branch, repository ID, commit, tree, policy, schema, source revision, and output assumptions at
+  their use boundaries; any drift fails closed.
+- Keep the canary client free of candidate-source execution and GitHub, review, audit, routing, launch, deployment, or
+  funds authority. Automated local writing remains fail-closed; preview is the only enabled path.
+
+### Evidence boundary
+
+- At private candidate freeze, bundled lifecycle retains `publicationStateVerified: false`; the source tree is not
+  evidence that v0.7.0 is published or live.
+- Release preparation observed Submit a Launch `v1.5.0` on `main` at one exact commit and tree with the
+  expected central policy digest. Runtime use still resolves current protected `main` and invalidates stale bindings.
+- Package, test, policy, and canary validation do not by themselves prove public release, independent audit, project
+  approval, launch authority, deployment, routing, or live behavior.
+
 ## 0.6.0 - 2026-08-13
 
 ### Added
@@ -218,7 +276,7 @@ All notable Builder changes are recorded here. Historical releases remain immuta
   passed prototype gates.
 
 Historical candidate note: this candidate was local and unpublished, and its public predecessor at preparation time
-was `v0.4.0`. That announcement was later superseded by `v0.5.1`; current stable public guidance is `v0.6.0`.
+was `v0.4.0`. That announcement was later superseded by `v0.5.1`; current release guidance is `v0.8.0`.
 
 Compatibility note: a package prepared by `v0.4.0` remains bound to its original platform-repository pull request.
 Continue its status and update journey with the pinned `v0.4.0` client; do not silently move its Git history or package

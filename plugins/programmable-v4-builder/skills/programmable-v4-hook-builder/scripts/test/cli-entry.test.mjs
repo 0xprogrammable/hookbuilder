@@ -35,7 +35,7 @@ test("doctor defaults to a concise readiness result and preserves full JSON on r
     const summaryOutput = JSON.parse(summary.stdout);
     assert.equal(summaryOutput.result.status, "LOCAL_REPOSITORY_READY");
     assert.equal(summaryOutput.result.ready.repositoryWork, true);
-    assert.equal(summaryOutput.result.ready.publicBeta, false);
+    assert.equal(summaryOutput.result.ready.currentApplicationTransport, false);
     assert.equal(Object.hasOwn(summaryOutput.result, "tools"), false);
 
     const result = runCli(["doctor", "--json", "--repository-root", fixture.repository]);
@@ -47,26 +47,18 @@ test("doctor defaults to a concise readiness result and preserves full JSON on r
     assert.equal(output.ok, true);
     assert.equal(output.result.repositoryRoot, fixture.repository);
     assert.equal(output.result.readyForDeterministicPreflight, true);
-    assert.equal(
-      output.result.readyForApplicationV3Preparation,
-      output.result.readyForRepositoryWork
-        && output.result.runtimeCompatibility.applicationV3.platformSupported
-        && output.result.runtimeCompatibility.applicationV3.exactObjectGit.status === "ready"
-    );
-    assert.equal(
-      output.result.applicationV3SubmissionToolchainAvailable,
-      output.result.readyForApplicationV3Preparation && output.result.githubCli.available
-    );
+    assert.equal(output.result.readyForApplicationV3Preparation, false);
+    assert.equal(output.result.applicationV3SubmissionToolchainAvailable, false);
     assert.equal(output.result.readyForApplicationV3Submission, false);
     assert.equal(output.result.readyForPublicBeta, false);
-    assert.equal(output.result.githubCli.requiredForPublicBetaApplication, true);
+    assert.equal(output.result.applicationV3Lifecycle, "frozen-legacy");
+    assert.equal(output.result.githubCli.requiredForPublicBetaApplication, false);
+    assert.equal(output.result.githubCli.requiredOnlyForFrozenLegacyApplicationV3, true);
     assert.equal(output.result.githubCli.authenticationChecked, false);
-    assert.equal(output.result.readyForGitHubApplicationClient, output.result.githubCli.available);
-    assert.ok(output.result.publicBetaBlockers.includes("GITHUB_AUTHENTICATION_NOT_CHECKED"));
-    assert.ok(output.result.publicBetaBlockers.includes("PUBLIC_GIT_REACHABILITY_NOT_CHECKED"));
-    assert.ok(output.result.publicBetaBlockers.includes("EXTERNAL_ACCEPTANCE_NOT_CHECKED"));
-    assert.equal(output.result.publicBetaGit.publicReachability.status, "notChecked");
-    assert.equal(output.result.publicBetaGit.readyForPreparePrLocal, false);
+    assert.equal(output.result.readyForGitHubApplicationClient, false);
+    assert.deepEqual(output.result.publicBetaBlockers, ["FROZEN_LEGACY_APPLICATION_V3_NOT_CURRENT"]);
+    assert.equal(output.result.runtimeCompatibility.frozenLegacyApplicationV3.lifecycle, "frozen-legacy");
+    assert.equal(Object.hasOwn(output.result, "publicBetaGit"), false);
   } finally {
     fixture.cleanup();
   }
@@ -145,7 +137,8 @@ test("doctor defaults to the installed plugin root when the host cwd is not a Gi
   assert.equal(output.result.readyForRepositoryWork, false);
   assert.equal(output.result.readyForApplicationV3Preparation, false);
   assert.equal(output.result.readyForApplicationV3Submission, false);
-  assert.equal(output.result.publicBetaGit.gitRepository.status, "missing");
+  assert.equal(output.result.applicationV3Lifecycle, "frozen-legacy");
+  assert.equal(Object.hasOwn(output.result, "publicBetaGit"), false);
 });
 
 test("scaffold and check route through the canonical scripts with concise default diagnostics", () => {

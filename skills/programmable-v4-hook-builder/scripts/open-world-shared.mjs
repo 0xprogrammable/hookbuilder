@@ -21,9 +21,12 @@ import {
   OPEN_WORLD_V2_ARTIFACTS,
   OPEN_WORLD_V2_OPTIONAL_SUPPORTING_ARTIFACTS,
   OPEN_WORLD_V2_SUPPORTING_ARTIFACTS,
+  createLegacyFeeV2DraftPackage,
   createOpenWorldDraftPackage,
   deriveOpenWorldV2FeeApplicability,
   isRepositorySchemaBinding,
+  validateLegacyFeeV2OpenWorldPackage,
+  validateLegacyFeeV2OpenWorldV2Package,
   validateOpenWorldPackage,
   validateOpenWorldV2Package
 } from "./open-world-v2-core.mjs";
@@ -88,9 +91,12 @@ export {
   OPEN_WORLD_V2_ARTIFACTS,
   OPEN_WORLD_V2_OPTIONAL_SUPPORTING_ARTIFACTS,
   OPEN_WORLD_V2_SUPPORTING_ARTIFACTS,
+  createLegacyFeeV2DraftPackage,
   createOpenWorldDraftPackage,
   deriveOpenWorldV2FeeApplicability,
   isRepositorySchemaBinding,
+  validateLegacyFeeV2OpenWorldPackage,
+  validateLegacyFeeV2OpenWorldV2Package,
   validateOpenWorldPackage,
   validateOpenWorldV2Package,
   deriveDependencyAwareSecurityAssessment,
@@ -175,7 +181,6 @@ export const EXPECTED_MIGRATION_FILES = Object.freeze([
 ]);
 export const EXPECTED_DRAFT_FILES = Object.freeze([
   "architecture-decisions.v1.json",
-  "fee-policy-v2.schema.json",
   "idea-source.v1.json",
   "intent-contract.v1.json",
   "intent-fidelity.v1.json",

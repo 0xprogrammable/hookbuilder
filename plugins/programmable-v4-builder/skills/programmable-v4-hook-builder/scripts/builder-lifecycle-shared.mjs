@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { canonicalJson } from "./submission-core.mjs";
 
 export const BUILDER_LIFECYCLE_SCHEMA_VERSION = "1.0.0";
-export const BUNDLED_BUILDER_VERSION = "0.6.0";
+export const BUNDLED_BUILDER_VERSION = "0.8.0";
 export const BUNDLED_BUILDER_CHANNEL = "stable";
 export const BUNDLED_BUILDER_PUBLICATION_STATE = "release-package";
 export const NORMAL_RELEASE_WINDOW_MS = 24 * 60 * 60 * 1_000;

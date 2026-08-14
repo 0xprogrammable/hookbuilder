@@ -21,6 +21,7 @@ const {
   executeMigrate,
   executePrepareRevision,
   executeValidate,
+  executeValidateLegacyFeeV2,
   executeValidateApplication,
   githubStatusCommandSpec,
   githubTransportCommandSpec,
@@ -33,7 +34,7 @@ const {
 const commandSpecs = new Map([
   ["init", {
     usage: "open-world.mjs init --application-id <slug> --idea-file <public-safe.txt> --output <new-directory> [--write | --dry-run] [--repository-root <path>]",
-    summary: "Capture one exact public-safe idea into an unconfirmed proposal with versioned fee/security schemas and an honest unassessed proposal-stage security record; preview by default, while a scoped fee instance comes only after architecture and source assessment.",
+    summary: "Capture one exact public-safe idea into an unconfirmed proposal with a versioned security schema and an honest unassessed proposal-stage security record; preview by default, while any legacy fee package requires explicit preserved intent or an applicable current central Rule ID.",
     options: [
       repositoryOption(),
       { name: "--application-id", key: "applicationId", type: "value", valueName: "slug", description: "Set the lowercase application slug for the new draft." },
@@ -50,9 +51,15 @@ const commandSpecs = new Map([
     options: [repositoryOption()],
     positionals: { min: 1, max: 1, names: ["package-directory"] }
   }],
+  ["validate-legacy-fee-v2", {
+    usage: "open-world.mjs validate-legacy-fee-v2 <package-directory> [--repository-root <path>]",
+    summary: "Validate one explicit frozen Fee V2 replay or migration package; this compatibility entrypoint creates no current platform rule, approval, or Applicant authority.",
+    options: [repositoryOption()],
+    positionals: { min: 1, max: 1, names: ["package-directory"] }
+  }],
   ["validate-application", {
     usage: "open-world.mjs validate-application <application-v3-package> [--source-root <repository-ref=git-root>...]",
-    summary: "Validate one closed Application V3 package, exact hashes, public-artifact privacy, persisted source evidence, and optional fresh local source closure without network access, writes, or candidate-code execution.",
+    summary: "Validate one frozen legacy Application V3 package without network access, writes, or candidate-code execution; it is not the current Applicant path.",
     options: [
       { name: "--source-root", key: "sourceRoots", type: "value", repeatable: true, valueName: "repository-ref=git-root", description: "Optionally replay every declared source repository from its exact local Git root; when supplied, mappings must cover the complete declared source set." }
     ],
@@ -71,7 +78,7 @@ const commandSpecs = new Map([
   }],
   ["application", {
     usage: "open-world.mjs application <v2-package-directory> --application-draft <application.v3.json> --review-package <directory> --security-assessment <json> --security-evidence-bindings <json> --source-root <repository-ref>=<git-root>... --output <absolute-new-directory> [--write | --dry-run] [--repository-root <path>]",
-    summary: "After the source prototype is committed, verify every exact manifest and review binding, derive self-reference-free security/report records, and preview a canonical public Application V3 package; explicit --write creates it atomically outside every source repository.",
+    summary: "Replay the frozen legacy Application V3/Fee V2 package locally; it is not current Programmable admission. Explicit --write creates only the compatibility package.",
     options: [
       repositoryOption(),
       { name: "--application-draft", key: "applicationDraft", type: "value", valueName: "application.v3.json", description: "Read the V3 metadata/source template; application-package review, security, and verifier records are replaced by exact derived bindings." },
@@ -87,7 +94,7 @@ const commandSpecs = new Map([
   }],
   ["prepare-revision", {
     usage: "open-world.mjs prepare-revision <application-v3-draft.json> --source-root <repository-ref=git-root>... [--predecessor-source-root <repository-ref=git-root>...] --output <absolute-new-directory> [--write | --dry-run] [--repository-root <path>]",
-    summary: "Use authenticated GET-only GitHub reads plus exact local source snapshots to derive the unique next Application V3 revision; preview by default, while --write creates one new atomic local directory.",
+    summary: "Derive the next frozen legacy Application V3 revision with GET-only GitHub reads; this compatibility lane is not the current Applicant path.",
     options: [
       repositoryOption(),
       { name: "--source-root", key: "sourceRoots", type: "value", repeatable: true, valueName: "repository-ref=git-root", description: "Map every declared source repository ID to its exact local Git root for pre-network and pre-rename replay." },
@@ -122,6 +129,8 @@ if (argv.length === 0 || argv[0] === "--help" || argv[0] === "-h") {
         ? executeInit(parsed.options)
         : command === "validate"
           ? executeValidate(parsed.options, parsed.positionals)
+          : command === "validate-legacy-fee-v2"
+            ? executeValidateLegacyFeeV2(parsed.options, parsed.positionals)
           : command === "validate-application"
             ? await executeValidateApplication(parsed.options, parsed.positionals)
           : command === "migrate"

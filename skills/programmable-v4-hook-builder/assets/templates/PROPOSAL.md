@@ -9,7 +9,7 @@
 **Applicant state:** Concept only | Executable prototype
 **Platform capabilities required:** List exact capability ids or `none identified`
 **Package contract:** Exact package id/digest, trusted validator revision, target base, and allowed files
-**Policy provenance:** Exact skill revision, approval-criteria revision/digest, and fee-policy version
+**Programmable policy provenance:** Exact central policy/schema binding and selected profile, or `not evaluated`
 
 {{MODEL_SUMMARY}}
 
@@ -27,7 +27,7 @@
 | Responsibility split | Value-critical onchain enforcement, authenticated offchain computation or data, display-only logic, platform modules and providers |
 | Efficiency | Capital use, gas, latency, liquidity fragmentation, operating dependencies and review complexity |
 | Expert routing | Current slice, at most one build specialist, at most one assurance specialist and bounded handback, or `none` |
-| First vertical slice | Mechanism, protocol, minimum experience, operations and admission pieces required for one closed loop |
+| First vertical slice | Mechanism, protocol, minimum experience, operations, and applicable central Rule-ID evidence for one closed loop |
 | Non-goals | Speculative features deliberately excluded from this revision |
 | Safe defaults | Every automatically selected reversible technical choice |
 | Material facts | Prompt- or evidence-sourced money, custody, authority, trust, legal and terminal decisions |
@@ -46,7 +46,7 @@ behavior, source, plan and tests are.
 | During a trade | Exact behavior by direction and exactness |
 | Value | Every fee, reward, recipient, custody owner, claim, and exit |
 | Creator choices | Launch-time parameters and immutable bounds |
-| Fixed platform rules | Behavior a creator cannot change |
+| Applicable central rules and fixed project invariants | Exact current Rule IDs plus behavior the project itself fixes |
 | Authorities | Every mutable capability and controller |
 | Dependencies | Stable ids, exact provenance, trust, failure, and fallback |
 | Failure | Revert, retry, fallback, unwind, migration, or retirement |
@@ -60,15 +60,9 @@ confirmed design.
 
 ## Why Uniswap v4 and architecture choice
 
-Explain why the project uses Uniswap v4. State `hook.used` explicitly. Here `true` means any nonzero hook address on the
-declared canonical fee pool, including a project-specific standard Programmable profile; it is mechanically the schema's
-custom-hook route even without custom product behavior. Name the profile as `standard-programmable` or
-`integrated-custom` in prose until the released schema adds a typed field.
-
-- If false, select the applicable proposal route, set `programmableFee.collection.status` to
-  `pending-hook-integration`, and state that the design is not prototype- or launch-ready.
-- If true, state whether the project implements the standard Programmable fee-hook profile or integrates the fee policy
-  into its one custom hook. Bind exact source and tests; neither path is pre-reviewed by this template.
+Explain whether and why the project uses Uniswap v4, and state `hook.used` explicitly. If true, bind the exact hook
+identity, behavior, permissions, source, and tests. If false, explain the selected architecture and do not invent a hook
+or fee integration. This template does not decide Programmable eligibility; only applicable current central Rule IDs do.
 
 Also state which behavior belongs in contracts, the app or game, and any service, keeper, oracle, or indexer. Do not move
 an offchain concern into a hook merely to fill this template.
@@ -82,13 +76,10 @@ with a reason.
 
 ## Executable launch plan
 
-For launch admission, bind the exact data-only launch-plan path and hash from the public applicant repository. Include
-that path in the exact Application V3 source closure and summarize its deployable targets, ABI-checked constructor and
-initializer arguments, dependency order, address locators, CREATE2
-permission mining, PoolKey and initial price, allocations, liquidity and canonical-position custody, platform capability
-ids, atomicity boundaries, failure behavior, and postconditions. Text-only post-deployment instructions are not an
-executable plan. Do not invent an unversioned central field when the released Application V3 schema can only bind the
-plan through content-addressed public source and review evidence.
+When project intent or an applicable current central Rule ID requires an executable launch plan, bind its exact public
+path and hash and include that path in the exact source closure. Summarize only applicable deployable targets, ABI-checked
+arguments, dependency order, address locators, CREATE2 inputs, PoolKey, initial price, allocations, liquidity, custody,
+platform capabilities, atomicity, failure behavior, and postconditions. Do not invent an unversioned central field.
 
 When the resolved target contract explicitly selects Launch Graph V1, compile the plan with
 `cli.mjs launch-plan-graph compile <input.json>` and bind both schemas, exact input and deterministic output hashes. Its
@@ -116,16 +107,16 @@ and events. Missing support for the wider shape is a platform capability gate af
 
 If `hook.used` is true, also record all 14 permission booleans, the derived mask, PoolManager authentication, callback
 sender meaning, hookData policy, return shapes, and nested-action suppression. If false, state that no custom callback,
-permission mask, or hook CREATE2 address applies and that mandatory fee integration remains changes-required.
+permission mask, or hook CREATE2 address applies. Do not invent a fee hook or another callback to satisfy a local
+template. Add one only when the preserved project intent or an applicable current central-policy Rule ID requires it.
 
 ## Product integration plan
 
 State whether each surface is planned, not used with a reason, or blocked. A proposal defines the boundary; it does not
 claim that the product or a third-party provider implements it.
 
-For a prototype, mirror the plan in `submission.json.integration.platformHandoff`. Contributor review stays
-`not-requested` or `pending-maintainer-review`; maintainer review remains required, self-approval remains false, and
-availability remains unclaimed.
+For a prototype, mirror the plan in `submission.json.integration.platformHandoff`. Record review state truthfully and
+address only review evidence required by applicable current central Rule IDs. Never self-approve or claim availability.
 
 | Surface | Intended behavior | Source of truth | Inputs and outputs | Failure or unsupported state | Planned paths and tests |
 | --- | --- | --- | --- | --- | --- |
@@ -144,7 +135,11 @@ compatibility, local tests, or Programmable acceptance.
 
 ## Fees, recipients, and settlement
 
-Start with the root `programmableFee` record. State:
+Describe only fee behavior preserved by project intent or selected by an applicable current central Rule ID. Do not
+create a platform fee, recipient, hook, scope, or `programmableFee` record from this template.
+
+If and only if the exact frozen Fee V2 implementation package was explicitly selected, bind the root `programmableFee`
+record and state:
 
 - `effective=max(selected total,10 bps)`, exactly `10 bps` to Programmable, and only the remainder to the project;
 - the worked examples `0 -> 10 bps + 0` and `3% -> 0.1% + 2.9%`, never `3.1%`;
@@ -186,9 +181,10 @@ approval; name the tested fallback when an external provider does not support th
 
 Provide one numerical example for each fee or accounting rule the project introduces, including rounding, value
 conservation, and one failure case. Cover all four swap quadrants as supported-and-charged or unsupported-and-rejected
-before movement. The mandatory fee applies to every successful supported mode; it does not force a design to expose a
-mode that its complete hook/router/quoter/UI boundary safely rejects. For zero-core-AMM custom accounting, prove final
-positive user output, backing, conservation, exactness/slippage, deadline, and refunds.
+before movement. For every fee rule actually selected by project intent or required by an applicable current
+central-policy Rule ID, cover every successful supported mode; the rule does not force a design to expose a mode that
+its complete hook/router/quoter/UI boundary safely rejects. For zero-core-AMM custom accounting, prove final positive
+user output, backing, conservation, exactness/slippage, deadline, and refunds.
 
 ## Fact provenance
 

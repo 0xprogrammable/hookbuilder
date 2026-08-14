@@ -1,15 +1,16 @@
 # Agent entry and application contract
 
-This reference separates the active **Public Applicant Beta** from a later **Connected Submission service**. Builders
-keep source externally and use the Skill to prepare one exact six-file application for
-`0xprogrammable/submit-launch` (immutable GitHub ID `1320171831`). The GitHub transport is draft-only, needs no GitHub
-App credential, and proves no approval, wallet control, signature, deployment, or launch. Connected-service contracts
-later in this file are inactive future designs.
+This reference preserves the frozen six-file **Public Applicant Beta** transport and separates it from current central
+policy consumption and a later **Connected Submission service**. The six-file `prepare-pr` path is historical replay
+only; it is not the current/default application transport and its local Fee V1/V2 fields define no current requirement.
+Current work binds protected central policy and workflow-canary contracts. It exposes no general application
+transport; the dedicated `prepare-canary` client is an exact preview-only canary path whose automated local-write
+boundary fails closed until a portable descriptor-bound writer exists.
 
 ## Contents
 
 - [Product boundary](#product-boundary)
-- [Current Public Applicant Beta](#current-public-applicant-beta)
+- [Frozen Public Applicant Beta](#frozen-public-applicant-beta)
 - [Default entry](#default-entry)
 - [First agent behavior](#first-agent-behavior)
 - [Knowledge ownership](#knowledge-ownership)
@@ -36,20 +37,22 @@ later in this file are inactive future designs.
 ## Product boundary
 
 Programmable does not provide a separate chat interface. The builder uses Codex, Claude Code, Hermes, GitHub Copilot,
-or another capable coding agent. The Programmable skill supplies the workflow, rules, schemas, validators, and current
-platform context that the agent needs.
+or another capable coding agent. The skill supplies the workflow, universal engineering knowledge, local build schemas,
+validators, and a strict client for exact protected central-policy bytes.
 
-The skill is the technical engine. In the current beta, the website may provide discovery and installation entry
-points, while GitHub hosts the public source and application review thread. A later Connected Submission service may
-add human identity binding, service-backed application status, review results, and an approved launch handoff.
+The skill is the technical engine. The website may provide discovery and installation entry points. The protected
+central workflow-canary contract, rather than the frozen six-file transport below, defines current canary input. A
+later Connected Submission service may add human identity binding, service-backed application status, review results,
+and an approved launch handoff.
 
-The skill must make the declared project reviewable, whether it uses a launch-ready fee hook, a proposal-only no-hook path,
-or additional app, game, service, keeper, or indexer surfaces. It must never promise that generated code is perfect,
-safe, audited, accepted, deployed, or available.
+The skill must make the declared project reviewable whether it uses a product-selected hook, a no-hook path, or
+additional app, game, service, keeper, or indexer surfaces. Only applicable current central-policy Rule IDs determine
+Programmable requirements. The skill must never promise that generated code is perfect, safe, audited, accepted,
+deployed, or available.
 
-## Current Public Applicant Beta
+## Frozen Public Applicant Beta
 
-The current application boundary is deliberately small:
+The following boundary is retained only for exact historical replay:
 
 ```text
 idea or existing project
@@ -76,7 +79,7 @@ submissions/<application-id>/compatibility-report.json
 submissions/<application-id>/evidence-index.json
 ```
 
-`prepare-pr` performs no GitHub write. `submit` and `update` first return a read-only plan; only the exact confirmed plan
+Legacy `prepare-pr` performs no GitHub write. Legacy `submit` and `update` first return a read-only plan; only the exact confirmed plan
 may create or update the authenticated builder's `submit-launch` fork, branch, and one draft pull request. The client
 binds the exact central commit/tree and reads `docs/builder/intake-status.json` as schema `2` before every write. A
 state or base change invalidates the plan.
@@ -134,24 +137,26 @@ Keep stable and mutable knowledge separate.
 The installed package owns:
 
 - The idea, preflight, prototype, repair, review, and submission workflow
-- Programmable compatibility and security policy
-- Uniswap v4 implementation and evidence requirements
-- Submission schemas and templates
+- Universal Uniswap v4 and EVM implementation/security knowledge
+- Local build schemas and templates that are not Programmable admission authority
 - Deterministic validators and package hashing
-- Required tests, threat model, value-flow, routing, and lifecycle evidence
+- Engineering tests, threat-model, value-flow, routing, and lifecycle guidance
 - Human authorization boundaries
 - Application and release-state semantics
 
+The installed package does not own mutable Programmable launch requirements. Exact protected Submit Launch policy and
+schema bytes own applicable Rule IDs, evidence, severity, outcomes, and any platform-specific fee requirement.
+
 ### Platform-owned current knowledge
 
-A versioned, machine-readable Programmable manifest owns:
+A versioned, machine-readable Programmable manifest may own mutable discovery and deployment facts such as:
 
 - Canonical website, documentation, GitHub, security contact, and X URLs
 - Supported chain ids and official deployment sources
 - Current token, factory, launcher, hook, router, and registry addresses
 - Current launch models and their availability states
-- Current disclosed platform fee policy and immutable application limits
-- Current policy version, schema version, minimum supported skill version, and manifest expiry
+- Current policy locator/version metadata, minimum supported skill version, and manifest expiry; the protected central
+  policy bytes, not this manifest or local prose, own rule meaning
 - Application, claim, status, and launch-handoff endpoint versions after the Connected Submission service is activated
 
 The agent must not rely on an installed snapshot when a current manifest is required. Validate the manifest origin,
@@ -170,7 +175,7 @@ of truth for addresses, approval, deployment, or availability.
 
 The connected-service sections from **Identity model** through **Agent command contract**, plus **Required acceptance
 tests** and **Source-of-truth order**, define a later service-backed release. They are retained as a future product and
-security contract, not as instructions for the current Public GitHub PR Beta. **Portability** applies to both paths.
+security contract, not as instructions for current work or the frozen Public GitHub PR Beta. **Portability** applies to both paths.
 Until an implemented, tested, and activated service contract explicitly says otherwise:
 
 - there is no connected-service application id or remote application draft;
@@ -655,10 +660,14 @@ semantics.
 
 ## Agent command contract
 
-For the current beta, the host-neutral entry point implements `context`, `templates`, `discover`, `start`, `profile`,
-`doctor`, `scaffold`, `check`, `fee`, `package`, `companion`, `prepare-pr`, `submit`, `status`, `update`, `version`,
+The host-neutral entry point implements `context`, `templates`, `discover`, `start`, `profile`,
+`doctor`, `scaffold`, `check`, `fee`, `package`, `companion`, `prepare-canary`, `prepare-pr`, `submit`, `status`, `update`, `version`,
 `update-check`, `migrate`, and `plan-release`. Their installed `scripts/cli.mjs --help` and per-command `--help` output
 are authoritative for flags.
+
+`scaffold`, V1 `fee`, `package`, and the six-file `prepare-pr` path are frozen legacy compatibility commands. Their
+local Fee V1/V2 contracts do not define current Programmable requirements. Current builds resolve the protected central
+policy and select only applicable Rule IDs.
 
 The following names describe later Connected Submission service capabilities. They are not current CLI commands:
 
@@ -709,9 +718,9 @@ Before the later Connected Submission flow is available, prove at least:
 
 ## Source-of-truth order
 
-This order applies to the later Connected Submission service. For the current beta, resolve application workflow from
-the central GitHub pull request and its trusted checks, and resolve project source from the exact public GitHub identity
-inside the six-file application record. Neither source can create an approval or launch fact.
+This order applies to the later Connected Submission service. For frozen beta replay, resolve application workflow from
+the historical central GitHub pull request and its trusted checks, and resolve project source from the exact public
+GitHub identity inside the six-file application record. Neither source can create an approval or launch fact.
 
 For the later service, resolve facts in this order:
 

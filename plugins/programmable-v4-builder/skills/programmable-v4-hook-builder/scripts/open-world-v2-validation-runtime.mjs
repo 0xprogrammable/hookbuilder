@@ -33,7 +33,8 @@ export function createOpenWorldV2ValidationRuntime({
   records,
   supportingRecords,
   extensionSchemaBytes = {},
-  fragmentLimits = {}
+  fragmentLimits = {},
+  validationProfile = "current-central-policy-consumer"
 } = {}) {
   const context = {
     submission,
@@ -41,7 +42,8 @@ export function createOpenWorldV2ValidationRuntime({
     records,
     supportingRecords,
     extensionSchemaBytes,
-    fragmentLimits
+    fragmentLimits,
+    validationProfile
   };
   const findings = [];
   const splitReasons = [];

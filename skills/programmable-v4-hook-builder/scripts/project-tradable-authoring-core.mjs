@@ -5,9 +5,9 @@ import path from "node:path";
 import { sha256Bytes } from "./open-world-v2-core.mjs";
 import { projectArtifactSha256 } from "./project-contracts-core.mjs";
 import { createNoMarketProjectAuthoring } from "./project-state-core.mjs";
-import { authorTradableSubmission, bindTradableReferenceIntent, TRADABLE_REFERENCE_PROFILE_ID } from "./project-tradable-submission-core.mjs";
+import { authorTradableSubmission, bindTradableReferenceIntent, TRADABLE_LEGACY_POLICY_INTENT_CLAUSE, TRADABLE_REFERENCE_PROFILE_ID } from "./project-tradable-submission-core.mjs";
 
-export { bindTradableReferenceIntent, TRADABLE_REFERENCE_PROFILE_ID };
+export { bindTradableReferenceIntent, TRADABLE_LEGACY_POLICY_INTENT_CLAUSE, TRADABLE_REFERENCE_PROFILE_ID };
 
 const routeSource = "src/ProgrammableVolumeFeeHookV2.sol";
 const routeTest = "test/ProgrammableTradeEvidenceRunnerV1.t.sol";

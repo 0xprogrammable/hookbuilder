@@ -1,6 +1,5 @@
 import {
   buildDirectCapabilityLegos,
-  buildImplementationFeePolicy,
   buildImplementationLegoSelection
 } from "./template-catalog-composition.mjs";
 import {
@@ -26,7 +25,7 @@ export function renderTemplateFiles(plan, { catalog = null } = {}) {
     ["programmable-code-legos.json", `${JSON.stringify({
       schemaVersion: "1.0.0",
       kind: "programmable-materialized-code-legos",
-      feePolicy: plan.feePolicy,
+      ...(plan.feePolicy === undefined ? {} : { feePolicy: plan.feePolicy }),
       implementationLegos: plan.implementationLegos
     }, null, 2)}\n`],
     ["programmable-template.json", `${JSON.stringify(plan, null, 2)}\n`]
@@ -80,24 +79,23 @@ export function validateRenderableImplementationLegos(plan, catalog) {
   if (canonicalJson(plan.implementationLegos) !== canonicalJson(expected)) {
     fail("IMPLEMENTATION_LEGO_SELECTION_INVALID", "Implementation Lego selection, source receipts or digest are stale or tampered.");
   }
-  if (canonicalJson(plan.feePolicy) !== canonicalJson(buildImplementationFeePolicy())) {
-    fail("IMPLEMENTATION_LEGO_FEE_POLICY_INVALID", "Implementation Lego fee applicability is missing or has been weakened.");
+  const legacyFeeV2Selected = plan?.selection?.selectedPackIds?.includes("programmable-volume-fee") === true;
+  if (legacyFeeV2Selected) {
+    fail("FROZEN_LEGACY_FEE_V2_PROFILE_REQUIRED", "The generic template renderer cannot materialize branded Fee V2 platform economics. Use the exact intent-bound frozen legacy project profile for replay or migration.");
+  }
+  if (plan.feePolicy !== undefined) {
+    fail("IMPLEMENTATION_LEGO_FEE_POLICY_UNSELECTED", "A local Fee V2 implementation contract cannot be materialized without explicit pack selection.");
   }
 }
 
 export function renderImplementationLegos(plan) {
+  if (plan?.feePolicy !== undefined || plan?.selection?.selectedPackIds?.includes("programmable-volume-fee") === true) {
+    fail("FROZEN_LEGACY_FEE_V2_PROFILE_REQUIRED", "The generic template renderer cannot materialize branded Fee V2 platform economics. Use the exact intent-bound frozen legacy project profile for replay or migration.");
+  }
   return lines([
     "# Implementation Legos",
     "",
     "> These hash-bound files are composable accelerators, not an allowlist, audit, deployment receipt, production-readiness claim or provider promise.",
-    "",
-    "## Fee applicability",
-    "",
-    `- Immutable platform fee owner: \`${plan.feePolicy.platformFeeOwner}\``,
-    `- Platform share for every applicable Programmable-canonical execution scope: \`${plan.feePolicy.platformShareBps} bps\``,
-    `- Effective total-fee floor for every applicable scope, including a selected total fee of zero: \`${plan.feePolicy.effectiveTotalFeeFloorBps} bps\``,
-    `- Current conformance state: \`${plan.feePolicy.feeConformanceStatus}\``,
-    "- Standard-AMM, zero-AMM, async/batched and custom-reviewed settlement profiles must each prove their exact gross-volume basis, collection, custody and claim path.",
     "",
     "## Selected reusable source",
     "",
@@ -361,7 +359,7 @@ export function renderMetadata(plan) {
     "",
     "## Economics and controls",
     "",
-    "- [ ] LP fee, mandatory Programmable share, project hook-owned share and transfer tax shown separately",
+    "- [ ] LP fee, every explicitly requested project hook-owned fee and transfer tax shown separately",
     "- [ ] Mint, pause, blacklist, confiscation, upgrade, rescue and payout-redirection powers disclosed",
     "- [ ] External services, assets, signers, keepers and oracles disclosed",
     "- [ ] Affiliations and non-affiliations stated without implying endorsement",

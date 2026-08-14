@@ -57,7 +57,7 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-flow-core.mjs",
-          "sourceSha256": "sha256:ec130d363acb1b139d4b15e2c5645a65232820f40ae198783d5e71faee58bdb6"
+          "sourceSha256": "sha256:74c3bc38f04a1b5d3ba78cd6008950deb8a72523a1ef5bcaae9188be872e45dc"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-normalizers.mjs",
@@ -65,7 +65,7 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-prepared-core.mjs",
-          "sourceSha256": "sha256:f63e3aa3170e73b1d129d28d4030829ec7e8f6d875416307bc154cde37dffe40"
+          "sourceSha256": "sha256:3f97a53935043a2e518032c432fa3f6a0e82ad622d2c6d8daebf7159eb9ab2db"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-primitives.mjs",
@@ -73,7 +73,7 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-remote-core.mjs",
-          "sourceSha256": "sha256:92701696bbe3a817fc903d65224e96bf7666ec505e7c2034a110d77bfa1902e4"
+          "sourceSha256": "sha256:fc3e2668f9cee2c11657cff9529fd4391b5c27ffb0aac100b570601066a15c8b"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-status-core.mjs",
@@ -86,16 +86,16 @@
       ],
       "observed": {
         "lines": {
-          "covered": 2838,
-          "found": 3335
+          "covered": 2895,
+          "found": 3396
         },
         "functions": {
-          "covered": 177,
-          "found": 199
+          "covered": 178,
+          "found": 200
         },
         "branches": {
-          "covered": 595,
-          "found": 817
+          "covered": 608,
+          "found": 832
         }
       },
       "minimumBasisPoints": {
@@ -201,7 +201,7 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/v4-deployment-evidence-core.mjs",
-          "sourceSha256": "sha256:f7e65be2235f2c3895d724b375bef0d3186ee338d6e7faa3735cf07e8d2812d7"
+          "sourceSha256": "sha256:7dfa69bc3f86eb53b68491033ea13d427dacace69f1b0e5ac84c1691b04ba7e3"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/v4-hook-semantic-contract-core.mjs",
@@ -210,16 +210,16 @@
       ],
       "observed": {
         "lines": {
-          "covered": 1227,
-          "found": 1592
+          "covered": 1229,
+          "found": 1595
         },
         "functions": {
           "covered": 125,
           "found": 151
         },
         "branches": {
-          "covered": 493,
-          "found": 586
+          "covered": 498,
+          "found": 587
         }
       },
       "minimumBasisPoints": {

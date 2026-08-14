@@ -7,8 +7,9 @@
 
 - Validate the structured package and bind the exact clean source revision, declared files, dependency lock, and review
   target.
-- Resolve the trusted intake workflow, target base, validator, allowed package files, skill, criteria, and fee-policy
-  revisions. Test that package-contract drift fails closed and is attributed to the platform instead of guessed away.
+- Resolve the trusted intake workflow, target base, validator, allowed package files, skill, and exact central policy and
+  schema revisions. Resolve any optional implementation-kernel revision only when intent or an applicable current
+  central-policy Rule ID selects it. Test that package-contract drift fails closed and is attributed to the platform.
 - Re-resolve every public numeric repository id, commit, tree, submodule and LFS object anonymously. Delete/recreate the
   same slug, change visibility, remove the bound ref, and make an object unavailable; prior positive evidence must fail.
 - Build and test every declared implementation surface with its pinned language, compiler or runtime, package manager,
@@ -52,10 +53,11 @@ tool result merely to fill a section.
   private chat, category names or expected verdict. An unresolved material assumption blocks prototype readiness.
 - Repeat the cold prompt with irrelevant optional specialists present, absent and renamed. Require the same working
   kernel, selected architecture, capabilities and gate result; allow only attributable evidence availability to differ.
-  No specialist may change product intent, fixed fee policy, external-action authority or approval state.
+  No specialist may change product intent, applicable central-policy requirements, external-action authority or approval
+  state.
 - Remove each component and product surface from the first vertical slice. Prove every retained hook, contract, token,
   oracle, app, indexer, service, keeper and admin is necessary for the promised closed loop, protected property,
-  operation or admission evidence; reject missing lifecycle steps and speculative generated breadth.
+  operation or applicable current central Rule-ID evidence; reject missing lifecycle steps and speculative generated breadth.
 - For measurement or probability-driven behavior, vary raw observations independently from estimator output, market
   price and the enforced fee, limit, allocation or payout. Cover forgery, replay, correction, stale or outage, extreme
   values, front-running, post-exposure rule changes, insolvency, dispute, cancel, refund and terminal-unresolved state as
@@ -89,9 +91,12 @@ tool result merely to fill a section.
 - For hook-owned charges, test the collection path, value-flow id, liability keys, event, recipient sums and bindings,
   duplicates, zero and failed recipients, claims, redirects, address mutation, and historic entitlements.
 
-## Mandatory Programmable fee, for every launch-ready prototype
+## Legacy Programmable fee kernel, only when selected
 
-- Prove `effective=max(selected,10 bps)`, with selected totals of zero, below the floor, at the floor, and above it.
+This is optional implementation knowledge, not an admission rule. Run these cases only when the preserved project intent
+or an applicable current central-policy Rule ID selects this exact kernel; otherwise mark the section not applicable.
+
+- If the frozen Fee V2 implementation package was explicitly selected, prove `effective=max(selected,10 bps)`, with selected totals of zero, below the floor, at the floor, and above it.
 - Prove `3% selected = 0.1% Programmable + 2.9% project`, never an additive `3.1%`.
 - Test every successful supported token-to-quote/quote-to-token exactness mode on the exact canonical PoolKey and prove
   every unsupported quadrant rejects before value, state, liability, quote, router, or UI movement.
@@ -105,20 +110,19 @@ tool result merely to fill a section.
 - Prove the fee accrues as a claimable liability and is not merely auto-transferred; reconcile accrual, partial and full
   claims, remaining availability, and backing.
 - Prove `(poolId,currency,owner)` liability solvency and isolation with no cross-pool netting.
-- Bind exact source and test paths to `programmableFee.collection.hookFeeMechanismBinding` and the fee value flow.
+- Only for an explicitly selected frozen Fee V2 package, bind exact source and test paths to `programmableFee.collection.hookFeeMechanismBinding` and its fee value flow.
 - Compare cumulative entitlement for one aggregate swap and `N` split swaps. Trade splitting must not systematically
   erase the 10-bps fee; bind and test the carried remainder when the construction needs one.
 
 ## No-hook proposal path, when `hook.used` is false
 
-- Prove explicit selection of `official-launchpad` or `model-specific-no-hook` and the canonical pool lifecycle. For the
-  official route, bind the current pinned profile. For the model-specific route, bind its own exact source, compiler,
-  dependency closure and constructor configuration without borrowing the official profile identity.
+- Record the selected no-hook architecture and, when applicable, its canonical pool lifecycle. Bind its exact source,
+  compiler, dependency closure, and constructor configuration without borrowing an unrelated profile identity.
 - Confirm that the declared project does not introduce custom callbacks, a hook permission mask, or a hook CREATE2
   address, and that its proposal, submission, threat model, and tests agree on that boundary.
-- Test any separately declared token, app, game, service, integration, or launch configuration on its own merits. Keep
-  fee collection pending and assert that the package does not claim prototype or launch readiness until the standard
-  fee hook or one integrated custom hook is added.
+- Test any separately declared token, app, game, service, integration, or launch configuration on its own merits. Do not
+  invent fee collection or a hook. Eligibility and evidence requirements come only from applicable current central-policy
+  Rule IDs.
 
 When a `tokenMechanics` transfer tax is used with either hook route, test `buy-sell-peer-tax-rates`, `zero-tax-path`,
 `immutable-maximum-tax-bound`, `recipient-split-conservation`, `exemption-boundaries`,
@@ -181,8 +185,10 @@ fee collection, provider approval, or production availability.
 
 Record a worked numerical example for every fee or accounting rule the project introduces. Turn each example, its
 rounding boundary, its value-conservation equation, and one failure case into a test. Classify all four quadrants. The
-mandatory fee covers every successful supported mode; each unsupported mode must reject before movement and cannot be a
-direct/router/quoter/UI bypass. A structurally valid submission with inconsistent examples is not prototype-ready.
+selected fee or accounting rule covers every successful supported mode; each unsupported mode must reject before
+movement and cannot be a direct/router/quoter/UI bypass. Fee kernels are optional implementation assets and apply only
+when project intent or an applicable current central-policy Rule ID selects them. A structurally valid submission with
+inconsistent examples is not prototype-ready.
 
 ## Evidence status
 

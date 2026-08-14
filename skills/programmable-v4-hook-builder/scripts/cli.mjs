@@ -6,7 +6,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { parseCli, renderHelp } from "./cli-args.mjs";
 import { normalizeCompanionManifest } from "./companion-manifest-contract.mjs";
-import { inspectLocalGitReadiness, preparePullRequest } from "./cli-prepare-pr.mjs";
+import { preparePullRequest } from "./cli-prepare-pr.mjs";
 import { compactDoctorReport } from "./cli-prepare-pr-readiness.mjs";
 import { runLaunchBundleV2Cli } from "./launch-bundle-v2.mjs";
 import { detectOpenWorldV2Submission, executeOpenWorldV2Check } from "./open-world-v2-validation-core.mjs";
@@ -22,6 +22,7 @@ const delegatedCommands = new Map([
   ["open-world", { script: "open-world.mjs", prefix: [] }],
   ["application-recheck", { script: "application-recheck.mjs", prefix: [] }],
   ["context", { script: "knowledge-router.mjs", prefix: [] }],
+  ["policy", { script: "current-launch-requirements.mjs", prefix: [] }],
   ["templates", { script: "template-catalog.mjs", prefix: [] }],
   ["discover", { script: "registry-discovery.mjs", prefix: [] }],
   ["resolve-contract", { script: "resolve-contract.mjs", prefix: [] }],
@@ -36,7 +37,8 @@ const delegatedCommands = new Map([
   ["version", { script: "builder-lifecycle.mjs", prefix: ["version"] }],
   ["update-check", { script: "builder-lifecycle.mjs", prefix: ["update-check"] }],
   ["migrate", { script: "builder-lifecycle.mjs", prefix: ["migrate"] }],
-  ["plan-release", { script: "builder-lifecycle.mjs", prefix: ["plan-release"] }]
+  ["plan-release", { script: "builder-lifecycle.mjs", prefix: ["plan-release"] }],
+  ["prepare-canary", { script: "prepare-canary.mjs", prefix: [] }]
 ]);
 const commandSpecs = new Map([
   ["doctor", {
@@ -47,12 +49,12 @@ const commandSpecs = new Map([
   }],
   ["scaffold", {
     usage: "cli.mjs scaffold <model-id> [--name <display-name>] [--destination <path>] [--template-plan <programmable-template.json>] [--repository-root <path>]",
-    summary: "Create one isolated proposal package through the canonical scaffolder.",
+    summary: "Create a frozen legacy V1 package.",
     options: [
       repositoryOption(),
       { name: "--name", key: "modelName", type: "value", valueName: "display-name", description: "Set the model display name." },
       { name: "--destination", key: "destination", type: "value", valueName: "path", description: "Create below this repository directory." },
-      { name: "--template-plan", key: "templatePlan", type: "value", valueName: "programmable-template.json", description: "Bind one exact materialized starter and capability selection into the new submission." }
+      { name: "--template-plan", key: "templatePlan", type: "value", valueName: "programmable-template.json", description: "Reserved historical input; frozen legacy V1 scaffold rejects current catalog plans." }
     ],
     positionals: { min: 1, max: 1, names: ["model-id"] }
   }],
@@ -73,7 +75,7 @@ const commandSpecs = new Map([
   }],
   ["package", {
     usage: "cli.mjs package <submission-directory> [--require-intake-ready | --require-ready] [--repository-root <path>]",
-    summary: "Validate the released V1 package; never execute project code.",
+    summary: "Validate frozen V1 bytes; never execute project code.",
     options: [
       repositoryOption(),
       { name: "--require-intake-ready", key: "requireIntakeReady", type: "boolean", description: "Fail unless static package intake is READY." },
@@ -92,7 +94,7 @@ const commandSpecs = new Map([
   }],
   ["prepare-pr", {
     usage: "cli.mjs prepare-pr <submission-directory> [--base main] [--companion-manifest <path>]... [--output-dir <path>] [--replace-existing | --replace-draft] [--repository-root <path>]",
-    summary: "Prepare Submit a Launch PR metadata without a GitHub write.",
+    summary: "Prepare frozen V1 transport metadata without a GitHub write.",
     options: [
       repositoryOption(),
       { name: "--base", key: "baseBranch", type: "value", valueName: "main", description: `Fixed target: ${launchTarget.slug}:${launchTarget.defaultBranch}.` },
@@ -194,16 +196,8 @@ async function execute(command, options, positionals) {
       ),
       "doctor.mjs"
     );
-    const publicBetaGit = inspectLocalGitReadiness(repositoryRoot);
-    const report = {
-      ...tooling,
-      publicBetaGit,
-      readyForPublicBeta: false,
-      publicBetaNote: publicBetaGit.readyForPreparePrLocal
-        ? "Local Git gates are ready; public GitHub repository, commit and tree reachability remain notChecked until prepare-pr."
-        : "One or more local Git gates block prepare-pr; public reachability remains notChecked."
-    };
-    return new Map([[false, compactDoctorReport(report, publicBetaGit)], [true, report]]).get(options.fullJson);
+    const report = { ...tooling, readyForPublicBeta: false, publicBetaNote: "The six-file/Application V3 transport is frozen legacy; Task 7A evaluates no current application transport." };
+    return new Map([[false, compactDoctorReport(report)], [true, report]]).get(options.fullJson);
   }
   if (command === "scaffold") {
     const [modelId] = positionals;
@@ -456,11 +450,12 @@ function globalHelp() {
     "",
     "Golden path:",
     "  doctor        Check local readiness.",
+    "  policy        Read current launch requirements.",
     "  context       Route the confirmed task.",
     "  project       Materialize and verify output.",
-    "  prepare-pr    Prepare read-only PR metadata.",
+    "Frozen legacy only: fee, launch-bundle, package, prepare-pr, scaffold, submit, status, update.",
     "",
-    "Start: cli.mjs doctor -> cli.mjs context --mode autopilot -> cli.mjs project --help",
+    "Start: cli.mjs doctor -> cli.mjs policy -> cli.mjs context --mode autopilot -> cli.mjs project --help",
     "Optional templates: cli.mjs templates list",
     "All commands: cli.mjs --help --json"
   ].join("\n");
@@ -468,7 +463,7 @@ function globalHelp() {
 function globalHelpJson() {
   const commands = [...new Set(["launch-bundle-v2", ...delegatedCommands.keys(), ...commandSpecs.keys()])]
     .sort().map((id) => ({ id, help: `cli.mjs ${id} --help` }));
-  return canonicalJson({ schemaVersion: "1.0.0", ok: true, command: "help", result: { goldenPath: ["doctor", "context", "project", "prepare-pr"], commands } });
+  return canonicalJson({ schemaVersion: "1.0.0", ok: true, command: "help", result: { goldenPath: ["doctor", "policy", "context", "project"], frozenLegacyCommands: ["application-recheck", "fee", "launch-bundle", "launch-bundle-v2", "package", "prepare-pr", "scaffold", "submit", "status", "update"], commands } });
 }
 function startHelp() {
   return [
@@ -479,7 +474,7 @@ function startHelp() {
     "",
     "Create one deterministic planning directory from a starter and capability packs.",
     "--target names the new directory itself; its parent must already exist.",
-    "Keep the plan inside the project repository when it will later be passed to cli.mjs scaffold.",
+    "Use the plan for architecture review; frozen legacy V1 scaffold does not accept current catalog plans.",
     "Dependencies and mandatory packs are included automatically.",
     "Chainlink requires --chainlink-product with one exact product; --pack chainlink-provider is intentionally incomplete.",
     "Known --capability selections are exact Legos and never expand sibling capabilities from a pack.",

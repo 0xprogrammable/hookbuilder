@@ -159,11 +159,19 @@ export function validateOpenWorldV2Intake(context) {
   const supportingRecordBytes = {};
   let securityAnalysis = null;
   const supportingSpecs = {
-    feePolicySchema: OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.feePolicySchema,
     securityAssessmentSchema: OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.securityAssessmentSchema
   };
-  if (submission.supportingPackage?.feePolicy !== null && submission.supportingPackage?.feePolicy !== undefined) supportingSpecs.feePolicy = OPEN_WORLD_V2_OPTIONAL_SUPPORTING_ARTIFACTS.feePolicy;
-  else if (supportingRecords.feePolicy !== undefined) add("blocker", "ORPHAN_FEE_POLICY_INSTANCE", "$.supportingRecords.feePolicy", "A fee-policy instance cannot exist without an exact supportingPackage binding.");
+  const legacyFeeSelected = submission.programmableFee !== undefined;
+  const legacyCompatibilityProfile = context.validationProfile === "frozen-legacy-fee-v2";
+  if (legacyFeeSelected && !legacyCompatibilityProfile) add("blocker", "FROZEN_LEGACY_FEE_V2_ENTRYPOINT_REQUIRED", "$.programmableFee", "The current central-policy consumer never treats a caller-authored programmableFee field as selection proof. Frozen Fee V2 replay or migration requires the explicitly named legacy validator entrypoint.");
+  if (legacyFeeSelected) {
+    supportingSpecs.feePolicySchema = OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.feePolicySchema;
+    if (submission.supportingPackage?.feePolicy !== null && submission.supportingPackage?.feePolicy !== undefined) supportingSpecs.feePolicy = OPEN_WORLD_V2_OPTIONAL_SUPPORTING_ARTIFACTS.feePolicy;
+    else if (supportingRecords.feePolicy !== undefined) add("blocker", "ORPHAN_FEE_POLICY_INSTANCE", "$.supportingRecords.feePolicy", "A fee-policy instance cannot exist without an exact supportingPackage binding.");
+  } else {
+    if (submission.supportingPackage?.feePolicySchema !== undefined || supportingRecords.feePolicySchema !== undefined) add("blocker", "ORPHAN_LEGACY_FEE_POLICY_SCHEMA", "$.supportingPackage.feePolicySchema", "The frozen Fee V2 schema may be bound only when preserved intent explicitly selects the legacy Fee V2 implementation contract.");
+    if (submission.supportingPackage?.feePolicy !== undefined || supportingRecords.feePolicy !== undefined) add("blocker", "ORPHAN_FEE_POLICY_INSTANCE", "$.supportingPackage.feePolicy", "A Fee V2 policy instance may exist only when preserved intent explicitly selects the legacy Fee V2 implementation contract.");
+  }
   const embeddedSecurityAssessment = submission.supportingPackage?.securityAssessment;
   if (embeddedSecurityAssessment !== null && embeddedSecurityAssessment !== undefined) supportingSpecs.securityAssessment = OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.securityAssessment;
   else if (supportingRecords.securityAssessment !== undefined) add("blocker", "ORPHAN_SECURITY_ASSESSMENT", "$.supportingRecords.securityAssessment", "A security assessment record cannot exist without an exact source-submission binding.");
@@ -257,6 +265,7 @@ export function validateOpenWorldV2Intake(context) {
   const declaredTradeCapabilityMarkets = Array.isArray(submission.tradeCapability?.markets)
     ? submission.tradeCapability.markets
     : [];
+  if (!legacyCompatibilityProfile && declaredTradeCapabilityMarkets.some(({ manifest }) => manifest?.schemaId === OPEN_WORLD_V2_TRADE_CAPABILITY_ARTIFACT.schemaId)) add("blocker", "FROZEN_LEGACY_TRADE_MANIFEST_ENTRYPOINT_REQUIRED", "$.tradeCapability.markets", "Trade-capability manifest v1 carries a branded Fee V2 projection and is accepted only by the explicitly named frozen legacy validator. Current generic fee behavior remains project intent and must use a policy-neutral evidence contract.");
   const suppliedTradeCapabilityRecords = supportingRecords.tradeCapabilities === undefined
     ? []
     : Array.isArray(supportingRecords.tradeCapabilities)
@@ -467,7 +476,7 @@ export function validateOpenWorldV2Intake(context) {
     && (submission.supportingPackage?.feePolicy !== null || parsedSupportingRecords.feePolicy !== undefined)) {
     add("blocker", "FEE_NOT_APPLICABLE_POLICY_FORBIDDEN", "$.supportingPackage.feePolicy", "Fee-policy supporting artifacts must remain null when exact zero-scope conformance is not-applicable.");
   }
-  if (submission.stage === "prototype" && !parsedSupportingRecords.feePolicy && !exactZeroScopeFeeNotApplicable) add("blocker", "PROTOTYPE_FEE_POLICY_INSTANCE_MISSING", "$.supportingPackage.feePolicy", "A prototype with any canonical, unresolved, or otherwise applicable execution scope requires a real scoped fee-policy.v2.json instance; only an exact zero-scope not-applicable declaration may keep it null.");
+  if (legacyFeeSelected && submission.stage === "prototype" && !parsedSupportingRecords.feePolicy && !exactZeroScopeFeeNotApplicable) add("blocker", "PROTOTYPE_FEE_POLICY_INSTANCE_MISSING", "$.supportingPackage.feePolicy", "A prototype that explicitly selected frozen Fee V2 needs its scoped fee-policy.v2.json instance; exact zero-scope legacy not-applicable conformance may keep it null.");
 
   Object.assign(context, {
     submission,

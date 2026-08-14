@@ -44,7 +44,7 @@ const narrowedPackSurfaces = Object.freeze({
 const { options, positionals } = parseCliOrExit({
   command: "scaffold-submission.mjs",
   usage: "scaffold-submission.mjs <model-id> [--repository-root <path>] [--name <display-name>] [--destination <path>] [--template-plan <programmable-template.json>]",
-  summary: "Create one isolated Programmable hook proposal package without changing the model registry.",
+  summary: "Create one frozen legacy V1 proposal package without changing the model registry; never use it as a current central-policy build path.",
   options: [
     { name: "--repository-root", key: "repositoryRoot", type: "value", valueName: "path", description: "Use this Git worktree instead of the current directory." },
     { name: "--name", key: "modelName", type: "value", valueName: "display-name", description: "Set a human-readable model name of at most 80 characters." },
@@ -128,6 +128,7 @@ function normalizeModelName(value, id) {
 }
 
 function preloadPackage(id, name, builderTemplate, templatePlan) {
+  if (templatePlan !== null) throw new Error("frozen legacy V1 scaffold does not accept current catalog plans; use project materialize for current builds");
   const rendered = new Map();
   const plannedFiles = templatePlan === null
     ? null
@@ -180,8 +181,7 @@ function applyTemplateArchitecturePlan(submission, plan) {
   const materialPackIds = new Set([
     ...plan.selection.requestedPackIds,
     ...plan.selection.autoIncludedPackIds,
-    "metadata-disclosures",
-    "programmable-volume-fee"
+    "metadata-disclosures"
   ]);
   const activeSurfaceSlugs = new Set(
     plan.starter.id === "blank-custom" ? ["other"] : plan.starter.projectSurfaces
@@ -394,10 +394,10 @@ function modelDefaultsForTemplate(builderTemplate) {
   if (builderTemplate.source !== "catalog") return null;
   if (builderTemplate.templateSelection.starterId !== "ordinary-launch") return null;
   return {
-    summary: "Launch one immutable fixed-supply token into one canonical Ethereum Uniswap v4 pool with the mandatory standard Programmable fee-hook profile.",
-    userOutcome: "A creator launches a standard transferable token whose canonical pool keeps ordinary Uniswap v4 pricing and adds no project-defined callback behavior beyond mandatory fee collection.",
+    summary: "Build one immutable fixed-supply token for one Ethereum Uniswap v4 pool without inventing platform economics.",
+    userOutcome: "A creator gets a standard transferable token and a clearly modeled Uniswap v4 pool boundary; any hook or project fee remains explicit product intent.",
     category: "permissionless-token",
-    whyV4: "Uniswap v4 supplies the canonical pool and its mandatory standard-profile fee hook without adding a project-defined curve, transfer restriction or external dependency."
+    whyV4: "Uniswap v4 supplies the pool and optional hook surface without adding a project-defined curve, transfer restriction, platform fee or external dependency by default."
   };
 }
 

@@ -156,8 +156,9 @@ accounting and the highest review path accepts the exact math.
 - A dynamic-fee pool initializes its stored LP fee to zero. If a non-zero persistent starting fee is required, the hook
   must call `updateDynamicLPFee`, commonly from `afterInitialize`. Only that pool's hook can update a dynamic pool's
   stored fee. A valid override-fee flag changes only the current swap; it does not mutate the stored LP fee.
-- Hook fees, Programmable's mandatory 10 bps, project fees, LP fees, protocol fees, token transfer taxes, and router
-  charges are different mechanisms. Account and disclose them separately.
+- Hook fees, project fees, LP fees, protocol fees, token transfer taxes, router charges, and any fee selected by preserved
+  product intent or an applicable current central-policy Rule ID are different mechanisms. Account and disclose selected
+  mechanisms separately; this universal v4 guide does not create a Programmable fee requirement.
 - Quote and execution must bind the same block context, PoolKey, sender assumptions, hook data, router generation,
   action plan, native value, deadline, Permit2 intent, and final slippage bounds.
 

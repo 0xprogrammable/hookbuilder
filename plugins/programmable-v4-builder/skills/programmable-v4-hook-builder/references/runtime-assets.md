@@ -6,7 +6,8 @@ size allowlist and must not be hidden merely to fit an inline source-closure bud
 
 Historical `runtime-assets-v1.schema.json`, `runtime-assets.example.json`, `submission.json` bindings and `prepare-pr`
 behavior remain available only for exact V1 reproduction. New work models assets through Submission V2 components,
-dependencies, product surfaces, source bindings and Application V3 repository closure.
+dependencies, product surfaces, and independent source bindings. Application V3 repository closure is frozen Fee V2
+compatibility only and is not the current Applicant transport.
 
 ## Record each asset
 
@@ -52,7 +53,7 @@ package checks must not silently fetch them.
 
 ## Closure and review
 
-Application V3 closes each repository through inline paths or a content-addressed source manifest. Large asset sets may
+For exact frozen Application V3 replay, each repository closes through inline paths or a content-addressed source manifest. Large asset sets may
 use manifest fragments and deterministic split review; no fixed count or aggregate byte limit is a product-category
 rule. Resource exhaustion produces an explicit tooling hold with a continuation path.
 

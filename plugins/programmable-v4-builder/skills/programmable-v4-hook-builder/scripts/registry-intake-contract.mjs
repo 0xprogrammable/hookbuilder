@@ -8,6 +8,10 @@ export const SUBMIT_LAUNCH_INTAKE_CONTRACT = Object.freeze({
     defaultBranch: "main",
     intakeDirectory: "submissions",
     intakeStatusPath: "docs/builder/intake-status.json",
+    launchPolicyPath: "policy/launch-policy.v1.json",
+    launchPolicySchemaPath: "policy/schemas/launch-policy.v1.schema.json",
+    launchPolicyBindingSchemaPath: "policy/schemas/launch-policy-binding.v1.schema.json",
+    workflowCanaryApplicationSchemaPath: "canary/schemas/workflow-canary-application-v1.schema.json",
     apiUrl: "https://api.github.com/repos/0xprogrammable/submit-launch",
     rawUrl: "https://raw.githubusercontent.com/0xprogrammable/submit-launch",
     url: "https://github.com/0xprogrammable/submit-launch"
@@ -37,6 +41,12 @@ export const SUBMIT_LAUNCH_RAW_URL = SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.ra
 export const SUBMIT_LAUNCH_BASE_BRANCH = SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.defaultBranch;
 export const SUBMIT_LAUNCH_INTAKE_DIRECTORY = SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.intakeDirectory;
 export const SUBMIT_LAUNCH_INTAKE_STATUS_PATH = SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.intakeStatusPath;
+export const SUBMIT_LAUNCH_POLICY_PATH = SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.launchPolicyPath;
+export const SUBMIT_LAUNCH_POLICY_SCHEMA_PATH = SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.launchPolicySchemaPath;
+export const SUBMIT_LAUNCH_POLICY_BINDING_SCHEMA_PATH =
+  SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.launchPolicyBindingSchemaPath;
+export const SUBMIT_LAUNCH_WORKFLOW_CANARY_APPLICATION_SCHEMA_PATH =
+  SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.workflowCanaryApplicationSchemaPath;
 export const SUBMIT_LAUNCH_INTAKE_SCHEMA_VERSION = SUBMIT_LAUNCH_INTAKE_CONTRACT.schemaVersion;
 export const SUBMIT_LAUNCH_INTAKE_STATES = SUBMIT_LAUNCH_INTAKE_CONTRACT.states;
 export const HOOKBUILDER_LEGACY_APPLICANT_PULL_REQUESTS =

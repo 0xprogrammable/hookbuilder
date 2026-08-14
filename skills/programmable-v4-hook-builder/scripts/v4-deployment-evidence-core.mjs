@@ -16,8 +16,11 @@ const schemaCache = new Map();
 export const TRADE_TEST_RUNNER_CONTRACT_V1 = "forge-test-json-v1";
 const V2_REFERENCE_KERNEL_INVENTORY_SHA256 = "sha256:3324a4bc09c058f97ff03e17dd02ac9fe34e8e2aeb63684ff575ba808496f475";
 
-/** Copy the reviewed V2 source/test kernel. This never claims approval or live routing. */
-export function materializeTradableReferenceKernel({ skillRoot: sourceSkillRoot, outputRoot }) {
+/** Copy the reviewed frozen legacy Fee V2 source/test kernel. */
+export function materializeFrozenLegacyFeeV2ReferenceKernel({ skillRoot: sourceSkillRoot, outputRoot, legacyProfileId }) {
+  if (legacyProfileId !== "programmable-volume-fee-v2") {
+    throw Object.assign(new Error("Frozen Fee V2 kernel materialization requires the exact legacy profile id."), { code: "FROZEN_LEGACY_FEE_V2_PROFILE_REQUIRED" });
+  }
   const sourceRoot = path.join(
     requireRealDirectory(sourceSkillRoot, "skill root"),
     "assets",

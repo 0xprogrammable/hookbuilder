@@ -21,6 +21,11 @@ import { GitHubPublicSourceError } from "../github-public-source-core.mjs";
 import { calculateReviewTargetHash } from "../review-target-core.mjs";
 import { REVIEW_TARGET_CLOSURE_METHOD_V1 } from "../review-target-contract.mjs";
 import { canonicalJson, STANDARD_VERSION } from "../submission-core.mjs";
+import {
+  digest as policyDigest,
+  makeSubmitLaunchPolicyFixture,
+  treeEntry as policyTreeEntry
+} from "./submit-launch-policy-fixture.mjs";
 
 const trustedHostValidatorUrl = new URL("../../../../scripts/verify-public-hook-application-core.mjs", import.meta.url);
 const trustedHostValidator = fs.existsSync(fileURLToPath(trustedHostValidatorUrl))
@@ -466,6 +471,31 @@ test("prepare-pr deterministically binds the pushed public GitHub revision witho
       baseBranch: "main",
       baseCommit: centralBaseCommit,
       baseTree: centralBaseTree,
+      policyBinding: {
+        schemaVersion: "programmable.launch-policy-binding.v1",
+        repository: "0xprogrammable/submit-launch",
+        numericRepositoryId: "1320171831",
+        baseCommit: centralBaseCommit,
+        baseTree: centralBaseTree,
+        path: "policy/launch-policy.v1.json",
+        gitBlobOid: fixture.centralPolicyFixture.policyBlob,
+        policyId: "programmable-central-launch-policy",
+        policyVersion: "1.0.0",
+        profileId: "workflow-canary",
+        sha256: policyDigest(fixture.centralPolicyFixture.policyBytes)
+      },
+      policySchemaBinding: {
+        schemaVersion: "programmable.submit-launch-policy-schema-binding.v1",
+        repository: "0xprogrammable/submit-launch",
+        numericRepositoryId: "1320171831",
+        baseCommit: centralBaseCommit,
+        baseTree: centralBaseTree,
+        path: "policy/schemas/launch-policy.v1.schema.json",
+        gitBlobOid: fixture.centralPolicyFixture.schemaBlob,
+        schemaId: "https://programmable.money/schemas/launch-policy.v1.schema.json",
+        sha256: policyDigest(fixture.centralPolicyFixture.schemaBytes)
+      },
+      policyRole: "current-workflow-canary-drift-anchor-not-legacy-v2-evaluation",
       applicationDirectory: "submissions/ready-model",
       applicationPath: "submissions/ready-model/application.json",
       priorApplicationRevision: null,
@@ -567,10 +597,12 @@ test("prepare-pr deterministically binds the pushed public GitHub revision witho
     assert.equal(requestedUrls.filter((url) => url === "https://api.github.com/users/example-builder").length, 2);
     assert.equal(requestedUrls.filter((url) => url.endsWith(`/git/commits/${head}`)).length, 2);
     assert.equal(requestedUrls.filter((url) => url.endsWith(`/git/trees/${tree}?recursive=1`)).length, 2);
-    assert.equal(requestedUrls.filter((url) => url.includes("/git/blobs/")).length, 0);
+    const blobReads = requestedUrls.filter((url) => url.includes("/git/blobs/"));
+    assert.equal(blobReads.length, 4);
+    assert.equal(blobReads.every((url) => url.includes("/0xprogrammable/submit-launch/")), true);
     assert.equal(
       requested.filter(({ url }) => url.includes("/0xprogrammable/submit-launch/")).length,
-      8
+      18
     );
     for (const call of requested) {
       assert.equal(call.request.redirect, "error");
@@ -1367,7 +1399,9 @@ test("prepare-pr batches more than 128 declared files across eight companions wi
       },
       fetchImplementation: async (url) => {
         requestedUrls.push(url);
-        assert.equal(url.includes("/git/blobs/"), false, `unexpected REST blob request: ${url}`);
+        if (!url.startsWith("https://api.github.com/repos/0xprogrammable/submit-launch/git/blobs/")) {
+          assert.equal(url.includes("/git/blobs/"), false, `unexpected source REST blob request: ${url}`);
+        }
         return githubResponse(fixture, url, companions);
       },
       sleepImplementation: async () => {}
@@ -1592,21 +1626,80 @@ test("prepare-pr rejects a moving central base before any local materialization"
   }
 });
 
-test("prepare-pr rejects a worktree mutation during the final central-base check", async () => {
+test("policy drift after package construction blocks before local materialization", async () => {
   const fixture = createReadyRepository();
+  const outputRoot = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "programmable-cli-policy-race-")));
+  const outputParent = path.join(outputRoot, "submissions");
+  const outputDirectory = path.join(outputParent, "ready-model");
+  fs.mkdirSync(outputParent);
+  let writes = 0;
+  fixture.centralRefCommits = [centralBaseCommit, centralBaseCommit, "f".repeat(40)];
   try {
     await rejectsCode(
       () => preparePullRequest({
         repositoryRoot: fixture.repository,
         packageInput: fixture.packageRoot,
+        outputDirectory,
         fetchImplementation: publicFetch(fixture),
         sleepImplementation: async () => {},
-        centralBaseStabilityChecker: async () => {
-          fs.appendFileSync(path.join(fixture.packageRoot, "PROPOSAL.md"), "mutated during central check\n");
+        outputMaterializer: async () => {
+          writes += 1;
+          throw new Error("must not materialize after policy drift");
         }
+      }),
+      "CENTRAL_BASE_MOVED"
+    );
+    assert.equal(fixture.centralRefReads, 3);
+    assert.equal(writes, 0);
+    assert.equal(fs.existsSync(outputDirectory), false);
+    assert.deepEqual(fs.readdirSync(outputParent), []);
+  } finally {
+    fixture.cleanup();
+    fs.rmSync(outputRoot, { recursive: true, force: true });
+  }
+});
+
+test("prepare-pr rejects a worktree mutation during the final central-base check", async () => {
+  const fixture = createReadyRepository();
+  let centralRefReads = 0;
+  const fetchImplementation = async (url) => {
+    if (url === `${API_ORIGIN}/repos/0xprogrammable/submit-launch/git/ref/heads/main`) {
+      centralRefReads += 1;
+      if (centralRefReads === 2) fs.appendFileSync(path.join(fixture.packageRoot, "PROPOSAL.md"), "mutated during central check\n");
+    }
+    return githubResponse(fixture, url);
+  };
+  try {
+    await rejectsCode(
+      () => preparePullRequest({
+        repositoryRoot: fixture.repository,
+        packageInput: fixture.packageRoot,
+        fetchImplementation,
+        sleepImplementation: async () => {}
       }),
       "GIT_STATE_CHANGED"
     );
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("prepare-pr ignores caller attempts to replace protected central policy authority", async () => {
+  const fixture = createReadyRepository();
+  let maliciousResolverCalls = 0;
+  let maliciousCheckerCalls = 0;
+  try {
+    const result = await preparePullRequest({
+      repositoryRoot: fixture.repository,
+      packageInput: fixture.packageRoot,
+      fetchImplementation: publicFetch(fixture),
+      sleepImplementation: async () => {},
+      centralBaseResolver: async () => { maliciousResolverCalls += 1; throw new Error("caller resolver must be ignored"); },
+      centralBaseStabilityChecker: async () => { maliciousCheckerCalls += 1; return true; }
+    });
+    assert.equal(result.centralPullRequestTarget.baseCommit, centralBaseCommit);
+    assert.equal(maliciousResolverCalls, 0);
+    assert.equal(maliciousCheckerCalls, 0);
   } finally {
     fixture.cleanup();
   }
@@ -2124,6 +2217,7 @@ function createReadyRepository({
     bareRemote,
     publicRemote,
     centralPriorPackage: null,
+    centralPolicyFixture: makeSubmitLaunchPolicyFixture({ baseTree: centralBaseTree }),
     centralRefCommits: [centralBaseCommit],
     centralRefReads: 0,
     cleanup() {
@@ -2167,6 +2261,16 @@ function githubResponse(fixture, url, companions = []) {
       `{"id":${builderUserId},"login":"Example-Builder","html_url":"https://github.com/Example-Builder"}`
     );
   }
+  if (url === centralUrl) {
+    return response(200, JSON.stringify({
+      id: 1320171831,
+      private: false,
+      visibility: "public",
+      full_name: "0xprogrammable/submit-launch",
+      default_branch: "main",
+      html_url: "https://github.com/0xprogrammable/submit-launch"
+    }));
+  }
   if (url === `${centralUrl}/git/ref/heads/main`) {
     const commit = fixture.centralRefCommits[Math.min(
       fixture.centralRefReads,
@@ -2181,13 +2285,44 @@ function githubResponse(fixture, url, companions = []) {
   if (url === `${centralUrl}/git/commits/${centralBaseCommit}`) {
     return response(200, JSON.stringify({ sha: centralBaseCommit, tree: { sha: centralBaseTree } }));
   }
+  const movedCentralCommitMatch = new RegExp(`^${centralUrl}/git/commits/([0-9a-f]{40})$`, "u").exec(url);
+  if (movedCentralCommitMatch !== null) {
+    return response(200, JSON.stringify({
+      sha: movedCentralCommitMatch[1],
+      tree: { sha: "e".repeat(40) }
+    }));
+  }
   if (url === `${centralUrl}/git/trees/${centralBaseTree}`) {
     return response(200, JSON.stringify({
       sha: centralBaseTree,
       truncated: false,
-      tree: fixture.centralPriorPackage === null
-        ? []
-        : [{ path: "submissions", mode: "040000", type: "tree", sha: "7".repeat(40) }]
+      tree: [
+        policyTreeEntry("policy", "040000", "tree", fixture.centralPolicyFixture.policyTree),
+        ...(fixture.centralPriorPackage === null
+          ? []
+          : [{ path: "submissions", mode: "040000", type: "tree", sha: "7".repeat(40) }])
+      ]
+    }));
+  }
+  if (url === `${centralUrl}/git/trees/${"e".repeat(40)}`) {
+    return response(200, JSON.stringify({
+      sha: "e".repeat(40),
+      truncated: false,
+      tree: [policyTreeEntry("policy", "040000", "tree", fixture.centralPolicyFixture.policyTree)]
+    }));
+  }
+  if (url === `${centralUrl}/git/trees/${fixture.centralPolicyFixture.policyTree}`) {
+    return response(200, JSON.stringify({
+      sha: fixture.centralPolicyFixture.policyTree,
+      truncated: false,
+      tree: fixture.centralPolicyFixture.trees.get(fixture.centralPolicyFixture.policyTree)
+    }));
+  }
+  if (url === `${centralUrl}/git/trees/${fixture.centralPolicyFixture.schemasTree}`) {
+    return response(200, JSON.stringify({
+      sha: fixture.centralPolicyFixture.schemasTree,
+      truncated: false,
+      tree: fixture.centralPolicyFixture.trees.get(fixture.centralPolicyFixture.schemasTree)
     }));
   }
   if (url === `${centralUrl}/git/trees/${"7".repeat(40)}`) {
@@ -2214,6 +2349,15 @@ function githubResponse(fixture, url, companions = []) {
     const blob = gitBlobDigest(bytes);
     if (url === `${centralUrl}/git/blobs/${blob}`) {
       return response(200, JSON.stringify({ sha: blob, encoding: "base64", content: bytes.toString("base64") }));
+    }
+  }
+  for (const [blob, bytes] of fixture.centralPolicyFixture.blobs) {
+    if (url === `${centralUrl}/git/blobs/${blob}`) {
+      return response(200, JSON.stringify({
+        sha: blob,
+        encoding: "base64",
+        content: bytes.toString("base64")
+      }));
     }
   }
   if (url === repositoryUrl) {

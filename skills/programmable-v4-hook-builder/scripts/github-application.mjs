@@ -18,6 +18,7 @@ const HELP = `Usage:
   node github-application.mjs update --prepared <prepare-pr.json> --repository-root <path> --pull-request <number> [options]
   node github-application.mjs status --prepared <prepare-pr.json> --repository-root <path> [--pull-request <number>] [options]
 
+Frozen legacy six-file/Application V3 compatibility only; not a current/default application path.
 Read-only by default. submit and update emit an immutable action plan and perform no write unless the exact plan digest
 is supplied with --confirm-external-write. The confirmed action can create a fork, branch commit, push-equivalent Git
 ref, and draft pull request. It never approves, merges, marks ready, deploys, launches, or creates a W2 application.

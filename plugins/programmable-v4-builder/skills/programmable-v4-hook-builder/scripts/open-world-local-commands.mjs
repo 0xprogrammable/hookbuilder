@@ -1,4 +1,4 @@
-import { CliFailure, createOpenWorldDraftPackage, migrateLegacySubmissionToOpenWorldV2, path, sha256Bytes, sha256Canonical, validateOpenWorldPackage } from "./open-world-shared.mjs";
+import { CliFailure, createOpenWorldDraftPackage, migrateLegacySubmissionToOpenWorldV2, path, sha256Bytes, sha256Canonical, validateLegacyFeeV2OpenWorldPackage, validateOpenWorldPackage } from "./open-world-shared.mjs";
 
 export function installOpenWorldLocalCommands(runtime) {
   const assertSnapshotUnchanged = (...args) => runtime.assertSnapshotUnchanged(...args);
@@ -126,12 +126,20 @@ export function installOpenWorldLocalCommands(runtime) {
   }
 
   function executeValidate(options, positionals) {
+    return executeValidateWith(options, positionals, validateOpenWorldPackage, "validate");
+  }
+
+  function executeValidateLegacyFeeV2(options, positionals) {
+    return executeValidateWith(options, positionals, validateLegacyFeeV2OpenWorldPackage, "validate-legacy-fee-v2");
+  }
+
+  function executeValidateWith(options, positionals, validatePackage, action) {
     const repositoryRoot = resolveRoot(options.repositoryRoot, { allowPackageRootFallback: true });
     const packageRoot = resolveDirectoryInside(repositoryRoot, positionals[0], "package directory");
-    const report = validateOpenWorldPackage({ packageRoot });
+    const report = validatePackage({ packageRoot });
     const valid = openWorldReportIsValid(report);
     const result = {
-      action: "validate",
+      action,
       package: relative(repositoryRoot, packageRoot),
       valid,
       report,
@@ -280,7 +288,7 @@ export function installOpenWorldLocalCommands(runtime) {
       networkAccessed: false,
       externalActionsPerformed: [],
       nextAction: options.write
-        ? "Run open-world validate on the new directory, recapture owner intent, and review before any application action."
+        ? "Run open-world validate-legacy-fee-v2 on this frozen migration package, recapture owner intent, and rebuild through the current central-policy path before any application action."
         : "Review the hashes, then rerun with --write to create this exact new package locally."
     };
   }
@@ -288,6 +296,7 @@ export function installOpenWorldLocalCommands(runtime) {
   Object.assign(runtime, {
     executeInit,
     executeValidate,
+    executeValidateLegacyFeeV2,
     executeValidateApplication,
     executeMigrate
   });

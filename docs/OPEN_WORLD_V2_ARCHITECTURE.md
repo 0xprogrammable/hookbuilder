@@ -5,6 +5,9 @@ contract, not evidence that v2 is released, live, audited, deployed, accepted by
 The checked-in schemas, validators, tests, release receipts and maintainer decisions remain the authority for those
 separate states.
 
+All Fee V2 sections below describe the frozen optional legacy package. They apply only when preserved intent or an
+applicable current central-policy Rule ID selects that exact package; they are not current admission requirements.
+
 ## Product boundary
 
 Every product idea that can be described is eligible to enter intent capture and architecture review. Eligibility is

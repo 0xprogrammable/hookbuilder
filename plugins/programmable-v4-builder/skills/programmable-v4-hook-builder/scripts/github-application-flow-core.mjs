@@ -268,6 +268,7 @@ export async function executeGitHubApplication({
     const parents = branchRef === null
       ? [normalizedPrepared.central.baseCommit]
       : uniqueStrings([branchRef.commit, normalizedPrepared.central.baseCommit]);
+    await assertAuthoritySnapshotUnchanged({ prepared: normalizedPrepared, transport, plan });
     const commit = normalizeCreatedCommit(await transport.createCommit(forkSlug, {
       message: `chore(builder): ${operation} ${normalizedPrepared.applicationId} revision ${normalizedPrepared.applicationRevision}\n\nPackage: ${normalizedPrepared.package.digest}`,
       tree: tree.sha,
@@ -344,6 +345,7 @@ export async function executeGitHubApplication({
         pull = duplicateSnapshot.pullRequest;
         break;
       }
+      await assertAuthoritySnapshotUnchanged({ prepared: normalizedPrepared, transport, plan });
       const response = await transport.createDraftPull(CENTRAL_REPOSITORY, {
         title: normalizedPrepared.title,
         body: normalizedPrepared.body,
@@ -376,6 +378,7 @@ export async function executeGitHubApplication({
     if (pull.head.sha !== branchRef.commit) {
       fail("APPLICATION_BRANCH_CHANGED", "the application pull request head changed before its metadata update");
     }
+    await assertAuthoritySnapshotUnchanged({ prepared: normalizedPrepared, transport, plan });
     const updatedPullNumber = normalizePullWriteResponse(await transport.updatePull(CENTRAL_REPOSITORY, pull.number, {
       title: normalizedPrepared.title,
       body: normalizedPrepared.body

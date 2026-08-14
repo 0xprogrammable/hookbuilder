@@ -28,12 +28,15 @@ const publicApi = Object.freeze([
   "bundledSupportingArtifactDocument",
   "canonicalJson",
   "contentAddressedBinding",
+  "createLegacyFeeV2DraftPackage",
   "createOpenWorldDraftPackage",
   "deriveOpenWorldV2FeeApplicability",
   "isRepositorySchemaBinding",
   "sha256Bytes",
   "sha256Utf8",
   "utf8ByteLength",
+  "validateLegacyFeeV2OpenWorldPackage",
+  "validateLegacyFeeV2OpenWorldV2Package",
   "validateOpenWorldPackage",
   "validateOpenWorldV2Package"
 ]);

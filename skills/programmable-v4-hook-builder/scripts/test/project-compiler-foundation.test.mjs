@@ -6,7 +6,7 @@ import {
   createProjectCommandReceipt, executeProjectCommands, projectCommandEnvironmentSha256,
   projectCommandMaximumOutputBytes, sha256Bytes,
   compileProjectBundle, preflightProjectOutput, validateProjectOutput,
-  TRADABLE_REFERENCE_PROFILE_ID, bindTradableReferenceIntent,
+  TRADABLE_LEGACY_POLICY_INTENT_CLAUSE, TRADABLE_REFERENCE_PROFILE_ID, bindTradableReferenceIntent,
   ARCHITECTURE_ROLES, PRODUCT_GRAPH_NAMES, PROJECT_SPEC_FACETS, projectArtifactSha256,
   validateArchitectureCandidates, validateProductGraph, validateProjectSpec,
   bindLocalReleaseHandoffV1, createNoMarketProjectAuthoring, renderGitHubSubmissionHandoffV1,
@@ -85,32 +85,36 @@ test("tradable local handoff replaces the stale README boundary with exact NOT_A
 });
 
 
-test("tradable profile binding is closed, natural, and UTF-8 byte exact", () => {
-  const blindIdea = "Please use the installed Programmable Hookbuilder to build a closed Uniswap v4 hook that charges a fixed fee on each swap's executed gross quote volume. Keep the buy and sell rates immutable after registration. Turn the idea into a complete local Git repository for later human review, and perform no publication or external write.";
-  const secondBlindIdea = "Use the installed Programmable Hookbuilder to create a Uniswap v4 hook that collects a fee from each swap's executed gross quote volume. Make the buy and sell rates fixed after registration. Build the complete project in this fresh local Git repository for human review, and do not publish or write to external systems.";
+test("tradable frozen legacy profile binds exact policy economics and UTF-8 intent bytes", () => {
+  const selectLegacyPolicy = (idea, handoff = "") => `${idea} ${TRADABLE_LEGACY_POLICY_INTENT_CLAUSE}${handoff === "" ? "" : ` ${handoff}`}`;
+  const blindIdea = selectLegacyPolicy("Please use the installed Programmable Hookbuilder to build a closed Uniswap v4 hook that charges a fixed fee on each swap's executed gross quote volume. Keep the buy and sell rates immutable after registration.", "Turn the idea into a complete local Git repository for later human review, and perform no publication or external write.");
+  const secondBlindIdea = selectLegacyPolicy("Use the installed Programmable Hookbuilder to create a Uniswap v4 hook that collects a fee from each swap's executed gross quote volume. Make the buy and sell rates fixed after registration.", "Build the complete project in this fresh local Git repository for human review, and do not publish or write to external systems.");
   const ideas = [
     "Build a Uniswap v4 hook that charges a fee on executed gross quote volume. Keep buy and sell rates immutable after registration.",
     "Make a Uniswap’s v4 hook that takes a fee from executed gross quote volume; make the buy and sell rates fixed after registration.",
     "Create a Uniswap version 4 hook which collects its fee from executed gross quote volume. Keep buy and sell rates unchanged after registration.",
-    "✨ Build a Uniswap v4 hook that charges a fixed fee on each swap’s executed gross quote volume. Keep the buy and sell rates immutable after registration.",
-    blindIdea,
-    secondBlindIdea,
-    "Build a Uniswap v4 hook that charges a fee on executed gross quote volume. Keep buy and sell rates immutable after registration. Produce a complete local Git repository for human review. Do not publish or perform any external writes."
-  ];
+    "✨ Build a Uniswap v4 hook that charges a fixed fee on each swap’s executed gross quote volume. Keep the buy and sell rates immutable after registration."
+  ].map((idea) => selectLegacyPolicy(idea));
+  ideas.push(blindIdea, secondBlindIdea, selectLegacyPolicy("Build a Uniswap v4 hook that charges a fee on executed gross quote volume. Keep buy and sell rates immutable after registration.", "Produce a complete local Git repository for human review. Do not publish or perform any external writes."));
   for (const idea of ideas) {
     const binding = bindTradableReferenceIntent(idea, TRADABLE_REFERENCE_PROFILE_ID), bytes = Buffer.from(idea);
     assert.equal(binding.normalizedCapability.feeBasis, "executed-gross-quote-volume");
+    assert.equal(binding.normalizedCapability.legacyPolicy, "programmable-volume-fee-v2@2.0.0");
+    assert.equal(binding.normalizedCapability.legacyPlatformRateBps, 10);
+    assert.equal(binding.normalizedCapability.legacyPlatformOwner, "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c");
     assert.deepEqual(binding.normalizedCapability.extraMaterialClauses, []);
+    assert.deepEqual(binding.capabilitySpans.map(({ capabilityId }) => capabilityId), ["uniswap-v4", "hook", "executed-gross-quote-volume-fee", "immutable-selected-buy-sell-rate", "frozen-legacy-policy", "inclusive-programmable-platform-share", "immutable-programmable-claimant"]);
     for (const span of binding.capabilitySpans) assert.equal(sha256Bytes(bytes.subarray(span.startByte, span.endByte)), span.textSha256);
   }
   const blindBinding = bindTradableReferenceIntent(blindIdea, TRADABLE_REFERENCE_PROFILE_ID);
-  assert.equal(Buffer.byteLength(blindIdea, "utf8"), 331);
-  assert.equal(blindBinding.ideaByteLength, 331);
-  assert.equal(blindBinding.ideaSha256, "sha256:c2376e5b8ebf5c181818264499c0d2db95099cf2e130f4e128613f0f8ab89814");
+  assert.equal(Buffer.byteLength(blindIdea, "utf8"), blindBinding.ideaByteLength);
+  assert.equal(blindBinding.ideaSha256, sha256Bytes(Buffer.from(blindIdea)));
   const secondBlindBinding = bindTradableReferenceIntent(secondBlindIdea, TRADABLE_REFERENCE_PROFILE_ID);
-  assert.equal(secondBlindBinding.ideaByteLength, 319);
-  assert.equal(secondBlindBinding.ideaSha256, "sha256:6211cfb72046565ce105ae60c010e6eaca5c456dce05a725d64c45639b30ad6d");
+  assert.equal(Buffer.byteLength(secondBlindIdea, "utf8"), secondBlindBinding.ideaByteLength);
+  assert.equal(secondBlindBinding.ideaSha256, sha256Bytes(Buffer.from(secondBlindIdea)));
   for (const idea of [
+    "Build a Uniswap v4 hook that charges a fee on executed gross quote volume. Keep buy and sell rates immutable after registration.",
+    "Build a Uniswap v4 hook that charges a fee on executed gross quote volume. Keep buy and sell rates immutable after registration. Use frozen legacy policy programmable-volume-fee-v2@2.0.0 with an inclusive 10 bps Programmable platform share claimable only by 0x0000000000000000000000000000000000000000.",
     "Build a Uniswap v4 hook that charges a fee on executed volume for token holders.",
     "Build a Uniswap v4 hook that charges dynamic fees on executed volume.",
     "Build a Uniswap v4 hook that charges a fee on executed trading volume. Keep buy and sell rates immutable after registration.",
@@ -190,6 +194,9 @@ test("tradable materialize profile mismatch fails before output and aligned dry-
   const rejected = childProcess.spawnSync(process.execPath, base, { encoding: "utf8", shell: false });
   assert.equal(rejected.status, 2); assert.match(rejected.stderr, /TRADABLE_REFERENCE_PROFILE_MISMATCH/u); assert.equal(fs.existsSync(output), false);
   fs.writeFileSync(idea, "Build a Uniswap v4 hook that charges a fixed fee on executed gross quote volume. Keep buy and sell rates immutable after registration.\n");
+  const missingLegacyPolicy = childProcess.spawnSync(process.execPath, base, { encoding: "utf8", shell: false });
+  assert.equal(missingLegacyPolicy.status, 2); assert.match(missingLegacyPolicy.stderr, /TRADABLE_REFERENCE_PROFILE_MISMATCH/u); assert.equal(fs.existsSync(output), false);
+  fs.writeFileSync(idea, `Build a Uniswap v4 hook that charges a fixed fee on executed gross quote volume. Keep buy and sell rates immutable after registration. ${TRADABLE_LEGACY_POLICY_INTENT_CLAUSE}\n`);
   const dry = childProcess.spawnSync(process.execPath, base, { encoding: "utf8", shell: false });
   assert.equal(dry.status, 0, dry.stderr || dry.stdout); assert.equal(JSON.parse(dry.stdout).status, "PROJECT_MATERIALIZATION_DRY_RUN_READY"); assert.equal(fs.existsSync(output), false);
   const blockedWrite = childProcess.spawnSync(process.execPath, [...base, "--write"], { encoding: "utf8", shell: false });

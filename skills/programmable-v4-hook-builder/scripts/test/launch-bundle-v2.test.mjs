@@ -43,7 +43,7 @@ import {
 } from "../fee-conformance-vector-set-v1-core.mjs";
 import {
   architectureSnapshotSha256,
-  createOpenWorldDraftPackage
+  createLegacyFeeV2DraftPackage
 } from "../open-world-v2-core.mjs";
 import { canonicalJson, validateAgainstSchema } from "../submission-core.mjs";
 import {
@@ -1364,7 +1364,7 @@ function fixture({
     treeObjectId: "d".repeat(40)
   };
   const ideaText = "A multilingual zero-AMM game with three assets, contract pricing and transparent fee collection.";
-  const draft = createOpenWorldDraftPackage({
+  const draft = createLegacyFeeV2DraftPackage({
     applicationId: "bound-open-world-project",
     publicIdeaText: ideaText,
     sourceRef: "user-message"

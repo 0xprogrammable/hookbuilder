@@ -7,6 +7,11 @@ import {
   toHex32
 } from "./cli-prepare-pr-values.mjs";
 import { SUBMIT_LAUNCH_REPOSITORY } from "./registry-intake-contract.mjs";
+import {
+  normalizeSubmitLaunchPolicyBinding,
+  normalizeSubmitLaunchPolicySchemaBinding,
+  SubmitLaunchPolicyError
+} from "./submit-launch-policy-contract.mjs";
 
 export function buildPullRequestDocument({
   repositoryRoot,
@@ -43,6 +48,25 @@ export function buildPullRequestDocument({
     || !Number.isInteger(applicationRevision)
   ) {
     throw new CliFailure("CENTRAL_BASE_INVALID", "the fixed central pull-request target is unavailable", { exitCode: 1 });
+  }
+  let policyBinding;
+  let policySchemaBinding;
+  try {
+    policyBinding = normalizeSubmitLaunchPolicyBinding(centralBase.policyBinding);
+    policySchemaBinding = normalizeSubmitLaunchPolicySchemaBinding(centralBase.policySchemaBinding);
+  } catch (error) {
+    if (error instanceof SubmitLaunchPolicyError) {
+      throw new CliFailure("CENTRAL_BASE_INVALID", "the fixed central policy binding is unavailable", { exitCode: 1 });
+    }
+    throw error;
+  }
+  if (
+    policyBinding.baseCommit !== centralBase.baseCommit
+    || policyBinding.baseTree !== centralBase.baseTree
+    || policySchemaBinding.baseCommit !== centralBase.baseCommit
+    || policySchemaBinding.baseTree !== centralBase.baseTree
+  ) {
+    throw new CliFailure("CENTRAL_BASE_INVALID", "the central policy bindings do not match the fixed pull-request base", { exitCode: 1 });
   }
   const centralApplicationPath = centralBase.applicationPath;
   const title = `[Builder Beta] ${modelId}`;
@@ -82,6 +106,9 @@ export function buildPullRequestDocument({
       baseBranch,
       baseCommit: centralBase.baseCommit,
       baseTree: centralBase.baseTree,
+      policyBinding,
+      policySchemaBinding,
+      policyRole: "current-workflow-canary-drift-anchor-not-legacy-v2-evaluation",
       applicationDirectory: centralBase.applicationDirectory,
       applicationPath: centralApplicationPath,
       priorApplicationRevision: centralBase.priorApplicationRevision,
@@ -156,6 +183,7 @@ export function buildPullRequestDocument({
       "github-builder-identity-resolution",
       "github-public-source-resolution",
       "central-github-base-and-prior-resolution",
+      "central-submit-launch-policy-and-schema-resolution",
       "central-github-base-stability-check"
     ],
     externalActionsPerformed: []

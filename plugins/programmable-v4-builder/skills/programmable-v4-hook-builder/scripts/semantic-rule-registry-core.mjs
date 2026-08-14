@@ -51,7 +51,7 @@ const REQUIRED_RULE_CATEGORIES = new Map([
     id: "builder.fee-rules.v1",
     ownerFile: "scripts/fee-policy-v2-contract.mjs",
     anchorLiteral: "uint256-rate-custom-reviewed-segregated-funding-only",
-    trigger: "The Fee Policy V2 contract creates and validates its externally funded rate rule.",
+    trigger: "Frozen legacy Fee Policy V2 validates its archived rate rule.",
     tests: {
       positive: [{ path: "scripts/test/fee-policy-v2.test.mjs", testCase: "policy document binds profiles scope owner and solvency semantics" }],
       negative: [{ path: "scripts/test/fee-policy-v2.test.mjs", testCase: "policy validator mirrors every closed schema field and rejects unknown properties" }]
