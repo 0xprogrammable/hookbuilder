@@ -184,7 +184,7 @@ test("stable v0.5.1 through v0.7.0 history is immutable and v0.8.0 is the releas
   assert.match(readme, /Release package `v0\.8\.0`/u);
   assert.match(readme, /`publicationStateVerified: false`/u);
   assert.match(readme, /--pin v0\.8\.0/u);
-  assert.match(changelog, /^## 0\.8\.0 - 2026-08-15$/mu);
+  assert.match(changelog, /^## 0\.8\.0 - 2026-08-14$/mu);
   assert.match(changelog, /^## 0\.7\.0 - 2026-08-14$/mu);
   assert.match(changelog, /^## 0\.6\.0 - 2026-08-13$/mu);
   assert.match(candidateNotes, /^# Programmable v4 Builder v0\.8\.0$/mu);

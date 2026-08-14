@@ -2,7 +2,7 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
-## 0.8.0 - 2026-08-15
+## 0.8.0 - 2026-08-14
 
 ### Added
 
