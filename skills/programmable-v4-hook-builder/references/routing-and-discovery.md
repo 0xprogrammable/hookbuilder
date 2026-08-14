@@ -12,18 +12,19 @@ Do not equate the existence of a price, market-like system node, pool, token, ga
 surface with a trade route. The Builder classifies its explicit routing facet as `tradable`, `no-market`, or
 `unresolved`. Only selected market nodes that reference that routing entry are tradable.
 
-Every tradable market produces one machine-readable `trade-capability-manifest-v1`. It records the exact PoolKey and
-PoolId, chain/block context, standard Uniswap v4 or canonical Programmable-adapter route, router and quoter code
-identities, Permit2/native funding profile, hookData bytes contract, supported direction/exactness modes, slippage,
-deadline and fee behavior, and the exact source tests and commands that must quote and execute those modes. The
-manifest is declarative and always `NOT_APPROVED`; typed post-run results and command receipts are separate,
-content-addressed evidence.
+The bundled `trade-capability-manifest-v1` is a frozen Fee V2 compatibility contract. Emit it only through the explicit
+legacy reference profile whose preserved intent binds that exact platform policy, rate, and claimant. A current
+tradable design still needs exact PoolKey, route, funding, hookData, slippage, deadline, quote, execution, and generic
+fee evidence, but the Builder must not manufacture a V1 manifest or its branded `programmableFeeV2` projection. Until
+a policy-neutral successor is centrally published, keep other tradable materialization unresolved instead of treating
+V1 as the default. The frozen manifest remains declarative and always `NOT_APPROVED`; typed results and receipts are
+separate content-addressed evidence.
 
 A standard v4 route must use an executable V4Quoter or equally reviewed callback-executing simulation, then execute the
 same PoolKey, hookData, mode, sender/recipient, limits, router generation and fee assumptions through the standard
-Universal Router/V4Planner path. An adapter route must implement the separately hash-bound
-`programmable-trade-execution-v1` quote and build-execution envelopes and prove conformance before it can claim that
-interface. A custom string, ABI guess or frontend helper is not a canonical adapter.
+Universal Router/V4Planner path. Inside the exact frozen Fee V2 profile only, an adapter route must implement the
+separately hash-bound `programmable-trade-execution-v1` quote and build-execution envelopes and prove conformance before
+it can claim that legacy interface. A custom string, ABI guess, or frontend helper is not a canonical adapter.
 
 `no-market` is a valid product decision and forbids route manifests and trade evidence. `unresolved` remains a material
 compiler blocker. Local quote/execution tests never establish provider routing, approval, deployment, broadcast,

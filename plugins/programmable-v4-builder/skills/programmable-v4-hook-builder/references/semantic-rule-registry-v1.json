@@ -62,7 +62,7 @@
       "category": "fee",
       "id": "builder.fee-rules.v1",
       "canonicalOwnerFile": "scripts/fee-policy-v2-contract.mjs",
-      "trigger": "The Fee Policy V2 contract creates and validates its externally funded rate rule.",
+      "trigger": "Frozen legacy Fee Policy V2 validates its archived rate rule.",
       "tests": {
         "positive": [
           {
@@ -418,7 +418,7 @@
       "findingCodes": [
         "PROGRAMMABLE_FEE_EFFECTIVE_RATE_INVALID"
       ],
-      "trigger": "A canonical-pool swap selects project buy or sell rates and the mandatory platform split is derived.",
+      "trigger": "Frozen legacy Submission V1 schema urn:programmable:v4-hook-submission:1.6.0 explicitly carries its historical platform-fee contract.",
       "severity": "blocker",
       "tests": {
         "positive": [

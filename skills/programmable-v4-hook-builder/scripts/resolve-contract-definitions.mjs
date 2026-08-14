@@ -49,12 +49,7 @@ export const RESOLVE_CONTRACT_V1 = Object.freeze({
       "references/public-pr-application.schema.json"
     ]),
     policy: Object.freeze([
-      "references/approval-criteria.md",
-      "references/programmable-fee-policy-v2.md",
-      "vendor/programmable-v4-hook-builder-v3-snapshot/references/programmable-fee-policy-v2.md",
-      "vendor/programmable-v4-hook-builder-v3-snapshot/references/programmable-fee-policy.md",
-      "vendor/programmable-v4-hook-builder/references/programmable-fee-policy.md",
-      "docs/builder/PUBLIC_GITHUB_PR_BETA.md"
+      "policy/launch-policy.v1.json"
     ])
   })
 });

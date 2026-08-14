@@ -9,6 +9,7 @@ import { objectAt, resolvedText, sameStringList } from "./submission-analysis-he
 import { sameValue } from "./submission-value-core.mjs";
 
 export function analyzeSubmissionProgrammableFee(context) {
+  if (context?.legacyFeeContract !== "programmable-submission-v1.6-fee") return;
   const {
     submission,
     add,

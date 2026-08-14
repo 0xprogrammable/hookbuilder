@@ -12,13 +12,13 @@ import { inspectProjectTradeCapability, projectArtifactSha256 } from "./project-
 import { spawnSafeGitSync } from "./repository-root.mjs";
 import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
 import { validateAgainstSchema } from "./submission-core.mjs";
+import { all, any, bindFinding as bind, coalesce, findingAdder, gitEvidenceError, isObject, sortedFindings as sorted } from "./submission-value-core.mjs";
 import { tradeRunnerDomainEvidenceMatchesV1, validateV4DeploymentEvidence } from "./v4-deployment-evidence-core.mjs";
 import { validateV4HookSemanticContract } from "./v4-hook-semantic-contract-core.mjs";
 import { TRADE_TEST_SEMANTIC_ADEQUACY_V1, tradeCapabilityManifestSha256V1, validateTradeCapabilityManifestV1,
   validateTradeResultPairV1, validateTradeTestResultV1 } from "./trade-capability-manifest-core.mjs";
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(moduleDirectory, "..");
-const severityOrder = Object.freeze({ blocker: 0, review: 1, advisory: 2 });
 const alwaysRequiredCommandKinds = Object.freeze([
   "install", "build", "typecheck", "lint", "simulation", "test", "evidence"
 ]);
@@ -28,6 +28,14 @@ const contractRequiredCommandKinds = Object.freeze([
 const schemaCache = new Map();
 
 export function validateRepositoryPlan(projectSpec, productGraph, architectureCandidates, repositoryPlan, options = {}) {
+  return validateRepositoryPlanForProfile(projectSpec, productGraph, architectureCandidates, repositoryPlan, options, false);
+}
+
+export function validateFrozenLegacyTradeManifestV1RepositoryPlan(projectSpec, productGraph, architectureCandidates, repositoryPlan, options = {}) {
+  return validateRepositoryPlanForProfile(projectSpec, productGraph, architectureCandidates, repositoryPlan, options, true);
+}
+
+function validateRepositoryPlanForProfile(projectSpec, productGraph, architectureCandidates, repositoryPlan, options, legacyV1) {
   const findings = [];
   const add = findingAdder(findings);
   validateSchema(repositoryPlan, "repository-plan-v1.schema.json", "REPOSITORY_PLAN_SCHEMA_INVALID", add);
@@ -49,7 +57,7 @@ export function validateRepositoryPlan(projectSpec, productGraph, architectureCa
   validateSelectedComponentCoverage(selected, componentNodes, inventory, add);
   validateToolchainPlan(selected, systemNodes, componentNodes, inventory, add);
   validateV4SemanticPlan(repositoryPlan, selected, systemNodes, inventory, options, add);
-  const tradeProjection = validateTradeCapabilityPlan(projectSpec, productGraph, architectureCandidates, repositoryPlan, inventory, add);
+  const tradeProjection = validateTradeCapabilityPlan(projectSpec, productGraph, architectureCandidates, repositoryPlan, inventory, legacyV1, add);
 
   if (repositoryPlan.completionStatus === "COMPLETE") {
     validateCompleteArtifacts(repositoryPlan, inventory, options, add);
@@ -151,7 +159,7 @@ function validateCommandPlan(repositoryPlan, selected, systemNodes, componentNod
   }
 }
 
-function validateTradeCapabilityPlan(projectSpec, productGraph, architectureCandidates, repositoryPlan, inventory, add) {
+function validateTradeCapabilityPlan(projectSpec, productGraph, architectureCandidates, repositoryPlan, inventory, legacyV1, add) {
   const projection = inspectProjectTradeCapability(projectSpec, productGraph, architectureCandidates);
   const markets = coalesce(repositoryPlan.tradeCapability?.markets, []);
   const commands = new Map(coalesce(repositoryPlan.commands, []).map((command) => [command.id, command]));
@@ -171,6 +179,13 @@ function validateTradeCapabilityPlan(projectSpec, productGraph, architectureCand
     return projection;
   }
   if (projection.applicability !== "tradable") return projection;
+  if (!legacyV1) {
+    if (markets.length + tradeCommands.length + manifests.length + results.length !== 0) {
+      add("blocker", "FROZEN_TRADE_MANIFEST_V1_FORBIDDEN", "$.tradeCapability", "Frozen Fee V2 trade-manifest V1 is legacy-only.", { markets: markets.length, commands: tradeCommands.length, manifests: manifests.length, results: results.length });
+    }
+    add("review", "POLICY_NEUTRAL_TRADE_MANIFEST_SUCCESSOR_UNAVAILABLE", "$.tradeCapability.applicability", "No current successor is bundled.");
+    return { ...projection, currentTradeManifestStatus: "successor-unavailable" };
+  }
   if (projection.marketRefs.length === 0) add("blocker", "TRADE_MARKET_CARDINALITY_INVALID", "$.tradeCapability.markets", "No tradable market.");
   const expectedRefs = new Set(projection.marketRefs);
   const planByRef = new Map();
@@ -483,7 +498,7 @@ function validateV4SemanticArtifactFiles(repositoryPlan, inventory, repositoryRo
 }
 
 function validateTradeCapabilityFiles(repositoryPlan, inventory, repositoryRoot, projection, add) {
-  if (projection.applicability !== "tradable") return;
+  if (projection.applicability !== "tradable" || projection.currentTradeManifestStatus === "successor-unavailable") return;
   const root = fs.realpathSync(repositoryRoot);
   const commands = new Map(coalesce(repositoryPlan.commands, []).map((command) => [command.id, command]));
   const resultsByCommand = new Map(coalesce(repositoryPlan.commandResults, []).map((result) => [result.commandId, result]));
@@ -647,47 +662,4 @@ function gitEvidence(root, args) {
   return result.status === 0
     ? { ok: true, status: 0, output: result.stdout.trim() }
     : { ok: false, status: result.status, error: (result.stderr || result.error?.message || `exit ${result.status}`).trim() };
-}
-
-function gitEvidenceError(code, message, details = {}) {
-  return Object.assign(new Error(message), { code, ...details });
-}
-
-function bind(observed, expected, findingPath, code, add, details = {}) {
-  if (any(expected === undefined, expected === null, observed === expected)) return;
-  add("blocker", code, findingPath, "Bound value does not match its authoritative source.", { ...details, expected, observed: coalesce(observed, null) });
-}
-
-function findingAdder(findings) {
-  const seen = new Set();
-  return (severity, code, findingPath, message, details = {}) => {
-    const key = `${severity}:${code}:${findingPath}:${JSON.stringify(details)}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    findings.push({ severity, code, path: findingPath, message, details });
-  };
-}
-
-function sorted(findings) {
-  return findings.sort((left, right) => (
-    severityOrder[left.severity] - severityOrder[right.severity]
-    || left.code.localeCompare(right.code)
-    || left.path.localeCompare(right.path)
-  ));
-}
-
-function isObject(value) {
-  return all(value !== null, typeof value === "object", !Array.isArray(value));
-}
-
-function coalesce(value, fallback) {
-  return value == null ? fallback : value;
-}
-
-function any(...conditions) {
-  return conditions.some(Boolean);
-}
-
-function all(...conditions) {
-  return conditions.every(Boolean);
 }

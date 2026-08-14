@@ -16,6 +16,12 @@ const REPOSITORY_URI = "https://github.com/example/registry";
 const COMMIT = "a".repeat(40);
 const TREE = "b".repeat(40);
 
+test("convention fallback treats only the central launch-policy JSON as policy authority", () => {
+  assert.deepEqual(RESOLVE_CONTRACT_V1.conventionCandidates.policy, [
+    "policy/launch-policy.v1.json"
+  ]);
+});
+
 test("offline mode emits a deterministic plan without touching a transport", async () => {
   let calls = 0;
   const report = await resolveActiveContractV1({

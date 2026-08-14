@@ -13,7 +13,7 @@ import {
   REGISTRY_INDEX_CURRENT_VERSION,
   REGISTRY_INDEX_LEGACY_VERSION,
   REGISTRY_INDEX_SUPPORTED_VERSIONS,
-  REGISTRY_PROJECT_SCHEMA_VERSION,
+  REGISTRY_FROZEN_LEGACY_PROJECT_SCHEMA_VERSION,
   REGISTRY_PUBLIC_BASELINE_COMMIT,
   SNAPSHOT_SCHEMA_VERSION,
   SNAPSHOT_SOURCE_RECEIPT_VERSION
@@ -293,7 +293,7 @@ export function parseAndVerifyRecord(bytes, summary) {
 export function validateProjectRecord(record, summary) {
   if (
     !isPlainObject(record)
-    || record.schemaVersion !== REGISTRY_PROJECT_SCHEMA_VERSION
+    || record.schemaVersion !== REGISTRY_FROZEN_LEGACY_PROJECT_SCHEMA_VERSION
     || record.id !== summary.id
     || record.name !== summary.name
     || record.status !== summary.status
@@ -310,7 +310,7 @@ export function validateProjectRecord(record, summary) {
   for (const [field, values] of [["capabilities", record.capabilities], ["surfaces", record.surfaces], ["tags", record.discovery.tags]]) {
     assertSortedUnique(values, `${summary.id} ${field}`);
   }
-  if (record.economics?.programmableFee?.claimOwner !== "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c" || record.economics?.programmableFee?.inclusiveBps !== 10 || record.economics?.programmableFee?.required !== true) fail("REGISTRY_RECORD_INVALID", `Registry record ${summary.id} does not preserve the mandatory fee identity`);
+  if (record.economics?.programmableFee?.claimOwner !== "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c" || record.economics?.programmableFee?.inclusiveBps !== 10 || record.economics?.programmableFee?.required !== true) fail("REGISTRY_RECORD_INVALID", `Frozen Registry v1 record ${summary.id} does not preserve its exact historical fee identity`);
 }
 
 export function scoreRecord(record, queryTokens, normalizedQuery) {

@@ -1,5 +1,9 @@
 # Guided intake playbook
 
+Fee V2 fields in this playbook describe an optional frozen implementation package. They apply only when preserved
+project intent or an applicable current central-policy Rule ID selects that exact kernel. A market, canonical pool, or
+local capability label alone creates no Programmable fee requirement.
+
 Use this playbook after the public-safe intent contract and before implementation. Ask only the next answer that changes
 the product. Derive technical detail from confirmed intent and pinned evidence rather than making the builder speak
 protocol jargon.
@@ -28,7 +32,7 @@ Ask only the first unresolved material question. Skip a pass whose subject is ab
 | --- | --- | --- | --- |
 | 1 | What should a person be able to do or experience? | Outcome and material promises | Candidate entities and surfaces |
 | 2 | What things or rights exist, and can their amount change? | Economic meaning, mint/burn/redeem rights | Asset and component graph |
-| 3 | Does value move, trade, settle, or remain purely informational? | Economic action and loss exposure | Markets, flows, fee applicability |
+| 3 | Does value move, trade, settle, or remain purely informational? | Economic action and loss exposure | Markets, flows, and any intent- or central-Rule-selected accounting |
 | 4 | If a market exists, how is price and settlement determined? | AMM, contract price, auction, order, oracle, service, or another rule | Exact architecture and required evidence |
 | 5 | Who pays, receives, holds, or may lose value? | Beneficiaries, custody, claims and exits | Conservation and liability checks |
 | 6 | Who can change or stop behavior? | Authorities, bounds, delay and recourse | Role/capability matrix |
@@ -56,7 +60,7 @@ Authorities and trust
 External dependencies
 Failure, exit, and retirement
 Product surfaces
-Fee applicability: unresolved / applicable / not-applicable
+Optional legacy Fee V2 applicability, only when selected: unresolved / applicable / not-applicable / not selected
 Assumptions and next material decision
 ```
 
@@ -72,15 +76,17 @@ Offer defaults only after the relevant surface is confirmed:
   AMM, hook, fixed supply, quote asset, signer, oracle, keeper, server, or provider it does not need.
 - For a confirmed v4 hook, start with all 14 permissions disabled and enable only proven callbacks.
 - For a confirmed canonical v4 swap, use the minimum complete PoolKey, callback, router and settlement surface.
-- For a confirmed `programmable-canonical` execution scope, apply Fee V2 exactly once through its actual settlement path.
+- If intent or an applicable current central-policy Rule ID selects Fee V2, apply that exact kernel through its actual
+  settlement path.
 - Keep external provider support `unknown` until current attributable evidence proves its exact surface.
 
 The builder may delegate reversible choices. Record each proposed default and its effect; do not silently decide
 economics, custody, loss exposure, mutable authority, external trust, exit rights, legal claims, or publication.
 
-## Derive fee applicability first
+## Derive optional legacy Fee V2 applicability only after selection
 
-Classify from the structured market graph, never from a template name or fee keyword:
+Do not classify Fee V2 merely from the graph. First require preserved intent or an applicable current central-policy
+Rule ID selecting the exact frozen kernel. Only then classify that package from its structured market graph:
 
 - A proposal uses `feeApplicability: unresolved` and null fee-instance fields while execution classes remain unresolved.
 - A prototype with one or more `programmable-canonical` execution scopes uses `applicable`. Each canonical market binds
@@ -89,12 +95,11 @@ Classify from the structured market graph, never from a template name or fee key
   `not-applicable`. Keep the instance path, repository and digest null; do not invent a market, PoolKey, hook, receipt, or
   volume solely to satisfy the schema.
 
-An `unknown` execution class grants no exemption and must resolve from source before prototype or launch review. A
-zero-scope project may still be implemented, submitted and accepted for review. Registry Acceptance V3 preserves its
-`not-applicable` classification; Launch Bundle V2 is the separate canonical fee-bearing path and must not turn N/A into
-authorization.
+Inside that selected legacy package, an `unknown` execution class must resolve from source before its own review and an
+unrelated fee artifact cannot manufacture authorization. Outside it, emit no Fee V2 applicability or instance.
 
-If applicability is `applicable`, read [programmable-fee-policy-v2.md](programmable-fee-policy-v2.md). The immutable
+If that explicitly selected package derives `applicable`, read
+[programmable-fee-policy-v2.md](programmable-fee-policy-v2.md). Its immutable
 Programmable entitlement is inclusive 10 bps of executed gross quote-side volume for each canonical scope, owned and
 claimable only by `0x4957f49620AFf3Adbbe8195a4f633E49cc93376c`. The platform admin wallet is independent and cannot
 claim, redirect, sweep, replace, or net that liability.

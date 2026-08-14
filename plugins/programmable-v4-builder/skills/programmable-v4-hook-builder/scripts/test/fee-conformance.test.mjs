@@ -228,8 +228,10 @@ test("candidate paths cannot escape the declared root", (t) => {
 test("CLI exposes the audit boundary in help", () => {
   const result = childProcess.spawnSync(process.execPath, [cliPath, "--help"], { encoding: "utf8" });
   assert.equal(result.status, 0);
+  assert.match(result.stdout, /Frozen legacy Fee V1 only/i);
+  assert.match(result.stdout, /no current Programmable requirement/i);
   assert.match(result.stdout, /not an audit/i);
-  assert.match(result.stdout, /isolated maintainer rebuild/i);
+  assert.match(result.stdout, /not .* maintainer rebuild/i);
 });
 
 test("CLI refuses to write a manifest through a symbolic output directory", (t) => {

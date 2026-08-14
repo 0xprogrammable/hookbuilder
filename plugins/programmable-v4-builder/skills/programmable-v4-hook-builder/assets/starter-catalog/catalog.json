@@ -3,7 +3,7 @@
   "kind": "programmable-starter-catalog",
   "implementationLegos": {
     "path": "implementation-legos/manifest.json",
-    "sha256": "5e046fcabe3d91408fe4a7f562a0a599d5ad352798aa8249cf357fd49f4fbea7"
+    "sha256": "28f63a0cfecaea957ba68fa77455aa9144e374c80092bae950dffc12580da5b4"
   },
   "policy": {
     "selectionSemantics": "accelerator-only",
@@ -20,7 +20,7 @@
       "id": "active-liquidity-market",
       "kind": "pack",
       "path": "packs/active-liquidity-market.json",
-      "sha256": "8bd5004f91771e416aef34017af055c4e61aad2e72c3c9ba07736cd5ce6f606e"
+      "sha256": "6a449bcb840ce1eb1ced5945d2265912a9be195f5d017960d3f82c9687456b3a"
     },
     {
       "id": "async-swap",
@@ -86,13 +86,13 @@
       "id": "contract-priced-sell-and-burn",
       "kind": "pack",
       "path": "packs/contract-priced-sell-and-burn.json",
-      "sha256": "e84278a01670814751419afc1f175753ae783577e7deb631411bdf1da3df686f"
+      "sha256": "d0e26c4fc97e3d6d7faa05f7a38983fc0b6d5ccc440f4fa400848a84a635a91b"
     },
     {
       "id": "contract-priced-sell-and-burn-v4-custom-accounting",
       "kind": "pack",
       "path": "packs/contract-priced-sell-and-burn-v4-custom-accounting.json",
-      "sha256": "db2d6176631056cc7146e51551e9bfc5d808dda09d1cd2825be79fb08b9b7790"
+      "sha256": "b20eb5d1f20776c9f416d44ef0bb8fb1c23e46fda13b80914b79a36927323940"
     },
     {
       "id": "cross-chain-messaging",
@@ -110,25 +110,25 @@
       "id": "custom-hook",
       "kind": "starter",
       "path": "starters/custom-hook.json",
-      "sha256": "755f095582c6b9c2f8c8c8c2cef0913b07c589a96e94fe2267b2173e488701ca"
+      "sha256": "edede080812e94dc079c709a5c46a1a6c0e6cbfe2e4f4424212bf47fdfea227d"
     },
     {
       "id": "custom-hook-behavior",
       "kind": "pack",
       "path": "packs/custom-hook-behavior.json",
-      "sha256": "b66c400ad143f3ba59c215d4c23b130c0213b8cd29d760a13dbbac191a75dee7"
+      "sha256": "b3622b79e8b85a33d38dd4b37f31dd6c67157f4e5fce53715c0ca6089d982e24"
     },
     {
       "id": "custom-token-standard-fee-hook",
       "kind": "starter",
       "path": "starters/custom-token-standard-fee-hook.json",
-      "sha256": "c1c21cf0ee826529a6a6a277b3ba5aeafab2ec469fbe1fe387bf482b56c4ab1b"
+      "sha256": "1f31359d1edd4039c643c01135cf38ab62c8c6853286678b7a3d711a609d4e5b"
     },
     {
       "id": "dynamic-lp-fee",
       "kind": "pack",
       "path": "packs/dynamic-lp-fee.json",
-      "sha256": "425bc1273b3e7a25ba76a63978ad70298210590e8f3964768807a9e45cb5e0ea"
+      "sha256": "3a8dd972342eb1354f6e0aa894f74066a3a76b4ae0e096e3808a268c87f9e09f"
     },
     {
       "id": "external-liquidity-aggregator",
@@ -140,13 +140,13 @@
       "id": "hook-owned-idle-yield",
       "kind": "pack",
       "path": "packs/hook-owned-idle-yield.json",
-      "sha256": "5be5dc1edfbe2d3d7f41a63341adeeedbb1380e0d4f57be39bdbb906c61954f7"
+      "sha256": "134041888e9d168ad55b9123bece8d55c391162c5abee5b31e223ecdc117fdda"
     },
     {
       "id": "hook-owned-project-fee",
       "kind": "pack",
       "path": "packs/hook-owned-project-fee.json",
-      "sha256": "2efb2f23e06ba24b45d05742966ca1910c43a78bddee20477bbde4cd4522e10d"
+      "sha256": "0b3df4d29367f386fde2ff299e9604373887a416212e58a8a0dcf00530aeef5c"
     },
     {
       "id": "launch-distribution-vesting-lp-custody",
@@ -200,7 +200,7 @@
       "id": "ordinary-launch",
       "kind": "starter",
       "path": "starters/ordinary-launch.json",
-      "sha256": "5c11272da7cb634bffbf10a9a0812804b03289a83082b4ac6bc59c30088bbdc9"
+      "sha256": "ab9e242584770c604d65a86a818b43842431abc6ed552327b92ad8e88367c706"
     },
     {
       "id": "permissioned-external-asset",
@@ -218,7 +218,7 @@
       "id": "programmable-volume-fee",
       "kind": "pack",
       "path": "packs/programmable-volume-fee.json",
-      "sha256": "0be20e1c1f43b24ce7ff9dabe80f790b5b0f44d839340ee006feccd97e9c4bd1"
+      "sha256": "88b11d3cb3e6a9d3e422a0c8fbe48e28024b73c06f3eab4e7fc468dfd6543ad5"
     },
     {
       "id": "randomness-loot-rewards",
@@ -242,7 +242,7 @@
       "id": "tax-financed-auto-liquidity",
       "kind": "pack",
       "path": "packs/tax-financed-auto-liquidity.json",
-      "sha256": "cb0a8929e496ee8587371cca5bd5faf2efc1df7bdf46a7757b2d555046f80339"
+      "sha256": "aef0575c4ded4ee4d031bb12a7441add713bd772baf4957bfe1e004c0ea21efd"
     },
     {
       "id": "test-evidence-threat-model",
@@ -260,13 +260,13 @@
       "id": "token-managed-automatic-liquidity",
       "kind": "pack",
       "path": "packs/token-managed-automatic-liquidity.json",
-      "sha256": "1846e71247012f8dc015b527705ec8e9053d39bdb10db89395fb722369ab2d24"
+      "sha256": "7bc7848e399e744d94746ee5cca62cd954603bac175bcb702cc2c25f4fcec849"
     },
     {
       "id": "token-transfer-tax",
       "kind": "pack",
       "path": "packs/token-transfer-tax.json",
-      "sha256": "4ebe082179ab57e67a619ce3becb5c3445c94158c99672e1cc142a6ac33321bc"
+      "sha256": "cca6d006927ad80c4b578b258d31b61f9be7b0c932b6fccda6dfec8f875a0002"
     },
     {
       "id": "v4-claim-client",

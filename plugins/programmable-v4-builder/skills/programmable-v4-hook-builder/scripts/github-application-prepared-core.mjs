@@ -6,6 +6,11 @@ import { validateGitHubPublicSourceRequestV1 } from "./github-public-source-core
 import { canonicalJson } from "./submission-core.mjs";
 import { hasForbiddenInvisibleOrBidi } from "./metadata-core.mjs";
 import { parseBoundedStrictJson } from "./strict-json-core.mjs";
+import {
+  normalizeSubmitLaunchPolicyBinding,
+  normalizeSubmitLaunchPolicySchemaBinding,
+  SubmitLaunchPolicyError
+} from "./submit-launch-policy-contract.mjs";
 
 import {
   APPLICATION_COMPATIBILITY_RESULTS,
@@ -164,6 +169,26 @@ export function normalizePreparedApplication(input) {
   }
   const centralBaseCommit = requireCommit(centralTarget.baseCommit, "central base commit");
   const centralBaseTree = requireCommit(centralTarget.baseTree, "central base tree");
+  let policyBinding;
+  let policySchemaBinding;
+  try {
+    policyBinding = normalizeSubmitLaunchPolicyBinding(centralTarget.policyBinding);
+    policySchemaBinding = normalizeSubmitLaunchPolicySchemaBinding(centralTarget.policySchemaBinding);
+  } catch (error) {
+    if (error instanceof SubmitLaunchPolicyError) {
+      invalidPrepared("the prepare-pr result does not contain exact closed central policy bindings");
+    }
+    throw error;
+  }
+  if (
+    policyBinding.baseCommit !== centralBaseCommit
+    || policyBinding.baseTree !== centralBaseTree
+    || policySchemaBinding.baseCommit !== centralBaseCommit
+    || policySchemaBinding.baseTree !== centralBaseTree
+    || centralTarget.policyRole !== "current-workflow-canary-drift-anchor-not-legacy-v2-evaluation"
+  ) {
+    invalidPrepared("the prepare-pr policy bindings do not match the exact legacy V2 central base");
+  }
   const sourceCommit = requireCommit(sourceHead.commit, "source commit");
   const sourceTree = requireCommit(sourceHead.tree, "source tree");
   const sourceBranch = requireBranch(sourceHead.upstreamBranch, "source upstream branch");
@@ -316,6 +341,9 @@ export function normalizePreparedApplication(input) {
       baseBranch: CENTRAL_BASE_BRANCH,
       baseCommit: centralBaseCommit,
       baseTree: centralBaseTree,
+      policyBinding,
+      policySchemaBinding,
+      policyRole: centralTarget.policyRole,
       priorApplicationRevision: normalizeNullableRevision(centralTarget.priorApplicationRevision),
       nextApplicationRevision: requireRevision(centralTarget.nextApplicationRevision, "next application revision")
     }),

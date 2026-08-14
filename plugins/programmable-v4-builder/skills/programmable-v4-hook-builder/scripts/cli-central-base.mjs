@@ -11,11 +11,19 @@ import {
   parseBoundedLosslessJson,
   validateGitHubPublicSourceRequestV1
 } from "./github-public-source-core.mjs";
+import { LosslessJsonNumber } from "./github-public-source-lossless-json.mjs";
 import { CliFailure } from "./cli-runtime.mjs";
 import { canonicalJson } from "./submission-core.mjs";
 import { hasForbiddenInvisibleOrBidi } from "./metadata-core.mjs";
 import { parseBoundedStrictJson } from "./strict-json-core.mjs";
 import { SUBMIT_LAUNCH_INTAKE_CONTRACT as INTAKE } from "./registry-intake-contract.mjs";
+import { resolveSubmitLaunchPolicyFromVerifiedGitObjects } from "./submit-launch-policy-github.mjs";
+import {
+  normalizeSubmitLaunchPolicyBinding,
+  normalizeSubmitLaunchPolicySchemaBinding,
+  SubmitLaunchPolicyError,
+  submitLaunchPolicyContentMatches
+} from "./submit-launch-policy-contract.mjs";
 
 const launchRepository = INTAKE.repository;
 export const CENTRAL_GITHUB_TARGET = Object.freeze({
@@ -30,9 +38,10 @@ const GITHUB_LOGIN_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/u;
 const OPAQUE_DECIMAL_PATTERN = /^[1-9][0-9]{0,63}$/u;
 const DEFAULT_ATTEMPTS = 3;
 const MAX_REQUESTS = 24;
+const MAX_REPOSITORY_RESPONSE_BYTES = 256 * 1024;
 const MAX_COMMIT_RESPONSE_BYTES = 256 * 1024;
 const MAX_TREE_RESPONSE_BYTES = 2 * 1024 * 1024;
-const MAX_BLOB_RESPONSE_BYTES = 384 * 1024;
+const MAX_BLOB_RESPONSE_BYTES = 768 * 1024;
 const MAX_APPLICATION_REVISION = 1_000_000;
 const COMPATIBILITY_RESULTS = new Set([
   "prototype-ready",
@@ -61,12 +70,16 @@ export async function resolveCentralApplicationBase({
 }) {
   validateInputs({ baseBranch, applicationId, fetchImplementation, sleepImplementation, attempts, timeoutMs });
   const state = createRequestState({ fetchImplementation, sleepImplementation, attempts, timeoutMs });
+  await readCentralRepository(state);
   const branch = await readCentralBranchHead(baseBranch, state);
-  const applicationTree = await findApplicationTree({
-    applicationId,
-    rootTree: branch.tree,
-    state
-  });
+  const [policy, applicationTree] = await Promise.all([
+    readCentralPolicy({ branch, state }),
+    findApplicationTree({
+      applicationId,
+      rootTree: branch.tree,
+      state
+    })
+  ]);
   const prior = applicationTree === null
     ? null
     : await readPriorPackage({ applicationId, applicationTree, state });
@@ -75,6 +88,8 @@ export async function resolveCentralApplicationBase({
     baseBranch,
     baseCommit: branch.commit,
     baseTree: branch.tree,
+    policyBinding: policy.policyBinding,
+    policySchemaBinding: policy.policySchemaBinding,
     applicationDirectory: `submissions/${applicationId}`,
     applicationPath: `submissions/${applicationId}/application.json`,
     existingApplication: prior !== null,
@@ -100,6 +115,25 @@ export async function assertCentralBaseUnchanged({
   ) {
     throw new CliFailure("CENTRAL_BASE_INVALID", "the central base observation is unavailable", { exitCode: 1 });
   }
+  let observedPolicyBinding;
+  let observedPolicySchemaBinding;
+  try {
+    observedPolicyBinding = normalizeSubmitLaunchPolicyBinding(observation.policyBinding);
+    observedPolicySchemaBinding = normalizeSubmitLaunchPolicySchemaBinding(observation.policySchemaBinding);
+  } catch (error) {
+    if (error instanceof SubmitLaunchPolicyError) {
+      throw new CliFailure("CENTRAL_BASE_INVALID", "the central policy observation is unavailable", { exitCode: 1 });
+    }
+    throw error;
+  }
+  if (
+    observedPolicyBinding.baseCommit !== observation.baseCommit
+    || observedPolicyBinding.baseTree !== observation.baseTree
+    || observedPolicySchemaBinding.baseCommit !== observation.baseCommit
+    || observedPolicySchemaBinding.baseTree !== observation.baseTree
+  ) {
+    throw new CliFailure("CENTRAL_BASE_INVALID", "the central policy observation does not match its base", { exitCode: 1 });
+  }
   validateInputs({
     baseBranch: observation.baseBranch,
     applicationId: observation.applicationDirectory?.split("/").at(-1),
@@ -109,8 +143,45 @@ export async function assertCentralBaseUnchanged({
     timeoutMs
   });
   const state = createRequestState({ fetchImplementation, sleepImplementation, attempts, timeoutMs });
+  await readCentralRepository(state);
   const currentCommit = await readCentralBranchReference(observation.baseBranch, state);
-  if (currentCommit !== observation.baseCommit) {
+  if (currentCommit === observation.baseCommit) return true;
+  const currentBranch = await readCentralCommit(currentCommit, state);
+  let currentPolicy;
+  try {
+    currentPolicy = await readCentralPolicy({ branch: currentBranch, state });
+  } catch (error) {
+    if (error instanceof CliFailure && error.code.startsWith("SUBMIT_LAUNCH_POLICY_")) {
+      throw new CliFailure(
+        "POLICY_DRIFT",
+        "the protected Submit Launch policy or schema changed while prepare-pr was building the package",
+        { exitCode: 1 }
+      );
+    }
+    throw error;
+  }
+  let policyMatches;
+  try {
+    policyMatches = submitLaunchPolicyContentMatches({
+      expectedPolicyBinding: observedPolicyBinding,
+      observedPolicyBinding: currentPolicy.policyBinding,
+      expectedPolicySchemaBinding: observedPolicySchemaBinding,
+      observedPolicySchemaBinding: currentPolicy.policySchemaBinding
+    });
+  } catch (error) {
+    if (error instanceof SubmitLaunchPolicyError) {
+      throw new CliFailure(error.code, error.message, { exitCode: 1 });
+    }
+    throw error;
+  }
+  if (!policyMatches) {
+    throw new CliFailure(
+      "POLICY_DRIFT",
+      "the protected Submit Launch policy changed while prepare-pr was building the package",
+      { exitCode: 1 }
+    );
+  }
+  if (currentBranch.commit !== observation.baseCommit || currentBranch.tree !== observation.baseTree) {
     throw new CliFailure(
       "CENTRAL_BASE_MOVED",
       "the central pull-request base moved while prepare-pr was building the package",
@@ -459,6 +530,34 @@ function hasMaterialSourceChange(priorSource, nextSource) {
 
 async function readCentralBranchHead(baseBranch, state) {
   const commit = await readCentralBranchReference(baseBranch, state);
+  return readCentralCommit(commit, state);
+}
+
+async function readCentralRepository(state) {
+  const response = await requestJson(
+    `/repos/${CENTRAL_GITHUB_TARGET.owner}/${CENTRAL_GITHUB_TARGET.repository}`,
+    MAX_REPOSITORY_RESPONSE_BYTES,
+    state
+  );
+  if (
+    !(response.id instanceof LosslessJsonNumber)
+    || response.id.source !== launchRepository.numericId
+    || response.full_name !== launchRepository.slug
+    || response.private !== false
+    || response.visibility !== "public"
+    || response.default_branch !== launchRepository.defaultBranch
+    || response.html_url !== launchRepository.url
+  ) {
+    throw new CliFailure(
+      "CENTRAL_REPOSITORY_MISMATCH",
+      "the fixed Submit Launch repository identity is unavailable or changed",
+      { exitCode: 1 }
+    );
+  }
+  return true;
+}
+
+async function readCentralCommit(commit, state) {
   const response = await requestJson(
     `/repos/${CENTRAL_GITHUB_TARGET.owner}/${CENTRAL_GITHUB_TARGET.repository}/git/commits/${commit}`,
     MAX_COMMIT_RESPONSE_BYTES,
@@ -470,6 +569,29 @@ async function readCentralBranchHead(baseBranch, state) {
     throw new CliFailure("CENTRAL_BASE_INVALID", "GitHub returned an invalid central base commit identity", { exitCode: 1 });
   }
   return { commit, tree: observedTree };
+}
+
+async function readCentralPolicy({ branch, state }) {
+  try {
+    return await resolveSubmitLaunchPolicyFromVerifiedGitObjects({
+      baseCommit: branch.commit,
+      baseTree: branch.tree,
+      readTree: async (treeObjectId) => {
+        const entries = await readTree(treeObjectId, state);
+        return {
+          sha: treeObjectId,
+          truncated: false,
+          tree: [...entries.values()]
+        };
+      },
+      readBlob: (blobObjectId) => readBlob(blobObjectId, state)
+    });
+  } catch (error) {
+    if (error instanceof SubmitLaunchPolicyError) {
+      throw new CliFailure(error.code, error.message, { exitCode: 1 });
+    }
+    throw error;
+  }
 }
 
 async function readCentralBranchReference(baseBranch, state) {
@@ -494,6 +616,18 @@ async function readTree(treeObjectId, state) {
   if (!COMMIT_PATTERN.test(treeObjectId ?? "")) {
     throw new CliFailure("CENTRAL_BASE_INVALID", "the central tree identity is invalid", { exitCode: 1 });
   }
+  if (state.treeReads.has(treeObjectId)) return state.treeReads.get(treeObjectId);
+  const pending = readTreeUncached(treeObjectId, state);
+  state.treeReads.set(treeObjectId, pending);
+  try {
+    return await pending;
+  } catch (error) {
+    state.treeReads.delete(treeObjectId);
+    throw error;
+  }
+}
+
+async function readTreeUncached(treeObjectId, state) {
   const response = await requestJson(
     `/repos/${CENTRAL_GITHUB_TARGET.owner}/${CENTRAL_GITHUB_TARGET.repository}/git/trees/${treeObjectId}`,
     MAX_TREE_RESPONSE_BYTES,
@@ -630,6 +764,7 @@ function createRequestState({ fetchImplementation, sleepImplementation, attempts
     attempts,
     deadline: performance.now() + timeoutMs,
     requests: 0,
+    treeReads: new Map(),
     sleepImplementation,
     transport: createGitHubPublicFetchTransportV1(fetchImplementation)
   };

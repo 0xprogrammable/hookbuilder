@@ -32,7 +32,7 @@ test("host-neutral help leads with one golden path and keeps every command in op
   const result = run("cli.mjs", ["--help"]);
   assert.equal(result.status, 0, result.stderr);
   assert.ok(Buffer.byteLength(result.stdout) < 600);
-  for (const command of ["doctor", "context", "project", "prepare-pr"]) {
+  for (const command of ["doctor", "context", "project"]) {
     assert.match(result.stdout, new RegExp(`^  ${escapeRegExp(command)}\\b`, "m"));
   }
   assert.doesNotMatch(result.stdout, /^  submit\b/mu);
@@ -40,7 +40,10 @@ test("host-neutral help leads with one golden path and keeps every command in op
   const detail = run("cli.mjs", ["--help", "--json"]);
   assert.equal(detail.status, 0, detail.stderr);
   const payload = JSON.parse(detail.stdout);
-  assert.deepEqual(payload.result.goldenPath, ["doctor", "context", "project", "prepare-pr"]);
+  assert.deepEqual(payload.result.goldenPath, ["doctor", "context", "project"]);
+  for (const commandId of ["fee", "launch-bundle", "launch-bundle-v2", "package", "prepare-pr"]) {
+    assert.equal(payload.result.frozenLegacyCommands.includes(commandId), true, commandId);
+  }
   const commandIds = payload.result.commands.map(({ id }) => id);
   for (const command of [
     "context",
@@ -104,19 +107,20 @@ test("host-neutral version reports the bundled standalone release without state"
   const result = run("cli.mjs", ["version"]);
   assert.equal(result.status, 0, result.stdout || result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(output.result.installed.releaseVersion, "0.6.0");
+  assert.equal(output.result.installed.releaseVersion, "0.7.0");
   assert.equal(output.result.installed.publicationState, "release-package");
   assert.equal(output.result.versionSource, "bundled-code-constants");
   assert.equal(output.result.installedStateOverrideUsed, false);
 });
 
-test("start help uses the host-neutral command and explains the scaffold path contract", () => {
+test("start help uses the host-neutral command and quarantines the frozen scaffold", () => {
   const result = run("cli.mjs", ["start", "--help"]);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /^Usage: cli\.mjs start /u);
   assert.match(result.stdout, /--capability <known-id>/u);
   assert.match(result.stdout, /never expand sibling capabilities/u);
-  assert.match(result.stdout, /inside the project repository/u);
+  assert.match(result.stdout, /new directory itself/u);
+  assert.match(result.stdout, /frozen legacy V1 scaffold/u);
   assert.doesNotMatch(result.stdout, /template-catalog\.mjs materialize/u);
 });
 
@@ -283,18 +287,20 @@ test("doctor distinguishes local generation from an actual Git worktree", () => 
     assert.equal(report.readyForApplicationV3Submission, false);
     assert.equal(report.cleanWorktree, null);
     assert.equal(report.readyForPublicBeta, false);
-    assert.equal(report.githubCli.requiredForPublicBetaApplication, true);
+    assert.equal(report.applicationV3Lifecycle, "frozen-legacy");
+    assert.equal(report.githubCli.requiredForPublicBetaApplication, false);
+    assert.equal(report.githubCli.requiredOnlyForFrozenLegacyApplicationV3, true);
     assert.equal(report.githubCli.authenticationChecked, false);
-    assert.equal(report.readyForGitHubApplicationClient, report.githubCli.available);
+    assert.equal(report.readyForGitHubApplicationClient, false);
     assert.equal(report.runtimeCompatibility.node.minimumMajor, 24);
     assert.equal(report.runtimeCompatibility.node.supported, true);
-    assert.deepEqual(report.runtimeCompatibility.applicationV3.supportedPlatforms, ["darwin", "linux"]);
+    assert.deepEqual(report.runtimeCompatibility.frozenLegacyApplicationV3.supportedPlatforms, ["darwin", "linux"]);
     assert.equal(
-      report.runtimeCompatibility.applicationV3.platformSupported,
+      report.runtimeCompatibility.frozenLegacyApplicationV3.platformSupported,
       ["darwin", "linux"].includes(process.platform)
     );
-    assert.equal(report.runtimeCompatibility.applicationV3.minimumGitVersion, "2.49.0");
-    assert.match(report.runtimeCompatibility.applicationV3.exactObjectGit.status, /^(?:ready|toolingBlocked)$/u);
+    assert.equal(report.runtimeCompatibility.frozenLegacyApplicationV3.minimumGitVersion, "2.49.0");
+    assert.match(report.runtimeCompatibility.frozenLegacyApplicationV3.exactObjectGit.status, /^(?:ready|toolingBlocked)$/u);
     assert.deepEqual(report.runtimeCompatibility.offlineCapabilities, {
       ideaWork: true,
       contextRouting: true,
@@ -306,16 +312,10 @@ test("doctor distinguishes local generation from an actual Git worktree", () => 
       githubSubmissionOrUpdate: false
     });
     assert.equal(
-      report.tools.find(({ name }) => name === "gh").publicBetaApplicationRequirement,
+      report.tools.find(({ name }) => name === "gh").frozenLegacyApplicationV3Requirement,
       true
     );
-    assert.ok(report.publicBetaBlockers.includes("GITHUB_AUTHENTICATION_NOT_CHECKED"));
-    assert.ok(report.publicBetaBlockers.includes("PUBLIC_GIT_REACHABILITY_NOT_CHECKED"));
-    assert.ok(report.publicBetaBlockers.includes("EXTERNAL_ACCEPTANCE_NOT_CHECKED"));
-    assert.equal(
-      report.publicBetaBlockers.includes("GITHUB_CLI_REQUIRED"),
-      report.githubCli.available === false
-    );
+    assert.deepEqual(report.publicBetaBlockers, ["FROZEN_LEGACY_APPLICATION_V3_NOT_CURRENT"]);
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
@@ -342,8 +342,8 @@ test("doctor reports the Node 24 blocker for an unsupported runtime", () => {
       currentMajor: 23,
       supported: false
     });
-    assert.ok(report.publicBetaBlockers.includes("NODE_24_OR_NEWER_REQUIRED"));
-    assert.equal(report.publicBetaBlockers.some((blocker) => /^NODE_(?:20|22)_OR_NEWER_REQUIRED$/u.test(blocker)), false);
+    assert.deepEqual(report.publicBetaBlockers, ["FROZEN_LEGACY_APPLICATION_V3_NOT_CURRENT"]);
+    assert.equal(report.readyForDeterministicPreflight, false);
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }

@@ -187,9 +187,11 @@ resulting asset for every supported mode. Enforce an
 application maximum below the base's 100% ceiling. Define `handleHookFees` deliberately: the base supplies no recipient
 split, beneficiary authorization, or payout policy.
 
-The mandatory Programmable policy is stricter and must not be inferred from `BaseHookFee`: it charges executed gross
-quote-side volume through quadrant-dependent before/after return deltas, allocates an inclusive fixed 10 bps to the
-immutable platform owner, and requires owner-only claims, pool-scoped liabilities, and an explicit self-call policy.
+The legacy Programmable fee kernel is optional implementation knowledge, not launch authority, and must not be inferred
+from `BaseHookFee`. When project intent or an applicable current central-policy Rule ID selects it, the kernel charges
+executed gross quote-side volume through quadrant-dependent before/after return deltas, allocates an inclusive fixed 10
+bps to the immutable platform owner, and requires owner-only claims, pool-scoped liabilities, and an explicit self-call
+policy.
 
 ERC-6909 claims are aggregated by currency at the hook address. Prefer one hook instance per pool. A shared hook must
 maintain PoolId-scoped liabilities and prove that the sum of every pool and beneficiary liability never exceeds the

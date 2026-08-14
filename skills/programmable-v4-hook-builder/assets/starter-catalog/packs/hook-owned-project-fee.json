@@ -3,14 +3,13 @@
   "kind": "pack",
   "id": "hook-owned-project-fee",
   "label": "Hook-owned project fee",
-  "summary": "Add a disclosed project share inside the same effective total fee as the Programmable share.",
+  "summary": "Add a disclosed hook-owned project fee without inventing a separate platform-fee requirement.",
   "acceleratorOnly": true,
   "eligibilityEffect": "none",
   "unknownCapabilityPolicy": "preserve-and-route",
   "reviewRoute": "custom-review",
   "requires": [
-    "custom-hook-behavior",
-    "programmable-volume-fee"
+    "custom-hook-behavior"
   ],
   "conflictsWith": [],
   "capabilities": [
@@ -23,7 +22,7 @@
     "metadata"
   ],
   "requiredFacts": [
-    "Selected total fee and the exact non-additive platform and project split",
+    "Selected project fee, basis and its relationship to any other explicitly requested fee",
     "Project beneficiary, mutation rules, liability keys and claim behavior",
     "Executed gross quote-side basis, rounding and partial-fill behavior",
     "Public fee disclosure for every trading surface"
@@ -35,13 +34,13 @@
     "Public fee disclosure"
   ],
   "requiredTests": [
-    "Project share is zero at the 10-basis-point floor",
-    "Higher selected totals split without adding another 10 basis points",
-    "Beneficiary mutation cannot redirect the platform share",
+    "Project fee behavior at zero, minimum, ordinary and maximum selected rates",
+    "Any other explicitly requested fee composes without double collection",
+    "Beneficiary mutation cannot redirect another selected recipient share",
     "Solvency, claims and pool isolation"
   ],
   "risks": [
-    "Additive implementation would charge more than the selected total",
+    "Additive implementation can charge more than the disclosed total",
     "Mutable recipients can create undisclosed payout control"
   ]
 }

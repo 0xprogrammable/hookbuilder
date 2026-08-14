@@ -21,12 +21,9 @@ import {
 import { validateRepositoryPlan } from "./repository-completion-core.mjs";
 import { projectStatePayloadSha256, validateProjectState } from "./project-state-core.mjs";
 import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
-import { validateTradeCapabilityManifestV1 } from "./trade-capability-manifest-core.mjs";
 export const PROJECT_COMPILER_VERSION = "1.0.0";
-
 const phaseOrder = Object.freeze(["project-spec", "product-graphs", "architecture-selection", "repository-materialization", "verification", "submission-evidence"]);
 const severityOrder = Object.freeze({ blocker: 0, review: 1, advisory: 2 });
-
 /**
  * Compile one phase-bounded project bundle into a deterministic validation
  * report. This function never runs repository commands, grants approval, or
@@ -45,7 +42,6 @@ export function compileProjectBundle(bundle, options = {}) {
   } = bundle ?? {};
   const phaseIndex = phaseOrder.indexOf(projectState?.phase);
   const findings = [];
-
   findings.push(...validateProjectSpec(projectSpec));
   if (phaseIndex >= 1 || productGraph !== undefined) findings.push(...validateProductGraph(projectSpec, productGraph));
   if (phaseIndex >= 2 || architectureCandidates !== undefined) findings.push(...validateArchitectureCandidates(projectSpec, productGraph, architectureCandidates));
@@ -362,7 +358,10 @@ function inspectSubmissionPackage(root, submission) {
     OPEN_WORLD_V2_SUBMISSION_FILE,
     ...Object.values(OPEN_WORLD_V2_ARTIFACTS).map(({ file }) => file),
     ...Object.values(OPEN_WORLD_V2_SUPPORTING_ARTIFACTS)
-      .filter(({ file }) => file !== OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.securityAssessment.file || submission.supportingPackage?.securityAssessment !== null)
+      .filter(({ file }) => (
+        (file !== OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.securityAssessment.file || submission.supportingPackage?.securityAssessment !== null)
+        && (file !== OPEN_WORLD_V2_SUPPORTING_ARTIFACTS.feePolicySchema.file || submission.supportingPackage?.feePolicySchema !== undefined)
+      ))
       .map(({ file }) => file)
   ]);
   if (submission.supportingPackage?.feePolicy !== null && submission.supportingPackage?.feePolicy !== undefined) {
@@ -477,26 +476,27 @@ function sha256(bytes) {
 export const PROJECT_PREFLIGHT_VERSION = "1.0.0";
 
 const machineArtifactNames = new Map([
-  ["trade-capability.v1.json", "trade-capability-manifest-v1"], ["trade-capability.json", "trade-capability-manifest-v1"],
+  ["trade-capability.v1.json", "frozen-trade-capability-manifest-v1"], ["trade-capability.json", "frozen-trade-capability-manifest-v1"],
   ["submission.v2.json", "submission-v2"], ["project-spec.v1.json", "project-spec-v1"], ["product-graph.v1.json", "product-graph-v1"],
   ["architecture-candidates.v1.json", "architecture-candidates-v1"], ["repository-plan.v1.json", "repository-plan-v1"], ["project-state.v1.json", "project-state-v1"]
 ]);
 const machineArtifactContractIds = new Map([
-  ["urn:programmable:trade-capability-manifest:1.0.0", "trade-capability-manifest-v1"], ["trade-capability-manifest-v1", "trade-capability-manifest-v1"], ["urn:programmable:v4-hook-submission:2.0.0", "submission-v2"]
+  ["urn:programmable:trade-capability-manifest:1.0.0", "frozen-trade-capability-manifest-v1"], ["trade-capability-manifest-v1", "frozen-trade-capability-manifest-v1"], ["urn:programmable:v4-hook-submission:2.0.0", "submission-v2"]
 ]);
 const machineArtifactPathClaims = [
-  ["trade-capability-manifest-v1", /(?:^|\/)trade-capabilities\/[^/]+\.v1\.json$/u], ["trade-capability-manifest-v1", /\.trade-capability\.v1\.json$/u],
+  ["frozen-trade-capability-manifest-v1", /(?:^|\/)trade-capabilities\/[^/]+\.v1\.json$/u], ["frozen-trade-capability-manifest-v1", /\.trade-capability\.v1\.json$/u],
   ["project-state-v1", /(?:^|\/)project-states\/\d{6}-[^/]+\.v1\.json$/u]
 ];
 const machineArtifactStructures = [
-  ["trade-capability-manifest-v1", ["status", "classification", "market", "quote", "execution", "permit2", "hookData", "modes", "limits", "fee", "claims"]],
+  ["frozen-trade-capability-manifest-v1", ["status", "classification", "market", "quote", "execution", "permit2", "hookData", "modes", "limits", "fee", "claims"]],
   ["submission-v2", ["standardVersion", "tradeCapability", "intentPackage"]], ["project-spec-v1", ["intent", "facets", "applicationId"]],
   ["product-graph-v1", ["graphs", "projectSpecSha256", "applicationId"]], ["architecture-candidates-v1", ["candidates", "selection", "productGraphSha256"]],
   ["repository-plan-v1", ["repository", "artifacts", "commands", "completionStatus"]],
   ["project-state-v1", ["integrity", "phase", "next", "artifacts"]]
 ];
 const machineArtifactSchemaValidators = new Map([
-  ["trade-capability-manifest-v1", (value) => validateTradeCapabilityManifestV1(value)], ["project-spec-v1", (value) => validateProjectSpec(value)],
+  ["frozen-trade-capability-manifest-v1", () => [{ severity: "blocker", code: "FROZEN_TRADE_MANIFEST_V1_CURRENT_PREFLIGHT_FORBIDDEN_SCHEMA_INVALID" }]],
+  ["project-spec-v1", (value) => validateProjectSpec(value)],
   ["product-graph-v1", (value) => validateProductGraph(undefined, value)], ["architecture-candidates-v1", (value) => validateArchitectureCandidates(undefined, undefined, value)],
   ["repository-plan-v1", (value) => validateRepositoryPlan(undefined, undefined, undefined, value)],
   ["project-state-v1", (value) => validateProjectState(undefined, undefined, undefined, undefined, value)]

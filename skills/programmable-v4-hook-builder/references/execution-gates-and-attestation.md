@@ -65,7 +65,11 @@ surface, and prior receipt. Foreign or merely interface-compatible code fails cl
 
 ## Tool coverage and result taxonomy
 
-Create a tool-coverage matrix before calling A10 complete. Each applicable tool or method records one of:
+`A10` is a frozen legacy engineering label, not current Programmable admission authority. When replaying that exact
+legacy evidence contract, create a tool-coverage matrix before calling A10 complete. Current admission outcomes come
+only from applicable central Rule IDs.
+
+Each applicable tool or method records one of:
 
 - `passed`: the exact command completed and attributable output supports the named scope;
 - `failed`: the tool completed and found a reproducible conflict or the tested property failed;
@@ -131,7 +135,7 @@ text, screenshots, or attested free-form prose are projections only.
 
 Add these cases whenever their corresponding layer exists:
 
-1. Remove every scanner or make every tool return empty output; A10 cannot become passed.
+1. In a frozen A10 legacy replay, remove every scanner or make every tool return empty output; A10 cannot become passed.
 2. Feed generated code only its same-run generated tests; independent-review state stays incomplete.
 3. Change one assertion, suppression, tool version, prompt, policy digest, or dependency database; dependent evidence
    invalidates.

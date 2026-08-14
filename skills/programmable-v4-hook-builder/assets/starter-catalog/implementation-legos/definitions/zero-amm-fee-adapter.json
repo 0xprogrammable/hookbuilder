@@ -2,8 +2,8 @@
   "schemaVersion": "1.0.0",
   "kind": "programmable-implementation-lego",
   "id": "zero-amm-fee-adapter",
-  "label": "Zero-AMM fee accumulator",
-  "summary": "Cumulative fragmentation-resistant 0.1% volume accounting for a separately designed zero-AMM settlement path.",
+  "label": "Frozen legacy zero-AMM Fee V2 accumulator",
+  "summary": "Archived Fee V2 reference code with branded platform economics. It has no current catalog trigger and cannot be materialized by a generic capability or pack.",
   "maturity": "experimental",
   "maturityMeaning": "Hash-bound reference scaffold only; project-specific implementation and evidence are required before prototype readiness.",
   "feeApplicability": "canonical-scope-conformance-unresolved",
@@ -13,12 +13,8 @@
   "reviewRoute": "architecture-review-required",
   "activatesFor": {
     "starterIds": [],
-    "packIds": [
-      "contract-priced-sell-and-burn-v4-custom-accounting"
-    ],
-    "capabilityIds": [
-      "sync-custom-zero-amm"
-    ]
+    "packIds": [],
+    "capabilityIds": []
   },
   "requiresLegos": [
     "contract-custom-curve"

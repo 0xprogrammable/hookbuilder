@@ -141,12 +141,14 @@ Use `v4-liquidity-and-state.md` for subscribers, donation-inflated `feesAccrued`
 
 ## Required evidence
 
-For every market the Builder classifies as tradable, the repository also carries one
-`trade-capability-manifest-v1`. Treat it as the authoritative machine-readable route contract: complete PoolKey/PoolId,
-chain and reference block, router, quoter, Permit2/native funding, hookData, supported modes, slippage/deadline and fee
-semantics must agree byte-for-byte with the quote and execution paths. A standard route names
-`standard-uniswap-v4`; a compatible custom path names `canonical-programmable-adapter` and binds the exact
-`programmable-trade-execution-v1` schema and ABI contract.
+Every tradable design needs exact machine-readable route evidence: complete PoolKey/PoolId, chain and reference block,
+router, quoter, Permit2/native funding, hookData, supported modes, slippage/deadline, and generic fee semantics must
+agree byte-for-byte with quote and execution paths. The bundled `trade-capability-manifest-v1` and
+`programmable-trade-execution-v1` contracts are frozen Fee V2 compatibility artifacts, so use them only through the
+explicit legacy reference profile whose preserved intent binds that exact policy, rate, and claimant. Current generic
+fee behavior remains valid product intent, but it cannot be projected into those branded V1 fields. Until a
+policy-neutral successor is centrally published, keep other tradable materialization unresolved rather than emitting
+a V1 compatibility claim.
 
 The source manifest declares tests but cannot contain its own Git identity or future run receipts. The bounded executor
 must author separate typed result artifacts for the declared commands, and completion must bind those results back to

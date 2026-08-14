@@ -1,15 +1,15 @@
 {
   "schemaVersion": "1.0.0",
-  "candidateId": "programmable-v4-builder-v0.6.0-local-20260813",
+  "candidateId": "programmable-v4-builder-v0.7.0-local-20260814",
   "privateCandidate": true,
   "publicState": "not-published",
-  "releaseVersion": "0.6.0",
+  "releaseVersion": "0.7.0",
   "channel": "canary",
   "releaseKind": "normal",
   "plannedRelease": {
     "builder": {
-      "fromVersion": "0.5.1",
-      "toVersion": "0.6.0",
+      "fromVersion": "0.6.0",
+      "toVersion": "0.7.0",
       "semanticClassification": "minor"
     },
     "submissionStandard": {
@@ -34,39 +34,37 @@
       "sha256": null
     }
   },
-  "preparedAt": "2026-08-13T12:45:00Z",
-  "requestedReleaseAt": "2026-08-14T11:15:00Z",
-  "changeSetComplete": false,
+  "preparedAt": "2026-08-14T01:46:00Z",
+  "requestedReleaseAt": "2026-08-14T13:46:20Z",
+  "changeSetComplete": true,
   "changes": [
     {
-      "id": "filtered-provider-knowledge",
+      "id": "central-launch-policy-consumer",
       "kind": "feature",
-      "summary": "Add source-receipted provider knowledge that is routed only for confirmed provider capabilities and never implies availability, safety, approval, or live state."
+      "summary": "Resolve the current Submit a Launch policy and schema from the exact public repository identity, commit, tree, paths, bytes, and digests before Builder decisions."
     },
     {
-      "id": "shortest-useful-journey",
-      "kind": "feature",
-      "summary": "Target a shorter default journey with deferred specialist context and concise primary findings."
+      "id": "legacy-policy-quarantine",
+      "kind": "security-fix",
+      "summary": "Remove retired bundled platform rules from current decision authority while retaining explicitly labeled historical compatibility evidence."
     },
     {
-      "id": "bounded-execution-safety",
-      "kind": "feature",
-      "summary": "Target explicit execution boundaries, bounded child processes, and clearer authority-denied outcomes without weakening existing gates."
+      "id": "central-policy-drift-rechecks",
+      "kind": "security-fix",
+      "summary": "Recheck required branch, repository, commit, tree, policy, schema, and output assumptions before a decision or write boundary and fail closed on drift."
     },
     {
-      "id": "measured-efficiency",
+      "id": "hidden-workflow-canary-preview",
+      "kind": "feature",
+      "summary": "Prepare one canonical hidden workflow-canary Application V1 preview from the fixed central schema without executing source or granting review, audit, routing, launch, or funds authority."
+    },
+    {
+      "id": "submit-launch-v1-5-binding",
       "kind": "maintenance",
-      "summary": "Target generator-backed context, module, tool-call, retry, and latency evidence before making efficiency claims."
-    },
-    {
-      "id": "stable-candidate-separation",
-      "kind": "maintenance",
-      "summary": "Historical planning example: preserve immutable v0.5.1 bytes while preparing a distinct unpublished v0.6.0 candidate. This fixture is not current release state."
+      "summary": "Record the exact Submit a Launch v1.5.0 live-main release-preparation binding while preserving runtime current-main drift detection."
     }
   ],
-  "unbundledChangeIds": [
-    "pending-parallel-lane-integration"
-  ],
+  "unbundledChangeIds": [],
   "evidence": {
     "checksums": {
       "status": "pending",

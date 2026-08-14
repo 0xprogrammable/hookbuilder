@@ -61,7 +61,15 @@ import {
   SUBMIT_LAUNCH_REPOSITORY
 } from "./registry-intake-contract.mjs";
 
-export async function preparePullRequest({
+export async function preparePullRequest(options) {
+  return preparePullRequestCore({
+    ...options,
+    centralBaseResolver: resolveCentralApplicationBase,
+    centralBaseStabilityChecker: assertCentralBaseUnchanged
+  });
+}
+
+async function preparePullRequestCore({
   repositoryRoot: repositoryRootInput = null,
   packageInput,
   baseBranch = "main",
@@ -74,8 +82,8 @@ export async function preparePullRequest({
   replaceExisting = false,
   replaceDraft = false,
   outputMaterializer = materializeCentralPackage,
-  centralBaseResolver = resolveCentralApplicationBase,
-  centralBaseStabilityChecker = assertCentralBaseUnchanged,
+  centralBaseResolver,
+  centralBaseStabilityChecker,
   publicBuilderResolver = resolvePublicGitHubUser,
   publicSourceResolver = resolvePublicGitHubSource,
   exactObjectResolver,
@@ -429,6 +437,14 @@ export async function preparePullRequest({
     packageResult,
     reviewTarget,
     headFiles: finalHeadSnapshot.files
+  });
+
+  await centralBaseStabilityChecker({
+    observation: centralBase,
+    fetchImplementation,
+    sleepImplementation,
+    attempts: centralAttempts,
+    timeoutMs: centralTimeoutMs
   });
 
   const document = buildPullRequestDocument({

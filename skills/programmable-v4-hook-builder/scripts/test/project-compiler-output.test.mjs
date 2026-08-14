@@ -185,10 +185,12 @@ test("project output gate blocks legacy-receipt completion and forbids manufactu
   const poisonedReport = JSON.parse(poisonedPreflight.stdout);
   assert.equal(poisonedReport.status, "PROJECT_PREFLIGHT_BLOCKED");
   assert.deepEqual(poisonedReport.findings.filter(({ code }) => code === "PROJECT_PREFLIGHT_MACHINE_ARTIFACT_EXTRA").map(({ path: findingPath }) => findingPath), [
-    "$.files.extras/foreign.trade-capability.v1.json",
     "$.files.extras/product-graph.v1.json",
     "$.files.extras/project-spec.v1.json"
   ]);
+  assert.ok(poisonedReport.findings.some(({ code, path: findingPath, details }) => code === "PROJECT_PREFLIGHT_MACHINE_ARTIFACT_INVALID"
+    && findingPath === "$.files.extras/foreign.trade-capability.v1.json"
+    && details?.validatorCodes?.includes("FROZEN_TRADE_MANIFEST_V1_CURRENT_PREFLIGHT_FORBIDDEN_SCHEMA_INVALID")));
 });
 
 
@@ -196,9 +198,10 @@ test("project output gate blocks a legacy-receipt COMPLETE tradable prototype an
   const fixture = await createTradableOutputFixture(t);
   const report = validateProjectOutput(fixture.input);
   assert.equal(report.status, "PROJECT_OUTPUT_INVALID", canonicalJsonV2(report));
-  assert.equal(report.projectCompilationStatus, "PROJECT_COMPILATION_VALID");
+  assert.equal(report.projectCompilationStatus, "PROJECT_COMPILATION_INVALID");
   assert.equal(report.repositoryCompletion, "NOT_PROVEN");
-  assert.equal(report.commandExecutionEvidence, "UNTRUSTED_DETERMINISTIC_RECEIPT_CONTENT_MATCH");
+  assert.equal(report.commandExecutionEvidence, "NOT_PROVEN");
+  assert.ok(report.findings.some(({ code }) => code === "FROZEN_TRADE_MANIFEST_V1_FORBIDDEN"));
   assert.ok(report.findings.some(({ code }) => code === "PROJECT_OUTPUT_REPOSITORY_COMPLETION_NOT_PROVEN"));
   assert.equal(report.projection.applicability, "tradable");
   assert.deepEqual(report.projection.markets, ["main-market"]);

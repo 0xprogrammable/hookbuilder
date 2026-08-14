@@ -44,7 +44,7 @@ export class LaunchBundleV2CliError extends Error {
 }
 
 export function launchBundleV2Help() {
-  return `Programmable launch-bundle v2 (strictly read-only)
+  return `Programmable launch-bundle v2 (frozen legacy; strictly read-only)
 
 Usage:
   node scripts/launch-bundle-v2.mjs prepare \\

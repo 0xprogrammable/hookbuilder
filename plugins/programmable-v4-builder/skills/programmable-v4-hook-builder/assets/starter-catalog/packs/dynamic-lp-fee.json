@@ -23,7 +23,7 @@
     "Minimum, maximum, update actor and update cadence",
     "Input metric, observation window, manipulation resistance and failure rule",
     "Whether the fee is returned per swap or persisted in PoolManager state",
-    "Clear separation from the mandatory Programmable and project hook-owned fees"
+    "Clear separation from any platform or project hook-owned fees explicitly selected by preserved intent or current central policy"
   ],
   "requiredFiles": [
     "Dynamic fee policy",

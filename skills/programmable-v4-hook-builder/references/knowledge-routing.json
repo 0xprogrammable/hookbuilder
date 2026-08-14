@@ -25,9 +25,18 @@
     },
     {
       "id": "candidate-application-v3-transport",
-      "reason": "Retained only for exact candidate Application V3 work; it must never route a public Applicant away from Submit a Launch.",
+      "reason": "Retained only for exact frozen legacy Application V3/Fee V2 replay; it is not current admission and must never route a public Applicant away from Submit a Launch.",
       "references": [
-        "github-application-v3.md"
+        "github-application-v3.md",
+        "public-pr-application-v3.schema.json"
+      ]
+    },
+    {
+      "id": "legacy-fee-v2-launch-bundle",
+      "reason": "Load only to replay the frozen Fee V2 launch-bundle contract after an exact legacy acceptance record; it is not a current Submit or Handoff route and cannot create a current platform rule.",
+      "references": [
+        "launch-bundle-input-v2.schema.json",
+        "launch-bundle-output-v2.schema.json"
       ]
     }
   ],
@@ -49,7 +58,7 @@
         },
         {
           "reference": "programmable-fee-policy-v2.md",
-          "trigger": "Load only after a canonical v4 fee surface or an explicit fee-bearing capability is confirmed."
+          "trigger": "Load only when preserved project intent or an applicable current central-policy Rule ID selects the exact legacy Fee V2 kernel. A canonical pool or local capability label alone is insufficient."
         },
         {
           "reference": "intake-playbook.md",
@@ -94,7 +103,7 @@
         },
         {
           "reference": "programmable-fee-policy-v2.md",
-          "trigger": "Load only after a canonical v4 fee surface or another explicit fee-bearing Programmable scope is confirmed."
+          "trigger": "Load only when preserved project intent or an applicable current central-policy Rule ID selects the exact legacy Fee V2 kernel. Never infer selection from a local Programmable-canonical label."
         },
         {
           "reference": "intake-playbook.md",
@@ -127,7 +136,7 @@
       "later": [
         {
           "reference": "programmable-fee-policy-v2.md",
-          "trigger": "Load the full policy only after the Submission V2 graph confirms at least one programmable-canonical execution scope or another explicit fee-bearing capability."
+          "trigger": "Load only when preserved project intent or an applicable current central-policy Rule ID selects the exact legacy Fee V2 kernel; the Submission V2 graph cannot create that requirement."
         },
         {
           "reference": "intent-contract.md",
@@ -147,7 +156,7 @@
         },
         {
           "reference": "builder-reviewer-alignment.md",
-          "trigger": "Load after design intent is stable, before declaring preflight evidence complete, to align every applicant property with its review proof and allowed N/A route."
+          "trigger": "Load after design intent is stable to resolve the central policy consumer boundary; this local guide adds no admission property."
         },
         {
           "reference": "layered-response-contract.md",
@@ -180,7 +189,7 @@
         },
         {
           "reference": "programmable-fee-policy-v2.md",
-          "trigger": "Load when the prototype includes the canonical v4 Programmable fee profile or its exact fee ownership, accounting, collection, or claim behavior."
+          "trigger": "Load only when preserved project intent or an applicable current central-policy Rule ID selects the exact legacy Fee V2 ownership, accounting, collection, or claim behavior."
         },
         {
           "reference": "intent-contract.md",
@@ -204,7 +213,7 @@
         },
         {
           "reference": "builder-reviewer-alignment.md",
-          "trigger": "Load before completing implementation evidence so A1-A11 builder obligations match later review semantics."
+          "trigger": "Load before completing implementation evidence so current central Rule IDs and their evidence stay aligned."
         },
         {
           "reference": "execution-gates-and-attestation.md",
@@ -274,7 +283,7 @@
       "later": [
         {
           "reference": "approval-criteria.md",
-          "trigger": "Load after the exact source and evidence scope is pinned and the user requests a launch-admission or readiness ledger."
+          "trigger": "Load after the exact source and evidence scope is pinned to resolve the protected central policy and selected profile."
         },
         {
           "reference": "v4-protocol-mechanics.md",
@@ -290,7 +299,7 @@
         },
         {
           "reference": "programmable-fee-policy-v2.md",
-          "trigger": "Load when reviewing fee calculation, ownership, collection, rounding, or claim behavior."
+          "trigger": "Load only when reviewing the exact legacy Fee V2 kernel selected by preserved intent or an applicable current central-policy Rule ID. Use universal accounting guidance for other fee designs."
         },
         {
           "reference": "open-world-v2-output-contract.md",
@@ -298,7 +307,7 @@
         },
         {
           "reference": "builder-reviewer-alignment.md",
-          "trigger": "Load before assigning any A1-A11 or P1-P9 result to verify property symmetry, equivalent evidence, and owner boundaries."
+          "trigger": "Load before mapping evidence to current central Rule IDs; the guide cannot add a rule, severity, or outcome."
         },
         {
           "reference": "execution-gates-and-attestation.md",
@@ -306,7 +315,7 @@
         },
         {
           "reference": "submission-regressions.md",
-          "trigger": "Load for the mandatory launch-admission red team and change-impact analysis."
+          "trigger": "Load as non-normative regression guidance after the applicable central Rule IDs are resolved."
         },
         {
           "reference": "upstream-sources.md",
@@ -330,6 +339,10 @@
           "trigger": "Load only after local checks pass and exact public source is frozen for the Submit a Launch handoff."
         },
         {
+          "reference": "workflow-canary-application.md",
+          "trigger": "Load only for an explicitly requested hidden workflow test before previewing or writing its one local canary application file."
+        },
+        {
           "reference": "open-world-v2-output-contract.md",
           "trigger": "Load when rendering the final v3 application, waiting, or status response."
         },
@@ -338,20 +351,16 @@
           "trigger": "Load when exact public GitHub source resolution fails or needs manual diagnosis."
         },
         {
-          "reference": "public-pr-application-v3.schema.json",
-          "trigger": "Load only the failing section when creating or repairing application.v3.json."
-        },
-        {
           "reference": "source-closure-manifest-v1.schema.json",
           "trigger": "Load only when a large or multi-repository source closure must be represented or diagnosed."
         },
         {
           "reference": "approval-criteria.md",
-          "trigger": "Load before preparing a launch-admission submission result; use it for an agent-prepared gate ledger, never as proof of trusted enforcement."
+          "trigger": "Load before a Programmable admission result to resolve the exact protected central policy; never use local prose as a gate ledger."
         },
         {
           "reference": "builder-reviewer-alignment.md",
-          "trigger": "Load before Submit to prove every demanded review property was discoverable and buildable."
+          "trigger": "Load before Submit to keep builder evidence aligned with the exact current central Rule IDs."
         },
         {
           "reference": "submission-regressions.md",
@@ -379,16 +388,8 @@
           "trigger": "Load when emitting or diagnosing the exact Submit a Launch Applicant review handoff."
         },
         {
-          "reference": "launch-bundle-input-v2.schema.json",
-          "trigger": "Load only after canonical Registry acceptance when preparing the exact offline launch-authorization candidate inputs."
-        },
-        {
-          "reference": "launch-bundle-output-v2.schema.json",
-          "trigger": "Load when validating or consuming the exact unsigned Builder launch-bundle candidate output."
-        },
-        {
           "reference": "approval-criteria.md",
-          "trigger": "Load to verify the accepted exact revision still has a complete A1-A11/P1-P9 ledger before any Website handoff."
+          "trigger": "Load to verify the accepted exact revision still matches the current central policy binding before any Website handoff."
         },
         {
           "reference": "execution-gates-and-attestation.md",
@@ -490,8 +491,7 @@
         "standard-programmable-fee-hook"
       ],
       "references": [
-        "v4-protocol-mechanics.md",
-        "programmable-fee-policy-v2.md"
+        "v4-protocol-mechanics.md"
       ]
     },
     {

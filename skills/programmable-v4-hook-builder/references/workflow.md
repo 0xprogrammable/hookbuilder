@@ -1,8 +1,9 @@
 # Builder workflow
 
-> For a current public Applicant, build and verify the exact public source, then follow
-> [agent-entry-and-application.md](agent-entry-and-application.md) and use the generated, draft-only application client
-> for `0xprogrammable/submit-launch:main`. Never open a new Applicant PR in Hookbuilder.
+> For current work, build and verify the exact public source, then bind the protected
+> `0xprogrammable/submit-launch:main` policy and workflow-canary contracts described in
+> [agent-entry-and-application.md](agent-entry-and-application.md). The six-file Applicant client
+> is frozen legacy replay only. Never open a new Applicant PR in Hookbuilder.
 
 This workflow moves one open-ended v4 launch project from private exploration to a local review package and then a
 bounded public GitHub application. After maintainers accept an exact prototype, it can also produce a scoped
@@ -20,10 +21,10 @@ platform-integration handoff. It does not accept, deploy, publish, list, or acti
 | Submit | The local package is complete | PR-ready handoff without opening or publishing it |
 | Handoff | A maintainer acceptance record binds an exact prototype | Product surface specification and independent gate ledger |
 
-Do not skip Explore or Preflight because the user asks for code immediately. During Explore, choose the smallest route:
-official Liquidity Launchpad components plus a project-specific implementation of the standard Programmable fee-hook
-profile when no other callback behavior is needed, or one custom hook that integrates both the fee policy and the confirmed mechanism. Exact source, tests, and maintainer review are required. A no-hook,
-router-only, LP-fee-only, or transfer-tax-only proposal remains open for architecture work but is not launch-ready.
+Do not skip Explore or Preflight because the user asks for code immediately. During Explore, choose the smallest route
+that preserves product intent and applicable current central-policy Rule IDs. Use a no-hook route when neither product
+intent nor an applicable Rule ID needs hook behavior; when a hook is selected, prefer one coherent standard-profile or
+custom implementation with exact source and tests. This local guide does not determine launch readiness.
 Do not enter Handoff because a PR was merged, tests passed, or a maintainer expressed interest. Require the exact
 acceptance record.
 
@@ -35,10 +36,10 @@ acceptance record.
 4. Use an isolated branch or worktree and preserve unrelated changes.
 5. Inspect untrusted submitted code before running it. Use no credentials, wallets, signing access, or repository write
    token in its execution environment.
-6. Keep the complete contributor project in its own repository. For the Public GitHub PR Builder Beta, prepare only the
-   bounded central application package after the exact source revision is clean, pushed, public, and independently
-   resolved. For accepted-model product work, record the product branch and integration owner in the handoff; do not
-   switch branches or edit product files implicitly.
+6. Keep the complete contributor project in its own repository. Current work binds the protected central canary contract
+   only after the exact source revision is clean, pushed, public, and independently resolved. The bounded six-file
+   package is frozen beta replay only. For accepted-model product work, record the product branch and integration owner
+   in the handoff; do not switch branches or edit product files implicitly.
 
 Run the read-only environment check:
 
@@ -69,11 +70,13 @@ Design-card confirmation confirms product intent only.
 
 ```bash
 MODEL_ID="example-hook"
-node "$SKILL_ROOT/scripts/scaffold-submission.mjs" \
-  "$MODEL_ID" \
-  --repository-root "$REPOSITORY_ROOT" \
-  --name "<Model name>" \
-  --template-plan "$REPOSITORY_ROOT/path/to/programmable-template.json"
+node "$SKILL_ROOT/scripts/cli.mjs" project materialize \
+  --idea-file "$IDEA_FILE" \
+  --application-id "$MODEL_ID" \
+  --classification no-market \
+  --source-contract "$SOURCE_CONTRACT" \
+  --test-source "$TEST_SOURCE" \
+  --output "$NEW_REPOSITORY"
 
 node "$SKILL_ROOT/scripts/cli.mjs" check \
   "$REPOSITORY_ROOT/submissions/$MODEL_ID/submission.json" \
@@ -84,9 +87,8 @@ node "$SKILL_ROOT/scripts/cli.mjs" check \
 Use this repository-aware command for the complete preflight. Running `validate-submission.mjs` without a repository
 root checks only the structured document and cannot prove source, import, package, companion, or build closure.
 
-Omit `--template-plan` for explicit `manual`/`null` template provenance. When supplied, it must be the unchanged
-materialized `programmable-template.json`; the scaffold reconstructs it against the bundled catalog, preserves exact
-selected capability ids, and copies only owner-selected tags into public local discovery metadata.
+The old `scaffold` command and `submission.json` contract are frozen legacy V1 compatibility. They are not a current
+central-policy build path and reject current catalog plans. Use `project materialize` for current builds.
 Before any catalog-changing release, retain the prior hash-verified catalog definitions in an append-only snapshot
 registry so existing applications can be reconstructed automatically. Without that snapshot, a non-current digest is
 preserved as historical/unverified and routed to review rather than rejected or presented as current.
@@ -123,11 +125,10 @@ Freeze:
 - lifecycle, assets, PoolKey, canonical-pool policy, and alternative-pool disclosure
 - all 14 permissions, callback authentication, return shapes, hookData, and nested-action policy
 - LP fee and hook-owned fee classification
-- root `programmableFee` policy: non-additive 10 bps platform allocation, executed gross quote-side basis, canonical
-  PoolKey, all supported quadrant-dependent before/after paths plus pre-movement rejection of unsupported quadrants,
-  same-pool self-call policy, immutable owner-only claims,
-  per-claim destination, liability keys, events, evidence, and v1.1 lifetime cumulative platform/project remainder
-  accounting that claims cannot reset and split swaps cannot evade
+- any project fee explicitly requested by the owner: exact basis, recipient, applicable routes, supported quadrants,
+  settlement path, claims, liabilities, rounding and split-execution resistance. Do not invent a platform recipient,
+  rate or policy; only applicable protected central Rule IDs may add current Programmable requirements. The old root
+  `programmableFee` projection exists only inside exact frozen legacy replay.
 - dynamic-fee initialization, application mode, override rule, persistent actor and call sites, rate limit, bounds,
   metric, update path, manipulation resistance, and failure behavior
 - hook-fee collection path, value-flow id, liability keys, event, and recipient share, address source, launch binding,
@@ -159,7 +160,8 @@ Keep model-owned source, tests, specifications, documents, and evidence isolated
 
 1. Interfaces and immutable configuration
 2. Permission declaration, callback authentication, and exact canonical PoolKey binding
-3. Mandatory Programmable fee accounting, immutable ownership, claims, and settlement
+3. Any fee accounting, ownership, claims, and settlement selected by preserved product intent or an applicable current
+   central-policy Rule ID
 4. External integrations and failure isolation
 5. Events and indexer reconstruction
 6. Launcher, custody, claims, and exits
@@ -203,7 +205,12 @@ For existing code:
 
 Never execute a contributor's build or test script with secrets merely because the package requests it.
 
-## 8. Prepare the public GitHub application
+## 8. Preserve the frozen six-file application transport
+
+The V1 `package` and six-file `prepare-pr` flow below is historical replay only. It is not the current/default
+application path and its local Fee V1/V2 fields define no current Programmable requirement. Current work binds the
+protected central policy and workflow-canary contracts. There is no general local application transport; the dedicated
+`prepare-canary` consumer returns an exact canary preview and keeps automated local writing fail-closed.
 
 A proposal contains:
 
@@ -220,7 +227,7 @@ submissions/<model-id>/
 A prototype adds model-owned source, tests, specification, and machine-readable evidence. Follow
 [output-contract.md](output-contract.md) for the exact handoff.
 
-Run the host-neutral `package` and `prepare-pr` commands from the canonical skill. `package` validates the local review
+Only for an exact frozen replay, run the host-neutral `package` and `prepare-pr` commands. `package` validates the local review
 target and reports deterministic hashes. `prepare-pr` binds the canonical public repository URI, immutable numeric
 repository id, exact commit, root tree, declared source paths, zero to eight committed public companion bindings, and
 evidence. It also anonymously resolves the builder login to the immutable decimal GitHub user id. It observes the exact
@@ -231,7 +238,7 @@ from exact bytes observed on immutable central main. Every further change to tha
 `--replace-draft`, which freezes and rechecks the self-consistent local six-file draft while central main remains the
 revision authority. Both require an explicit output directory outside the builder source repository and perform no
 external action.
-For this beta, `application-id` equals the stable lower-case project/model slug; the pull-request number is the review
+For this frozen beta, `application-id` equals the stable lower-case project/model slug; the pull-request number is the review
 thread, not a connected-service identity.
 
 The agent may prepare these local artifacts when requested. Opening a pull request, publishing, signing, deploying,

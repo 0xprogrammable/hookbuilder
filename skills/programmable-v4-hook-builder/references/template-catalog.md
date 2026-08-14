@@ -33,18 +33,18 @@ Never infer that an idea is unsafe, rejected or unsupported because its category
 capability, describe its actors, assets, authorities, value flows, dependencies and failure behavior, and route it to
 architecture review. Objective hard findings still come from the main policy and evidence workflow, not this catalog.
 
-Every starter includes the Programmable fee-applicability, metadata/disclosure and test/evidence planning packs. The fee
-pack first derives whether any `programmable-canonical` execution scope exists. Canonical scopes require the real Fee V2
-instance and evidence; an exact zero-scope plan remains `not-applicable` and must not invent a market, PoolKey, hook or
-receipt. Generated artifacts prove no integrated implementation or runtime behavior.
+Every starter may carry metadata/disclosure and test/evidence planning packs. The legacy Fee V2 pack and its branded
+fee Legos are archived implementation assets: the generic catalog cannot select or materialize them. Only the exact,
+intent-bound legacy project profile can replay those assets. Current/default catalog materialization must create no Fee
+V2 applicability, instance, hook or receipt. Generated artifacts prove no integrated implementation or runtime behavior.
 
 ## Selection model
 
 Choose one starter, then add any number of capability packs:
 
 1. Use `ordinary-launch` for the smallest conventional fixed-supply token and canonical-pool path.
-2. Use `custom-token-standard-fee-hook` when special behavior belongs in the token while the Programmable fee hook
-   remains standard.
+2. `custom-token-standard-fee-hook` is a retained compatibility id for token-specific behavior plus an explicit,
+   policy-neutral hook boundary. It does not select branded Fee V2 or any platform economics.
 3. Use `custom-hook` when the canonical pool needs custom callbacks; token-side packs can still be added.
 4. Use `blank-custom` when a known starter would distort the idea.
 5. Add packs when their complete behavior and dependency closure applies.
@@ -140,11 +140,11 @@ Neither label claims fee conformance, safety, audit, deployment, production read
 descriptor records those claims as false or not claimed. Exact hard-conflict predicates address concrete unsafe
 behavior; they are never category bans.
 
-Every materialized plan also carries the immutable Programmable fee owner
-`0x4957f49620AFf3Adbbe8195a4f633E49cc93376c`, the 10-basis-point platform share and the 10-basis-point effective total
-fee floor for each applicable canonical execution scope, including a selected total fee of zero. Until each actual
-standard-AMM, zero-AMM, async/batched or custom-reviewed path has scope-specific code and tests, fee conformance remains
-explicitly unresolved. A supporting Lego marked `not-a-fee-enforcement-component` never creates an exemption.
+Generic plans cannot select or materialize the frozen legacy Fee V2 owner, rate, policy or enforcement adapters. The
+archived definitions remain inspectable in the catalog, but cannot be recovered through a starter, pack, capability or
+catalog label; only the exact, intent-bound legacy project profile can replay them. Generic user-requested fee behavior
+stays project behavior and creates no Programmable platform claim unless a future applicable central-policy Rule ID
+defines one.
 
 ## Owner-defined capabilities
 

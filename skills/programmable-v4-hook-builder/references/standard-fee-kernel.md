@@ -1,5 +1,8 @@
 # Standard Programmable fee kernel
 
+> Frozen historical V1 kernel for exact legacy replay only. It is not a current default, requirement, or launch rule.
+> Current platform requirements come only from applicable Rule IDs in exact protected Submit Launch policy bytes.
+
 ## Status and purpose
 
 `programmable-volume-fee-v1` is a versioned starter for projects that do not already need a custom fee-enforcing hook.
