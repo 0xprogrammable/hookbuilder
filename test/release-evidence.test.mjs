@@ -182,6 +182,7 @@ test("stable v0.5.1 through v0.8.0 history is immutable and v0.9.0 is the releas
   assert.deepEqual(candidate.changes.map(({ id, kind }) => ({ id, kind })), [
     { id: "catalog-capability-routing-closure", kind: "feature" },
     { id: "project-compiler-brief-output", kind: "feature" },
+    { id: "no-market-foundry-authoring", kind: "feature" },
     { id: "natural-v4-intent-triggering", kind: "feature" },
     { id: "confirmed-context-activation", kind: "feature" },
     { id: "portable-node22-runtime", kind: "feature" },
@@ -335,7 +336,7 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
   assert.equal(coldContext.stderr, "");
   assert.equal(Buffer.byteLength(coldContext.stdout, "utf8"), 1_120);
   const coldPlan = JSON.parse(coldContext.stdout).result;
-  assert.equal(coldPlan.contextBudget.estimatedTokens, 3_183);
+  assert.equal(coldPlan.contextBudget.estimatedTokens, 3_171);
 
   const customCurve = context(
     "--mode", "autopilot",
@@ -348,7 +349,7 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
   assert.equal(customCurve.status, 0, customCurve.stderr || customCurve.stdout);
   assert.equal(Buffer.byteLength(customCurve.stdout, "utf8"), 1_951);
   const customCurvePlan = JSON.parse(customCurve.stdout).result;
-  assert.equal(customCurvePlan.contextBudget.cumulativeEstimatedTokens, 5_000);
+  assert.equal(customCurvePlan.contextBudget.cumulativeEstimatedTokens, 4_988);
   assert.deepEqual(
     customCurvePlan.loadNow.map(({ path: reference }) => reference),
     ["references/v4-contract-reasoning-kernel.md"]
@@ -365,7 +366,7 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
   assert.equal(browserGame.status, 0, browserGame.stderr || browserGame.stdout);
   assert.equal(Buffer.byteLength(browserGame.stdout, "utf8"), 1_827);
   const browserGamePlan = JSON.parse(browserGame.stdout).result;
-  assert.equal(browserGamePlan.contextBudget.cumulativeEstimatedTokens, 4_624);
+  assert.equal(browserGamePlan.contextBudget.cumulativeEstimatedTokens, 4_612);
   assert.deepEqual(
     browserGamePlan.loadNow.map(({ path: reference }) => reference),
     ["references/runtime-assets.md"]
@@ -389,7 +390,7 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
   assert.equal(crossDomain.status, 0, crossDomain.stderr || crossDomain.stdout);
   assert.equal(Buffer.byteLength(crossDomain.stdout, "utf8"), 2_222);
   const crossDomainPlan = JSON.parse(crossDomain.stdout).result;
-  assert.equal(crossDomainPlan.contextBudget.cumulativeEstimatedTokens, 6_052);
+  assert.equal(crossDomainPlan.contextBudget.cumulativeEstimatedTokens, 6_040);
   assert.deepEqual(
     crossDomainPlan.loadNow.map(({ path: reference }) => reference),
     ["references/v4-contract-reasoning-kernel.md", "references/runtime-assets.md"]
@@ -399,7 +400,7 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
   assert.equal(repairContext.status, 0, repairContext.stderr || repairContext.stdout);
   assert.equal(Buffer.byteLength(repairContext.stdout, "utf8"), 1_111);
   const repairPlan = JSON.parse(repairContext.stdout).result;
-  assert.equal(repairPlan.contextBudget.estimatedTokens, 2_441);
+  assert.equal(repairPlan.contextBudget.estimatedTokens, 2_429);
   assert.deepEqual(repairPlan.loadNow.map(({ path: reference }) => reference), ["references/repair-loop.md"]);
 
   const reusedColdReference = context(
@@ -425,11 +426,11 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
     assert.match(source, /2,499 bytes/u);
     assert.match(source, /16,731[\s\S]{0,120}`autopilot`|`autopilot`[\s\S]{0,120}16,731/u);
     assert.match(source, /20,538[\s\S]{0,160}`claims`[\s\S]{0,80}`authority`|`claims`[\s\S]{0,160}`authority`[\s\S]{0,160}20,538/u);
-    assert.match(source, /1,120(?: bytes)?[\s\S]{0,180}3,183/u);
-    assert.match(source, /1,951(?: bytes)?[\s\S]{0,180}5,000/u);
-    assert.match(source, /1,827(?: bytes)?[\s\S]{0,180}4,624/u);
-    assert.match(source, /2,222(?: bytes)?[\s\S]{0,180}6,052/u);
-    assert.match(source, /1,111(?: bytes)?[\s\S]{0,180}2,441/u);
+    assert.match(source, /1,120(?: bytes)?[\s\S]{0,180}3,171/u);
+    assert.match(source, /1,951(?: bytes)?[\s\S]{0,180}4,988/u);
+    assert.match(source, /1,827(?: bytes)?[\s\S]{0,180}4,612/u);
+    assert.match(source, /2,222(?: bytes)?[\s\S]{0,180}6,040/u);
+    assert.match(source, /1,111(?: bytes)?[\s\S]{0,180}2,429/u);
   }
   assert.match(candidateNotes, /preserve[s]? the command exit code[\s\S]{0,180}`reportSha256`/iu);
   assert.match(candidateNotes, /not universal[\s\S]{0,80}model-token/iu);
@@ -476,19 +477,19 @@ test("candidate quantitative docs match generator-backed source inventories", ()
   const productionModuleCount = sizeReport.discovery.discoveredFiles;
 
   assert.equal(sizeReport.status, "SIZE_BUDGET_PASSED");
-  assert.equal(productionModuleCount, 329);
+  assert.equal(productionModuleCount, 330);
   assert.deepEqual(v2Inventory, { unit: 54, fuzz: 1, invariant: 3, invariantPolicy: "required-and-present" });
   assert.equal(registry.inventory.contractCount, 51);
   assert.equal(registry.inventory.validatorClosureCount, 26);
-  assert.equal(registry.inventory.validatorClosureModuleBindingCount, 1036);
-  assert.equal(registry.inventory.validatorClosureDistinctModuleCount, 177);
+  assert.equal(registry.inventory.validatorClosureModuleBindingCount, 1037);
+  assert.equal(registry.inventory.validatorClosureDistinctModuleCount, 178);
   assert.equal(evalTestCount, 9);
 
   for (const document of [maturity, candidateNotes]) {
     assert.match(document, new RegExp(`${productionModuleCount} production`, "u"));
     assert.match(document, new RegExp(`${registry.inventory.contractCount} (?:portable\\s+contracts|schema\\s+contracts)`, "u"));
     assert.match(document, new RegExp(`${registry.inventory.validatorClosureCount} validator closures`, "u"));
-    assert.match(document, /1,036 transitive\s+(?:module\s+)?bindings/u);
+    assert.match(document, /1,037 transitive\s+(?:module\s+)?bindings/u);
     assert.match(document, new RegExp(`${registry.inventory.validatorClosureDistinctModuleCount} distinct modules`, "u"));
   }
   for (const document of [maturity, readiness, candidateNotes]) {

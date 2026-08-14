@@ -49,6 +49,11 @@
       "summary": "Add an optional hard-bounded brief Project Compiler view that preserves the full report identity, result and evidence boundary while omitting exhaustive arrays."
     },
     {
+      "id": "no-market-foundry-authoring",
+      "kind": "feature",
+      "summary": "Materialize bounded nested Solidity source and test trees as one inert source-bound Foundry plan without candidate execution, network, deployment, approval, or launch authority."
+    },
+    {
       "id": "natural-v4-intent-triggering",
       "kind": "feature",
       "summary": "Trigger on explicit Programmable requests or clear intent to design, build, repair, review, test, upgrade, or submit a complete Uniswap v4 hook or project while excluding explanations, unrelated Solidity work, skill discovery, and non-blockchain use."

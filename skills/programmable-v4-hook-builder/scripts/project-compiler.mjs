@@ -13,6 +13,7 @@ import { sha256Bytes } from "./open-world-v2-core.mjs";
 import { executeProjectCommands, inspectCleanProjectSource } from "./project-command-executor-core.mjs";
 import { compileProjectBundle, preflightProjectOutput, validateProjectOutput } from "./project-compiler-core.mjs";
 import { validateArchitectureCandidates, validateProductGraph, validateProjectSpec } from "./project-contracts-core.mjs";
+import { readNoMarketAuthoringInputs } from "./project-no-market-authoring-core.mjs";
 import { createNoMarketProjectAuthoring } from "./project-state-core.mjs";
 import { bindTradableReferenceIntent, TRADABLE_REFERENCE_PROFILE_ID } from "./project-tradable-authoring-core.mjs";
 import { validateRepositoryPlan } from "./repository-completion-core.mjs";
@@ -60,7 +61,7 @@ const PROJECT_COMPILER_BRIEF_FIELD_JSON_BYTES = Object.freeze({
 const cli = parseCliOrExit({
   command: "project-compiler",
   usage: "project-compiler <validate|validate-output|preflight|require-output|execute|diagnose|materialize> [command options]",
-  summary: "Validate project phases and outputs, diagnose a signed failed attempt, author a source-bound plan, or fail closed before untrusted execution.",
+  summary: "Validate project phases and outputs, diagnose a signed failed attempt, or author a source-bound plan. No-market Node uses --source-contract/--test-source; Foundry uses exact-pragma Solidity roots and testSimulation*, testFuzz*, invariant*, and testDeployment* functions. Dry-run before repeating with --write.",
   positionals: { min: 1, max: 1, names: ["command"] },
   options: [
     { name: "--repository-root", key: "repositoryRoot", type: "value", valueName: "path", description: "Existing project repository root." },
@@ -76,8 +77,11 @@ const cli = parseCliOrExit({
     { name: "--classification", key: "classification", type: "value", valueName: "no-market|tradable", description: "Explicit trade classification for materialize." },
     { name: "--market-ref", key: "marketRef", type: "value", valueName: "slug", description: "Exact selected market identity for tradable materialize." },
     { name: "--reference-profile", key: "referenceProfile", type: "value", valueName: "profile-id", description: "Exact frozen legacy compatibility profile requested by preserved tradable intent." },
-    { name: "--source-contract", key: "sourceContract", type: "value", valueName: "mjs-file", description: "Idea-specific local source module for materialize." },
-    { name: "--test-source", key: "testSource", type: "value", valueName: "test-mjs-file", description: "Real node:test source for materialize." },
+    { name: "--project-profile", key: "projectProfile", type: "value", valueName: "node|foundry", description: "Bounded no-market authoring profile; required with source/test roots." },
+    { name: "--source-root", key: "sourceRoot", type: "value", valueName: "directory", description: "Nested inert source tree for Foundry materialize." },
+    { name: "--test-root", key: "testRoot", type: "value", valueName: "directory", description: "Nested inert test tree for Foundry materialize." },
+    { name: "--source-contract", key: "sourceContract", type: "value", valueName: "mjs-file", description: "Single Node-profile ESM source module for materialize." },
+    { name: "--test-source", key: "testSource", type: "value", valueName: "test-mjs-file", description: "Single Node-profile node:test module for materialize." },
     { name: "--output", key: "output", type: "value", valueName: "new-directory", description: "New repository directory for materialize." },
     { name: "--write", key: "write", type: "boolean", description: "Write no-market source and a materializing plan; tradable write requires an external sandbox." },
     { name: "--brief", key: "brief", type: "boolean", description: "Return a bounded status, root, next action, report identity and evidence boundary; omit for complete canonical JSON." }
@@ -182,17 +186,15 @@ async function materializeProject(options) {
   if (options.classification === "tradable") {
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(options.marketRef ?? "")) failUsage("tradable materialize requires --market-ref as a lowercase slug");
     if (options.referenceProfile !== TRADABLE_REFERENCE_PROFILE_ID) failUsage(`tradable materialize requires --reference-profile ${TRADABLE_REFERENCE_PROFILE_ID}`);
-    if (options.sourceContract !== null || options.testSource !== null) failUsage("tradable materialize does not accept --source-contract or --test-source");
+    if ([options.projectProfile, options.sourceRoot, options.testRoot, options.sourceContract, options.testSource].some((value) => value !== null)) failUsage("tradable materialize does not accept no-market authoring profile, root, source, or test options");
     return materializeTradableProject({ ...options, ideaText, ideaBytes, intentProfileBinding: bindTradableReferenceIntent(ideaText, options.referenceProfile), outputRoot });
   }
   if (options.marketRef !== null) failUsage("no-market materialize does not accept --market-ref");
   if (options.referenceProfile !== null) failUsage("no-market materialize does not accept --reference-profile");
-  if (options.sourceContract === null || options.testSource === null) failUsage("no-market materialize requires --source-contract and --test-source");
-  const sourceInput = readAuthoredModule(options.sourceContract, false);
-  const testInput = readAuthoredModule(options.testSource, true);
-  const sourcePath = `src/${sourceInput.basename}`;
-  const testPath = `test/${testInput.basename}`;
-  const authored = createNoMarketProjectAuthoring({ applicationId: options.applicationId, ideaText, sourcePath, sourceBytes: sourceInput.bytes, testPath, testBytes: testInput.bytes });
+  const { projectProfile, compilerVersion, sourceFiles, testFiles } = readNoMarketAuthoringInputs(options);
+  const sourcePaths = sourceFiles.map(({ path: filePath }) => filePath);
+  const testPaths = testFiles.map(({ path: filePath }) => filePath);
+  const authored = createNoMarketProjectAuthoring({ applicationId: options.applicationId, ideaText, projectProfile, compilerVersion, sourceFiles, testFiles });
   const authoringFindings = [
     ...validateProjectSpec(authored.projectSpec),
     ...validateProductGraph(authored.projectSpec, authored.productGraph),
@@ -202,7 +204,7 @@ async function materializeProject(options) {
   if (authoringFindings.some(({ severity }) => severity === "blocker")) throw Object.assign(new Error("generated project artifacts fail bundled validation"), { code: "PROJECT_AUTHORING_INVALID", findings: authoringFindings });
   const inventory = fileInventory(authored.files);
   if (!options.write) {
-    const payload = materializationReport({ status: "PROJECT_MATERIALIZATION_DRY_RUN_READY", applicationId: options.applicationId, classification: "no-market", writeRequested: false, writePerformed: false, outputRoot, ideaSha256: authored.projectSpec.intent.sha256, sourcePath, testPath, inventory, blockers: [] });
+    const payload = materializationReport({ status: "PROJECT_MATERIALIZATION_DRY_RUN_READY", applicationId: options.applicationId, classification: "no-market", projectProfile, compilerVersion, writeRequested: false, writePerformed: false, outputRoot, ideaSha256: authored.projectSpec.intent.sha256, sourcePaths, testPaths, inventory, blockers: [] });
     process.stdout.write(`${canonicalJsonV2(payload)}\n`);
     return;
   }
@@ -237,12 +239,14 @@ async function materializeProject(options) {
       operation: "PROJECT_SOURCE_AND_PLAN_MATERIALIZED",
       applicationId: options.applicationId,
       classification: "no-market",
+      projectProfile,
+      compilerVersion,
       writeRequested: true,
       writePerformed: true,
       outputRoot,
       ideaSha256: authored.projectSpec.intent.sha256,
-      sourcePath,
-      testPath,
+      sourcePaths,
+      testPaths,
       inventory: fileInventory(authored.files),
       sourceCommit,
       sourceTree,
@@ -414,7 +418,7 @@ export function inspectForkCanary(stdout, context = {}) {
 }
 
 function rejectMaterializeOptions(options) {
-  if ([options.ideaFile, options.applicationId, options.classification, options.marketRef, options.referenceProfile, options.sourceContract, options.testSource, options.output].some((value) => value !== null) || options.write) failUsage("materialize authoring options are accepted only by the materialize command");
+  if ([options.ideaFile, options.applicationId, options.classification, options.marketRef, options.referenceProfile, options.projectProfile, options.sourceRoot, options.testRoot, options.sourceContract, options.testSource, options.output].some((value) => value !== null) || options.write) failUsage("materialize authoring options are accepted only by the materialize command");
 }
 function summarizeProjectCompilerReport(report, operation) {
   const findings = Array.isArray(report.findings)
@@ -555,14 +559,6 @@ function readInputBytes(inputPath, maximumBytes, label) {
   const stat = fs.lstatSync(resolved);
   if (!stat.isFile() || stat.isSymbolicLink() || stat.size < 1 || stat.size > maximumBytes) throw Object.assign(new Error(`${label} must be a bounded regular non-symlink file`), { code: "PROJECT_AUTHORING_INPUT_INVALID" });
   return fs.readFileSync(resolved);
-}
-function readAuthoredModule(inputPath, testSource) {
-  const bytes = readInputBytes(inputPath, 1_000_000, testSource ? "test source" : "source contract");
-  const basename = path.basename(inputPath);
-  const pattern = testSource ? /^[a-z0-9]+(?:-[a-z0-9]+)*\.test\.mjs$/u : /^[a-z0-9]+(?:-[a-z0-9]+)*\.mjs$/u;
-  if (!pattern.test(basename)) failUsage(testSource ? "--test-source basename must be a lowercase *.test.mjs file" : "--source-contract basename must be a lowercase *.mjs file");
-  if (testSource && !bytes.toString("utf8").includes("node:test")) failUsage("--test-source must use node:test");
-  return { basename, bytes };
 }
 function resolveNewOutput(outputPath) {
   const requested = path.resolve(outputPath);

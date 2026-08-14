@@ -630,9 +630,9 @@
         "modulePath": "scripts/project-state-core.mjs",
         "exportName": "validateProjectState",
         "mode": "package-semantic",
-        "moduleByteLength": 49411,
-        "moduleSha256": "sha256:9f0e914e3e3ff73d7a7be8d60462db728001adc1bc71d8af87d431cfadf3e346",
-        "closureSha256": "sha256:942bebe11c297dc807545e33d2f35c521cc8418a402bb732bd62509d22d3747e"
+        "moduleByteLength": 43474,
+        "moduleSha256": "sha256:de29e03eea1cb9ab13b6dc53dd31a81fd4129e20d5c540c33d79c6637d381533",
+        "closureSha256": "sha256:86d16ae06d14c771298ed8d0e09c18e84ee7f3a99c7be8fa9888be8aab117c1d"
       }
     },
     {
@@ -6626,8 +6626,8 @@
     {
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/project-state-core.mjs",
-      "moduleCount": 95,
-      "totalByteLength": 1443915,
+      "moduleCount": 96,
+      "totalByteLength": 1458416,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -7042,9 +7042,19 @@
           ]
         },
         {
+          "path": "scripts/project-no-market-authoring-core.mjs",
+          "byteLength": 20438,
+          "sha256": "sha256:05ddf89cc91fd2b108a82616e5e57f64e06a8525d72cc90b5d3afe98ee1a0924",
+          "localImports": [
+            "scripts/open-world-v2-core.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/project-contracts-core.mjs"
+          ]
+        },
+        {
           "path": "scripts/project-state-core.mjs",
-          "byteLength": 49411,
-          "sha256": "sha256:9f0e914e3e3ff73d7a7be8d60462db728001adc1bc71d8af87d431cfadf3e346",
+          "byteLength": 43474,
+          "sha256": "sha256:de29e03eea1cb9ab13b6dc53dd31a81fd4129e20d5c540c33d79c6637d381533",
           "localImports": [
             "scripts/canonical-json-core.mjs",
             "scripts/open-world-v2-contracts.mjs",
@@ -7052,6 +7062,7 @@
             "scripts/open-world-v2-draft-core.mjs",
             "scripts/open-world-v2-primitives.mjs",
             "scripts/project-contracts-core.mjs",
+            "scripts/project-no-market-authoring-core.mjs",
             "scripts/submission-core.mjs"
           ]
         },
@@ -7528,7 +7539,7 @@
           ]
         }
       ],
-      "closureSha256": "sha256:942bebe11c297dc807545e33d2f35c521cc8418a402bb732bd62509d22d3747e"
+      "closureSha256": "sha256:86d16ae06d14c771298ed8d0e09c18e84ee7f3a99c7be8fa9888be8aab117c1d"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -10902,11 +10913,11 @@
     "validatorBindingCount": 51,
     "validatorModuleCount": 26,
     "validatorClosureCount": 26,
-    "validatorClosureModuleBindingCount": 1036,
-    "validatorClosureDistinctModuleCount": 177,
+    "validatorClosureModuleBindingCount": 1037,
+    "validatorClosureDistinctModuleCount": 178,
     "schemaPathsSha256": "sha256:c523d89f3208b09ddc3f9862b232567cb13dc759ebb761669f9b76af9cda6931",
-    "validatorBindingsSha256": "sha256:c2634a0981b691c26beabc90aa6d3b86521cd7f0aeb0064fd81e37b82b7cd187",
-    "validatorClosuresSha256": "sha256:4bb9ef411a34a880403dee8b9f4f3139f8cbdf5a7e3ebb0ffddfd386fbea6267"
+    "validatorBindingsSha256": "sha256:073269d4b8d5c57c7ae1c83e0638f40943aa7cc36561110f70788b725d7dc4d8",
+    "validatorClosuresSha256": "sha256:a6fe597c250e200ee04c04ee3e6cf275b137ceccfc63b5806bf8cb67688fcf64"
   },
-  "registrySha256": "sha256:92b61a885c0948afa0dbabfb4523dcf0be356b1d90519b3ca97a69863f3e3f2f"
+  "registrySha256": "sha256:ad70ec4bbcc440ae10319c7ce613cf852e0b956949ec3f85e9860c1fca6f1396"
 }
