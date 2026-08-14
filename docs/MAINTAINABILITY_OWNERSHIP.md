@@ -13,7 +13,7 @@ exports, diagnostic identities, ordering, and authority stops are regression-tes
 | GitHub/Application and Public Claims | Complete namespace groups discovered by the coverage gate | Per-module source hashes, aggregate historical coverage floors, and omission/facade-only anti-gaming tests |
 | Project Compiler and Contract Registry | Typed contracts, bounded local executor, repository-completion validation, and transitive validator closure | Exact receipt trust state, mutation/unresolved/cycle failures, and frozen source/closure digests |
 
-The machine gate currently discovers 328 production modules across its two closed roots. It evaluates immutable-baseline,
+The machine gate currently discovers 329 production modules across its two closed roots. It evaluates immutable-baseline,
 exact reviewed-override, and new-file hard-cap classes; rejects cycles and unresolved relative imports; and applies a
 portable package ceiling. Reviewed overrides lock decomposed facades to their post-split metrics so they cannot regrow
 to historical monolith sizes.

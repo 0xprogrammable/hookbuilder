@@ -134,6 +134,7 @@ Measured on the local v0.9 candidate after confirmed activation support:
 | Cold Autopilot | 1,399 | 4,889 initial compiler | 3,258 |
 | `custom-curve + contract` activation | 1,972 | 5,314 compact v4 kernel | 5,080 |
 | `browser-game + application` activation | 1,856 | 3,935 runtime assets | 4,706 |
+| Repair cold start | 1,391 | 1,991 compact repair loop | 2,531 |
 
 The activation cumulative total counts `SKILL.md`, the cold initial reference, the cold brief, the one activated
 reference, and the activation brief exactly once. It is a byte-derived estimate, not provider token telemetry.
@@ -151,6 +152,7 @@ subject:
 | v0.8.0 custom-curve/contract selection, full output | 5,179 | 4,192, specialist still deferred | 3/3 byte-identical |
 | pre-activation v0.9 custom-curve/contract selection, full output | 5,179 | 4,194, specialist still deferred | 3/3 byte-identical |
 | candidate custom-curve/contract activation, brief | 1,972 | 5,080 cumulative, specialist included | 3/3 byte-identical |
+| candidate Repair cold start, brief | 1,391 | 2,531, non-completion loop included | 3/3 byte-identical |
 
 This comparison supports lower model-facing router output and a bounded first specialist load. It does not claim lower
 provider tokens for a complete build: the two baselines did not have an equivalent activation phase and therefore did

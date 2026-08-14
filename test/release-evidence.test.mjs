@@ -324,12 +324,70 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
     assert.equal(contextProfiles[profile].includes(applicationReference), false, profile);
   }
 
+  const context = (...args) => spawn([unifiedCli, "context", ...args]);
+  const coldContext = context("--mode", "autopilot", "--brief");
+  assert.equal(coldContext.status, 0, coldContext.stderr || coldContext.stdout);
+  assert.equal(coldContext.stderr, "");
+  assert.equal(Buffer.byteLength(coldContext.stdout, "utf8"), 1_399);
+  const coldPlan = JSON.parse(coldContext.stdout).result;
+  assert.equal(coldPlan.contextBudget.estimatedTokens, 3_258);
+
+  const customCurve = context(
+    "--mode", "autopilot",
+    "--capability", "custom-curve",
+    "--surface", "contract",
+    "--activate-confirmed",
+    "--base-profile-digest", coldPlan.profileDigest,
+    "--brief"
+  );
+  assert.equal(customCurve.status, 0, customCurve.stderr || customCurve.stdout);
+  assert.equal(Buffer.byteLength(customCurve.stdout, "utf8"), 1_972);
+  const customCurvePlan = JSON.parse(customCurve.stdout).result;
+  assert.equal(customCurvePlan.contextBudget.cumulativeEstimatedTokens, 5_080);
+  assert.deepEqual(
+    customCurvePlan.loadNow.map(({ path: reference }) => reference),
+    ["references/v4-contract-reasoning-kernel.md"]
+  );
+
+  const browserGame = context(
+    "--mode", "autopilot",
+    "--capability", "browser-game",
+    "--surface", "application",
+    "--activate-confirmed",
+    "--base-profile-digest", coldPlan.profileDigest,
+    "--brief"
+  );
+  assert.equal(browserGame.status, 0, browserGame.stderr || browserGame.stdout);
+  assert.equal(Buffer.byteLength(browserGame.stdout, "utf8"), 1_856);
+  const browserGamePlan = JSON.parse(browserGame.stdout).result;
+  assert.equal(browserGamePlan.contextBudget.cumulativeEstimatedTokens, 4_706);
+  assert.deepEqual(
+    browserGamePlan.loadNow.map(({ path: reference }) => reference),
+    ["references/runtime-assets.md"]
+  );
+  assert.equal(
+    [...browserGamePlan.loadNow, ...browserGamePlan.routedLater.paths]
+      .some((value) => /v4-(?:protocol|hook|sdk|liquidity)/u.test(typeof value === "string" ? value : value.path)),
+    false
+  );
+
+  const repairContext = context("--mode", "repair", "--brief");
+  assert.equal(repairContext.status, 0, repairContext.stderr || repairContext.stdout);
+  assert.equal(Buffer.byteLength(repairContext.stdout, "utf8"), 1_391);
+  const repairPlan = JSON.parse(repairContext.stdout).result;
+  assert.equal(repairPlan.contextBudget.estimatedTokens, 2_531);
+  assert.deepEqual(repairPlan.loadNow.map(({ path: reference }) => reference), ["references/repair-loop.md"]);
+
   for (const source of [candidateNotes, changelog]) {
     assert.match(source, /3,371(?: bytes)?[\s\S]{0,80}1,150(?: bytes)?[\s\S]{0,80}65\.89%/u);
     assert.match(source, /1,225(?: bytes)?[\s\S]{0,80}805(?: bytes)?[\s\S]{0,80}34\.29%/u);
     assert.match(source, /2,499 bytes/u);
     assert.match(source, /16,731[\s\S]{0,120}`autopilot`|`autopilot`[\s\S]{0,120}16,731/u);
     assert.match(source, /20,538[\s\S]{0,160}`claims`[\s\S]{0,80}`authority`|`claims`[\s\S]{0,160}`authority`[\s\S]{0,160}20,538/u);
+    assert.match(source, /1,399(?: bytes)?[\s\S]{0,180}3,258/u);
+    assert.match(source, /1,972(?: bytes)?[\s\S]{0,180}5,080/u);
+    assert.match(source, /1,856(?: bytes)?[\s\S]{0,180}4,706/u);
+    assert.match(source, /1,391(?: bytes)?[\s\S]{0,180}2,531/u);
   }
   assert.match(candidateNotes, /preserve[s]? the command exit code[\s\S]{0,180}`reportSha256`/iu);
   assert.match(candidateNotes, /not universal[\s\S]{0,80}model-token/iu);
@@ -376,19 +434,19 @@ test("candidate quantitative docs match generator-backed source inventories", ()
   const productionModuleCount = sizeReport.discovery.discoveredFiles;
 
   assert.equal(sizeReport.status, "SIZE_BUDGET_PASSED");
-  assert.equal(productionModuleCount, 328);
+  assert.equal(productionModuleCount, 329);
   assert.deepEqual(v2Inventory, { unit: 54, fuzz: 1, invariant: 3, invariantPolicy: "required-and-present" });
-  assert.equal(registry.inventory.contractCount, 50);
-  assert.equal(registry.inventory.validatorClosureCount, 25);
-  assert.equal(registry.inventory.validatorClosureModuleBindingCount, 1034);
-  assert.equal(registry.inventory.validatorClosureDistinctModuleCount, 176);
+  assert.equal(registry.inventory.contractCount, 51);
+  assert.equal(registry.inventory.validatorClosureCount, 26);
+  assert.equal(registry.inventory.validatorClosureModuleBindingCount, 1036);
+  assert.equal(registry.inventory.validatorClosureDistinctModuleCount, 177);
   assert.equal(evalTestCount, 9);
 
   for (const document of [maturity, candidateNotes]) {
     assert.match(document, new RegExp(`${productionModuleCount} production`, "u"));
     assert.match(document, new RegExp(`${registry.inventory.contractCount} (?:portable\\s+contracts|schema\\s+contracts)`, "u"));
     assert.match(document, new RegExp(`${registry.inventory.validatorClosureCount} validator closures`, "u"));
-    assert.match(document, /1,034 transitive\s+(?:module\s+)?bindings/u);
+    assert.match(document, /1,036 transitive\s+(?:module\s+)?bindings/u);
     assert.match(document, new RegExp(`${registry.inventory.validatorClosureDistinctModuleCount} distinct modules`, "u"));
   }
   for (const document of [maturity, readiness, candidateNotes]) {

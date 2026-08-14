@@ -57,6 +57,7 @@ test("Autopilot starts from the compact compiler with the productive completion 
   const coldContext = [skill, ...result.loadNow.map(({ path: reference }) => fs.readFileSync(path.join(skillRoot, reference), "utf8"))].join("\n");
   assert.match(skill, /context --mode autopilot --brief/u);
   assert.match(skill, /node "\$BUILDER_CLI" context --mode autopilot --capability "\$CONFIRMED_CAPABILITY" --activate-confirmed --base-profile-digest "\$BASE_PROFILE_DIGEST" --brief/u);
+  assert.match(skill, /after isolated failure run `context --mode repair --brief`/u);
   assert.match(skill, /before architecture or code/u);
   assert.doesNotMatch(skill, /context --mode explore --capability owner-defined-capability/u);
   assert.match(skill, /project materialize --idea-file "\$IDEA_FILE" --application-id "\$APPLICATION_ID" --classification no-market --source-contract "\$SOURCE_CONTRACT" --test-source "\$TEST_SOURCE" --output "\$NEW_REPOSITORY"/u);

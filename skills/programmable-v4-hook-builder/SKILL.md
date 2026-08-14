@@ -8,8 +8,8 @@ license: MIT
 
 ## Contract
 
-Turn intent or a repository into the smallest complete reproducible Programmable repository with evidence, never
-snippets. Default to Autopilot, derive safe technical choices and ask only for a material owner decision.
+Build the smallest complete reproducible Programmable repository with evidence, never snippets. Default to Autopilot;
+after isolated failure run `context --mode repair --brief`. Ask only for a material owner decision.
 
 Keep eligibility, safety, review, Registry acceptance, deployment and availability separate. Claim each only from its
 own evidence and authority.
