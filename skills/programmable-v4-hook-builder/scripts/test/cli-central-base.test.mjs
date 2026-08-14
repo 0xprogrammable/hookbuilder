@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
+import fs from "node:fs";
 import test from "node:test";
 import {
   assertCentralBaseUnchanged,
   deriveApplicationRevision,
   resolveCentralApplicationBase
 } from "../cli-central-base.mjs";
+import {
+  assertCentralCanaryBaseUnchanged,
+  resolveCentralCanaryBase
+} from "../cli-central-canary-base.mjs";
 import { CENTRAL_APPLICATION_FILES } from "../cli-central-package.mjs";
 import { CliFailure } from "../cli-runtime.mjs";
 import { canonicalJson } from "../submission-core.mjs";
@@ -21,6 +26,60 @@ const movedCommit = "c".repeat(40);
 const primaryCommit = "d".repeat(40);
 const primaryTree = "e".repeat(40);
 const builderIdentity = Object.freeze({ githubUserId: "9007199254740993", githubLogin: "example" });
+const canarySchemaBytes = fs.readFileSync(new URL(
+  "./fixtures/submit-launch-policy/workflow-canary-application-v1.schema.json",
+  import.meta.url
+));
+
+test("resolves policy and workflow-canary schema from one exact protected base", async () => {
+  const fixture = createCentralFetch();
+  const observed = await resolveCentralCanaryBase({
+    applicationId: "example-hook",
+    fetchImplementation: fixture.fetch,
+    sleepImplementation: async () => {}
+  });
+  assert.equal(observed.baseCommit, baseCommit);
+  assert.equal(observed.baseTree, baseTree);
+  assert.equal(observed.canaryApplicationExists, false);
+  assert.equal(observed.applicationPath, "canary-submissions/example-hook/application.json");
+  assert.equal(
+    observed.canaryApplicationSchemaBinding.path,
+    "canary/schemas/workflow-canary-application-v1.schema.json"
+  );
+  assert.equal(observed.canaryApplicationSchemaBinding.sha256, policyDigest(canarySchemaBytes));
+  assert.equal(await assertCentralCanaryBaseUnchanged({
+    observation: observed,
+    fetchImplementation: fixture.fetch,
+    sleepImplementation: async () => {}
+  }), true);
+});
+
+test("marks an existing protected canary application directory as occupied", async () => {
+  const fixture = createCentralFetch({ canaryApplicationExists: true });
+  const observed = await resolveCentralCanaryBase({
+    applicationId: "example-hook",
+    fetchImplementation: fixture.fetch,
+    sleepImplementation: async () => {}
+  });
+  assert.equal(observed.canaryApplicationExists, true);
+});
+
+test("canary stability rejects a moved protected base even when policy and schema bytes are unchanged", async () => {
+  const fixture = createCentralFetch({ refCommits: [baseCommit, movedCommit] });
+  const observed = await resolveCentralCanaryBase({
+    applicationId: "example-hook",
+    fetchImplementation: fixture.fetch,
+    sleepImplementation: async () => {}
+  });
+  await rejectsCode(
+    () => assertCentralCanaryBaseUnchanged({
+      observation: observed,
+      fetchImplementation: fixture.fetch,
+      sleepImplementation: async () => {}
+    }),
+    "CENTRAL_BASE_MOVED"
+  );
+});
 
 test("resolves a first revision from the fixed central ref and immutable tree without credentials", async () => {
   const fixture = createCentralFetch();
@@ -435,12 +494,18 @@ function createCentralFetch({
   refCommits = [baseCommit],
   movedPolicy = false,
   missingMovedPolicy = false,
+  canaryApplicationExists = false,
   repositoryId = "1320171831"
 } = {}) {
   const calls = [];
   let refReads = 0;
   const submissionsTree = "7".repeat(40);
   const applicationTree = "8".repeat(40);
+  const canaryTree = "9".repeat(40);
+  const canarySchemasTree = "0".repeat(40);
+  const canarySubmissionsTree = "abcd".repeat(10);
+  const canaryApplicationTree = "dcba".repeat(10);
+  const canarySchemaBlob = gitBlobDigest(canarySchemaBytes);
   const policyFixture = makeSubmitLaunchPolicyFixture({ baseTree });
   const movedTree = "6".repeat(40);
   const movedPolicyFixture = movedPolicy
@@ -487,8 +552,40 @@ function createCentralFetch({
         truncated: false,
         tree: [
           policyTreeEntry("policy", "040000", "tree", policyFixture.policyTree),
+          policyTreeEntry("canary", "040000", "tree", canaryTree),
+          ...(canaryApplicationExists
+            ? [policyTreeEntry("canary-submissions", "040000", "tree", canarySubmissionsTree)]
+            : []),
           ...(files === null ? [] : [treeEntry("submissions", "040000", "tree", submissionsTree)])
         ]
+      });
+    }
+    if (url === `${prefix}/git/trees/${canaryTree}`) {
+      return response(200, {
+        sha: canaryTree,
+        truncated: false,
+        tree: [treeEntry("schemas", "040000", "tree", canarySchemasTree)]
+      });
+    }
+    if (url === `${prefix}/git/trees/${canarySchemasTree}`) {
+      return response(200, {
+        sha: canarySchemasTree,
+        truncated: false,
+        tree: [treeEntry("workflow-canary-application-v1.schema.json", "100644", "blob", canarySchemaBlob)]
+      });
+    }
+    if (url === `${prefix}/git/trees/${canarySubmissionsTree}`) {
+      return response(200, {
+        sha: canarySubmissionsTree,
+        truncated: false,
+        tree: [treeEntry("example-hook", "040000", "tree", canaryApplicationTree)]
+      });
+    }
+    if (url === `${prefix}/git/blobs/${canarySchemaBlob}`) {
+      return response(200, {
+        sha: canarySchemaBlob,
+        encoding: "base64",
+        content: canarySchemaBytes.toString("base64")
       });
     }
     if (url === `${prefix}/git/trees/${policyFixture.policyTree}`) {
@@ -510,8 +607,11 @@ function createCentralFetch({
         sha: movedTree,
         truncated: false,
         tree: missingMovedPolicy
-          ? []
-          : [policyTreeEntry("policy", "040000", "tree", movedPolicyFixture.policyTree)]
+          ? [policyTreeEntry("canary", "040000", "tree", canaryTree)]
+          : [
+              policyTreeEntry("policy", "040000", "tree", movedPolicyFixture.policyTree),
+              policyTreeEntry("canary", "040000", "tree", canaryTree)
+            ]
       });
     }
     if (

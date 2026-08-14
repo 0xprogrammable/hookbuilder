@@ -117,11 +117,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/cli.mjs",
-          "observedLines": 536,
-          "observedBytes": 26084,
+          "observedLines": 537,
+          "observedBytes": 26152,
           "observedComplexityScore": 104,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.7.0 reviewed central-policy routing and frozen legacy command-surface labels"
+          "reviewRef": "v0.7.0 reviewed central-policy routing, frozen legacy labels, and workflow-canary dispatch"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/companion-manifest-contract.mjs",
@@ -349,11 +349,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
-          "observedLines": 679,
-          "observedBytes": 33860,
+          "observedLines": 683,
+          "observedBytes": 34032,
           "observedComplexityScore": 85,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.7.0 reviewed central-policy closure and frozen legacy authority quarantine"
+          "reviewRef": "v0.7.0 reviewed central-policy closure and workflow-canary required-file inventory"
         }
       ]
     },
@@ -368,7 +368,7 @@
     "path": "skills/programmable-v4-hook-builder",
     "observedFiles": 640,
     "observedBytes": 9619846,
-    "maxFiles": 670,
+    "maxFiles": 676,
     "maxBytes": 12000000
   }
 }

@@ -36,7 +36,8 @@ const delegatedCommands = new Map([
   ["version", { script: "builder-lifecycle.mjs", prefix: ["version"] }],
   ["update-check", { script: "builder-lifecycle.mjs", prefix: ["update-check"] }],
   ["migrate", { script: "builder-lifecycle.mjs", prefix: ["migrate"] }],
-  ["plan-release", { script: "builder-lifecycle.mjs", prefix: ["plan-release"] }]
+  ["plan-release", { script: "builder-lifecycle.mjs", prefix: ["plan-release"] }],
+  ["prepare-canary", { script: "prepare-canary.mjs", prefix: [] }]
 ]);
 const commandSpecs = new Map([
   ["doctor", {

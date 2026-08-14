@@ -3,8 +3,9 @@
 This reference preserves the frozen six-file **Public Applicant Beta** transport and separates it from current central
 policy consumption and a later **Connected Submission service**. The six-file `prepare-pr` path is historical replay
 only; it is not the current/default application transport and its local Fee V1/V2 fields define no current requirement.
-Current work binds protected central policy and workflow-canary contracts. This Task 7A consumer exposes no general
-application transport; a dedicated local `prepare-canary` client arrives in the next consumer step.
+Current work binds protected central policy and workflow-canary contracts. It exposes no general application
+transport; the dedicated `prepare-canary` client is an exact preview-only canary path whose automated local-write
+boundary fails closed until a portable descriptor-bound writer exists.
 
 ## Contents
 
@@ -660,7 +661,7 @@ semantics.
 ## Agent command contract
 
 The host-neutral entry point implements `context`, `templates`, `discover`, `start`, `profile`,
-`doctor`, `scaffold`, `check`, `fee`, `package`, `companion`, `prepare-pr`, `submit`, `status`, `update`, `version`,
+`doctor`, `scaffold`, `check`, `fee`, `package`, `companion`, `prepare-canary`, `prepare-pr`, `submit`, `status`, `update`, `version`,
 `update-check`, `migrate`, and `plan-release`. Their installed `scripts/cli.mjs --help` and per-command `--help` output
 are authoritative for flags.
 

@@ -120,6 +120,11 @@ and one draft pull request. The client reads `docs/builder/intake-status.json` a
 stops before any write unless intake permits that exact application or continuation. Do not hand-create an application
 pull request.
 
+`prepare-canary` is a separate hidden, non-production workflow-test path. It returns the exact canonical
+`application.json` bytes and plan digest. Automated local writing currently fails closed because the portable client
+does not yet bundle a descriptor-bound writer; it never writes GitHub or grants launch authority. See the
+[workflow-canary client contract](skills/programmable-v4-hook-builder/references/workflow-canary-application.md).
+
 The older Applicant files in this Hookbuilder repository are frozen legacy continuations. Only pull requests #10,
 #11, #12, #14, #15, #18, #19, and #20 may continue on that path, and only against Hookbuilder `main`. Every new
 application belongs in Submit a Launch.

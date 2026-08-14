@@ -21,8 +21,8 @@ is open, stop with `POLICY_DRIFT` and evaluate the current bytes again.
 
 The existing six-file V2 `prepare-pr` package remains a frozen historical transport. Its attached workflow-canary
 binding is a drift anchor only; it does not reinterpret that package as a canary result, launch approval, audit, or
-production authorization. The workflow-canary application path is a separate contract and is not exposed by legacy
-`prepare-pr`.
+production authorization. The workflow-canary application path is a separate contract exposed only through the
+bounded local [`prepare-canary` client](workflow-canary-application.md), never through legacy `prepare-pr`.
 
 General Uniswap v4, EVM, compiler, testing, accounting, and secure-coding guidance remains useful engineering knowledge.
 Local fee policies, fee kernels, typed review artifacts, and templates are optional implementation assets. Select them

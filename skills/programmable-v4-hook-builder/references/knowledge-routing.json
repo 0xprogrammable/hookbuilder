@@ -339,6 +339,10 @@
           "trigger": "Load only after local checks pass and exact public source is frozen for the Submit a Launch handoff."
         },
         {
+          "reference": "workflow-canary-application.md",
+          "trigger": "Load only for an explicitly requested hidden workflow test before previewing or writing its one local canary application file."
+        },
+        {
           "reference": "open-world-v2-output-contract.md",
           "trigger": "Load when rendering the final v3 application, waiting, or status response."
         },

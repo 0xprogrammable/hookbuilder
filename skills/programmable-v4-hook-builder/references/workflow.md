@@ -208,8 +208,8 @@ Never execute a contributor's build or test script with secrets merely because t
 
 The V1 `package` and six-file `prepare-pr` flow below is historical replay only. It is not the current/default
 application path and its local Fee V1/V2 fields define no current Programmable requirement. Current work binds the
-protected central policy and workflow-canary contracts. Task 7A exposes no general local application transport; the
-dedicated `prepare-canary` consumer arrives in the next step.
+protected central policy and workflow-canary contracts. There is no general local application transport; the dedicated
+`prepare-canary` consumer returns an exact canary preview and keeps automated local writing fail-closed.
 
 A proposal contains:
 

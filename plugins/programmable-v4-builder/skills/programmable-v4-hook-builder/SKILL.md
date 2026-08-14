@@ -83,8 +83,9 @@ Only `PROJECT_PREFLIGHT_VALID` for those exact bytes completes Autopilot. `CLEAR
 - Escalate novel, value-bearing or ambiguous slices. Mark unavailable provider gates `EXTERNAL_BLOCKED`.
 - For Programmable admission, resolve the exact protected Submit Launch policy and schema bytes. Local approval,
   alignment, fee, template, and security prose is engineering guidance only and cannot add a launch requirement.
-- The six-file `prepare-pr` command is frozen legacy replay only. Current work binds protected central policy and canary
-  contracts; Task 7A exposes no general application transport. Never infer submission, acceptance, deployment or live state.
+- Six-file `prepare-pr` is frozen legacy replay; no general application transport exists. For canary tests, read
+  `references/workflow-canary-application.md` and run `prepare-canary`: bound-byte/digest preview only; writes fail closed.
+  Neither grants submission, acceptance, deployment, external, live, or launch authority.
 
 ## Runtime
 
