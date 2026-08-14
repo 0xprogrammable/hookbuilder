@@ -203,6 +203,25 @@ test("retry policy permits one blind timeout or signal retry and preserves every
   assert.equal(firstReport.root.diagnosis, "TIMEOUT");
   assert.equal(firstReport.retryPolicy.blindRetryAllowed, true);
 
+  const changedBeforeBlindRetry = structuredClone(fixture.request);
+  changedBeforeBlindRetry.source.headCommit = "a".repeat(40);
+  changedBeforeBlindRetry.source.tree = "b".repeat(40);
+  changedBeforeBlindRetry.executionPlanSha256 = sha256Bytes(Buffer.from("changed-before-blind-retry"));
+  const { requestSha256: _changedBeforeBlindRetrySha256, ...changedBeforeBlindRetryPayload } = changedBeforeBlindRetry;
+  changedBeforeBlindRetry.requestSha256 = canonicalJsonSha256V2(changedBeforeBlindRetryPayload);
+  const changedSecond = signedAttempt(changedBeforeBlindRetry, privateKey, {
+    attemptNumber: 2,
+    previousAttemptPayloadSha256: first.payloadSha256
+  });
+  assert.throws(
+    () => diagnoseProjectRepairAttemptV1({
+      attempt: changedSecond,
+      previousAttempts: [first],
+      expectedRequest: changedBeforeBlindRetry
+    }),
+    ({ code }) => code === "PROJECT_REPAIR_HISTORY_INVALID"
+  );
+
   const second = signedAttempt(fixture.request, privateKey, {
     attemptNumber: 2,
     previousAttemptPayloadSha256: first.payloadSha256,
@@ -215,15 +234,78 @@ test("retry policy permits one blind timeout or signal retry and preserves every
   assert.equal(secondReport.attemptHistory.failureCount, 2);
   assert.equal(secondReport.attemptHistory.earlierFailuresPreserved, true);
 
-  const third = signedAttempt(fixture.request, privateKey, {
+  const repairedRequest = structuredClone(fixture.request);
+  repairedRequest.source.headCommit = "c".repeat(40);
+  repairedRequest.source.tree = "d".repeat(40);
+  repairedRequest.executionPlanSha256 = sha256Bytes(Buffer.from("changed-after-blind-retry"));
+  const { requestSha256: _repairedRequestSha256, ...repairedRequestPayload } = repairedRequest;
+  repairedRequest.requestSha256 = canonicalJsonSha256V2(repairedRequestPayload);
+  const third = signedAttempt(repairedRequest, privateKey, {
     attemptNumber: 3,
     previousAttemptPayloadSha256: second.payloadSha256
   });
-  const thirdReport = diagnoseProjectRepairAttemptV1({ attempt: third, previousAttempts: [first, second], expectedRequest: fixture.request });
+  const thirdReport = diagnoseProjectRepairAttemptV1({ attempt: third, previousAttempts: [first, second], expectedRequest: repairedRequest });
   assert.equal(thirdReport.status, "PROJECT_REPAIR_BUDGET_EXHAUSTED");
   assert.equal(thirdReport.retryPolicy.repairAttemptsRemaining, 0);
   assert.deepEqual(thirdReport.next.targetedCommandIds, []);
   assert.equal(thirdReport.attemptHistory.failureCount, 3);
+});
+
+test("repair history cannot switch branch or command plan within one application revision", (t) => {
+  const fixture = createFixture(t);
+  const { privateKey } = crypto.generateKeyPairSync("ed25519");
+  const first = signedAttempt(fixture.request, privateKey);
+  const mutations = [
+    (request) => { request.source.branch = "unrelated-repair-branch"; },
+    (request) => {
+      request.commands[0].commandSha256 = sha256Bytes(Buffer.from("unrelated-command"));
+      request.commandsSha256 = sha256Bytes(Buffer.from("unrelated-command-plan"));
+    }
+  ];
+  for (const mutate of mutations) {
+    const driftedRequest = structuredClone(fixture.request);
+    mutate(driftedRequest);
+    const { requestSha256: _requestSha256, ...requestPayload } = driftedRequest;
+    driftedRequest.requestSha256 = canonicalJsonSha256V2(requestPayload);
+    const second = signedAttempt(driftedRequest, privateKey, {
+      attemptNumber: 2,
+      previousAttemptPayloadSha256: first.payloadSha256
+    });
+
+    assert.throws(
+      () => diagnoseProjectRepairAttemptV1({
+        attempt: second,
+        previousAttempts: [first],
+        expectedRequest: driftedRequest
+      }),
+      ({ code }) => code === "PROJECT_REPAIR_HISTORY_INVALID"
+    );
+  }
+});
+
+test("tooling-blocked history requires an unchanged source request before source repair", (t) => {
+  const fixture = createFixture(t);
+  const { privateKey } = crypto.generateKeyPairSync("ed25519");
+  const first = signedAttempt(fixture.request, privateKey, { rootStatus: "tooling-blocked" });
+  const changedSourceRequest = structuredClone(fixture.request);
+  changedSourceRequest.source.headCommit = "a".repeat(40);
+  changedSourceRequest.source.tree = "b".repeat(40);
+  changedSourceRequest.executionPlanSha256 = sha256Bytes(Buffer.from("changed-source-plan"));
+  const { requestSha256: _requestSha256, ...requestPayload } = changedSourceRequest;
+  changedSourceRequest.requestSha256 = canonicalJsonSha256V2(requestPayload);
+  const second = signedAttempt(changedSourceRequest, privateKey, {
+    attemptNumber: 2,
+    previousAttemptPayloadSha256: first.payloadSha256
+  });
+
+  assert.throws(
+    () => diagnoseProjectRepairAttemptV1({
+      attempt: second,
+      previousAttempts: [first],
+      expectedRequest: changedSourceRequest
+    }),
+    ({ code }) => code === "PROJECT_REPAIR_HISTORY_INVALID"
+  );
 });
 
 test("tooling blocks source repair and the portable trust root rejects caller authority injection", (t) => {

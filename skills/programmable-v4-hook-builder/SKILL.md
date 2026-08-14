@@ -8,11 +8,11 @@ license: MIT
 
 ## Contract
 
-Build the smallest complete reproducible Programmable repository with evidence, never snippets. Default to Autopilot;
+Build the smallest complete reproducible Programmable repository with evidence, not snippets. Use Autopilot;
 after isolated failure run `context --mode repair --brief`. Ask only for a material owner decision.
 
-Keep eligibility, safety, review, Registry acceptance, deployment and availability separate. Claim each only from its
-own evidence and authority.
+Separate eligibility, safety, review, Registry acceptance, deployment and availability; claim each from its own
+evidence and authority.
 
 ## Boundaries
 
@@ -21,9 +21,9 @@ own evidence and authority.
 - Continue locally; require authority for secrets, cost, signing, deploy, publish, submit, merge or Registry writes.
 - Never self-approve, sign receipts, fabricate review, weaken a failed gate or call a local pass an audit.
 - Hidden mint, seizure, fee, pause, upgrade or payout redirection conflicts; disclosed powers require review.
-- Templates are hash-bound Legos, never assurance. Missing tools are `INTEGRATION_PENDING`, not completion.
-- Choose the smallest composition that preserves intent, or use a custom architecture.
-- Use hooks only for PoolManager-atomic behavior. Use no hook/pool when correct; never add a placeholder.
+- Templates are hash-bound Legos, not assurance. Missing tools are `INTEGRATION_PENDING`, not completion.
+- Choose the smallest intent-preserving composition or a custom architecture.
+- Use hooks only for PoolManager-atomic behavior. Use none when correct; never add a placeholder.
 
 ## Golden path
 
@@ -36,7 +36,8 @@ node "$BUILDER_CLI" policy
 node "$BUILDER_CLI" context --mode autopilot --brief
 ```
 
-From `policy`, use every `build` Rule ID, add none, and stop if unavailable. Read `loadNow`; save `profileDigest`.
+Complete Programmable rule set: `policy`. Use every `build` Rule ID, add none, and stop if unavailable. Read
+`loadNow`; save `profileDigest`.
 After an exact selector is confirmed, activate before architecture or code:
 
 ```bash

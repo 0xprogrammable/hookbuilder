@@ -139,7 +139,7 @@ test("Repair starts only from the compact non-completion loop and defers v2 rege
   const repair = fs.readFileSync(path.join(skillRoot, "references", "repair-loop.md"), "utf8");
   assert.ok(Buffer.byteLength(repair, "utf8") <= 2000);
   assert.match(repair, /project diagnose/u);
-  assert.match(repair, /initial attempt plus at most two repair attempts/u);
+  assert.match(repair, /initial and at most two later failures/u);
   assert.match(repair, /NOT_COMPLETION/u);
   assert.match(repair, /NOT_APPROVAL/u);
   assert.match(repair, /PROJECT_PREFLIGHT_VALID/u);

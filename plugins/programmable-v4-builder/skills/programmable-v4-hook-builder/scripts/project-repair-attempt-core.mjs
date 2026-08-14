@@ -442,14 +442,39 @@ function validateAuthorization(authorization) {
 }
 
 function assertAttemptHistory(attempts) {
-  const sessionId = attempts.at(-1).payload.sessionId;
-  const applicationId = attempts.at(-1).payload.request.applicationId;
-  const revision = attempts.at(-1).payload.request.revision;
+  const current = attempts.at(-1);
+  const sessionId = current.payload.sessionId;
+  const applicationId = current.payload.request.applicationId;
+  const revision = current.payload.request.revision;
+  const branch = current.payload.request.source.branch;
+  const commandsSha256 = current.payload.request.commandsSha256;
+  const commands = canonicalJsonV2(current.payload.request.commands);
+  const outputPlanPath = current.payload.request.outputPlanPath;
   for (let index = 0; index < attempts.length; index += 1) {
     const attempt = attempts[index];
     if (attempt.payload.sessionId !== sessionId || attempt.payload.attemptNumber !== index + 1
       || attempt.payload.request.applicationId !== applicationId || attempt.payload.request.revision !== revision) {
       fail("PROJECT_REPAIR_HISTORY_INVALID", "repair attempt history must be one ordered application revision session");
+    }
+    if (attempt.payload.request.source.branch !== branch
+      || attempt.payload.request.commandsSha256 !== commandsSha256
+      || canonicalJsonV2(attempt.payload.request.commands) !== commands
+      || attempt.payload.request.outputPlanPath !== outputPlanPath) {
+      fail("PROJECT_REPAIR_HISTORY_INVALID", "repair attempt history cannot change branch, command plan, or output path");
+    }
+    if (index > 0) {
+      const previous = attempts[index - 1];
+      const previousDiagnosis = classifyRoot(rootObservation(previous));
+      const priorBlindRetry = attempts.slice(0, index - 1).some((candidate) => (
+        candidate.payload.request.requestSha256 === previous.payload.request.requestSha256
+          && ["TIMEOUT", "SIGNAL"].includes(classifyRoot(rootObservation(candidate)))
+      ));
+      const unchangedRequestRequired = previousDiagnosis === "TOOLING_PREREQUISITE"
+        || (["TIMEOUT", "SIGNAL"].includes(previousDiagnosis) && !priorBlindRetry);
+      if (unchangedRequestRequired
+        && canonicalJsonV2(attempt.payload.request) !== canonicalJsonV2(previous.payload.request)) {
+        fail("PROJECT_REPAIR_HISTORY_INVALID", "tooling restoration and the one blind retry require unchanged request bytes");
+      }
     }
     const expectedPrevious = index === 0 ? null : attempts[index - 1].payloadSha256;
     if (attempt.payload.previousAttemptPayloadSha256 !== expectedPrevious) {

@@ -47,6 +47,21 @@
       "id": "project-compiler-brief-output",
       "kind": "feature",
       "summary": "Add an optional hard-bounded brief Project Compiler view that preserves the full report identity, result and evidence boundary while omitting exhaustive arrays."
+    },
+    {
+      "id": "confirmed-context-activation",
+      "kind": "feature",
+      "summary": "Bind cold context by digest and activate at most one exact confirmed specialist reference while preserving split-review holds and the frozen Fee V2 quarantine."
+    },
+    {
+      "id": "bounded-repair-diagnosis",
+      "kind": "feature",
+      "summary": "Add a hash-bound non-completion repair-attempt contract and bounded read-only diagnosis path without weakening the all-pass completion receipt or trusting the portable signer."
+    },
+    {
+      "id": "journey-activation-evidence",
+      "kind": "feature",
+      "summary": "Bind structured Builder responses and exact reference-activation receipts into repository E2E evidence and add a lean daily trigger sentinel."
     }
   ],
   "unbundledChangeIds": [],

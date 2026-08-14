@@ -181,7 +181,10 @@ test("stable v0.5.1 through v0.8.0 history is immutable and v0.9.0 is the releas
   assert.deepEqual(candidate.unbundledChangeIds, []);
   assert.deepEqual(candidate.changes.map(({ id, kind }) => ({ id, kind })), [
     { id: "catalog-capability-routing-closure", kind: "feature" },
-    { id: "project-compiler-brief-output", kind: "feature" }
+    { id: "project-compiler-brief-output", kind: "feature" },
+    { id: "confirmed-context-activation", kind: "feature" },
+    { id: "bounded-repair-diagnosis", kind: "feature" },
+    { id: "journey-activation-evidence", kind: "feature" }
   ]);
   assert.deepEqual(candidate.plannedRelease.builder, {
     fromVersion: "0.8.0",
@@ -330,7 +333,7 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
   assert.equal(coldContext.stderr, "");
   assert.equal(Buffer.byteLength(coldContext.stdout, "utf8"), 1_399);
   const coldPlan = JSON.parse(coldContext.stdout).result;
-  assert.equal(coldPlan.contextBudget.estimatedTokens, 3_258);
+  assert.equal(coldPlan.contextBudget.estimatedTokens, 3_255);
 
   const customCurve = context(
     "--mode", "autopilot",
@@ -343,7 +346,7 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
   assert.equal(customCurve.status, 0, customCurve.stderr || customCurve.stdout);
   assert.equal(Buffer.byteLength(customCurve.stdout, "utf8"), 1_972);
   const customCurvePlan = JSON.parse(customCurve.stdout).result;
-  assert.equal(customCurvePlan.contextBudget.cumulativeEstimatedTokens, 5_080);
+  assert.equal(customCurvePlan.contextBudget.cumulativeEstimatedTokens, 5_077);
   assert.deepEqual(
     customCurvePlan.loadNow.map(({ path: reference }) => reference),
     ["references/v4-contract-reasoning-kernel.md"]
@@ -360,7 +363,7 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
   assert.equal(browserGame.status, 0, browserGame.stderr || browserGame.stdout);
   assert.equal(Buffer.byteLength(browserGame.stdout, "utf8"), 1_856);
   const browserGamePlan = JSON.parse(browserGame.stdout).result;
-  assert.equal(browserGamePlan.contextBudget.cumulativeEstimatedTokens, 4_706);
+  assert.equal(browserGamePlan.contextBudget.cumulativeEstimatedTokens, 4_703);
   assert.deepEqual(
     browserGamePlan.loadNow.map(({ path: reference }) => reference),
     ["references/runtime-assets.md"]
@@ -375,7 +378,7 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
   assert.equal(repairContext.status, 0, repairContext.stderr || repairContext.stdout);
   assert.equal(Buffer.byteLength(repairContext.stdout, "utf8"), 1_391);
   const repairPlan = JSON.parse(repairContext.stdout).result;
-  assert.equal(repairPlan.contextBudget.estimatedTokens, 2_531);
+  assert.equal(repairPlan.contextBudget.estimatedTokens, 2_513);
   assert.deepEqual(repairPlan.loadNow.map(({ path: reference }) => reference), ["references/repair-loop.md"]);
 
   for (const source of [candidateNotes, changelog]) {
@@ -384,10 +387,10 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
     assert.match(source, /2,499 bytes/u);
     assert.match(source, /16,731[\s\S]{0,120}`autopilot`|`autopilot`[\s\S]{0,120}16,731/u);
     assert.match(source, /20,538[\s\S]{0,160}`claims`[\s\S]{0,80}`authority`|`claims`[\s\S]{0,160}`authority`[\s\S]{0,160}20,538/u);
-    assert.match(source, /1,399(?: bytes)?[\s\S]{0,180}3,258/u);
-    assert.match(source, /1,972(?: bytes)?[\s\S]{0,180}5,080/u);
-    assert.match(source, /1,856(?: bytes)?[\s\S]{0,180}4,706/u);
-    assert.match(source, /1,391(?: bytes)?[\s\S]{0,180}2,531/u);
+    assert.match(source, /1,399(?: bytes)?[\s\S]{0,180}3,255/u);
+    assert.match(source, /1,972(?: bytes)?[\s\S]{0,180}5,077/u);
+    assert.match(source, /1,856(?: bytes)?[\s\S]{0,180}4,703/u);
+    assert.match(source, /1,391(?: bytes)?[\s\S]{0,180}2,513/u);
   }
   assert.match(candidateNotes, /preserve[s]? the command exit code[\s\S]{0,180}`reportSha256`/iu);
   assert.match(candidateNotes, /not universal[\s\S]{0,80}model-token/iu);

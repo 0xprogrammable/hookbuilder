@@ -573,9 +573,9 @@
         "modulePath": "scripts/project-repair-attempt-core.mjs",
         "exportName": "validateProjectRepairAttemptV1",
         "mode": "direct",
-        "moduleByteLength": 26123,
-        "moduleSha256": "sha256:bdc336591a1a3ada50e7e58f30af9881cbc69dad7ebc0a6f37ad4030bafcc821",
-        "closureSha256": "sha256:e4979e6a08c355c4185b7d61511962282a30b4709c47e65144501d60288b89bb"
+        "moduleByteLength": 27636,
+        "moduleSha256": "sha256:d21302a198c961d963bc4c94c6cb08fe30b52e7041678cdb3d3598a1e70423d6",
+        "closureSha256": "sha256:c38cbf4b8d66657b2903ab5b0cc21bef1e87ff8e1fddfa65daa1b45e9efd8077"
       }
     },
     {
@@ -6554,7 +6554,7 @@
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/project-repair-attempt-core.mjs",
       "moduleCount": 2,
-      "totalByteLength": 32470,
+      "totalByteLength": 33983,
       "modules": [
         {
           "path": "scripts/canonical-json-core.mjs",
@@ -6564,14 +6564,14 @@
         },
         {
           "path": "scripts/project-repair-attempt-core.mjs",
-          "byteLength": 26123,
-          "sha256": "sha256:bdc336591a1a3ada50e7e58f30af9881cbc69dad7ebc0a6f37ad4030bafcc821",
+          "byteLength": 27636,
+          "sha256": "sha256:d21302a198c961d963bc4c94c6cb08fe30b52e7041678cdb3d3598a1e70423d6",
           "localImports": [
             "scripts/canonical-json-core.mjs"
           ]
         }
       ],
-      "closureSha256": "sha256:e4979e6a08c355c4185b7d61511962282a30b4709c47e65144501d60288b89bb"
+      "closureSha256": "sha256:c38cbf4b8d66657b2903ab5b0cc21bef1e87ff8e1fddfa65daa1b45e9efd8077"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -10901,8 +10901,8 @@
     "validatorClosureModuleBindingCount": 1036,
     "validatorClosureDistinctModuleCount": 177,
     "schemaPathsSha256": "sha256:c523d89f3208b09ddc3f9862b232567cb13dc759ebb761669f9b76af9cda6931",
-    "validatorBindingsSha256": "sha256:890e4f9085d3f382541cb652a6e24b4675ef9a210f47b198df32b68973b14e64",
-    "validatorClosuresSha256": "sha256:f6e0d2aab63512bc47514dc74d3fc82378ca688d1cac166428b802018dfac8d8"
+    "validatorBindingsSha256": "sha256:1e275a996fda94d03e8a393a8429bb2222cefe5c4ad209309b92c6b86e4ec217",
+    "validatorClosuresSha256": "sha256:d631a5d846e662a15c5dc68cab14ff137efd7a2d940c0bceb20e26e13970b130"
   },
-  "registrySha256": "sha256:20a660a71b97eb37950dbed7b0bd52709a64636c9eb74ca50911382cc2a2edda"
+  "registrySha256": "sha256:511dea77f6a776dc20ef3f4d76e946f5096e4e5bc0a14cd8e03b870230738718"
 }
