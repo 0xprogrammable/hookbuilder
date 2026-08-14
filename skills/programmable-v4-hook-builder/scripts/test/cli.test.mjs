@@ -12,6 +12,7 @@ const scriptsRoot = path.join(skillRoot, "scripts");
 const commands = [
   "cli.mjs",
   "cli-review-target.mjs",
+  "current-launch-requirements.mjs",
   "build-profile.mjs",
   "builder-lifecycle.mjs",
   "doctor.mjs",
@@ -32,7 +33,7 @@ test("host-neutral help leads with one golden path and keeps every command in op
   const result = run("cli.mjs", ["--help"]);
   assert.equal(result.status, 0, result.stderr);
   assert.ok(Buffer.byteLength(result.stdout) < 600);
-  for (const command of ["doctor", "context", "project"]) {
+  for (const command of ["doctor", "policy", "context", "project"]) {
     assert.match(result.stdout, new RegExp(`^  ${escapeRegExp(command)}\\b`, "m"));
   }
   assert.doesNotMatch(result.stdout, /^  submit\b/mu);
@@ -40,13 +41,14 @@ test("host-neutral help leads with one golden path and keeps every command in op
   const detail = run("cli.mjs", ["--help", "--json"]);
   assert.equal(detail.status, 0, detail.stderr);
   const payload = JSON.parse(detail.stdout);
-  assert.deepEqual(payload.result.goldenPath, ["doctor", "context", "project"]);
+  assert.deepEqual(payload.result.goldenPath, ["doctor", "policy", "context", "project"]);
   for (const commandId of ["fee", "launch-bundle", "launch-bundle-v2", "package", "prepare-pr"]) {
     assert.equal(payload.result.frozenLegacyCommands.includes(commandId), true, commandId);
   }
   const commandIds = payload.result.commands.map(({ id }) => id);
   for (const command of [
     "context",
+    "policy",
     "resolve-contract",
     "templates",
     "start",
@@ -71,11 +73,20 @@ test("host-neutral help leads with one golden path and keeps every command in op
 });
 
 test("delegated builder commands expose side-effect-free help", () => {
-  for (const command of ["context", "resolve-contract", "templates", "start", "profile", "fee", "launch-bundle", "submit", "status", "update", "version", "update-check", "migrate", "plan-release"]) {
+  for (const command of ["context", "policy", "resolve-contract", "templates", "start", "profile", "fee", "launch-bundle", "submit", "status", "update", "version", "update-check", "migrate", "plan-release"]) {
     const result = run("cli.mjs", [command, "--help"]);
     assert.equal(result.status, 0, `${command}: ${result.stderr}`);
     assert.match(result.stdout, /Usage:/u);
   }
+});
+
+test("policy rejects caller-selected inputs before any protected read", () => {
+  const result = run("cli.mjs", ["policy", "--profile", "production-launch"]);
+  assert.equal(result.status, 2, result.stderr);
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.command, "policy");
+  assert.equal(payload.ok, false);
+  assert.equal(payload.error.code, "USAGE_ERROR");
 });
 
 test("resolve-contract defaults to an offline evidence plan and keeps authority separate", () => {

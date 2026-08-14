@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
 
 import {
   assertSubmitLaunchPolicyBindingsEqual,
+  currentSubmitLaunchBuildRequirements,
+  normalizeSubmitLaunchBuildPolicyBinding,
   normalizeSubmitLaunchPolicyBinding,
   parseAndBindSubmitLaunchPolicyContract,
   parseSubmitLaunchPolicyContract
@@ -65,6 +67,30 @@ test("fixed Git objects produce the exact Submit binding and a separate schema b
     profileId: "workflow-canary",
     sha256: digest(fixture.policyBytes)
   });
+  assert.deepEqual(resolved.buildPolicyBinding, {
+    ...resolved.policyBinding,
+    profileId: "build"
+  });
+  assert.deepEqual(normalizeSubmitLaunchBuildPolicyBinding(resolved.buildPolicyBinding), resolved.buildPolicyBinding);
+  assert.deepEqual(currentSubmitLaunchBuildRequirements(resolved), [{
+    applicability: { mode: "always" },
+    enforcement: { handlerId: "ethereum-treasury-10-bps-v1", mode: "deterministic", owner: "applicant" },
+    evidence: ["programmable-launch-requirement"],
+    id: "LAUNCH.ETHEREUM_AND_TREASURY_10_BPS",
+    introducedIn: "1.2.0",
+    parameters: {
+      basis: "gross-canonical-pool-volume",
+      chainId: 1,
+      hundredthsOfBip: 1000,
+      network: "ethereum-mainnet",
+      treasury: "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c"
+    },
+    profiles: ["build", "production-launch"],
+    requirement: "A launch must be on Ethereum and route 10 bps of trading volume to the Programmable treasury.",
+    retiredIn: null,
+    severity: "blocker",
+    status: "active"
+  }]);
   assert.deepEqual(resolved.policySchemaBinding, {
     schemaVersion: "programmable.submit-launch-policy-schema-binding.v1",
     repository: "0xprogrammable/submit-launch",
@@ -85,7 +111,7 @@ test("fixed Git objects produce the exact Submit binding and a separate schema b
 test("exact Submit policy, policy schema, and Task-1 binding-schema snapshots stay compatible", () => {
   const policyBytes = readAuthoritativeFixture(
     "launch-policy.v1.json",
-    "e157665625b2a8cf9e62ed33ba62b087d7a7b7c4027da83b74b9476a355d1fe4"
+    "868c7a647238461f5bbc6afd15bd974d78a1a77f9a13aa1b81044d0e1ffe01dc"
   );
   const schemaBytes = readAuthoritativeFixture(
     "launch-policy.v1.schema.json",
@@ -108,13 +134,14 @@ test("exact Submit policy, policy schema, and Task-1 binding-schema snapshots st
   const bindingSchema = JSON.parse(bindingSchemaBytes.toString("utf8"));
 
   assert.deepEqual(validateAgainstSchema(resolved.policyBinding, bindingSchema), []);
+  assert.deepEqual(validateAgainstSchema(resolved.buildPolicyBinding, bindingSchema), []);
   assert.deepEqual(Object.keys(resolved.policyBinding), bindingSchema.required);
   assert.equal(Object.hasOwn(resolved.policyBinding, "schemaSha256"), false);
   assert.equal(Object.hasOwn(resolved, "policyBytes"), false);
   assert.equal(Object.hasOwn(resolved, "schemaBytes"), false);
 });
 
-test("the policy contract rejects noncanonical policy bytes and disabled canary authority", () => {
+test("the policy contract rejects noncanonical policy bytes and disabled required profiles", () => {
   const valid = makeSubmitLaunchPolicyFixture();
   const prettyPolicy = Buffer.from(`${JSON.stringify(valid.policy, null, 2)}\n`);
   assert.throws(
@@ -133,6 +160,16 @@ test("the policy contract rejects noncanonical policy bytes and disabled canary 
   const disabledBytes = Buffer.from(`${canonicalJson(disabledCanary)}\n`);
   assert.throws(
     () => parseSubmitLaunchPolicyContract({ policyBytes: disabledBytes, schemaBytes: valid.schemaBytes }),
+    hasCode("SUBMIT_LAUNCH_POLICY_INVALID")
+  );
+
+  const disabledBuild = structuredClone(valid.policy);
+  disabledBuild.profiles[0].enabled = false;
+  assert.throws(
+    () => parseSubmitLaunchPolicyContract({
+      policyBytes: Buffer.from(`${canonicalJson(disabledBuild)}\n`),
+      schemaBytes: valid.schemaBytes
+    }),
     hasCode("SUBMIT_LAUNCH_POLICY_INVALID")
   );
 });
@@ -169,6 +206,10 @@ test("closed option and binding fields are order-independent but reject extras",
   assert.throws(
     () => normalizeSubmitLaunchPolicyBinding({ ...reversedBinding, schemaSha256: digest(fixture.schemaBytes) }),
     hasCode("SUBMIT_LAUNCH_POLICY_BINDING_INVALID")
+  );
+  assert.throws(
+    () => currentSubmitLaunchBuildRequirements({ policy: fixture.policy }),
+    hasCode("SUBMIT_LAUNCH_POLICY_CONTRACT_REQUIRED")
   );
 });
 

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 // Reviewed v0.7.0 growth: bounded workflow-canary client, tests, reference, and exact protected-schema snapshot.
-export const MAX_PORTABLE_FILES = 676;
+export const MAX_PORTABLE_FILES = 677;
 
 export function createPortableFilesystem(skillRoot) {
   function relative(target) {

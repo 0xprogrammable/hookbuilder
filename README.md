@@ -71,6 +71,9 @@ From the installed Skill directory, verify its package:
 node scripts/verify-skill.mjs --installed
 ```
 
+At the start of each build, `cli.mjs policy` reads the exact current `0xprogrammable/submit-launch:main` build rules.
+Those returned Rule IDs are the only Programmable launch requirements; bundled security guidance cannot add another.
+
 Then give your agent one clear request:
 
 ```text

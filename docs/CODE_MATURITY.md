@@ -13,7 +13,7 @@ the maturity of Fee V2, routing, or generated projects.
 | Arithmetic safety | 3/4 | Fee V2 bounds rates, uses `FullMath` and checked casts, separates project/platform remainders and liabilities, and exercises arithmetic with fuzz and stateful invariant tests | Independent differential reproduction or formal properties over the exact frozen implementation |
 | Auditing and observability | 2/4 | Versioned security properties, events, Slither/CodeQL configuration, review states, and an incident runbook exist | Independent audit, public CI receipts, deployed monitoring, and an incident rehearsal |
 | Authentication and access control | 2/4 | PoolManager, pool, registrar, owner, fee-recipient, and claim boundaries are explicit and negatively tested | Verified deployment configuration, multisig/key rotation/recovery, and independent review of every authority path |
-| Complexity and maintainability | 2/4 | The maintainability gate discovers 326 production modules; bounded size/import checks, five source-bound responsibility groups, and six targeted mutations cover selected critical owners | Repository-wide semantic-rule and coverage inventories, stronger semantic complexity measures, and broader mutation testing |
+| Complexity and maintainability | 2/4 | The maintainability gate discovers 327 production modules; bounded size/import checks, five source-bound responsibility groups, and six targeted mutations cover selected critical owners | Repository-wide semantic-rule and coverage inventories, stronger semantic complexity measures, and broader mutation testing |
 | Decentralization and trust | 2/4 | Fee ownership, maintainer review, and launch administration are separated; the reference kernel is not upgradeable | Published governance, recovery, and key-compromise procedures for central registrar, owner, signer, reviewer, and admin dependencies |
 | Documentation | 3/4 | Architecture, security properties, release boundaries, operations, E2E methodology, routing limitations, and evidence states are documented | Freeze all documents and generated receipts against the final immutable revision and independently reproduce them |
 | MEV and transaction ordering | 3/4 | Slippage/deadline obligations, partial-fill rollback and exact-output witnesses are paired with real pinned local V4Quoter-to-Universal-Router execution, Permit2/native funding, and atomic stale-bound negatives | Fork-based adversarial ordering, stale-witness griefing analysis, and deployed router/economic review |
@@ -24,7 +24,7 @@ the maturity of Fee V2, routing, or generated projects.
 
 ## Strongest local evidence
 
-- Maintainability: 326 production modules, bounded size/import checks, five source-bound responsibility groups and six
+- Maintainability: 327 production modules, bounded size/import checks, five source-bound responsibility groups and six
   targeted mutation classes. These remain narrow proxies, not repository-wide coverage or mutation claims.
 - Contract Registry: 50 portable contracts, 25 validator closures, 1,034 transitive module bindings, 176 distinct modules, and
   fail-closed mutation, unresolved-import, and cycle tests.

@@ -22,6 +22,7 @@ const delegatedCommands = new Map([
   ["open-world", { script: "open-world.mjs", prefix: [] }],
   ["application-recheck", { script: "application-recheck.mjs", prefix: [] }],
   ["context", { script: "knowledge-router.mjs", prefix: [] }],
+  ["policy", { script: "current-launch-requirements.mjs", prefix: [] }],
   ["templates", { script: "template-catalog.mjs", prefix: [] }],
   ["discover", { script: "registry-discovery.mjs", prefix: [] }],
   ["resolve-contract", { script: "resolve-contract.mjs", prefix: [] }],
@@ -449,11 +450,12 @@ function globalHelp() {
     "",
     "Golden path:",
     "  doctor        Check local readiness.",
+    "  policy        Read current launch requirements.",
     "  context       Route the confirmed task.",
     "  project       Materialize and verify output.",
     "Frozen legacy only: fee, launch-bundle, package, prepare-pr, scaffold, submit, status, update.",
     "",
-    "Start: cli.mjs doctor -> cli.mjs context --mode autopilot -> cli.mjs project --help",
+    "Start: cli.mjs doctor -> cli.mjs policy -> cli.mjs context --mode autopilot -> cli.mjs project --help",
     "Optional templates: cli.mjs templates list",
     "All commands: cli.mjs --help --json"
   ].join("\n");
@@ -461,7 +463,7 @@ function globalHelp() {
 function globalHelpJson() {
   const commands = [...new Set(["launch-bundle-v2", ...delegatedCommands.keys(), ...commandSpecs.keys()])]
     .sort().map((id) => ({ id, help: `cli.mjs ${id} --help` }));
-  return canonicalJson({ schemaVersion: "1.0.0", ok: true, command: "help", result: { goldenPath: ["doctor", "context", "project"], frozenLegacyCommands: ["application-recheck", "fee", "launch-bundle", "launch-bundle-v2", "package", "prepare-pr", "scaffold", "submit", "status", "update"], commands } });
+  return canonicalJson({ schemaVersion: "1.0.0", ok: true, command: "help", result: { goldenPath: ["doctor", "policy", "context", "project"], frozenLegacyCommands: ["application-recheck", "fee", "launch-bundle", "launch-bundle-v2", "package", "prepare-pr", "scaffold", "submit", "status", "update"], commands } });
 }
 function startHelp() {
   return [

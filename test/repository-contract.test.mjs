@@ -245,6 +245,9 @@ test("global skill boundaries apply v4 mechanics conditionally and distinguish d
   assert.match(skill, /for canonical v4 cover all four direction\/exactness\s+quadrants and prove support or pre-effects rejection\./u);
   assert.match(skill, /Hidden mint, seizure, fee, pause, upgrade or payout redirection conflicts/u);
   assert.match(skill, /disclosed powers require review/iu);
+  assert.match(skill, /cli\.mjs policy/u);
+  assert.match(skill, /complete Programmable rule set/u);
+  assert.match(skill, /Use every\s+`build` Rule ID, add none, and stop if unavailable/u);
   assert.doesNotMatch(skill, /hidden mint,\s*confiscation, blacklist, fee, pause, upgrade or payout-redirection power/u);
 });
 

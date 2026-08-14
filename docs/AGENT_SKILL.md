@@ -94,6 +94,8 @@ Claude Code and GitHub Copilot; it does not launch those hosts. Cursor placement
 remain unverified for this release. Application V3 exact revision preparation supports macOS and Linux only and
 requires Node.js 24+, Git 2.49+ with `git backfill --sparse`, public GitHub reachability, and later authenticated `gh` for
 submission or update. Run `cli.mjs doctor` before repository work.
+Then run `cli.mjs policy` before `context`: it reads the exact current protected Submit a Launch build rules. If that
+read fails, stop instead of substituting a bundled or remembered launch checklist.
 
 See [`PORTABILITY_AND_LIFECYCLE.md`](PORTABILITY_AND_LIFECYCLE.md) for the truthful host/OS/offline matrix and copyable
 install, update, rollback, uninstall, and Codex plugin commands. No package-compatibility statement is behavioral parity;

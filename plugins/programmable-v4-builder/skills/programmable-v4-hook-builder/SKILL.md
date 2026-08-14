@@ -31,10 +31,12 @@ Resolve `SKILL_ROOT` from this file and `REPOSITORY_ROOT` from the worktree inde
 
 ```bash
 node "$SKILL_ROOT/scripts/cli.mjs" doctor --repository-root "$REPOSITORY_ROOT"
+node "$SKILL_ROOT/scripts/cli.mjs" policy
 node "$SKILL_ROOT/scripts/cli.mjs" context --mode autopilot
 ```
 
-Read only `loadNow`; defer `loadLater`. Repeat `context` with confirmed capabilities or surfaces, never a product-family
+`cli.mjs policy` from protected `0xprogrammable/submit-launch:main` is the complete Programmable rule set. Use every
+`build` Rule ID, add none, and stop if unavailable. Read only `loadNow`; defer `loadLater`. Repeat `context` with confirmed capabilities or surfaces, never a product-family
 union. Keep cold Explore at 4,000 estimated tokens and pre-code context at 8,000. Process schemas and catalogs outside
 model context. Schemas and validators outrank prose; use historical V1 only for identified reproduction or migration.
 
@@ -81,8 +83,6 @@ Only `PROJECT_PREFLIGHT_VALID` for those exact bytes completes Autopilot. `CLEAR
   hookData, limits, generic fees and tests. Bundled V1 is frozen Fee V2 compatibility for the exact intent-bound legacy
   profile only; all other tradable materialization stays unresolved until a policy-neutral successor exists.
 - Escalate novel, value-bearing or ambiguous slices. Mark unavailable provider gates `EXTERNAL_BLOCKED`.
-- For Programmable admission, resolve the exact protected `0xprogrammable/submit-launch:main` policy and schema bytes.
-  Local approval, alignment, fee, template, and security prose is engineering guidance only and cannot add a launch requirement.
 - Six-file `prepare-pr` is frozen legacy replay; no general application transport exists. For canary tests, read
   `references/workflow-canary-application.md` and run `prepare-canary`: bound-byte/digest preview only; writes fail closed.
   Neither grants submission, acceptance, deployment, external, live, or launch authority.
