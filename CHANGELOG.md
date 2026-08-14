@@ -14,7 +14,9 @@ All notable Builder changes are recorded here. Historical releases remain immuta
   1,150 bytes (-65.89%) and from 1,225 to 805 bytes (-34.29%), respectively; brief stdout is capped at 2,499 bytes.
 - Added inert nested Foundry source/test-tree materialization for no-market Ethereum projects, with exact compiler
   pragmas, bounded stable-file reads, FFI/filesystem-disabled offline feedback, a planned exact toolchain lock, and
-  complete Foundry command/evidence coverage without a false completion claim.
+  complete Foundry command/evidence coverage without a false completion claim. Its dry-run and write paths now accept
+  the same 2,499-byte `--brief` boundary, preserving the full report and evidence identities while digesting large
+  path inventories.
 - Added a bounded natural-intent trigger for complete Uniswap v4 design, build, repair, review, test, upgrade, and submission work
   without requiring the Programmable brand name; explanation-only and unrelated work remain excluded.
 - Added digest-bound confirmed-context activation that covers every canonical capability and surface route, loads at most one

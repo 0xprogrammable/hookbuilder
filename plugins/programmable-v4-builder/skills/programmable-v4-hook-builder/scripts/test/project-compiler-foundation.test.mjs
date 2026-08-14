@@ -191,6 +191,10 @@ test("tradable materialize profile mismatch fails before output and aligned dry-
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const idea = path.join(root, "idea.txt"), output = path.join(root, "output"), base = [unifiedCli, "project", "materialize", "--idea-file", idea, "--application-id", "volume-fee-reference", "--classification", "tradable", "--market-ref", "primary-market", "--reference-profile", TRADABLE_REFERENCE_PROFILE_ID, "--output", output];
   fs.writeFileSync(idea, "A cooperative commit-reveal riddle game for two players.\n");
+  const oversizedMarket = [...base];
+  oversizedMarket[oversizedMarket.indexOf("--market-ref") + 1] = "m".repeat(121);
+  const rejectedMarket = childProcess.spawnSync(process.execPath, oversizedMarket, { encoding: "utf8", shell: false });
+  assert.equal(rejectedMarket.status, 2); assert.match(rejectedMarket.stderr, /market-ref as a lowercase slug of at most 120 characters/u); assert.equal(fs.existsSync(output), false);
   const rejected = childProcess.spawnSync(process.execPath, base, { encoding: "utf8", shell: false });
   assert.equal(rejected.status, 2); assert.match(rejected.stderr, /TRADABLE_REFERENCE_PROFILE_MISMATCH/u); assert.equal(fs.existsSync(output), false);
   fs.writeFileSync(idea, "Build a Uniswap v4 hook that charges a fixed fee on executed gross quote volume. Keep buy and sell rates immutable after registration.\n");

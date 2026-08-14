@@ -84,12 +84,12 @@ const cli = parseCliOrExit({
     { name: "--test-source", key: "testSource", type: "value", valueName: "test-mjs-file", description: "Single Node-profile node:test module for materialize." },
     { name: "--output", key: "output", type: "value", valueName: "new-directory", description: "New repository directory for materialize." },
     { name: "--write", key: "write", type: "boolean", description: "Write no-market source and a materializing plan; tradable write requires an external sandbox." },
-    { name: "--brief", key: "brief", type: "boolean", description: "Return a bounded status, root, next action, report identity and evidence boundary; omit for complete canonical JSON." }
+    { name: "--brief", key: "brief", type: "boolean", description: "Return a bounded materialization, validation, preflight, or diagnosis view; omit for complete canonical JSON." }
   ]
 });
 
 if (cli.positionals[0] !== "materialize" && cli.options.repositoryRoot === null) failUsage("missing required option --repository-root");
-if (cli.options.brief && !["validate", "validate-output", "preflight", "require-output", "diagnose"].includes(cli.positionals[0])) failUsage("--brief is accepted only by validate, validate-output, preflight, require-output or diagnose");
+if (cli.options.brief && !["materialize", "validate", "validate-output", "preflight", "require-output", "diagnose"].includes(cli.positionals[0])) failUsage("--brief is accepted only by materialize, validate, validate-output, preflight, require-output or diagnose");
 
 try {
   const repositoryRoot = cli.options.repositoryRoot === null ? null : fs.realpathSync(cli.options.repositoryRoot);
@@ -184,7 +184,7 @@ async function materializeProject(options) {
   if (ideaText.trim().length === 0) failUsage("--idea-file must contain non-whitespace UTF-8 text");
   const outputRoot = resolveNewOutput(options.output);
   if (options.classification === "tradable") {
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(options.marketRef ?? "")) failUsage("tradable materialize requires --market-ref as a lowercase slug");
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(options.marketRef ?? "") || options.marketRef.length > 120) failUsage("tradable materialize requires --market-ref as a lowercase slug of at most 120 characters");
     if (options.referenceProfile !== TRADABLE_REFERENCE_PROFILE_ID) failUsage(`tradable materialize requires --reference-profile ${TRADABLE_REFERENCE_PROFILE_ID}`);
     if ([options.projectProfile, options.sourceRoot, options.testRoot, options.sourceContract, options.testSource].some((value) => value !== null)) failUsage("tradable materialize does not accept no-market authoring profile, root, source, or test options");
     return materializeTradableProject({ ...options, ideaText, ideaBytes, intentProfileBinding: bindTradableReferenceIntent(ideaText, options.referenceProfile), outputRoot });
@@ -205,7 +205,7 @@ async function materializeProject(options) {
   const inventory = fileInventory(authored.files);
   if (!options.write) {
     const payload = materializationReport({ status: "PROJECT_MATERIALIZATION_DRY_RUN_READY", applicationId: options.applicationId, classification: "no-market", projectProfile, compilerVersion, writeRequested: false, writePerformed: false, outputRoot, ideaSha256: authored.projectSpec.intent.sha256, sourcePaths, testPaths, inventory, blockers: [] });
-    process.stdout.write(`${canonicalJsonV2(payload)}\n`);
+    writeMaterializationReport(payload, options.brief);
     return;
   }
   const temporaryRoot = fs.mkdtempSync(path.join(path.dirname(outputRoot), ".programmable-project-materialize-"));
@@ -256,18 +256,18 @@ async function materializeProject(options) {
       commandsExecuted: false,
       blockers: ["PROJECT_EXTERNAL_SANDBOX_REQUIRED"]
     });
-    process.stdout.write(`${canonicalJsonV2(payload)}\n`);
+    writeMaterializationReport(payload, options.brief);
   } finally {
     if (fs.existsSync(temporaryRoot)) fs.rmSync(temporaryRoot, { recursive: true, force: true });
     if (exportRoot !== null && fs.existsSync(exportRoot)) fs.rmSync(exportRoot, { recursive: true, force: true });
   }
 }
 
-async function materializeTradableProject({ applicationId, marketRef, ideaText, ideaBytes, intentProfileBinding, outputRoot, write }) {
+async function materializeTradableProject({ applicationId, marketRef, ideaText, ideaBytes, intentProfileBinding, outputRoot, write, brief }) {
   void ideaText;
   void intentProfileBinding;
   if (!write) {
-    process.stdout.write(`${canonicalJsonV2(materializationReport({ status: "PROJECT_MATERIALIZATION_DRY_RUN_READY", applicationId, classification: "tradable", marketRef, writeRequested: false, writePerformed: false, outputRoot, ideaSha256: sha256Bytes(ideaBytes), blockers: [] }))}\n`);
+    writeMaterializationReport(materializationReport({ status: "PROJECT_MATERIALIZATION_DRY_RUN_READY", applicationId, classification: "tradable", marketRef, writeRequested: false, writePerformed: false, outputRoot, ideaSha256: sha256Bytes(ideaBytes), blockers: [] }), brief);
     return;
   }
   throw Object.assign(
@@ -611,6 +611,66 @@ function materializationReport(fields) {
     }
   };
   return { ...payload, reportSha256: canonicalJsonSha256V2(payload) };
+}
+
+function writeMaterializationReport(report, brief) {
+  if (!brief) {
+    process.stdout.write(`${canonicalJsonV2(report)}\n`);
+    return;
+  }
+  const inventory = Array.isArray(report.inventory) ? report.inventory : [];
+  const sourcePaths = Array.isArray(report.sourcePaths) ? report.sourcePaths : [];
+  const testPaths = Array.isArray(report.testPaths) ? report.testPaths : [];
+  const summary = {
+    schemaVersion: "1.0.0",
+    kind: "project-materialization-brief",
+    status: report.status,
+    applicationId: report.applicationId,
+    classification: report.classification,
+    projectProfile: report.projectProfile ?? null,
+    compilerVersion: report.compilerVersion ?? null,
+    marketRef: report.marketRef ?? null,
+    writeRequested: report.writeRequested,
+    writePerformed: report.writePerformed,
+    ideaSha256: report.ideaSha256,
+    sourcePaths: { count: sourcePaths.length, sha256: canonicalJsonSha256V2(sourcePaths), items: sourcePaths },
+    testPaths: { count: testPaths.length, sha256: canonicalJsonSha256V2(testPaths), items: testPaths },
+    inventory: {
+      fileCount: inventory.length,
+      totalBytes: inventory.reduce((sum, file) => sum + file.byteLength, 0),
+      sha256: canonicalJsonSha256V2(inventory)
+    },
+    sourceCommit: report.sourceCommit ?? null,
+    sourceTree: report.sourceTree ?? null,
+    planPath: report.planPath ?? null,
+    planSha256: report.planSha256 ?? null,
+    executionStatus: report.executionStatus ?? null,
+    blockers: report.blockers,
+    outputLocationBound: false,
+    canonicalOutput: false,
+    evidenceBoundary: report.evidenceBoundary,
+    reportSha256: report.reportSha256,
+    fullReport: {
+      available: true,
+      instruction: "Rerun the same command without --brief for the complete canonical JSON report."
+    }
+  };
+  let bytes = Buffer.from(`${canonicalJsonV2(summary)}\n`, "utf8");
+  if (bytes.length > PROJECT_COMPILER_BRIEF_MAX_OUTPUT_BYTES) {
+    const fallback = {
+      ...summary,
+      sourcePaths: { ...summary.sourcePaths, items: [] },
+      testPaths: { ...summary.testPaths, items: [] },
+      budgetFallback: {
+        applied: true,
+        reason: "PATH_DETAILS_EXCEEDED_BRIEF_OUTPUT_BUDGET",
+        maximumOutputBytes: PROJECT_COMPILER_BRIEF_MAX_OUTPUT_BYTES
+      }
+    };
+    bytes = Buffer.from(`${canonicalJsonV2(fallback)}\n`, "utf8");
+  }
+  if (bytes.length > PROJECT_COMPILER_BRIEF_MAX_OUTPUT_BYTES) throw new Error("project materialization brief fallback exceeds its complete output budget");
+  process.stdout.write(bytes);
 }
 
 function resolveRepositoryDirectory(repositoryRoot, repositoryPath) {
