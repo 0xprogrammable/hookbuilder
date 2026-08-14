@@ -60,7 +60,8 @@ test("Autopilot starts from the compact compiler with the productive completion 
   assert.match(skill, /after isolated failure run `context --mode repair --brief`/u);
   assert.match(skill, /before architecture or code/u);
   assert.doesNotMatch(skill, /context --mode explore --capability owner-defined-capability/u);
-  assert.match(skill, /project materialize --idea-file "\$IDEA_FILE" --application-id "\$APPLICATION_ID" --classification no-market --source-contract "\$SOURCE_CONTRACT" --test-source "\$TEST_SOURCE" --output "\$NEW_REPOSITORY"/u);
+  assert.match(skill, /For no-market, `project --help` is complete\.[\s\S]*Format\s+inputs; dry-run then `--write`/u);
+  assert.doesNotMatch(skill, /--classification no-market --source-contract "\$SOURCE_CONTRACT" --test-source "\$TEST_SOURCE"/u);
   assert.match(coldContext, /project materialize --idea-file "\$IDEA_FILE" --application-id "\$APPLICATION_ID" --classification tradable --market-ref "\$MARKET_REF" --reference-profile programmable-volume-fee-v2 --output "\$NEW_REPOSITORY"/u);
   assert.match(coldContext, /exact natural intent names the v4 hook,[\s\S]*gross-quote-volume fees,[\s\S]*policy `programmable-volume-fee-v2@2\.0\.0`, its inclusive 10 bps[\s\S]*claimant `0x4957f49620AFf3Adbbe8195a4f633E49cc93376c`/u);
   assert.match(coldContext, /Save the exact public prompt bytes unchanged as `\$IDEA_FILE`; never rewrite\/extract them\. Bind them exactly as ProjectSpec and Submission IdeaSource/u);
