@@ -167,7 +167,7 @@ test("released and candidate transports keep the canonical Submit a Launch targe
     "scripts",
     "cli.mjs"
   ), "utf8");
-  assert.match(cli, /Prepare frozen legacy six-file transport metadata without a GitHub write\./u);
+  assert.match(cli, /Prepare frozen V1 transport metadata without a GitHub write\./u);
   assert.match(cli, /\["submit", \{ script: "github-application\.mjs", prefix: \["submit"\] \}\]/u);
   assert.doesNotMatch(cli, /Historical V1 GitHub transport/u);
 

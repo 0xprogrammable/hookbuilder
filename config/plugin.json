@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "name": "programmable-v4-builder",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "displayName": "Programmable v4 Builder",
   "description": "Design, build, review, and submit Programmable hooks, tokens, apps, games, services, and standalone settlement projects through Submit a Launch.",
   "shortDescription": "Build a reviewable Programmable project from one prompt",

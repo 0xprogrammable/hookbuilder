@@ -1,7 +1,8 @@
 # Builder workflow
 
-> For current work, build and verify the exact public source, then bind the protected central policy and workflow-canary
-> contracts described in [agent-entry-and-application.md](agent-entry-and-application.md). The six-file Applicant client
+> For current work, build and verify the exact public source, then bind the protected
+> `0xprogrammable/submit-launch:main` policy and workflow-canary contracts described in
+> [agent-entry-and-application.md](agent-entry-and-application.md). The six-file Applicant client
 > is frozen legacy replay only. Never open a new Applicant PR in Hookbuilder.
 
 This workflow moves one open-ended v4 launch project from private exploration to a local review package and then a

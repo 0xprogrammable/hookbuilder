@@ -16,8 +16,9 @@ launch authorization, deployment receipt, provider result or Uniswap endorsement
 
 ## Release status
 
-Open-world submission v2, Fee V2, layered security and public application v3 are packaged for the immutable stable `v0.6.0`
-release. A verified publication establishes exact package bytes and release artifacts only. It does not establish model behavior,
+Open-world submission v2, Fee V2, layered security and public application v3 are packaged for the immutable `v0.7.0`
+release. The bundled status retains `publicationStateVerified: false`; this source is not proof that v0.7.0 is published
+or live. A verified publication establishes exact package bytes and release artifacts only. It does not establish model behavior,
 an independent audit, Registry acceptance, launch authorization, deployment, routing, or public availability. See
 [`OPEN_WORLD_V2_RELEASE_GATES.md`](OPEN_WORLD_V2_RELEASE_GATES.md) for the still-separate evidence states.
 
@@ -46,7 +47,8 @@ The Builder helps an agent:
   and real quote/execution test contract per selected tradable market, but never invent a route for a no-market product;
 - support AMM, partial custom accounting and reviewed zero-AMM/full-consumption custom-accounting designs;
 - trace every material intent fact through architecture, source, tests and evidence;
-- enforce the Programmable 10 bps volume-fee invariant on every Programmable execution scope;
+- consume current Programmable requirements only from the exact central Submit Launch policy and cite the applicable
+  Rule IDs; use the bundled 10 bps Fee V2 kernel only when preserved intent or a current Rule explicitly selects it;
 - preserve unknown or unsupported behavior as explicit review work instead of a categorical rejection;
 - route missing Three.js, maps, backend, database or other agent/domain capability to an exact
   `INTEGRATION_PENDING` handoff without replacing the idea or claiming the missing component complete;
@@ -65,17 +67,18 @@ The canonical package is
 layout. `SKILL.md`, references, schemas, templates, scripts, tests and `LICENSE.txt` form one package; copying only the
 entry file is incomplete.
 
-For reproducible public work, preview and pin the immutable current release:
+For reproducible public work, first verify that GitHub exposes the exact `v0.7.0` tag and release, then preview and pin
+that immutable release:
 
 ```bash
 gh skill preview 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.6.0
+  programmable-v4-hook-builder@v0.7.0
 
 gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.6.0
+  --pin v0.7.0
 ```
 
 Replace `codex` with the supported host name when appropriate. User scope is the beginner default because it keeps the
@@ -286,14 +289,17 @@ The request stays review-only. It does not approve, register, deploy, sign, rout
 tree, or canonical Applicant package is a new review target; any later authority or runtime claim needs separate
 evidence.
 
-## Fee V2 invariant
+## Optional legacy Fee V2 kernel
 
-First derive fee applicability from the exact project graph. A pure service, indexer or other project with only external
-or non-launchable markets can be a `not-applicable` prototype without a fee instance. An `unknown` or incompletely
-classified surface remains `unresolved`, never exempt. The obligations below activate only for `applicable` projects and
-the actual execution modes each canonical scope exposes.
+Current Programmable requirements come only from the exact central Submit Launch policy and the Rule IDs applicable to
+the selected profile. Do not derive Fee V2 merely from a graph or from the presence of a canonical pool. Load this
+frozen package only when preserved project intent or an applicable current Rule ID explicitly selects
+`programmable-volume-fee-v2@2.0.0`. Otherwise emit no Fee V2 applicability, instance, evidence, or adverse result.
 
-Every `programmable-canonical` execution scope owes exactly 10 bps (`0.10%`) of executed gross quote-side swap or fill
+Inside that explicitly selected package, first derive fee applicability from its exact project graph. A pure service,
+indexer or other project with only external or non-launchable markets can be a `not-applicable` prototype without a fee
+instance. An `unknown` or incompletely classified surface remains `unresolved`, never exempt. Every applicable
+`programmable-canonical` execution scope then owes exactly 10 bps (`0.10%`) of executed gross quote-side swap or fill
 volume to:
 
 ```text

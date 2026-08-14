@@ -12,10 +12,12 @@ boundaries, relevant Ethereum standards, Solidity, OpenZeppelin hooks and audit-
 
 ### Programmable
 
-The Builder derives fee applicability from the exact project graph. For each `programmable-canonical` execution scope it
-knows the mandatory inclusive 10 bps policy, fee ownership and claim rules, canonical-pool binding, canonical positive
-`uint256` decimal-string chain ids, positive decimal-string V3 application revisions without V1/SafeInteger semantics,
-separate fee/admin authorities, supported evidence states, GitHub-only
+The Builder consumes current requirements only from the exact central Submit Launch policy and applicable Rule IDs. It
+knows the frozen Fee V2 kernel, inclusive 10 bps economics, fee ownership, claim rules, and applicability model only as
+optional legacy implementation knowledge selected by preserved intent or an applicable current Rule, never as a
+universal requirement inferred from a pool or project graph. It also knows canonical positive `uint256` decimal-string
+chain ids, positive decimal-string V3 application revisions without V1/SafeInteger semantics, separate fee/admin
+authorities, supported evidence states, GitHub-only
 application package, status journey, maintainer
 review boundary, canonical project Registry, chain/runtime scope, provider-by-provider claims and future platform handoff
 contract.

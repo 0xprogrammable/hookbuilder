@@ -130,11 +130,13 @@ These are code and contract properties to review, not claims that the final gate
 - Every component proves its actual authorization, conservation, dependency, failure and exit boundaries. PoolManager
   callback/unlock authentication and permission/address bits apply only to a confirmed v4 hook; zero unresolved deltas
   applies only to an exposed unlock path, and return-delta/quadrant evidence only to the corresponding exposed modes.
-- For every declared Programmable fee scope, the inclusive platform entitlement is exactly 10 bps of executed gross
-  quote volume; deposits, cancellations, refunds, LP fees and unrelated markets are not volume.
-- Platform and project liabilities use independent cumulative remainders, remain fully funded and cannot be claimed or
-  redirected across owner, pool, chain or quote-currency boundaries.
-- The bundled Fee V2 Solidity kernel proves only the `standard-amm` profile if its exact final evidence passes. Zero-AMM,
+- Current requirements and outcomes come only from the exact central Submit Launch policy and applicable Rule IDs. A
+  graph, template, local fee document, or model opinion cannot add an admission rule.
+- Only when preserved intent or a current Rule explicitly selects the frozen Fee V2 package does each declared scope
+  carry its inclusive 10 bps entitlement; deposits, cancellations, refunds, LP fees and unrelated markets are not its volume.
+- Inside that selected package, platform and project liabilities use independent cumulative remainders, remain fully
+  funded and cannot be claimed or redirected across owner, pool, chain or quote-currency boundaries.
+- The bundled optional Fee V2 Solidity kernel proves only the `standard-amm` profile if its exact final evidence passes. Zero-AMM,
   async, sponsored, collateralized and custom-reviewed profiles require their own runtime implementation and evidence.
 - Standard-v4 and canonical-adapter manifests prove only declared local contracts. Provider quoteability, hosted routing,
   signing, broadcast, deployed code, transaction receipts, indexing and live market availability remain independent.

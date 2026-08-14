@@ -63,20 +63,23 @@ authorized disclosed burn or donation with no continuing entitlement, disclosed 
 and a clearly contingent/defaultable claim remain eligible for trust-tier and independent review. They are not silently
 called safe, and they are not automatically rejected absent one of the exact predicates above.
 
-## Fee applicability and launch separation
+## Optional legacy fee package and launch separation
 
-Fee applicability is derived from the project graph, not chosen as an exemption:
+Current admission requirements come only from the exact central Submit Launch policy and applicable Rule IDs. The Fee
+V2 states below apply only when preserved intent or a current Rule explicitly selects the frozen
+`programmable-volume-fee-v2@2.0.0` package. Otherwise the Builder emits no Fee V2 instance, evidence, or finding.
+
+Inside that selected package, fee applicability is derived from the project graph, not chosen as an exemption:
 
 - `unresolved` is proposal/review state and grants no exemption or launch path;
-- `applicable` means at least one actual `programmable-canonical` execution scope exists, so each such scope needs its
+- `applicable` means at least one actual `programmable-canonical` execution scope exists within that package, so each such scope needs its
   real Fee V2 instance, implementation, evidence and non-bypassable 10 bps invariant; and
 - `not-applicable` is valid only when the complete graph contains no Programmable-canonical execution scope, such as a
   pure service/indexer or a project whose markets are exclusively external or non-launchable. It binds no fake Fee V2
   instance or conformance receipt.
 
-A trusted Registry review may accept an otherwise complete `not-applicable` application. Launch V2 is specifically a
-Programmable execution handoff, so a `not-applicable` acceptance remains `NOT_AUTHORIZED`; supplying an unrelated fee
-artifact cannot convert it into a launchable scope.
+No Fee V2 state grants current admission or launch authority. Supplying an unrelated fee artifact cannot manufacture
+an applicable Rule, an approval, or a launchable scope.
 
 ## Agent and repository threats
 
