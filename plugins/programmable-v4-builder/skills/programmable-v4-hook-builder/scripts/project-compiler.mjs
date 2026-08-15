@@ -54,7 +54,7 @@ const PROJECT_COMPILER_BRIEF_FIELD_JSON_BYTES = Object.freeze({
 const cli = parseCliOrExit({
   command: "project-compiler",
   usage: "project-compiler <validate|validate-output|preflight|require-output|execute|diagnose|materialize> [command options]",
-  summary: "Validate project phases and outputs, diagnose a signed failed attempt, or author a source-bound plan. Foundry supports no-market and unrestricted custom-tradable Solidity roots with exact pragmas plus testSimulation*, testFuzz*, invariant*, and testDeployment* functions. Dry-run before repeating with --write.",
+  summary: "Validate project phases and outputs, diagnose a signed failed attempt, or author a source-bound plan. Custom tradable profiles support Foundry alone or one complete web, service, or game surface root. Supplied bytes remain inert. Dry-run before repeating with --write.",
   positionals: { min: 1, max: 1, names: ["command"] },
   options: [
     { name: "--repository-root", key: "repositoryRoot", type: "value", valueName: "path", description: "Existing project repository root." },
@@ -70,9 +70,10 @@ const cli = parseCliOrExit({
     { name: "--classification", key: "classification", type: "value", valueName: "no-market|tradable", description: "Explicit trade classification for materialize." },
     { name: "--market-ref", key: "marketRef", type: "value", valueName: "slug", description: "Exact selected market identity for tradable materialize." },
     { name: "--reference-profile", key: "referenceProfile", type: "value", valueName: "profile-id", description: "Optional exact frozen legacy compatibility profile; omit for custom tradable source." },
-    { name: "--project-profile", key: "projectProfile", type: "value", valueName: "node|foundry", description: "Bounded authoring profile; custom tradable hooks use foundry." },
+    { name: "--project-profile", key: "projectProfile", type: "value", valueName: "node|foundry|foundry-web|foundry-service|foundry-game", description: "Bounded authoring profile; multi-surface custom tradable profiles also require --surface-root." },
     { name: "--source-root", key: "sourceRoot", type: "value", valueName: "directory", description: "Nested inert source tree for Foundry materialize." },
     { name: "--test-root", key: "testRoot", type: "value", valueName: "directory", description: "Nested inert test tree for Foundry materialize." },
+    { name: "--surface-root", key: "surfaceRoot", type: "value", valueName: "directory", description: "Complete inert, lock-bound web, service, or game surface tree for a multi-surface custom tradable profile." },
     { name: "--source-contract", key: "sourceContract", type: "value", valueName: "mjs-file", description: "Single Node-profile ESM source module for materialize." },
     { name: "--test-source", key: "testSource", type: "value", valueName: "test-mjs-file", description: "Single Node-profile node:test module for materialize." },
     { name: "--output", key: "output", type: "value", valueName: "new-directory", description: "New repository directory for materialize." },
@@ -299,7 +300,7 @@ export function inspectForkCanary(stdout, context = {}) {
 }
 
 function rejectMaterializeOptions(options) {
-  if ([options.ideaFile, options.applicationId, options.classification, options.marketRef, options.referenceProfile, options.projectProfile, options.sourceRoot, options.testRoot, options.sourceContract, options.testSource, options.output].some((value) => value !== null) || options.write) failUsage("materialize authoring options are accepted only by the materialize command");
+  if ([options.ideaFile, options.applicationId, options.classification, options.marketRef, options.referenceProfile, options.projectProfile, options.sourceRoot, options.testRoot, options.surfaceRoot, options.sourceContract, options.testSource, options.output].some((value) => value !== null) || options.write) failUsage("materialize authoring options are accepted only by the materialize command");
 }
 function summarizeProjectCompilerReport(report, operation) {
   const findings = Array.isArray(report.findings)

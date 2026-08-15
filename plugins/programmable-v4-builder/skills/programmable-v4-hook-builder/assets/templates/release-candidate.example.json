@@ -1,16 +1,16 @@
 {
   "schemaVersion": "1.0.0",
-  "candidateId": "programmable-v4-builder-v0.9.1-local-20260815",
+  "candidateId": "programmable-v4-builder-v0.10.0-local-20260815",
   "privateCandidate": true,
   "publicState": "not-published",
-  "releaseVersion": "0.9.1",
+  "releaseVersion": "0.10.0",
   "channel": "canary",
   "releaseKind": "normal",
   "plannedRelease": {
     "builder": {
-      "fromVersion": "0.9.0",
-      "toVersion": "0.9.1",
-      "semanticClassification": "patch"
+      "fromVersion": "0.9.1",
+      "toVersion": "0.10.0",
+      "semanticClassification": "minor"
     },
     "submissionStandard": {
       "fromVersion": "1.6.0",
@@ -34,19 +34,44 @@
       "sha256": null
     }
   },
-  "preparedAt": "2026-08-15T07:00:14Z",
-  "requestedReleaseAt": "2026-08-15T07:00:14Z",
+  "preparedAt": "2026-08-15T10:52:58Z",
+  "requestedReleaseAt": "2026-08-15T10:52:58Z",
   "changeSetComplete": true,
   "changes": [
     {
-      "id": "custom-tradable-materialization",
-      "kind": "bug-fix",
-      "summary": "Allow technically viable custom tradable Foundry source and tests without requiring a bundled reference profile, while keeping launch policy separate and preserving no-execution, no-approval, and no-launch boundaries."
+      "id": "complete-project-continuation",
+      "kind": "feature",
+      "summary": "Continue an accepted Programmable or Uniswap v4 design into complete implementation work instead of treating a missing bundled profile as a refusal condition, with an exact EN/DE structural trigger corpus that remains distinct from provider-level semantic proof."
     },
     {
-      "id": "remove-release-cadence",
+      "id": "multi-surface-materialization",
+      "kind": "feature",
+      "summary": "For custom tradable projects, pair a bounded caller-supplied Foundry contract tree with exactly one selected web, service, or game source tree as inert, byte-bound local inputs without executing candidate code."
+    },
+    {
+      "id": "generic-application-handoff",
+      "kind": "feature",
+      "summary": "Produce a deterministic no-write handoff that binds the complete project, central launch-policy preimages, protected Submit base, and intended draft pull-request identity."
+    },
+    {
+      "id": "sandbox-host-contract",
+      "kind": "feature",
+      "summary": "Add a deterministic external sandbox-host integration plan while keeping portable execution and completion fail-closed until independently trusted host evidence exists."
+    },
+    {
+      "id": "journey-benchmark",
+      "kind": "feature",
+      "summary": "Add a versioned, anti-leakage benchmark harness for comparing Builder journeys, activation traces, repository outcomes, efficiency, effects, and independent judge results."
+    },
+    {
+      "id": "lean-portable-package",
       "kind": "maintenance",
-      "summary": "Remove the minimum interval between Builder releases while retaining monotonic versioning, exact-revision review, owner authority, required CI, immutable artifacts, and publication verification."
+      "summary": "Separate repository-only development tests from the portable runtime through one manifest-bound package closure and retain installed runtime smoke verification."
+    },
+    {
+      "id": "contributor-maintainer-authority-split",
+      "kind": "documentation",
+      "summary": "Document that contributors author and push the candidate while a separate current CODEOWNER reviews, approves, squash-merges, tags, and publishes the exact accepted revision."
     }
   ],
   "unbundledChangeIds": [],

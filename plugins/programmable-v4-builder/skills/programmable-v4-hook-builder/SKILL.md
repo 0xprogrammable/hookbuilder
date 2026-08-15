@@ -1,6 +1,6 @@
 ---
 name: programmable-v4-hook-builder
-description: Use only to design, build, repair, review, test, upgrade, or submit a complete Programmable or Uniswap v4 project. Never use for questions/explanations, even about v4; generic Solidity/ERC20/repo work; skill install/discovery; or non-blockchain uses.
+description: Use only when the user asks to build, implement, repair, review, test, upgrade, or submit a complete Programmable or Uniswap v4 project; this includes architecture or brainstorming that explicitly continues into implementation. Do not use for explanation-only or brainstorming-only questions; generic Solidity/ERC20/repository work; skill installation/discovery; or non-blockchain uses.
 license: MIT
 ---
 
@@ -10,6 +10,8 @@ license: MIT
 
 Build the smallest complete evidence-backed repository, not snippets. Use Autopilot;
 after isolated failure run `context --mode repair --brief`. Ask only for a material owner decision.
+For design-first requests with explicit implementation intent, brainstorm only enough to select the architecture, then
+continue through the Golden path in the same task; do not stop at a proposal.
 
 Separate eligibility, safety, review, Registry acceptance, deployment and availability; claim each from its own
 evidence and authority.
@@ -59,6 +61,11 @@ launch, never source. Dry-run this custom-tradable command, then add `--write`:
 node "$BUILDER_CLI" project materialize --idea-file "$IDEA_FILE" --application-id "$APPLICATION_ID" --classification tradable --market-ref "$MARKET_REF" --project-profile foundry --source-root "$SOURCE_ROOT" --test-root "$TEST_ROOT" --output "$NEW_REPOSITORY"
 ```
 
+For an application surface use the owner-declared layout label `foundry-web`, `foundry-service`, or `foundry-game`;
+add `--surface-root` for its accepted regular-file source, tests, build configuration, caller-supplied lock bytes and
+assets. These labels do not certify product semantics. Input and cloned output are exactly byte/mode verified; empty
+directories are omitted, paths are portable ASCII, and Git-control or secret-risk paths are rejected.
+
 No trusted sandbox? Materialize source/tests; mark tests unverified, never implementation blocked. In an active
 workspace run install and offline fmt/test once as `LOCAL_ONLY`, never completion. Fix input roots and
 rematerialize; never patch outputs or call `project execute` without a trusted sandbox.
@@ -76,6 +83,13 @@ node "$SKILL_ROOT/scripts/cli.mjs" project require-output --brief --repository-r
 Only exact-byte `PROJECT_PREFLIGHT_VALID` completes Autopilot. `CLEAR` is source-only; `DRAFT_UNRESOLVED` is
 noncanonical. Local pass remains `NOT_APPROVED` and `NOT_SUBMITTED`.
 
+For a complete custom project, read [application-handoff.md](references/application-handoff.md). Build the closed input
+outside source with exact policy/schema preimages and run `handoff preview`; it derives active build requirements and
+binds the exact source, policy, complete surface inventory and intended draft-PR identity while performing no external
+write. Consume the exact LF-terminated `canonicalApplicationHandoffJson` artifact. The portable `--write` boundary
+rechecks the exact confirmation, then fails closed until a reviewed `O_NOFOLLOW | O_CREAT | O_EXCL` descriptor-bound
+writer exists.
+
 ## Specialist invariants
 
 - Never skip semantic preflight. Modes other than Autopilot narrow the result boundary; they do not weaken gates.
@@ -90,7 +104,9 @@ noncanonical. Local pass remains `NOT_APPROVED` and `NOT_SUBMITTED`.
   hookData, limits, generic fees and tests. Bundled V1 is frozen Fee V2 compatibility for the exact intent-bound legacy
   profile only. Custom implementation stays eligible; only later launch-manifest/approval evidence may be unresolved.
 - Escalate novel, value-bearing or ambiguous slices. Mark unavailable provider gates `EXTERNAL_BLOCKED`.
-- Six-file `prepare-pr` is frozen legacy replay; no general application transport exists. For canary tests, read
+- Generic custom projects use the deterministic `handoff preview`; current public generic GitHub mutation remains
+  unavailable until an accepted protected intake contract exists. Six-file `prepare-pr` is frozen legacy replay and
+  cannot consume a generic handoff. For canary tests, read
   `references/workflow-canary-application.md` and run `prepare-canary`: bound-byte/digest preview only; writes fail closed.
   Neither grants submission, acceptance, deployment, external, live, or launch authority.
 
@@ -99,5 +115,7 @@ noncanonical. Local pass remains `NOT_APPROVED` and `NOT_SUBMITTED`.
 Require Node.js 22+ for the portable Builder; repository release gates remain pinned to Node.js 24. Keep compilation,
 validation and evidence offline. `doctor` proves local capability only.
 `project execute` always stops with `PROJECT_EXTERNAL_SANDBOX_REQUIRED`. Sandbox receipts bind the exact subject,
-launcher/runtime, enforced filesystem/network/secret/write policy and command/output hashes to an independently
-configured Ed25519 trust root. The portable release ships no production trust root, so local JSON cannot unlock completion.
+launcher/runtime, policy claims and command/output hashes, but the portable release ships no production trust root and
+caller-supplied keys cannot unlock completion. Read [project-sandbox-host.md](references/project-sandbox-host.md) for the
+networkless Docker planning format and structural signature inspector. Both remain `EXTERNAL_BLOCKED`; neither executes
+candidate bytes, proves host isolation/output/teardown, or imports completion.
