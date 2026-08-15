@@ -85,7 +85,12 @@ const repositoryRoot = !installedMode && !untrustedDataMode
   : null;
 try {
   const packageManifest = loadPortablePackageManifest({ skillRoot });
-  buildPortablePackageInventory({ manifest: packageManifest, repositoryRoot, skillRoot });
+  buildPortablePackageInventory({
+    allowInstalledExecutableModeNormalization: installedMode,
+    manifest: packageManifest,
+    repositoryRoot,
+    skillRoot
+  });
 } catch (error) {
   errors.push(`portable-package.json: ${error instanceof Error ? error.message : String(error)}`);
 }

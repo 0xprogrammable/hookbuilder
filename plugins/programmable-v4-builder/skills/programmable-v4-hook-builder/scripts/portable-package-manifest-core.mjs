@@ -61,7 +61,12 @@ export function loadPortablePackageManifest({ skillRoot }) {
   return deepFreeze(manifest);
 }
 
-export function buildPortablePackageInventory({ manifest, repositoryRoot = null, skillRoot }) {
+export function buildPortablePackageInventory({
+  allowInstalledExecutableModeNormalization = false,
+  manifest,
+  repositoryRoot = null,
+  skillRoot
+}) {
   validateManifest(manifest);
   requireDirectory(skillRoot, "PORTABLE_PACKAGE_SKILL_ROOT_INVALID", "skill root");
   const packageFiles = walkRegularFiles(skillRoot).map((absolutePath) => {
@@ -105,7 +110,10 @@ export function buildPortablePackageInventory({ manifest, repositoryRoot = null,
   const executablePaths = new Set(manifest.executablePaths);
   for (const entry of packageFiles) {
     const expectedMode = executablePaths.has(entry.path) ? 0o755 : 0o644;
-    if (entry.mode !== expectedMode) {
+    const installedNormalizedExecutable = allowInstalledExecutableModeNormalization
+      && expectedMode === 0o755
+      && entry.mode === 0o644;
+    if (entry.mode !== expectedMode && !installedNormalizedExecutable) {
       throw new PortablePackageManifestError(
         "PORTABLE_PACKAGE_MODE_MISMATCH",
         `portable package mode for ${entry.path} is ${octal(entry.mode)}; expected ${octal(expectedMode)}`

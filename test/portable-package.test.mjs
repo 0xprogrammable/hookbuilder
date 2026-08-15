@@ -78,6 +78,38 @@ test("manifest rejects executable-mode drift before publication", (t) => {
   );
 });
 
+test("installed verification accepts host-normalized script modes without weakening source publication", (t) => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-installed-package-mode-"));
+  t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
+  const fixtureSkill = path.join(fixtureRoot, "programmable-v4-hook-builder");
+  fs.cpSync(skillRoot, fixtureSkill, { recursive: true });
+  for (const executablePath of [
+    "scripts/builder-lifecycle.mjs",
+    "scripts/project-compiler.mjs",
+    "scripts/template-catalog.mjs"
+  ]) {
+    fs.chmodSync(path.join(fixtureSkill, ...executablePath.split("/")), 0o644);
+  }
+
+  const manifest = loadPortablePackageManifest({ skillRoot: fixtureSkill });
+  const inventory = buildPortablePackageInventory({
+    allowInstalledExecutableModeNormalization: true,
+    manifest,
+    skillRoot: fixtureSkill
+  });
+  assert.deepEqual(
+    inventory.packageFiles
+      .filter(({ path: relativePath }) => manifest.executablePaths.includes(relativePath))
+      .map(({ mode }) => mode),
+    [0o644, 0o644, 0o644]
+  );
+  assert.throws(
+    () => buildPortablePackageInventory({ manifest, skillRoot: fixtureSkill }),
+    (error) => error instanceof PortablePackageManifestError
+      && error.code === "PORTABLE_PACKAGE_MODE_MISMATCH"
+  );
+});
+
 test("manifest rejects a test-only file leaking back into the published skill", (t) => {
   const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-portable-package-leak-"));
   t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
