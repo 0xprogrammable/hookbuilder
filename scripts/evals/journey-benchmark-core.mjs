@@ -424,8 +424,22 @@ function writeNewJson(filePath, value, mode = 0o600) {
 }
 
 function parseAdapterOutput(filePath, label) {
+  let stat;
+  try {
+    stat = fs.lstatSync(filePath);
+  } catch (error) {
+    fail('FILE_UNAVAILABLE', `${label} cannot be inspected: ${error.message}`, { filePath });
+  }
+  if (!stat.isFile() || stat.isSymbolicLink()) fail('ADAPTER_RESULT_INVALID', `${label} must be a real file`);
   const { value, raw } = readJson(filePath, label);
   return { value, sha256: sha256(Buffer.from(raw, 'utf8')), bytes: Buffer.byteLength(raw) };
+}
+
+function assertFileUnchanged(filePath, expectedSha256, label) {
+  const stat = fs.lstatSync(filePath);
+  if (!stat.isFile() || stat.isSymbolicLink()) fail('REQUEST_MUTATED', `${label} is no longer a real file`);
+  const actualSha256 = sha256(fs.readFileSync(filePath));
+  if (actualSha256 !== expectedSha256) fail('REQUEST_MUTATED', `${label} changed during adapter execution`);
 }
 
 function runAdapter(argv, requestPath, outputPath, options) {
@@ -678,6 +692,7 @@ async function executeRun({ benchmarkCase, config, outputRoot, repetition, subje
   const requestPath = path.join(runRoot, 'subject-request.json');
   const subjectOutputPath = path.join(runRoot, 'subject-result.json');
   writeNewJson(requestPath, request);
+  const requestFileSha256 = sha256(fs.readFileSync(requestPath));
 
   try {
     const subjectProcess = await runAdapter(subject.adapterArgv, requestPath, subjectOutputPath, {
@@ -691,6 +706,7 @@ async function executeRun({ benchmarkCase, config, outputRoot, repetition, subje
     if (subjectProcess.timedOut) fail('SUBJECT_TIMEOUT', `subject adapter timed out after ${config.timeoutMs}ms`);
     if (subjectProcess.captureExceeded) fail('SUBJECT_CAPTURE_LIMIT', 'subject adapter stdout or stderr exceeded the capture limit');
     if (subjectProcess.exitCode !== 0) fail('SUBJECT_ADAPTER_FAILED', `subject adapter exited ${subjectProcess.exitCode}`, { signal: subjectProcess.signal });
+    assertFileUnchanged(requestPath, requestFileSha256, 'subject request');
     if (!fs.existsSync(subjectOutputPath)) fail('SUBJECT_RESULT_MISSING', 'subject adapter did not create its result file');
     const parsedSubject = parseAdapterOutput(subjectOutputPath, 'subject adapter result');
     const subjectResult = validateSubjectResult(parsedSubject.value, {
@@ -720,6 +736,7 @@ async function executeRun({ benchmarkCase, config, outputRoot, repetition, subje
     const judgeRequestPath = path.join(runRoot, 'judge-request.json');
     const judgeOutputPath = path.join(runRoot, 'judge-result.json');
     writeNewJson(judgeRequestPath, judgeRequest);
+    const judgeRequestFileSha256 = sha256(fs.readFileSync(judgeRequestPath));
     const judgeProcess = await runAdapter(config.judge.adapterArgv, judgeRequestPath, judgeOutputPath, {
       cwd: runRoot,
       env: restrictedEnvironment(config.environmentAllowlist, {
@@ -731,6 +748,7 @@ async function executeRun({ benchmarkCase, config, outputRoot, repetition, subje
     if (judgeProcess.timedOut) fail('JUDGE_TIMEOUT', `judge adapter timed out after ${config.timeoutMs}ms`);
     if (judgeProcess.captureExceeded) fail('JUDGE_CAPTURE_LIMIT', 'judge adapter stdout or stderr exceeded the capture limit');
     if (judgeProcess.exitCode !== 0) fail('JUDGE_ADAPTER_FAILED', `judge adapter exited ${judgeProcess.exitCode}`, { signal: judgeProcess.signal });
+    assertFileUnchanged(judgeRequestPath, judgeRequestFileSha256, 'judge request');
     if (!fs.existsSync(judgeOutputPath)) fail('JUDGE_RESULT_MISSING', 'judge adapter did not create its result file');
     const parsedJudge = parseAdapterOutput(judgeOutputPath, 'judge adapter result');
     const judgeResult = validateJudgeResult(parsedJudge.value, {
@@ -743,6 +761,9 @@ async function executeRun({ benchmarkCase, config, outputRoot, repetition, subje
     const loadedReferenceBytes = subjectResult.activation.loadedReferences.reduce((total, reference) => total + reference.bytes, 0);
     const gates = {
       activationCorrect: subjectResult.activation.observed === benchmarkCase.expected.activation,
+      activationReceiptComplete: benchmarkCase.expected.activation === 'ACTIVATED'
+        ? subjectResult.activation.evidence !== 'UNAVAILABLE' && subjectResult.activation.loadedReferences.length > 0
+        : subjectResult.activation.observed === 'NOT_ACTIVATED',
       expectedOutcomeMatched: subjectResult.result.outcome === benchmarkCase.expected.outcome,
       materialOwnerDecisionBudget: subjectResult.result.materialOwnerDecisions <= benchmarkCase.expected.maxMaterialOwnerDecisions,
       noExternalWrites: subjectResult.effects.externalWrites.length === 0,

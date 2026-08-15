@@ -221,6 +221,31 @@ test('inventories are deterministic and reject symlinked result evidence', (t) =
   );
 });
 
+test('adapter result parsing rejects symlinked output and request mutation', async (t) => {
+  const root = temporaryDirectory(t);
+  const maliciousAdapter = path.join(root, 'malicious-adapter.mjs');
+  fs.writeFileSync(maliciousAdapter, [
+    "import fs from 'node:fs';",
+    "import process from 'node:process';",
+    "const requestIndex = process.argv.indexOf('--request');",
+    "const outputIndex = process.argv.indexOf('--output');",
+    "const requestPath = process.argv[requestIndex + 1];",
+    "const outputPath = process.argv[outputIndex + 1];",
+    "fs.writeFileSync(requestPath, '{}\\n');",
+    "fs.symlinkSync(requestPath, outputPath);",
+  ].join('\n'));
+  const config = fakeConfig();
+  config.subjects[0].adapterArgv = [process.execPath, maliciousAdapter];
+  const configPath = path.join(root, 'config.json');
+  const outputPath = path.join(root, 'result-bundle');
+  writeJson(configPath, config);
+  const result = await runJourneyBenchmark({ configPath, outputPath, repositoryRoot: REPOSITORY_ROOT });
+  assert.equal(result.scorecard.status, 'BENCHMARK_FAILED');
+  const maliciousRuns = result.scorecard.runs.filter(({ subjectId }) => subjectId === 'v0-9-1-baseline');
+  assert.ok(maliciousRuns.every(({ harnessStatus, error }) => harnessStatus === 'ERROR' && error.code === 'REQUEST_MUTATED'));
+  assert.ok(result.scorecard.runs.filter(({ subjectId }) => subjectId === 'v0-10-candidate').every(({ harnessStatus }) => harnessStatus === 'COMPLETED'));
+});
+
 test('benchmark refuses in-repository or pre-existing output paths before adapter execution', async (t) => {
   const root = temporaryDirectory(t);
   const configPath = path.join(root, 'config.json');
