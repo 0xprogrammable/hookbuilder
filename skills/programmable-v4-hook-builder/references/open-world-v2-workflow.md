@@ -32,11 +32,14 @@ Dry-run first, then repeat with `--write`. This writes inert source, tests, exac
 it executes no candidate bytes. A missing trusted sandbox may leave test evidence unverified, but it must never block
 source implementation. Central launch policy is evaluated later and is not an architecture or source allowlist.
 
-When the selected architecture includes an application surface, replace `foundry` with `foundry-web`,
-`foundry-service`, or `foundry-game` and add `--surface-root "$SURFACE_ROOT"`. The supplied root is a complete
-standalone surface tree: source, tests, build manifests, deterministic locks and other required assets are copied
-byte-for-byte below `surfaces/<kind>`. Symlinks, path escapes, secret-risk files, generated/dependency directories,
-unresolved build profiles and portable path collisions fail before output. The materializer runs none of those bytes.
+When the selected architecture includes an application surface, replace `foundry` with the owner-declared layout label
+`foundry-web`, `foundry-service`, or `foundry-game` and add `--surface-root "$SURFACE_ROOT"`. Accepted regular files,
+tests, build manifests, caller-supplied lock bytes and assets are copied byte-for-byte with executable modes below
+`surfaces/<label>`; empty directories are omitted. The label does not certify web, service or game semantics. Git
+control paths, non-portable names, symlinks, path escapes, component-level secret risks, generated/dependency
+directories, unresolved root build profiles and portable path collisions fail before output. Profile detection uses
+the frozen input inventory, and the materializer rechecks the input plus exact committed and cloned inventories before
+success. It runs none of those bytes.
 
 The one bundled tradable profile is frozen legacy compatibility, not a current platform requirement. Require a natural
 idea that independently names a Uniswap v4 hook, fees on executed gross quote volume, buy/sell rates immutable after
@@ -73,10 +76,11 @@ that exact commit and branch. The plan is transient on one specifically ignored 
 `executionPolicy.externalWrites: false`. The portable command below never executes its argv; it validates the source and
 plan boundary, then exits 2 with `PROJECT_EXTERNAL_SANDBOX_REQUIRED`:
 
-Custom tradable materialization instead commits `.programmable/custom-tradable-build-plan.v1.json` and
-`.programmable/custom-tradable-materialization-receipt.v1.json` with exact contract, surface, dependency, configuration,
-test and intent hashes. Its commands remain `NOT_RUN`; absence of execution evidence does not erase the implemented
-repository or turn its source status into `EXTERNAL_BLOCKED`.
+Custom tradable materialization commits `.programmable/custom-tradable-build-plan.v1.json`. It then emits the ignored,
+local-only `.programmable/custom-tradable-materialization-receipt.v1.json` outside the commit so the receipt can bind the
+actual emitted commit/tree without a self-reference. Validation checks that receipt against every committed path, byte,
+Git mode and cloned working file. Commands remain `NOT_RUN`; absence of execution evidence does not erase the
+implemented repository or turn its source status into `EXTERNAL_BLOCKED`.
 
 For iterative developer feedback only, an already active workspace sandbox may run the generated plan's explicit
 offline format/test commands. Treat that output as unauthenticated `LOCAL_ONLY` evidence: it cannot complete the plan.

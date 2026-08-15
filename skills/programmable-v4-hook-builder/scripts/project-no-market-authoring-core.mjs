@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { TextDecoder } from "node:util";
 
@@ -21,10 +22,13 @@ const MAX_SURFACE_DEPTH = 32;
 const GENERATED_SURFACE_CONFIG = "programmable-surface.json";
 const rejectedSurfaceDirectories = new Set([".git", ".hg", ".programmable", ".svn", "broadcast", "build", "cache", "coverage", "dist", "node_modules", "out", "target", "vendor"]);
 const rejectedSurfaceSecretNames = new Set([".env", ".netrc", ".npmrc", ".pypirc", "id_ed25519", "id_rsa"]);
+const rejectedSurfaceGitControls = new Set([".git", ".git-blame-ignore-revs", ".gitattributes", ".gitconfig", ".gitignore", ".gitmodules"]);
+const rejectedSurfaceSecretComponents = new Set([".aws", ".azure", ".direnv", ".docker", ".gnupg", ".kube", ".ssh", ".secrets", ".terraform", "credentials", "secrets"]);
+const windowsReservedNames = /^(?:aux|com[1-9]|con|lpt[1-9]|nul|prn)(?:\..*)?$/iu;
 const surfaceProfiles = Object.freeze({
-  "foundry-web": Object.freeze({ id: "web", kind: "web-app" }),
-  "foundry-service": Object.freeze({ id: "service", kind: "api-service" }),
-  "foundry-game": Object.freeze({ id: "game", kind: "game-client" })
+  "foundry-web": Object.freeze({ id: "web", layoutLabel: "web" }),
+  "foundry-service": Object.freeze({ id: "service", layoutLabel: "service" }),
+  "foundry-game": Object.freeze({ id: "game", layoutLabel: "game" })
 });
 
 export const CUSTOM_TRADABLE_PROJECT_PROFILES = Object.freeze(["foundry", ...Object.keys(surfaceProfiles)]);
@@ -232,8 +236,9 @@ export function readCustomTradableSurface({ projectProfile, surfaceRoot } = {}) 
   const specification = surfaceProfiles[projectProfile];
   if (specification === undefined) throw surfaceOptionsError(`--project-profile must be ${CUSTOM_TRADABLE_PROJECT_PROFILES.join(", ")}`);
   if (surfaceRoot === null || surfaceRoot === undefined) throw surfaceOptionsError(`${projectProfile} custom tradable materialize requires --surface-root`);
-  const inputFiles = readSurfaceTree(surfaceRoot);
-  const detection = inspectBuildProfiles(surfaceRoot);
+  const frozenInput = readSurfaceTree(surfaceRoot);
+  const inputFiles = frozenInput.files;
+  const detection = inspectFrozenSurfaceBuildProfiles(inputFiles);
   const buildProfiles = detection.profiles
     .filter(({ projectRoot, status, id }) => projectRoot === "." && status === "recognized" && id !== "foundry")
     .map(({ id, label, profileDigest, projectRoot, status, manifests, locks, pins, suggestedChecks, packageManager, yarnGeneration }) => ({
@@ -244,19 +249,19 @@ export function readCustomTradableSurface({ projectProfile, surfaceRoot } = {}) 
     .sort((left, right) => compareUtf8(left.id, right.id));
   const blockingFindings = detection.findings.filter(({ code }) => code !== "SCAN_BOUND_REACHED" || detection.scan.entryLimitReached);
   if (blockingFindings.length > 0 || buildProfiles.length === 0) {
-    throw Object.assign(new Error("surface root requires one complete root-bound non-Foundry build profile with its deterministic lock and no unresolved scan findings"), {
+    throw Object.assign(new Error("surface root requires one complete root-bound non-Foundry build profile, caller-supplied lock bytes, and no unresolved scan findings"), {
       code: "PROJECT_SURFACE_BUILD_PROFILE_UNRESOLVED",
       findings: blockingFindings.map(({ code, profileId = null, projectRoot = null }) => ({ code, profileId, projectRoot }))
     });
   }
   const outputRoot = `surfaces/${specification.id}`;
-  const mapped = inputFiles.map(({ path: inputPath, bytes }) => ({ path: `${outputRoot}/${inputPath}`, inputPath, bytes }));
+  const mapped = inputFiles.map(({ path: inputPath, bytes, mode }) => ({ path: `${outputRoot}/${inputPath}`, inputPath, bytes, mode }));
   const tests = mapped.filter(({ inputPath }) => isSurfaceTestPath(inputPath));
   const configurationPaths = new Set(buildProfiles.flatMap(({ manifests, locks }) => [...manifests, ...locks]));
   const configuration = mapped.filter(({ inputPath }) => configurationPaths.has(inputPath));
   const sources = mapped.filter(({ inputPath }) => !isSurfaceTestPath(inputPath) && !configurationPaths.has(inputPath));
   if (sources.length === 0 || tests.length === 0 || configuration.length === 0) {
-    throw Object.assign(new Error("surface root must contain source, tests, build configuration, and a deterministic dependency lock"), { code: "PROJECT_SURFACE_TREE_INCOMPLETE" });
+    throw Object.assign(new Error("surface root must contain source, tests, build configuration, and caller-supplied dependency lock bytes"), { code: "PROJECT_SURFACE_TREE_INCOMPLETE" });
   }
   const inventory = surfaceBindings(mapped);
   const normalizedProfiles = buildProfiles.map((profile) => ({
@@ -284,8 +289,12 @@ export function readCustomTradableSurface({ projectProfile, surfaceRoot } = {}) 
   }));
   return Object.freeze({
     id: specification.id,
-    kind: specification.kind,
+    kind: "application-surface",
+    layoutLabel: specification.layoutLabel,
     projectProfile,
+    inputRoot: frozenInput.root,
+    inputInventory: surfaceBindings(inputFiles),
+    inputInventorySha256: canonicalJsonSha256V2(surfaceBindings(inputFiles)),
     outputRoot,
     files: mapped,
     source: surfaceBindings(sources),
@@ -302,9 +311,12 @@ export function renderCustomTradableSurfaceConfig(surface) {
   return {
     schemaVersion: "1.0.0",
     kind: "programmable-custom-tradable-surface",
-    status: "SOURCE_TEST_CONFIG_AND_LOCK_BOUND",
+    status: "SOURCE_TEST_CONFIG_AND_CALLER_LOCK_BYTES_BOUND",
     id: surface.id,
     surfaceKind: surface.kind,
+    layoutLabel: surface.layoutLabel,
+    semanticValidationPerformed: false,
+    lockEvidence: "CALLER_SUPPLIED_LOCK_BYTES_ONLY",
     projectProfile: surface.projectProfile,
     root: surface.outputRoot,
     buildProfiles: surface.buildProfiles,
@@ -315,6 +327,20 @@ export function renderCustomTradableSurfaceConfig(surface) {
     execution: { commandsPlanned: surface.commands.length, commandsExecuted: false, externalActionsPerformed: [] },
     authority: { approval: false, deployment: false, publication: false, execution: false, registryWrite: false }
   };
+}
+
+export function revalidateCustomTradableSurface(surface) {
+  if (surface === null) return true;
+  if (typeof surface?.inputRoot !== "string" || !Array.isArray(surface.inputInventory) || typeof surface.inputInventorySha256 !== "string") throw new TypeError("surface revalidation requires a frozen input inventory");
+  let observed;
+  try { observed = readSurfaceTree(surface.inputRoot); } catch (error) {
+    throw Object.assign(new Error(`PROJECT_SURFACE_INPUT_CHANGED: surface input changed after binding: ${error.message}`), { code: "PROJECT_SURFACE_INPUT_CHANGED", cause: error });
+  }
+  const inventory = surfaceBindings(observed.files);
+  if (canonicalJsonSha256V2(inventory) !== surface.inputInventorySha256 || canonicalJson(inventory) !== canonicalJson(surface.inputInventory)) {
+    throw Object.assign(new Error("PROJECT_SURFACE_INPUT_CHANGED: surface input changed after binding"), { code: "PROJECT_SURFACE_INPUT_CHANGED" });
+  }
+  return true;
 }
 
 function readSurfaceTree(inputRoot) {
@@ -330,8 +356,11 @@ function readSurfaceTree(inputRoot) {
       try { assertSafeVisibleText(entry.name, "surface path entry", 255); } catch { throw surfaceTreeError(`surface tree contains an unsafe path segment: ${entry.name}`); }
       const absolute = path.join(directory, entry.name);
       const relative = relativeDirectory === "" ? entry.name : `${relativeDirectory}/${entry.name}`;
+      assertPortableSurfaceSegment(entry.name, relative);
       const stat = fs.lstatSync(absolute);
       if (stat.isSymbolicLink()) throw surfaceTreeError(`surface tree contains a symbolic link: ${relative}`);
+      if (surfaceGitControlPath(relative)) throw surfaceTreeError(`surface tree contains a Git control path: ${relative}`);
+      if (surfaceSecretRiskPath(relative)) throw surfaceTreeError(`surface tree contains a secret-risk path that cannot enter a generated repository: ${relative}`);
       const collisionKey = relative.normalize("NFC").toLowerCase();
       if (collisionKeys.has(collisionKey)) throw Object.assign(new Error(`surface paths collide portably: ${collisionKeys.get(collisionKey)} and ${relative}`), { code: "PROJECT_SURFACE_TREE_COLLISION" });
       collisionKeys.set(collisionKey, relative);
@@ -342,17 +371,31 @@ function readSurfaceTree(inputRoot) {
         continue;
       }
       if (!stat.isFile() || stat.size > MAX_SURFACE_FILE_BYTES) throw surfaceTreeError(`surface tree file is not a bounded regular file: ${relative}`);
-      if (surfaceSecretRiskPath(relative)) throw surfaceTreeError(`surface tree contains a secret-risk path that cannot enter a generated repository: ${relative}`);
       const bytes = readStableSurfaceFile(root, absolute, relative, stat);
       totalBytes += bytes.length;
       if (totalBytes > MAX_SURFACE_TOTAL_BYTES) throw surfaceTreeError(`surface tree exceeds the ${MAX_SURFACE_TOTAL_BYTES}-byte cap`);
-      files.push({ path: relative, bytes });
+      files.push({ path: relative, bytes, mode: stat.mode & 0o111 ? "100755" : "100644" });
       if (files.length > MAX_SURFACE_FILES) throw surfaceTreeError(`surface tree exceeds the ${MAX_SURFACE_FILES}-file cap`);
     }
   };
   visit(root);
   if (files.length === 0) throw surfaceTreeError("surface root must contain at least one file");
-  return files.sort((left, right) => compareUtf8(left.path, right.path));
+  return { root, files: files.sort((left, right) => compareUtf8(left.path, right.path)) };
+}
+
+function inspectFrozenSurfaceBuildProfiles(inputFiles) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-frozen-surface-profile-"));
+  try {
+    for (const { path: relativePath, bytes, mode } of inputFiles) {
+      const target = path.join(root, relativePath);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, bytes, { mode: mode === "100755" ? 0o755 : 0o644 });
+      fs.chmodSync(target, mode === "100755" ? 0o755 : 0o644);
+    }
+    return inspectBuildProfiles(root);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 }
 
 function readStableSurfaceFile(root, absolute, relative, stat) {
@@ -362,13 +405,13 @@ function readStableSurfaceFile(root, absolute, relative, stat) {
   let bytes;
   try {
     const opened = fs.fstatSync(descriptor);
-    if (!opened.isFile() || opened.dev !== stat.dev || opened.ino !== stat.ino || opened.size !== stat.size) throw surfaceTreeError(`surface tree file changed before it was bound: ${relative}`);
+    if (!opened.isFile() || opened.dev !== stat.dev || opened.ino !== stat.ino || opened.size !== stat.size || (opened.mode & 0o777) !== (stat.mode & 0o777)) throw surfaceTreeError(`surface tree file changed before it was bound: ${relative}`);
     bytes = fs.readFileSync(descriptor);
     const after = fs.fstatSync(descriptor);
-    if (after.dev !== opened.dev || after.ino !== opened.ino || after.size !== opened.size || after.mtimeMs !== opened.mtimeMs || after.ctimeMs !== opened.ctimeMs) throw surfaceTreeError(`surface tree file changed while it was read: ${relative}`);
+    if (after.dev !== opened.dev || after.ino !== opened.ino || after.size !== opened.size || (after.mode & 0o777) !== (opened.mode & 0o777) || after.mtimeMs !== opened.mtimeMs || after.ctimeMs !== opened.ctimeMs) throw surfaceTreeError(`surface tree file changed while it was read: ${relative}`);
   } finally { fs.closeSync(descriptor); }
   const pathAfter = fs.lstatSync(absolute);
-  if (pathAfter.isSymbolicLink() || pathAfter.dev !== stat.dev || pathAfter.ino !== stat.ino || pathAfter.size !== stat.size || pathAfter.mtimeMs !== stat.mtimeMs || pathAfter.ctimeMs !== stat.ctimeMs) throw surfaceTreeError(`surface tree file changed after it was bound: ${relative}`);
+  if (pathAfter.isSymbolicLink() || pathAfter.dev !== stat.dev || pathAfter.ino !== stat.ino || pathAfter.size !== stat.size || (pathAfter.mode & 0o777) !== (stat.mode & 0o777) || pathAfter.mtimeMs !== stat.mtimeMs || pathAfter.ctimeMs !== stat.ctimeMs) throw surfaceTreeError(`surface tree file changed after it was bound: ${relative}`);
   return bytes;
 }
 
@@ -379,8 +422,28 @@ function isSurfaceTestPath(filePath) {
 }
 
 function surfaceSecretRiskPath(filePath) {
-  const basename = path.posix.basename(filePath).toLowerCase();
-  return rejectedSurfaceSecretNames.has(basename) || basename.startsWith(".env.") || /\.(?:key|p12|pfx|pem)$/u.test(basename);
+  const segments = filePath.split("/").map((segment) => segment.toLowerCase());
+  const basename = segments.at(-1);
+  return segments.some((segment) => rejectedSurfaceSecretComponents.has(segment)
+    || segment === ".env"
+    || segment.startsWith(".env.")
+    || segment.includes("credential"))
+    || rejectedSurfaceSecretNames.has(basename)
+    || /\.(?:key|p12|pfx|pem)$/u.test(basename);
+}
+
+function surfaceGitControlPath(filePath) {
+  return filePath.split("/").some((segment) => rejectedSurfaceGitControls.has(segment.toLowerCase()));
+}
+
+function assertPortableSurfaceSegment(segment, relativePath) {
+  if (!/^[\x20-\x7e]+$/u.test(segment)
+    || /[<>:"\\|?*]/u.test(segment)
+    || /^ |[. ]$/u.test(segment)
+    || Buffer.byteLength(relativePath, "utf8") > 240
+    || windowsReservedNames.test(segment)) {
+    throw surfaceTreeError(`surface tree path must use portable ASCII names: ${relativePath}`);
+  }
 }
 
 function surfaceCommandKind(argv) {
@@ -420,7 +483,7 @@ function uniqueSurfaceCommands(commands) {
 }
 
 function surfaceBindings(files) {
-  return files.map(({ path: filePath, bytes }) => ({ path: filePath, sha256: sha256Bytes(bytes), byteLength: bytes.length }));
+  return files.map(({ path: filePath, bytes, mode = "100644" }) => ({ path: filePath, sha256: sha256Bytes(bytes), byteLength: bytes.length, mode }));
 }
 
 function surfaceOptionsError(message) { return Object.assign(new Error(message), { code: "PROJECT_SURFACE_OPTIONS_INVALID" }); }

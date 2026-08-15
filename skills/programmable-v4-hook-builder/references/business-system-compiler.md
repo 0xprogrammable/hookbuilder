@@ -21,8 +21,9 @@ Process schemas outside context. Summaries, templates and code never replace ver
 `validate` never runs code. The portable `execute` path also never runs candidate argv: it fails closed with
 `PROJECT_EXTERNAL_SANDBOX_REQUIRED`. `project materialize --write` emits inert source/tests: a no-market repository plan
 or a custom-tradable build plan with no bundled pack requirement. The `foundry-web`, `foundry-service`, and
-`foundry-game` profiles additionally bind one complete lock-backed application tree and a non-execution materialization
-receipt. Never hand-author derived hashes, state, inventory or applicability. A completed launch plan requires an exact external-sandbox receipt plus Ed25519 provenance from an
+`foundry-game` values are owner-declared layout labels: they bind accepted regular-file bytes, executable modes,
+caller-supplied lock bytes and a locally validated non-execution receipt, but certify no product semantics. Never
+hand-author derived hashes, state, inventory or applicability. A completed launch plan requires an exact external-sandbox receipt plus Ed25519 provenance from an
 independently configured trust root; this release bundles no production authority. Before handoff run `project
 require-output` only when that evidence and the exact state/package exist. Schemas must yield one
 identity/facet/market/route projection; invented claims block. `CLEAR` is source-only, `DRAFT_UNRESOLVED` noncanonical,

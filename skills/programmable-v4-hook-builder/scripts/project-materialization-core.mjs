@@ -13,6 +13,7 @@ import {
   normalizeNoMarketAuthoringFiles,
   readCustomTradableSurface,
   readLocalAuthoringInputs,
+  revalidateCustomTradableSurface,
   renderCustomTradableSurfaceConfig
 } from "./project-no-market-authoring-core.mjs";
 import { createNoMarketProjectAuthoring } from "./project-state-core.mjs";
@@ -58,16 +59,20 @@ export function createCustomTradableProjectAuthoring({ applicationId, ideaText, 
   const packageLock = customPackageLock(applicationId);
   const packageJson = customPackageJson(applicationId, packageLock.packages[""].dependencies);
   const files = new Map([...sources, ...tests].map(({ path: filePath, bytes }) => [filePath, Buffer.from(bytes)]));
+  const fileModes = new Map();
   if ((projectProfile === "foundry") !== (surface === null)) throw new TypeError("custom tradable surface must exactly match its multi-surface project profile");
   if (surface !== null) {
-    for (const { path: filePath, bytes } of surface.files) addAuthoredFile(files, filePath, bytes);
+    for (const { path: filePath, bytes, mode } of surface.files) {
+      addAuthoredFile(files, filePath, bytes);
+      fileModes.set(filePath, mode);
+    }
     addAuthoredFile(files, `${surface.outputRoot}/programmable-surface.json`, jsonBytes(renderCustomTradableSurfaceConfig(surface)));
   }
   files.set("package.json", jsonBytes(packageJson));
   files.set("package-lock.json", jsonBytes(packageLock));
   files.set("remappings.txt", fs.readFileSync(path.join(referenceKernelRoot, "remappings.txt")));
   files.set("foundry.toml", Buffer.from(foundryToml(compilerVersion)));
-  files.set(".gitignore", Buffer.from("node_modules/\ncache/\nout/\nbroadcast/\nsurfaces/*/node_modules/\nsurfaces/*/build/\nsurfaces/*/dist/\nsurfaces/*/coverage/\n.programmable/project-repair-attempt-*.v1.json\n"));
+  files.set(".gitignore", Buffer.from("node_modules/\ncache/\nout/\nbroadcast/\nsurfaces/*/node_modules/\nsurfaces/*/build/\nsurfaces/*/dist/\nsurfaces/*/coverage/\n.programmable/custom-tradable-materialization-receipt.v1.json\n.programmable/project-repair-attempt-*.v1.json\n"));
   files.set("LICENSE", Buffer.from(MIT_LICENSE));
   files.set("evidence/architecture.md", Buffer.from(architectureEvidence(applicationId, marketRef, sha256Bytes(ideaBytes), projectProfile, surface)));
   files.set("GITHUB-SUBMISSION.md", Buffer.from("# GitHub submission handoff\n\nStatus: **NOT_SUBMITTED**.\n\nThis repository is a local custom-tradable implementation. It creates no approval, audit, deployment, publication, Registry write, or launch.\n"));
@@ -93,6 +98,7 @@ export function createCustomTradableProjectAuthoring({ applicationId, ideaText, 
     surfaces: surface === null ? [] : [{
       id: surface.id,
       kind: surface.kind,
+      layoutLabel: surface.layoutLabel,
       root: surface.outputRoot,
       buildProfiles: surface.buildProfiles,
       source: surface.source,
@@ -101,7 +107,7 @@ export function createCustomTradableProjectAuthoring({ applicationId, ideaText, 
       inventorySha256: surface.inventorySha256,
       generatedConfig: `${surface.outputRoot}/programmable-surface.json`
     }],
-    materializationReceipt: { path: receiptPath, status: "GENERATED_AFTER_PLAN" },
+    materializationReceipt: { path: receiptPath, status: "LOCAL_TRANSIENT_GENERATED_AFTER_COMMIT" },
     commands: [
       command("install", ["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], ".", "read-only"),
       command("format", ["forge", "fmt", "--check"]),
@@ -129,13 +135,11 @@ export function createCustomTradableProjectAuthoring({ applicationId, ideaText, 
   };
   const planBytes = jsonBytes(plan);
   files.set(planPath, planBytes);
-  const receipt = customTradableMaterializationReceipt({ applicationId, projectProfile, marketRef, intent: plan.intent, planBytes, sources, tests, surface });
-  files.set(receiptPath, jsonBytes(receipt));
   files.set("README.md", Buffer.from(readme(applicationId, marketRef, plan.intent.sha256, projectProfile, surface)));
   return {
     files,
+    fileModes,
     plan,
-    receipt,
     ideaSha256: plan.intent.sha256,
     sourcePaths: sources.map(({ path: filePath }) => filePath),
     testPaths: tests.map(({ path: filePath }) => filePath),
@@ -179,6 +183,9 @@ function materializeNoMarket({ options, ideaText, outputRoot, failUsage }) {
     ...validateRepositoryPlan(authored.projectSpec, authored.productGraph, authored.architectureCandidates, authored.repositoryPlan)
   ];
   if (findings.some(({ severity }) => severity === "blocker")) throw Object.assign(new Error("generated project artifacts fail bundled validation"), { code: "PROJECT_AUTHORING_INVALID", findings });
+  authored.files.set(".programmable/project-spec.v1.json", jsonBytes(authored.projectSpec));
+  authored.files.set(".programmable/product-graph.v1.json", jsonBytes(authored.productGraph));
+  authored.files.set(".programmable/architecture-candidates.v1.json", jsonBytes(authored.architectureCandidates));
   const common = {
     applicationId: options.applicationId,
     classification: "no-market",
@@ -188,7 +195,7 @@ function materializeNoMarket({ options, ideaText, outputRoot, failUsage }) {
     ideaSha256: authored.projectSpec.intent.sha256,
     sourcePaths,
     testPaths,
-    inventory: fileInventory(authored.files),
+    inventory: fileInventory(authored.files, authored.fileModes),
     blockers: []
   };
   if (!options.write) return emitMaterialization({ ...common, status: "PROJECT_MATERIALIZATION_DRY_RUN_READY", writeRequested: false, writePerformed: false }, options.brief);
@@ -196,20 +203,16 @@ function materializeNoMarket({ options, ideaText, outputRoot, failUsage }) {
     authored,
     outputRoot,
     temporaryPrefix: ".programmable-project-materialize-",
-    exportPrefix: ".programmable-project-export-",
     commitMessage: "materialize intent-bound local source",
-    beforeCommit(root) {
-      writeOutputJson(root, ".programmable/project-spec.v1.json", authored.projectSpec);
-      writeOutputJson(root, ".programmable/product-graph.v1.json", authored.productGraph);
-      writeOutputJson(root, ".programmable/architecture-candidates.v1.json", authored.architectureCandidates);
-    },
     beforeExport(root) {
       authored.repositoryPlan.repository.branch = git(root, ["branch", "--show-current"]);
       authored.repositoryPlan.repository.headCommit = git(root, ["rev-parse", "HEAD"]);
     },
     afterClone(root) {
-      writeOutputJson(root, ".programmable/repository-plan.materializing.v1.json", authored.repositoryPlan);
+      const transientPath = ".programmable/repository-plan.materializing.v1.json", bytes = jsonBytes(authored.repositoryPlan);
+      writeOutputFile(root, transientPath, bytes);
       if (git(root, ["status", "--porcelain=v1", "--untracked-files=all"]) !== "") throw Object.assign(new Error("plan-only export must remain clean with its transient plan ignored"), { code: "PROJECT_PLAN_EXPORT_DIRTY" });
+      return [{ path: transientPath, sha256: sha256Bytes(bytes), byteLength: bytes.length, mode: "100644" }];
     },
     report: {
       ...common,
@@ -233,24 +236,31 @@ function materializeCustomTradable({ applicationId, marketRef, projectProfile, a
     ideaSha256: authored.ideaSha256,
     sourcePaths: authored.sourcePaths,
     testPaths: authored.testPaths,
-    inventory: fileInventory(authored.files),
+    inventory: fileInventory(authored.files, authored.fileModes),
     planPath,
     planSha256: canonicalJsonSha256V2(authored.plan),
     receiptPath,
-    receiptSha256: canonicalJsonSha256V2(authored.receipt),
+    receiptSha256: null,
     blockers: []
   };
   if (!write) return emitMaterialization({ ...common, status: "PROJECT_MATERIALIZATION_DRY_RUN_READY", operation: "CUSTOM_TRADABLE_SOURCE_DRY_RUN", writeRequested: false, writePerformed: false }, brief);
+  const report = { ...common, operation: "CUSTOM_TRADABLE_SOURCE_AND_PLAN_MATERIALIZED" };
   return exportAuthoredRepository({
     authored,
     outputRoot,
     temporaryPrefix: ".programmable-custom-tradable-materialize-",
-    exportPrefix: ".programmable-custom-tradable-export-",
     commitMessage: "materialize intent-bound custom tradable source",
-    afterClone(root) {
+    afterClone(root, binding) {
+      const receipt = customTradableMaterializationReceipt({ authored, applicationId, projectProfile, marketRef, binding });
+      writeOutputJson(root, receiptPath, receipt);
+      validateCustomTradableMaterializationReceipt(receipt, { repositoryRoot: root });
       if (git(root, ["status", "--porcelain=v1", "--untracked-files=all"]) !== "") throw Object.assign(new Error("custom tradable export must remain clean"), { code: "PROJECT_CUSTOM_TRADABLE_EXPORT_DIRTY" });
+      revalidateCustomTradableSurface(authored.surface);
+      report.receiptSha256 = canonicalJsonSha256V2(receipt);
+      const bytes = jsonBytes(receipt);
+      return [{ path: receiptPath, sha256: sha256Bytes(bytes), byteLength: bytes.length, mode: "100644" }];
     },
-    report: { ...common, operation: "CUSTOM_TRADABLE_SOURCE_AND_PLAN_MATERIALIZED" },
+    report,
     brief
   });
 }
@@ -269,26 +279,40 @@ function materializeLegacyTradable({ applicationId, marketRef, ideaBytes, output
   });
 }
 
-function exportAuthoredRepository({ authored, outputRoot, temporaryPrefix, exportPrefix, commitMessage, beforeCommit = () => {}, beforeExport = () => {}, afterClone = () => {}, report, brief }) {
+function exportAuthoredRepository({ authored, outputRoot, temporaryPrefix, commitMessage, beforeExport = () => {}, afterClone = () => {}, report, brief }) {
   const temporaryRoot = fs.mkdtempSync(path.join(path.dirname(outputRoot), temporaryPrefix));
-  let exportRoot = null;
+  const inventory = fileInventory(authored.files, authored.fileModes);
+  let reservation = null, completed = false;
   try {
-    for (const [relativePath, bytes] of authored.files) writeOutputFile(temporaryRoot, relativePath, bytes);
-    beforeCommit(temporaryRoot);
+    for (const [relativePath, bytes] of authored.files) writeOutputFile(temporaryRoot, relativePath, bytes, authored.fileModes?.get(relativePath));
     git(temporaryRoot, ["init", "-q", "-b", "main"]);
     git(temporaryRoot, ["config", "user.name", "Programmable Local Builder"]);
     git(temporaryRoot, ["config", "user.email", "local-builder@example.invalid"]);
-    git(temporaryRoot, ["add", "."]);
+    git(temporaryRoot, ["config", "core.autocrlf", "false"]);
+    git(temporaryRoot, ["config", "core.safecrlf", "true"]);
+    git(temporaryRoot, ["config", "core.attributesFile", "/dev/null"]);
+    verifyWorkingInventory(temporaryRoot, inventory);
+    stageExactInventory(temporaryRoot, inventory);
+    const indexedTree = git(temporaryRoot, ["write-tree"]);
+    verifyGitInventory(temporaryRoot, indexedTree, inventory);
     git(temporaryRoot, ["commit", "-qm", commitMessage]);
     beforeExport(temporaryRoot);
     const sourceCommit = git(temporaryRoot, ["rev-parse", "HEAD"]);
     const sourceTree = git(temporaryRoot, ["rev-parse", "HEAD^{tree}"]);
-    exportRoot = fs.mkdtempSync(path.join(path.dirname(outputRoot), exportPrefix));
-    git(path.dirname(outputRoot), ["clone", "-q", "--no-hardlinks", temporaryRoot, exportRoot]);
-    git(exportRoot, ["remote", "remove", "origin"]);
-    afterClone(exportRoot);
-    fs.renameSync(exportRoot, outputRoot);
-    exportRoot = null;
+    if (sourceTree !== indexedTree) materializationIntegrityError("committed tree differs from the exact staged inventory");
+    verifyGitInventory(temporaryRoot, sourceTree, inventory);
+    verifyWorkingInventory(temporaryRoot, inventory);
+    reservation = reserveOutputDirectory(outputRoot);
+    git(path.dirname(outputRoot), ["clone", "-q", "--no-hardlinks", temporaryRoot, outputRoot]);
+    assertOwnedOutputDirectory(outputRoot, reservation);
+    git(outputRoot, ["remote", "remove", "origin"]);
+    if (git(outputRoot, ["rev-parse", "HEAD"]) !== sourceCommit || git(outputRoot, ["rev-parse", "HEAD^{tree}"]) !== sourceTree) materializationIntegrityError("cloned commit or tree differs from the emitted source binding");
+    verifyGitInventory(outputRoot, sourceTree, inventory);
+    verifyWorkingInventory(outputRoot, inventory);
+    const transientInventory = afterClone(outputRoot, { sourceCommit, sourceTree, inventory }) ?? [];
+    verifyGitInventory(outputRoot, sourceTree, inventory);
+    verifyWorkingInventory(outputRoot, [...inventory, ...transientInventory].sort((left, right) => comparePaths(left.path, right.path)));
+    assertOwnedOutputDirectory(outputRoot, reservation);
     emitMaterialization({
       ...report,
       status: "PROJECT_MATERIALIZATION_PLAN_WRITTEN",
@@ -299,9 +323,10 @@ function exportAuthoredRepository({ authored, outputRoot, temporaryPrefix, expor
       executionStatus: "EXTERNAL_SANDBOX_REQUIRED",
       commandsExecuted: false
     }, brief);
+    completed = true;
   } finally {
     if (fs.existsSync(temporaryRoot)) fs.rmSync(temporaryRoot, { recursive: true, force: true });
-    if (exportRoot !== null && fs.existsSync(exportRoot)) fs.rmSync(exportRoot, { recursive: true, force: true });
+    if (!completed && reservation !== null) removeOwnedOutputDirectory(outputRoot, reservation);
   }
 }
 
@@ -392,26 +417,99 @@ function resolveNewOutput(outputPath) {
   return resolved;
 }
 
-function writeOutputFile(root, relativePath, bytes) {
+function writeOutputFile(root, relativePath, bytes, mode = "100644") {
   if (path.isAbsolute(relativePath) || relativePath.split("/").includes("..")) throw Object.assign(new Error("unsafe generated output path"), { code: "PROJECT_OUTPUT_PATH_INVALID" });
+  if (!["100644", "100755"].includes(mode)) throw Object.assign(new Error("unsafe generated output mode"), { code: "PROJECT_OUTPUT_MODE_INVALID" });
   const target = path.join(root, relativePath);
   fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.writeFileSync(target, bytes);
+  fs.writeFileSync(target, bytes, { mode: mode === "100755" ? 0o755 : 0o644 });
+  fs.chmodSync(target, mode === "100755" ? 0o755 : 0o644);
 }
 
 function writeOutputJson(root, relativePath, value) {
   writeOutputFile(root, relativePath, Buffer.from(`${canonicalJsonV2(value)}\n`, "utf8"));
 }
 
-function git(root, args) {
-  const result = childProcess.spawnSync("git", args, { cwd: root, encoding: "utf8", shell: false, env: { PATH: process.env.PATH ?? "", HOME: path.join(root, ".git", "programmable-home"), LANG: "C", LC_ALL: "C", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0", GIT_AUTHOR_DATE: "2000-01-01T00:00:00Z", GIT_COMMITTER_DATE: "2000-01-01T00:00:00Z" } });
-  if (result.status !== 0) throw Object.assign(new Error(result.stderr.trim() || `git ${args[0]} failed`), { code: "PROJECT_LOCAL_GIT_FAILED" });
-  return result.stdout.trim();
+function git(root, args, { input = undefined, encoding = "utf8", trim = true } = {}) {
+  const isolatedArgs = ["-c", "core.autocrlf=false", "-c", "core.attributesFile=/dev/null", "-c", "core.hooksPath=/dev/null", ...args];
+  const result = childProcess.spawnSync("git", isolatedArgs, { cwd: root, encoding, input, maxBuffer: 70_000_000, shell: false, env: { PATH: process.env.PATH ?? "", HOME: path.join(root, ".git", "programmable-home"), LANG: "C", LC_ALL: "C", GIT_ATTR_NOSYSTEM: "1", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0", GIT_AUTHOR_DATE: "2000-01-01T00:00:00Z", GIT_COMMITTER_DATE: "2000-01-01T00:00:00Z" } });
+  if (result.status !== 0) throw Object.assign(new Error(Buffer.from(result.stderr ?? "").toString("utf8").trim() || `git ${args[0]} failed`), { code: "PROJECT_LOCAL_GIT_FAILED" });
+  if (encoding === null) return Buffer.from(result.stdout);
+  return trim ? result.stdout.trim() : result.stdout;
 }
 
-function fileInventory(files) {
-  return [...files].map(([filePath, bytes]) => ({ path: filePath, sha256: sha256Bytes(bytes), byteLength: bytes.length })).sort((left, right) => left.path.localeCompare(right.path));
+function fileInventory(files, modes = new Map()) {
+  return [...files].map(([filePath, bytes]) => ({ path: filePath, sha256: sha256Bytes(bytes), byteLength: bytes.length, mode: modes?.get(filePath) ?? "100644" })).sort((left, right) => comparePaths(left.path, right.path));
 }
+
+function stageExactInventory(root, inventory) {
+  const pathspec = Buffer.from(`${inventory.map(({ path: filePath }) => filePath).join("\0")}\0`, "utf8");
+  git(root, ["add", "--force", "--pathspec-from-file=-", "--pathspec-file-nul"], { input: pathspec });
+}
+
+function verifyGitInventory(root, treeish, expected) {
+  const records = git(root, ["ls-tree", "-r", "-z", treeish], { trim: false }).split("\0").filter(Boolean);
+  const observed = records.map((record) => {
+    const match = /^(100644|100755) blob ([0-9a-f]{40,64})\t([\x20-\x7e]+)$/u.exec(record);
+    if (match === null) materializationIntegrityError("Git tree contains a non-regular, non-portable, or unsupported entry");
+    const bytes = git(root, ["cat-file", "blob", match[2]], { encoding: null, trim: false });
+    return { path: match[3], sha256: sha256Bytes(bytes), byteLength: bytes.length, mode: match[1] };
+  }).sort((left, right) => comparePaths(left.path, right.path));
+  assertExactInventory(observed, expected, "Git tree");
+  return observed;
+}
+
+function verifyWorkingInventory(root, expected) {
+  const observed = [];
+  const visit = (directory, relativeDirectory = "") => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      if (relativeDirectory === "" && entry.name === ".git") continue;
+      const relativePath = relativeDirectory === "" ? entry.name : `${relativeDirectory}/${entry.name}`;
+      const absolutePath = path.join(directory, entry.name), before = fs.lstatSync(absolutePath);
+      if (before.isSymbolicLink() || (!before.isDirectory() && !before.isFile())) materializationIntegrityError(`working tree contains an unsupported entry: ${relativePath}`);
+      if (before.isDirectory()) { visit(absolutePath, relativePath); continue; }
+      const bytes = fs.readFileSync(absolutePath), after = fs.lstatSync(absolutePath);
+      if (after.dev !== before.dev || after.ino !== before.ino || after.size !== before.size || after.mtimeMs !== before.mtimeMs || after.ctimeMs !== before.ctimeMs || (after.mode & 0o777) !== (before.mode & 0o777)) materializationIntegrityError(`working tree file changed while verified: ${relativePath}`);
+      observed.push({ path: relativePath, sha256: sha256Bytes(bytes), byteLength: bytes.length, mode: before.mode & 0o111 ? "100755" : "100644" });
+    }
+  };
+  visit(root);
+  observed.sort((left, right) => comparePaths(left.path, right.path));
+  assertExactInventory(observed, expected, "working tree");
+  return observed;
+}
+
+function assertExactInventory(observed, expected, label) {
+  if (canonicalJsonV2(observed) !== canonicalJsonV2(expected)) materializationIntegrityError(`${label} does not exactly match the planned path, mode, byte-length, and hash inventory`);
+}
+
+function reserveOutputDirectory(outputRoot) {
+  try { fs.mkdirSync(outputRoot, { mode: 0o700 }); } catch (error) {
+    if (error?.code === "EEXIST") throw Object.assign(new Error("--output must name a new directory"), { code: "PROJECT_OUTPUT_EXISTS" });
+    throw error;
+  }
+  const stat = fs.lstatSync(outputRoot);
+  if (!stat.isDirectory() || stat.isSymbolicLink()) materializationIntegrityError("output reservation is not an owned directory");
+  return { dev: stat.dev, ino: stat.ino };
+}
+
+function assertOwnedOutputDirectory(outputRoot, reservation) {
+  const stat = fs.lstatSync(outputRoot);
+  if (!stat.isDirectory() || stat.isSymbolicLink() || stat.dev !== reservation.dev || stat.ino !== reservation.ino) materializationIntegrityError("owned output reservation changed during materialization");
+}
+
+function removeOwnedOutputDirectory(outputRoot, reservation) {
+  try {
+    assertOwnedOutputDirectory(outputRoot, reservation);
+    fs.rmSync(outputRoot, { recursive: true, force: true });
+  } catch { /* A replaced reservation is not ours to remove. */ }
+}
+
+function materializationIntegrityError(message) {
+  throw Object.assign(new Error(message), { code: "PROJECT_MATERIALIZATION_INTEGRITY_FAILED" });
+}
+
+function comparePaths(left, right) { return left < right ? -1 : left > right ? 1 : 0; }
 
 function customPackageLock(applicationId) {
   const lock = JSON.parse(fs.readFileSync(path.join(referenceKernelRoot, "package-lock.json"), "utf8"));
@@ -448,32 +546,56 @@ function foundryToml(compilerVersion) {
 }
 
 function architectureEvidence(applicationId, marketRef, ideaSha256, projectProfile, surface) {
-  const surfaceText = surface === null ? "No additional application surface was supplied." : `The complete ${surface.kind} tree is byte-bound at \`${surface.outputRoot}\` under profile \`${projectProfile}\`.`;
+  const surfaceText = surface === null ? "No additional application surface was supplied." : `The accepted regular-file tree is byte-and-mode-bound at \`${surface.outputRoot}\`; \`${surface.layoutLabel}\` is an owner-declared layout label, not a semantic product certification.`;
   return `# Architecture evidence\n\nApplication: \`${applicationId}\`  \nMarket: \`${marketRef}\`  \nIntent: \`${ideaSha256}\`\n\nThe complete supplied custom source and tests are byte-bound in the local build plan. ${surfaceText} Architecture is not restricted to bundled profiles. Launch policy is evaluated later for submission and does not decide which technically viable source may be authored.\n\nNo command, network request, deployment, approval, audit, publication, Registry write, or launch was performed.\n`;
 }
 
 function readme(applicationId, marketRef, ideaSha256, projectProfile, surface) {
-  const surfaceText = surface === null ? "" : ` The complete \`${surface.kind}\` source, tests, configuration and dependency locks are preserved under \`${surface.outputRoot}\` with profile \`${projectProfile}\`.`;
+  const surfaceText = surface === null ? "" : ` The accepted regular-file source, tests, configuration, caller-supplied lock bytes and modes are preserved under \`${surface.outputRoot}\` with owner-declared layout label \`${surface.layoutLabel}\`; empty directories are omitted and no web/service/game semantics are certified.`;
   return `# ${applicationId}\n\nIdea-bound custom tradable Uniswap v4 implementation for \`${marketRef}\`. Intent SHA-256: \`${ideaSha256}\`.\n\nCustom tradable source is not restricted to bundled profiles or templates. The Builder may implement any technically viable architecture and preserve it with tests.${surfaceText} All planned commands remain \`NOT_RUN\`; dependency acquisition and candidate execution require an authorized external sandbox.\n\nLaunch policy is checked at submission time. This source repository is **NOT_SUBMITTED** and **NOT_APPROVED** and makes no audit, deployment, production, publication, Registry, or launch claim.\n`;
 }
 
-function customTradableMaterializationReceipt({ applicationId, projectProfile, marketRef, intent, planBytes, sources, tests, surface }) {
+function customTradableMaterializationReceipt({ authored, applicationId, projectProfile, marketRef, binding }) {
+  const plan = binding.inventory.find(({ path: filePath }) => filePath === planPath);
   return {
     schemaVersion: "1.0.0",
     kind: "custom-tradable-materialization-receipt",
-    status: "SOURCE_TEST_CONFIG_AND_LOCK_BYTES_BOUND_NOT_EXECUTED",
+    status: "LOCAL_SOURCE_BINDING_VERIFIED_NOT_EXECUTED",
     applicationId,
     classification: "tradable",
     projectProfile,
     marketRef,
-    intent,
-    plan: { path: planPath, sha256: sha256Bytes(planBytes), byteLength: planBytes.length },
-    source: bindings(sources),
-    tests: bindings(tests),
-    surfaces: surface === null ? [] : [{ id: surface.id, kind: surface.kind, root: surface.outputRoot, inventorySha256: surface.inventorySha256 }],
+    intent: authored.plan.intent,
+    source: { commit: binding.sourceCommit, tree: binding.sourceTree },
+    plan,
+    repository: { inventoryProfile: "exact-regular-files-git-modes-v1", emptyDirectories: "OMITTED", files: binding.inventory, inventorySha256: canonicalJsonSha256V2(binding.inventory) },
+    surfaces: authored.surface === null ? [] : [{ id: authored.surface.id, kind: authored.surface.kind, layoutLabel: authored.surface.layoutLabel, root: authored.surface.outputRoot, inventorySha256: authored.surface.inventorySha256, semanticValidationPerformed: false, lockEvidence: "CALLER_SUPPLIED_LOCK_BYTES_ONLY" }],
+    artifact: { path: receiptPath, tracked: false, ignored: true },
     observations: { commandsExecuted: false, networkAccessed: false, externalWritesPerformed: false, externalActionsPerformed: [] },
-    authority: { approval: false, audit: false, deployment: false, publication: false, execution: false, registryWrite: false, launch: false }
+    authority: { approval: false, audit: false, deployment: false, publication: false, execution: false, registryWrite: false, launch: false },
+    validation: { status: "VERIFIED", profile: "exact-commit-tree-clone-working-files-v1" }
   };
+}
+
+export function validateCustomTradableMaterializationReceipt(receipt, { repositoryRoot } = {}) {
+  const fail = (message) => { throw Object.assign(new Error(`PROJECT_MATERIALIZATION_RECEIPT_INVALID: ${message}`), { code: "PROJECT_MATERIALIZATION_RECEIPT_INVALID" }); };
+  if (receipt?.kind !== "custom-tradable-materialization-receipt" || receipt?.status !== "LOCAL_SOURCE_BINDING_VERIFIED_NOT_EXECUTED" || receipt?.validation?.status !== "VERIFIED") fail("identity or validation status is invalid");
+  const commit = git(repositoryRoot, ["rev-parse", "HEAD"]), tree = git(repositoryRoot, ["rev-parse", "HEAD^{tree}"]);
+  if (receipt?.source?.commit !== commit || receipt?.source?.tree !== tree) fail("source commit or tree does not match the emitted repository");
+  if (!Array.isArray(receipt?.repository?.files) || receipt.repository.inventorySha256 !== canonicalJsonSha256V2(receipt.repository.files)) fail("repository inventory binding is invalid");
+  try { verifyGitInventory(repositoryRoot, tree, receipt.repository.files); } catch (error) { fail(error.message); }
+  const plan = receipt.repository.files.find(({ path: filePath }) => filePath === planPath);
+  if (canonicalJsonV2(plan) !== canonicalJsonV2(receipt.plan)) fail("plan binding is invalid");
+  if (canonicalJsonV2(receipt.artifact) !== canonicalJsonV2({ path: receiptPath, tracked: false, ignored: true })) fail("receipt artifact boundary is invalid");
+  const expectedAuthority = { approval: false, audit: false, deployment: false, publication: false, execution: false, registryWrite: false, launch: false };
+  if (canonicalJsonV2(receipt.authority) !== canonicalJsonV2(expectedAuthority)) fail("authority boundary is invalid");
+  const receiptBytes = jsonBytes(receipt), receiptFile = path.join(repositoryRoot, receiptPath);
+  let observedReceipt;
+  try { observedReceipt = fs.readFileSync(receiptFile); } catch { fail("receipt file is missing"); }
+  if (!observedReceipt.equals(receiptBytes) || git(repositoryRoot, ["check-ignore", "--", receiptPath]) !== receiptPath || git(repositoryRoot, ["ls-files", "--", receiptPath]) !== "") fail("receipt file is not the exact ignored local artifact");
+  const workingInventory = [...receipt.repository.files, { path: receiptPath, sha256: sha256Bytes(receiptBytes), byteLength: receiptBytes.length, mode: "100644" }].sort((left, right) => comparePaths(left.path, right.path));
+  try { verifyWorkingInventory(repositoryRoot, workingInventory); } catch (error) { fail(error.message); }
+  return true;
 }
 
 function addAuthoredFile(files, filePath, bytes) {

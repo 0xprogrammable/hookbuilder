@@ -28,6 +28,8 @@ import {
   commandReceiptSchema, deterministicTradeReceipt, deterministicForgeOutput,
   deterministicRelevantTrace, disabledReleaseActions, writeFile, artifactRecord, git, sha256, slug
 } from "./project-compiler-fixture.mjs";
+import { validateCustomTradableMaterializationReceipt } from "../project-materialization-core.mjs";
+import { readCustomTradableSurface, revalidateCustomTradableSurface } from "../project-no-market-authoring-core.mjs";
 
 test("project materialize authors an arbitrary tradable Foundry hook without requiring a bundled profile", (t) => {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-custom-tradable-authoring-"));
@@ -513,8 +515,9 @@ test("custom tradable multi-surface profiles bind complete Mizu contract and app
     const surfaceConfig = readMultiSurfaceJson(path.join(surfaceOutput, "programmable-surface.json"));
     assert.equal(surfaceConfig.id, specification.id);
     assert.equal(surfaceConfig.kind, "programmable-custom-tradable-surface");
-    assert.equal(surfaceConfig.surfaceKind, specification.kind);
-    assert.equal(surfaceConfig.status, "SOURCE_TEST_CONFIG_AND_LOCK_BOUND");
+    assert.equal(surfaceConfig.layoutLabel, specification.id);
+    assert.equal(surfaceConfig.semanticValidationPerformed, false);
+    assert.equal(surfaceConfig.status, "SOURCE_TEST_CONFIG_AND_CALLER_LOCK_BYTES_BOUND");
     assert.ok(surfaceConfig.buildProfiles.some(({ id, status }) => id === "npm" && status === "recognized"));
     assert.ok(surfaceConfig.source.some(({ path: filePath }) => filePath.endsWith("/src/index.mjs")));
     assert.ok(surfaceConfig.tests.some(({ path: filePath }) => filePath.endsWith("/test/index.test.mjs")));
@@ -533,13 +536,36 @@ test("custom tradable multi-surface profiles bind complete Mizu contract and app
 
     const receiptPath = path.join(fixture.output, ".programmable/custom-tradable-materialization-receipt.v1.json");
     const receipt = readMultiSurfaceJson(receiptPath);
-    assert.equal(receipt.status, "SOURCE_TEST_CONFIG_AND_LOCK_BYTES_BOUND_NOT_EXECUTED");
+    assert.equal(receipt.status, "LOCAL_SOURCE_BINDING_VERIFIED_NOT_EXECUTED");
     assert.equal(receipt.projectProfile, specification.profile);
     assert.equal(receipt.plan.sha256, sha256Bytes(fs.readFileSync(planPath)));
+    assert.equal(receipt.source.commit, report.sourceCommit);
+    assert.equal(receipt.source.tree, report.sourceTree);
+    assert.equal(receipt.validation.status, "VERIFIED");
+    assert.equal(receipt.artifact.path, ".programmable/custom-tradable-materialization-receipt.v1.json");
+    assert.equal(receipt.artifact.tracked, false);
+    assert.equal(receipt.artifact.ignored, true);
+    assert.ok(receipt.repository.files.some(({ path: filePath }) => filePath === ".gitignore"));
+    assert.ok(receipt.repository.files.some(({ path: filePath }) => filePath === "foundry.toml"));
+    assert.ok(receipt.repository.files.some(({ path: filePath }) => filePath === "package-lock.json"));
+    assert.ok(receipt.repository.files.some(({ path: filePath }) => filePath === `surfaces/${specification.id}/programmable-surface.json`));
+    assert.deepEqual(git(fixture.output, ["ls-tree", "-r", "--name-only", "HEAD"]).split("\n").sort(), receipt.repository.files.map(({ path: filePath }) => filePath).sort());
+    const executable = receipt.repository.files.find(({ path: filePath }) => filePath === `surfaces/${specification.id}/bin/tool.sh`);
+    assert.equal(executable.mode, "100755");
+    assert.match(git(fixture.output, ["ls-tree", "HEAD", `surfaces/${specification.id}/bin/tool.sh`]), /^100755 blob /u);
+    assert.notEqual(fs.statSync(path.join(surfaceOutput, "bin/tool.sh")).mode & 0o111, 0);
     assert.equal(receipt.observations.commandsExecuted, false);
     assert.equal(receipt.observations.networkAccessed, false);
     assert.equal(receipt.authority.approval, false);
     assert.equal(report.receiptSha256, canonicalJsonSha256V2(receipt));
+    assert.equal(git(fixture.output, ["check-ignore", ".programmable/custom-tradable-materialization-receipt.v1.json"]), ".programmable/custom-tradable-materialization-receipt.v1.json");
+    assert.equal(git(fixture.output, ["ls-files", ".programmable/custom-tradable-materialization-receipt.v1.json"]), "");
+    assert.equal(validateCustomTradableMaterializationReceipt(receipt, { repositoryRoot: fixture.output }), true);
+    assert.throws(() => validateCustomTradableMaterializationReceipt({ ...receipt, source: { ...receipt.source, tree: "0".repeat(40) } }, { repositoryRoot: fixture.output }), /PROJECT_MATERIALIZATION_RECEIPT_INVALID.*tree/iu);
+    const receiptBytes = fs.readFileSync(receiptPath);
+    fs.appendFileSync(receiptPath, " ");
+    assert.throws(() => validateCustomTradableMaterializationReceipt(receipt, { repositoryRoot: fixture.output }), /PROJECT_MATERIALIZATION_RECEIPT_INVALID.*exact ignored local artifact/iu);
+    fs.writeFileSync(receiptPath, receiptBytes);
     assert.equal(git(fixture.output, ["status", "--porcelain=v1", "--untracked-files=all"]), "");
   }
 });
@@ -588,7 +614,7 @@ test("multi-surface materialization rejects missing, malformed, legacy-mixed, an
   fs.rmSync(path.join(fixture.surfaceRoot, "package-lock.json"));
   const missingLock = runMultiSurface(multiSurfaceMaterializeArgs(fixture, "foundry-web"));
   assert.equal(missingLock.status, 2, missingLock.stderr || missingLock.stdout);
-  assert.match(missingLock.stderr, /PROJECT_SURFACE_BUILD_PROFILE_UNRESOLVED.*deterministic lock/u);
+  assert.match(missingLock.stderr, /PROJECT_SURFACE_BUILD_PROFILE_UNRESOLVED.*caller-supplied lock/u);
   assert.equal(fs.existsSync(fixture.output), false);
 
   fs.writeFileSync(path.join(fixture.surfaceRoot, ".env"), "PRIVATE_KEY=must-not-enter-output\n");
@@ -598,13 +624,44 @@ test("multi-surface materialization rejects missing, malformed, legacy-mixed, an
   assert.equal(fs.existsSync(fixture.output), false);
 });
 
+test("multi-surface input rejects Git controls, component-level secret risks, and non-portable names", (t) => {
+  const fixture = createMultiSurfaceFixture(t, multiSurfaceProfiles[0]);
+  const rejectFile = (relativePath, expected) => {
+    const target = path.join(fixture.surfaceRoot, relativePath);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, "adversarial\n");
+    const result = runMultiSurface(multiSurfaceMaterializeArgs(fixture, "foundry-web"));
+    assert.equal(result.status, 2, result.stderr || result.stdout);
+    assert.match(result.stderr, expected);
+    assert.equal(fs.existsSync(fixture.output), false);
+    fs.rmSync(target);
+  };
+  rejectFile(".gitignore", /PROJECT_SURFACE_TREE_INVALID.*Git control/iu);
+  rejectFile("nested/.gitattributes", /PROJECT_SURFACE_TREE_INVALID.*Git control/iu);
+  rejectFile("src/.git", /PROJECT_SURFACE_TREE_INVALID.*Git control/iu);
+  rejectFile(".aws/credentials", /PROJECT_SURFACE_TREE_INVALID.*secret-risk/iu);
+  fs.rmSync(path.join(fixture.surfaceRoot, ".aws"), { recursive: true });
+  rejectFile("config/clientCredentials.json", /PROJECT_SURFACE_TREE_INVALID.*secret-risk/iu);
+  rejectFile("public/CON.txt", /PROJECT_SURFACE_TREE_INVALID.*portable ASCII/iu);
+});
+
+test("frozen multi-surface inventory detects input drift without rebuilding its profile model", (t) => {
+  const fixture = createMultiSurfaceFixture(t, multiSurfaceProfiles[1]);
+  const surface = readCustomTradableSurface({ projectProfile: "foundry-service", surfaceRoot: fixture.surfaceRoot });
+  assert.equal(revalidateCustomTradableSurface(surface), true);
+  fs.appendFileSync(path.join(fixture.surfaceRoot, "src/index.mjs"), "// changed after binding\n");
+  assert.throws(() => revalidateCustomTradableSurface(surface), /PROJECT_SURFACE_INPUT_CHANGED/u);
+});
+
 test("multi-surface output collisions fail closed and portable execute cannot run its authored commands", (t) => {
   const fixture = createMultiSurfaceFixture(t, multiSurfaceProfiles[2]);
   fs.mkdirSync(fixture.output);
+  fs.writeFileSync(path.join(fixture.output, "owner.txt"), "must survive\n");
   const collision = runMultiSurface(multiSurfaceMaterializeArgs(fixture, "foundry-game"));
   assert.equal(collision.status, 2, collision.stderr || collision.stdout);
   assert.match(collision.stderr, /PROJECT_OUTPUT_EXISTS.*new directory/u);
   assert.equal(fs.existsSync(fixture.marker), false);
+  assert.equal(fs.readFileSync(path.join(fixture.output, "owner.txt"), "utf8"), "must survive\n");
   fs.rmSync(fixture.output, { recursive: true, force: true });
 
   const written = runMultiSurface([...multiSurfaceMaterializeArgs(fixture, "foundry-game"), "--write"]);
@@ -629,6 +686,7 @@ function createMultiSurfaceFixture(t, { id }) {
   fs.mkdirSync(sourceRoot); fs.mkdirSync(testRoot);
   fs.mkdirSync(path.join(surfaceRoot, "src"), { recursive: true });
   fs.mkdirSync(path.join(surfaceRoot, "test"), { recursive: true });
+  fs.mkdirSync(path.join(surfaceRoot, "bin"), { recursive: true });
   fs.mkdirSync(path.join(surfaceRoot, "public", "nested"), { recursive: true });
   fs.mkdirSync(path.join(surfaceRoot, "public", "a", "b", "c", "d", "e"), { recursive: true });
   fs.writeFileSync(ideaPath, "Build Mizu as a canonical Uniswap v4 dynamic LP-fee hook with a complete application surface. Buys cost less than sells; fee pressure is size-sensitive and decays with recent volume.\n");
@@ -642,9 +700,13 @@ function createMultiSurfaceFixture(t, { id }) {
   fs.writeFileSync(path.join(surfaceRoot, "package-lock.json"), `${JSON.stringify(lockDocument, null, 2)}\n`);
   fs.writeFileSync(path.join(surfaceRoot, "src/index.mjs"), `import fs from "node:fs"; fs.writeFileSync(${JSON.stringify(marker)}, "surface-ran"); export const surface = ${JSON.stringify(id)};\n`);
   fs.writeFileSync(path.join(surfaceRoot, "test/index.test.mjs"), `import fs from "node:fs"; fs.writeFileSync(${JSON.stringify(marker)}, "test-ran"); throw new Error("candidate tests must remain inert");\n`);
+  fs.writeFileSync(path.join(surfaceRoot, "bin/tool.sh"), "#!/bin/sh\nexit 99\n", { mode: 0o755 });
+  fs.chmodSync(path.join(surfaceRoot, "bin/tool.sh"), 0o755);
   fs.writeFileSync(path.join(surfaceRoot, "public/nested/state.json"), "{\"network\":\"ethereum\"}\n");
+  fs.writeFileSync(path.join(surfaceRoot, "public/[literal].txt"), Buffer.from("literal\r\nbytes\r\n", "utf8"));
+  fs.writeFileSync(path.join(surfaceRoot, "--literal.txt"), "leading dash remains literal\n");
   fs.writeFileSync(path.join(surfaceRoot, "public/a/b/c/d/e/empty.dat"), "");
-  return { parent, ideaPath, sourceRoot, testRoot, surfaceRoot, output, marker, contractSource, contractTest, surfacePaths: ["package-lock.json", "package.json", "public/a/b/c/d/e/empty.dat", "public/nested/state.json", "src/index.mjs", "test/index.test.mjs"] };
+  return { parent, ideaPath, sourceRoot, testRoot, surfaceRoot, output, marker, contractSource, contractTest, surfacePaths: ["--literal.txt", "bin/tool.sh", "package-lock.json", "package.json", "public/[literal].txt", "public/a/b/c/d/e/empty.dat", "public/nested/state.json", "src/index.mjs", "test/index.test.mjs"] };
 }
 
 function multiSurfaceMaterializeArgs(fixture, projectProfile) {
