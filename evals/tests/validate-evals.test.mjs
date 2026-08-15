@@ -124,9 +124,9 @@ test('canonical eval suite passes deterministic structure validation', () => {
     forwardTestDecisionCaseCount: 3,
     dailySentinelPublicCaseCount: 5,
     dailySentinelPositiveTriggerCount: 5,
-    dailySentinelNegativeTriggerCount: 5,
+    dailySentinelNegativeTriggerCount: 6,
     dailySentinelQualification: 'STRUCTURE_AND_COVERAGE_ONLY',
-    dailySentinelSha256: '5221de36581d1d55915db8bae4c8088c9476c80c57462a30df0308cdc7152155',
+    dailySentinelSha256: '0b6a97b2ec1a938a6ff5fe2b30c92664b89e53d62de5b14bb6047b3916cace53',
     e2ePublicResponseCaseCount: 47,
     e2eSealedRepositoryEnvelopeCount: 24,
     e2eComparablePublicRepositoryCaseCount: 0,
@@ -148,7 +148,7 @@ test('daily sentinel reuses public cases and keeps balanced trigger coverage', (
   assert.equal(sentinel.runner, 'reuse-public-response-suite');
   assert.equal(sentinel.publicCaseIds.length, 5);
   assert.equal(sentinel.triggerPrompts.positive.length, 5);
-  assert.equal(sentinel.triggerPrompts.negative.length, 5);
+  assert.equal(sentinel.triggerPrompts.negative.length, 6);
   assert.equal(
     sentinel.triggerPrompts.positive.filter(({ prompt }) => /\bProgrammable\b/u.test(prompt)).length,
     1,
@@ -170,6 +170,10 @@ test('daily sentinel reuses public cases and keeps balanced trigger coverage', (
   assert.ok(
     sentinel.triggerPrompts.negative.some(({ prompt }) => /\bUniswap(?:[\s-]+)v4\b/iu.test(prompt) && /\b(?:brainstorm|ideen)\b/iu.test(prompt)),
     'an unbranded v4 brainstorming-only request must stay outside the skill',
+  );
+  assert.ok(
+    sentinel.triggerPrompts.negative.some(({ id }) => id === 'single-v4-bit-review-en'),
+    'a single v4 permission-bit review must stay outside complete-project delivery',
   );
 
   withTemporaryRepository(
@@ -210,7 +214,21 @@ test('daily sentinel reuses public cases and keeps balanced trigger coverage', (
     },
     (temporaryRoot) => expectInvalid(
       temporaryRoot,
-      /negative\[\d+\] mislabels an affirmative complete-project build as not activated/u,
+      /negative\[\d+\] mislabels affirmative complete-project delivery as not activated/u,
+    ),
+  );
+
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
+      const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
+      candidate.triggerPrompts.negative.find(({ id }) => id === 'single-v4-bit-review-en').prompt =
+        'Review this complete Uniswap v4 hook repository and report every concrete problem.';
+      fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /negative\[\d+\] mislabels affirmative complete-project delivery as not activated/u,
     ),
   );
 
@@ -313,6 +331,46 @@ test('delivery intent classification is bounded to each action clause', () => {
     {
       prompt: 'Brainstorm how to build the hook, then implement the complete Uniswap v4 project.',
       expected: ['build:BRAINSTORM_EMBEDDED', 'implement:AFFIRMED'],
+    },
+    {
+      prompt: 'Do not submit anything, instead build the complete Uniswap v4 project locally.',
+      expected: ['submit:NEGATED', 'build:AFFIRMED'],
+    },
+    {
+      prompt: 'Nicht einreichen, sondern baue das vollständige Uniswap-v4-Projekt lokal.',
+      expected: ['einreichen:NEGATED', 'baue:AFFIRMED'],
+    },
+    {
+      prompt: 'Explain the architecture, build the complete Uniswap v4 project locally.',
+      expected: ['build:AFFIRMED'],
+    },
+    {
+      prompt: 'Build nothing for this Uniswap v4 project.',
+      expected: ['build:NEGATED'],
+    },
+    {
+      prompt: 'Baue nichts für dieses Uniswap-v4-Projekt.',
+      expected: ['baue:NEGATED'],
+    },
+    {
+      prompt: 'I won’t build this Uniswap v4 project.',
+      expected: ['build:NEGATED'],
+    },
+    {
+      prompt: "I shouldn't implement this Uniswap v4 project.",
+      expected: ['implement:NEGATED'],
+    },
+    {
+      prompt: 'Without delay, build the complete Uniswap v4 project locally.',
+      expected: ['build:AFFIRMED'],
+    },
+    {
+      prompt: 'Ohne Verzögerung baue das vollständige Uniswap-v4-Projekt lokal.',
+      expected: ['baue:AFFIRMED'],
+    },
+    {
+      prompt: 'Build the complete Uniswap v4 project locally without submitting it.',
+      expected: ['build:AFFIRMED', 'submitting:NEGATED'],
     },
   ];
 

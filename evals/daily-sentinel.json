@@ -57,6 +57,12 @@
         "expectedActivation": "NOT_ACTIVATED"
       },
       {
+        "id": "single-v4-bit-review-en",
+        "language": "en",
+        "prompt": "Review this single Uniswap v4 permission bit and tell me whether it is enabled.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
         "id": "generic-contract-build",
         "language": "en",
         "prompt": "Write a small Solidity ERC20 contract with owner minting for my test project.",

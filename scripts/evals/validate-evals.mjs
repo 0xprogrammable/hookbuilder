@@ -126,12 +126,16 @@ const DELIVERY_ACTION_TOKEN = /^(?:build|builds|building|built|implement(?:s|ed|
 const TRIGGER_TOKEN = /[\p{L}\p{N}]+(?:'[\p{L}\p{N}]+)*|[.!?;,:]/gu;
 const STRONG_CLAUSE_BOUNDARIES = new Set([
   '.', '!', '?', ';', ':',
-  'aber', 'afterward', 'afterwards', 'anschließend', 'but', 'danach', 'dann', 'however', 'jedoch', 'sondern', 'then', 'yet',
+  'aber', 'afterward', 'afterwards', 'anschließend', 'but', 'danach', 'dann', 'however', 'instead', 'jedoch', 'sondern', 'stattdessen', 'then', 'yet',
 ]);
 const EMBEDDING_BOUNDARIES = new Set(['and', 'und']);
 const NEGATION_TOKENS = new Set([
-  "don't", 'dont', 'kein', 'keine', 'keinen', 'keiner', 'keines', 'never', 'nicht', 'nichts', 'nie', 'no', 'not', 'ohne', 'without',
+  "don't", 'dont', 'never', 'nicht', 'nichts', 'nie', 'not', "shouldn't", 'shouldnt', "won't", 'wont',
 ]);
+const SCOPED_NEGATION_PREPOSITIONS = new Set(['kein', 'keine', 'keinen', 'keiner', 'keines', 'no', 'ohne', 'without']);
+const SCOPED_NEGATION_FILLERS = new Set(['any', 'ever', 'jemals', 'zu']);
+const REVERSE_NEGATION_TOKENS = new Set(['nichts', 'nothing']);
+const COMPLETE_PROJECT_SCOPE_MARKER = /(?:\b(?:complete|end-to-end|full-stack|project|repo|repository)\b|\b(?:fertig|projekt|vollständig)(?:e|em|en|er|es)?\b)/iu;
 const DELIVERY_CONTEXT_TOKEN_LIMIT = 12;
 
 function normalizeTriggerPrompt(prompt) {
@@ -160,6 +164,24 @@ function includesMarker(tokens, pattern) {
   return tokens.some((token) => pattern.test(token));
 }
 
+function hasScopedNegation(tokens) {
+  if (tokens.some((token) => NEGATION_TOKENS.has(token))) return true;
+  const previous = tokens.at(-1);
+  if (SCOPED_NEGATION_PREPOSITIONS.has(previous)) return true;
+  const beforePrevious = tokens.at(-2);
+  return SCOPED_NEGATION_PREPOSITIONS.has(beforePrevious)
+    && SCOPED_NEGATION_FILLERS.has(previous);
+}
+
+function hasImmediateReverseNegation(tokens, actionIndex) {
+  for (let index = actionIndex + 1; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (STRONG_CLAUSE_BOUNDARIES.has(token) || token === ',') return false;
+    return REVERSE_NEGATION_TOKENS.has(token);
+  }
+  return false;
+}
+
 export function classifyCompleteProjectDeliveryActions(prompt) {
   // This guards the frozen structural corpus; it is not a model-level natural-language trigger judge.
   const tokens = tokenizeTriggerPrompt(prompt);
@@ -168,10 +190,12 @@ export function classifyCompleteProjectDeliveryActions(prompt) {
     if (!DELIVERY_ACTION_TOKEN.test(action)) continue;
     const clauseStart = boundedContextStart(tokens, index);
     const clauseContext = tokens.slice(clauseStart, index).filter((token) => !/^[.!?;,:]$/u.test(token));
-    const embeddingStart = boundedContextStart(tokens, index, EMBEDDING_BOUNDARIES);
+    const embeddingStart = tokens[index - 1] === ','
+      ? index
+      : boundedContextStart(tokens, index, EMBEDDING_BOUNDARIES);
     const embeddingContext = tokens.slice(embeddingStart, index).filter((token) => !/^[.!?;,:]$/u.test(token));
     let classification = 'AFFIRMED';
-    if (clauseContext.some((token) => NEGATION_TOKENS.has(token))) classification = 'NEGATED';
+    if (hasScopedNegation(clauseContext) || hasImmediateReverseNegation(tokens, index)) classification = 'NEGATED';
     else if (includesMarker(embeddingContext, EXPLANATION_MARKER)) classification = 'EXPLANATION_EMBEDDED';
     else if (includesMarker(embeddingContext, BRAINSTORM_MARKER)) classification = 'BRAINSTORM_EMBEDDED';
     actions.push({ action, classification });
@@ -189,6 +213,7 @@ function hasInScopeProjectSubject(prompt) {
 
 function hasAffirmativeInScopeProjectDeliveryIntent(prompt) {
   return hasInScopeProjectSubject(prompt)
+    && COMPLETE_PROJECT_SCOPE_MARKER.test(prompt)
     && classifyCompleteProjectDeliveryActions(prompt).hasAffirmative;
 }
 
@@ -502,7 +527,8 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
   const seenPrompts = new Set();
   for (const [group, expectedActivation] of [['positive', 'ACTIVATED'], ['negative', 'NOT_ACTIVATED']]) {
     const prompts = value.triggerPrompts?.[group];
-    addIssue(issues, Array.isArray(prompts) && prompts.length === 5, `daily sentinel: ${group} must contain exactly five prompts`);
+    const expectedCount = group === 'positive' ? 5 : 6;
+    addIssue(issues, Array.isArray(prompts) && prompts.length === expectedCount, `daily sentinel: ${group} must contain exactly ${expectedCount} prompts`);
     for (const [index, record] of (prompts ?? []).entries()) {
       const label = `daily sentinel: ${group}[${index}]`;
       addIssue(issues, exactKeys(record, DAILY_SENTINEL_TRIGGER_KEYS), `${label} keys drift`);
@@ -555,7 +581,7 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
     addIssue(
       issues,
       !hasAffirmativeInScopeProjectDeliveryIntent(prompt ?? ''),
-      `daily sentinel: negative[${index}] mislabels an affirmative complete-project build as not activated`,
+      `daily sentinel: negative[${index}] mislabels affirmative complete-project delivery as not activated`,
     );
   }
   addIssue(

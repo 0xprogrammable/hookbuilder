@@ -23,7 +23,7 @@ receipts remain adapter-reported until an external trust root verifies them; see
 [`journey-benchmark/README.md`](journey-benchmark/README.md).
 
 `daily-sentinel.json` is a lean selection manifest, not a fourth evaluation system. It reuses five existing public
-response case IDs and freezes five positive plus five adjacent negative trigger prompts. Local validation checks only
+response case IDs and freezes five positive plus six adjacent negative trigger prompts. Local validation checks only
 its shape, registration, language coverage, and activation labels; it does not run a model or establish trigger quality.
 
 Missing model credentials produce an explicit `MODEL_EVALS_SKIPPED` result and no result artifact. Release automation
