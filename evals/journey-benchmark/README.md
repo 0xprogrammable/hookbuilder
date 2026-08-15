@@ -19,8 +19,8 @@ Every subject runs the same case and repetition matrix. The scorecard records:
 - exact skill `SKILL.md` and full-directory inventory hashes before and after the run;
 - separately invoked per-turn activation decisions, activation-evidence class, activated references and their verified
   installed bytes;
-- intermediate response and workspace-state hashes carried into the next turn;
-- response, result inventory and optional Git commit/tree hashes;
+- intermediate response and full workspace-tree hashes carried into the next turn;
+- response, result inventory including permission modes and empty directories, and optional Git commit/tree hashes;
 - input/output/total tokens when available, tool calls, tool errors, retries, elapsed time and time to useful output;
 - reported local writes, network calls, external writes and authority requests;
 - the sum of material owner decisions across every turn, so a multi-turn run cannot reset its budget;
@@ -31,7 +31,8 @@ The subject sees only the current public user turn, prior response/state receipt
 and a case-specific deterministic workspace. Existing-repository repair, upgrade, review and submission cases receive
 the pinned non-empty v1 fixture; all other cases start empty. The subject does not receive the expected activation
 decision, outcome, behaviors or rubric. The judge receives those fields only after the final subject turn and cannot
-change a subject request, result receipt or workspace without failing the run.
+change a subject request/result's content or permission mode, or the workspace's files, modes or directory topology,
+without failing the run.
 
 Adapter reports are not a trusted host trace. Even a successful provider-backed scorecard remains
 `PROVIDER_BACKED_ADAPTER_REPORTED_UNVERIFIED` until an external trust root authenticates model identity, activation,
@@ -53,8 +54,8 @@ Create a private configuration file outside the repository. Do not put credentia
 adapter executable must be an absolute path and accept harness-appended `--request ABSOLUTE_JSON --output
 ABSOLUTE_NEW_JSON` arguments. Names in `environmentAllowlist` are treated as provider secrets: their values are passed
 only in the trusted wrapper process environment and never serialized into request, result or scorecard JSON. Persisted
-requests contain bounded names, a name-list digest and `OUT_OF_BAND_REDACTED`; a detected value in the result bundle
-fails closed and removes that newly created bundle.
+requests contain bounded names, a name-list digest and `OUT_OF_BAND_REDACTED`; a detected value in a result-bundle
+path, regular file or symlink target fails closed and removes that newly created bundle.
 
 ```json
 {

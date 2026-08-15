@@ -173,11 +173,21 @@ function subjectResult(request) {
 }
 
 function judgeResult(request) {
-  if (process.env.PROGRAMMABLE_FAKE_BENCHMARK_MODE === 'judge-mutation') {
+  const mode = process.env.PROGRAMMABLE_FAKE_BENCHMARK_MODE;
+  if (mode === 'judge-mutation') {
     for (const name of fs.readdirSync(process.cwd()).filter((entry) => /^subject(?:-turn-\d+)?-result\.json$/u.test(entry))) {
       fs.appendFileSync(path.join(process.cwd(), name), '\n');
     }
     fs.writeFileSync(path.join(process.env.PROGRAMMABLE_BENCHMARK_WORKSPACE, 'judge-created.txt'), 'mutation\n');
+  } else if (mode === 'judge-chmod-mutation') {
+    const [subjectResultName] = fs.readdirSync(process.cwd()).filter((entry) => /^subject(?:-turn-\d+)?-result\.json$/u.test(entry));
+    fs.chmodSync(path.join(process.cwd(), subjectResultName), 0o640);
+    fs.chmodSync(process.env.PROGRAMMABLE_BENCHMARK_WORKSPACE, 0o750);
+    const workspaceEntries = fs.readdirSync(process.env.PROGRAMMABLE_BENCHMARK_WORKSPACE, { withFileTypes: true });
+    const workspaceFile = workspaceEntries.find((entry) => entry.isFile());
+    if (workspaceFile) fs.chmodSync(path.join(process.env.PROGRAMMABLE_BENCHMARK_WORKSPACE, workspaceFile.name), 0o640);
+  } else if (mode === 'judge-empty-directory-mutation') {
+    fs.mkdirSync(path.join(process.env.PROGRAMMABLE_BENCHMARK_WORKSPACE, 'judge-created-empty-directory'));
   }
   return {
     schemaVersion: '1.0.0',

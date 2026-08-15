@@ -16,6 +16,7 @@ import {
   PINNED_V1_CORPUS_SHA256,
   PINNED_V2_CORPUS_SHA256,
   PINNED_FAKE_ADAPTER_SHA256,
+  assertSecretValuesAbsent,
   canonicalJson,
   inventoryDirectory,
   loadFrozenCorpus,
@@ -110,7 +111,7 @@ test('frozen public journey corpus covers the exact complaint and required neigh
   const authority = JSON.parse(fs.readFileSync(path.join(REPOSITORY_ROOT, CORPUS_VERSION_AUTHORITY_RELATIVE_PATH), 'utf8'));
   assert.equal(authority.versions[0].sha256, PINNED_V1_CORPUS_SHA256);
   assert.equal(authority.versions[1].sha256, PINNED_V2_CORPUS_SHA256);
-  assert.equal(PINNED_FAKE_ADAPTER_SHA256, '00ef7c0febf46f404e591cf4d9d47e40e113ca70651e2688183756d27bcb254e');
+  assert.equal(PINNED_FAKE_ADAPTER_SHA256, '64a9e2588c3633b14ce09cf9182bf10e66dd3cbe817ba011e5019fea3a09d59e');
   assert.equal(sha256(fs.readFileSync(FAKE_ADAPTER)), PINNED_FAKE_ADAPTER_SHA256);
 });
 
@@ -207,6 +208,8 @@ test('fake adapters exercise the complete comparison path without becoming model
   assert.equal(result.scorecard.runs.length, 54);
   assert.ok(result.scorecard.runs.every(({ harnessStatus }) => harnessStatus === 'COMPLETED'));
   assert.ok(result.scorecard.runs.every(({ gates }) => Object.values(gates).every(Boolean)));
+  assert.ok(result.scorecard.runs.every(({ resultInventory }) => /^[0-9a-f]{64}$/u.test(resultInventory.treeSha256)));
+  assert.ok(result.scorecard.runs.every(({ resultInventory }) => resultInventory.tree[0].path === '.'));
   assert.ok(result.scorecard.subjects.every(({ skill }) => skill.unchanged));
   assert.equal(result.scorecard.comparisons.length, 1);
   assert.equal(result.scorecard.comparisons[0].comparedSubjectId, 'v0-10-candidate');
@@ -245,9 +248,12 @@ test('fake adapters exercise the complete comparison path without becoming model
   assert.equal(mizuRequests[1].history.length, 1);
   assert.match(mizuRequests[1].history[0].assistantResponseSha256, /^[0-9a-f]{64}$/u);
   assert.match(mizuRequests[1].history[0].workspaceInventorySha256, /^[0-9a-f]{64}$/u);
+  assert.match(mizuRequests[1].history[0].workspaceTreeSha256, /^[0-9a-f]{64}$/u);
   assert.equal(mizuRequests[1].history[0].assistantResponseSha256, mizu.subject.turns[0].responseSha256);
   assert.equal(mizuRequests[1].history[0].workspaceInventorySha256, mizu.subject.turns[0].workspaceInventorySha256);
+  assert.equal(mizuRequests[1].history[0].workspaceTreeSha256, mizu.subject.turns[0].workspaceTreeSha256);
   assert.notEqual(mizu.subject.turns[0].workspaceInventorySha256, mizu.subject.turns[1].workspaceInventorySha256);
+  assert.notEqual(mizu.subject.turns[0].workspaceTreeSha256, mizu.subject.turns[1].workspaceTreeSha256);
   assert.notEqual(mizu.subject.turns[0].provider.invocationId, mizu.subject.turns[1].provider.invocationId);
   const rawSubjectRequest = mizuRequests[1];
   assert.match(rawSubjectRequest.caseId, /^case-[0-9a-f]{24}$/u);
@@ -456,19 +462,24 @@ process.exit(child.status ?? 1);
   }
 });
 
-test('judge mutation of subject receipts or workspace fails the run', async (t) => {
-  const root = temporaryDirectory(t);
-  const configPath = path.join(root, 'config.json');
-  const outputPath = path.join(root, 'result-bundle');
-  const config = fakeConfig({ environmentAllowlist: ['PROGRAMMABLE_FAKE_BENCHMARK_MODE'] });
-  writeJson(configPath, config);
-  process.env.PROGRAMMABLE_FAKE_BENCHMARK_MODE = 'judge-mutation';
-  try {
-    const result = await runJourneyBenchmark({ configPath, outputPath, repositoryRoot: REPOSITORY_ROOT });
-    assert.equal(result.scorecard.status, 'BENCHMARK_FAILED');
-    assert.ok(result.scorecard.runs.every(({ harnessStatus, error }) => harnessStatus === 'ERROR' && error.code === 'JUDGE_MUTATION'));
-  } finally {
-    delete process.env.PROGRAMMABLE_FAKE_BENCHMARK_MODE;
+test('judge content, mode, and empty-directory mutations of frozen subject evidence fail the run', async (t) => {
+  for (const mode of ['judge-mutation', 'judge-chmod-mutation', 'judge-empty-directory-mutation']) {
+    const root = temporaryDirectory(t);
+    const configPath = path.join(root, 'config.json');
+    const outputPath = path.join(root, 'result-bundle');
+    const config = fakeConfig({ environmentAllowlist: ['PROGRAMMABLE_FAKE_BENCHMARK_MODE'] });
+    writeJson(configPath, config);
+    process.env.PROGRAMMABLE_FAKE_BENCHMARK_MODE = mode;
+    try {
+      const result = await runJourneyBenchmark({ configPath, outputPath, repositoryRoot: REPOSITORY_ROOT });
+      assert.equal(result.scorecard.status, 'BENCHMARK_FAILED', mode);
+      assert.ok(
+        result.scorecard.runs.every(({ harnessStatus, error }) => harnessStatus === 'ERROR' && error.code === 'JUDGE_MUTATION'),
+        mode,
+      );
+    } finally {
+      delete process.env.PROGRAMMABLE_FAKE_BENCHMARK_MODE;
+    }
   }
 });
 
@@ -509,6 +520,30 @@ test('inventories are deterministic and reject symlinked result evidence', (t) =
     () => inventoryDirectory(root),
     (error) => error instanceof JourneyBenchmarkError && error.code === 'INVENTORY_SYMLINK',
   );
+});
+
+test('secret scanning rejects secret bytes persisted in a dangling symlink target', (t) => {
+  const root = temporaryDirectory(t);
+  const secretName = 'PROGRAMMABLE_PROVIDER_TOKEN';
+  const secretValue = 'synthetic-secret-in-link-target';
+  fs.symlinkSync(`../${secretValue}`, path.join(root, 'innocent-link-name'));
+  assert.throws(
+    () => assertSecretValuesAbsent(root, { [secretName]: secretValue }),
+    (error) => error instanceof JourneyBenchmarkError && error.code === 'SECRET_PERSISTENCE_DETECTED',
+  );
+});
+
+test('evidence inventories bind permission modes and empty directories', (t) => {
+  const root = temporaryDirectory(t);
+  const filePath = path.join(root, 'result.json');
+  fs.writeFileSync(filePath, '{}\n', { mode: 0o600 });
+  const initial = inventoryDirectory(root);
+  fs.mkdirSync(path.join(root, 'empty-proof-directory'), { mode: 0o700 });
+  const withEmptyDirectory = inventoryDirectory(root);
+  assert.notEqual(withEmptyDirectory.treeSha256, initial.treeSha256);
+  fs.chmodSync(filePath, 0o640);
+  const withModeMutation = inventoryDirectory(root);
+  assert.notEqual(withModeMutation.treeSha256, withEmptyDirectory.treeSha256);
 });
 
 test('fake mode rejects every noncanonical adapter command before execution', async (t) => {

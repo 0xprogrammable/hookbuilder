@@ -20,7 +20,7 @@ export const ACTIVE_CORPUS_ID = 'programmable-community-journeys-v2';
 export const PINNED_V1_CORPUS_SHA256 = '81f27c3ad1acd1ea676ba982fe1e08a361e3d05f941a71c5a0e526db6fd7fe3f';
 export const PINNED_V2_CORPUS_SHA256 = 'f95f4b7cc154814e7f47deae9d96b0145022cbc1742033c17566ec2bc1eda042';
 export const CANONICAL_FAKE_ADAPTER_RELATIVE_PATH = 'evals/tests/fixtures/fake-journey-benchmark-adapter.mjs';
-export const PINNED_FAKE_ADAPTER_SHA256 = '00ef7c0febf46f404e591cf4d9d47e40e113ca70651e2688183756d27bcb254e';
+export const PINNED_FAKE_ADAPTER_SHA256 = '64a9e2588c3633b14ce09cf9182bf10e66dd3cbe817ba011e5019fea3a09d59e';
 export const BENCHMARK_SCHEMA_VERSION = '1.0.0';
 
 const MAX_CAPTURE_BYTES = 4 * 1024 * 1024;
@@ -461,7 +461,11 @@ export function loadFrozenCorpus({ repositoryRoot = DEFAULT_REPOSITORY_ROOT } = 
   };
 }
 
-function walkInventory(root, relativeDirectory, rows, totals) {
+function permissionMode(stat) {
+  return stat.mode & 0o7777;
+}
+
+function walkInventory(root, relativeDirectory, rows, tree, totals) {
   const absoluteDirectory = path.join(root, relativeDirectory);
   const entries = fs.readdirSync(absoluteDirectory, { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name));
   for (const entry of entries) {
@@ -471,13 +475,16 @@ function walkInventory(root, relativeDirectory, rows, totals) {
     const stat = fs.lstatSync(absolutePath);
     if (stat.isSymbolicLink()) fail('INVENTORY_SYMLINK', `symlink is forbidden in benchmark inventory: ${normalizedPath}`);
     if (stat.isDirectory()) {
-      walkInventory(root, relativePath, rows, totals);
+      tree.push({ path: normalizedPath, type: 'directory', mode: permissionMode(stat) });
+      walkInventory(root, relativePath, rows, tree, totals);
     } else if (stat.isFile()) {
       totals.files += 1;
       totals.bytes += stat.size;
       if (totals.files > MAX_RESULT_FILES) fail('INVENTORY_LIMIT', `inventory exceeds ${MAX_RESULT_FILES} files`);
       if (totals.bytes > MAX_RESULT_BYTES) fail('INVENTORY_LIMIT', `inventory exceeds ${MAX_RESULT_BYTES} bytes`);
-      rows.push({ path: normalizedPath, bytes: stat.size, sha256: sha256(fs.readFileSync(absolutePath)) });
+      const file = { path: normalizedPath, bytes: stat.size, sha256: sha256(fs.readFileSync(absolutePath)) };
+      rows.push(file);
+      tree.push({ ...file, type: 'file', mode: permissionMode(stat) });
     } else {
       fail('INVENTORY_SPECIAL_FILE', `special file is forbidden in benchmark inventory: ${normalizedPath}`);
     }
@@ -489,13 +496,16 @@ export function inventoryDirectory(root) {
   const stat = fs.lstatSync(absoluteRoot);
   if (!stat.isDirectory() || stat.isSymbolicLink()) fail('INVENTORY_ROOT_INVALID', 'inventory root must be a real directory');
   const files = [];
+  const tree = [{ path: '.', type: 'directory', mode: permissionMode(stat) }];
   const totals = { files: 0, bytes: 0 };
-  walkInventory(absoluteRoot, '', files, totals);
+  walkInventory(absoluteRoot, '', files, tree, totals);
   return {
     files,
     fileCount: totals.files,
     totalBytes: totals.bytes,
     inventorySha256: sha256(Buffer.from(canonicalJson(files), 'utf8')),
+    tree,
+    treeSha256: sha256(Buffer.from(canonicalJson(tree), 'utf8')),
   };
 }
 
@@ -669,7 +679,7 @@ function providerSecretEnvironment(allowlist) {
   return secrets;
 }
 
-function assertSecretValuesAbsent(root, secretEnvironment) {
+export function assertSecretValuesAbsent(root, secretEnvironment) {
   const secrets = Object.entries(secretEnvironment).map(([name, value]) => ({ name, bytes: Buffer.from(value, 'utf8') }));
   if (secrets.length === 0 || !fs.existsSync(root)) return;
   const visit = (directory) => {
@@ -679,7 +689,12 @@ function assertSecretValuesAbsent(root, secretEnvironment) {
       const pathMatch = secrets.find(({ bytes: secret }) => Buffer.from(relativePath, 'utf8').includes(secret));
       if (pathMatch) fail('SECRET_PERSISTENCE_DETECTED', `provider secret value was used in a result-bundle path`, { name: pathMatch.name });
       const stat = fs.lstatSync(filePath);
-      if (stat.isSymbolicLink()) continue;
+      if (stat.isSymbolicLink()) {
+        const linkTarget = fs.readlinkSync(filePath, { encoding: 'buffer' });
+        const match = secrets.find(({ bytes: secret }) => linkTarget.includes(secret));
+        if (match) fail('SECRET_PERSISTENCE_DETECTED', `provider secret value was written to a result-bundle symlink target by ${relativePath}`, { name: match.name });
+        continue;
+      }
       if (stat.isDirectory()) {
         visit(filePath);
       } else if (stat.isFile()) {
@@ -708,11 +723,18 @@ function parseAdapterOutput(filePath, label) {
   return { value, sha256: sha256(Buffer.from(raw, 'utf8')), bytes: Buffer.byteLength(raw) };
 }
 
-function assertFileUnchanged(filePath, expectedSha256, label) {
+function fileIdentity(filePath, label) {
   const stat = fs.lstatSync(filePath);
   if (!stat.isFile() || stat.isSymbolicLink()) fail('REQUEST_MUTATED', `${label} is no longer a real file`);
-  const actualSha256 = sha256(fs.readFileSync(filePath));
-  if (actualSha256 !== expectedSha256) fail('REQUEST_MUTATED', `${label} changed during adapter execution`);
+  const bytes = fs.readFileSync(filePath);
+  return { bytes: bytes.length, mode: permissionMode(stat), sha256: sha256(bytes) };
+}
+
+function assertFileUnchanged(filePath, expectedIdentity, label) {
+  const actualIdentity = fileIdentity(filePath, label);
+  if (canonicalJson(actualIdentity) !== canonicalJson(expectedIdentity)) {
+    fail('REQUEST_MUTATED', `${label} content or permission mode changed during adapter execution`);
+  }
 }
 
 function runAdapter(argv, requestPath, outputPath, options) {
@@ -1005,14 +1027,19 @@ async function mapWithConcurrency(items, concurrency, worker) {
 }
 
 function receiptRecord(relativePath, absolutePath) {
-  const bytes = fs.readFileSync(absolutePath);
-  return { path: relativePath.split(path.sep).join('/'), bytes: bytes.length, sha256: sha256(bytes) };
+  return { path: relativePath.split(path.sep).join('/'), ...fileIdentity(absolutePath, relativePath) };
 }
 
 function materializeInputFixture(workspace, fixture) {
   if (!fixture) {
     const inventory = inventoryDirectory(workspace);
-    return { id: null, fileCount: 0, totalBytes: 0, inventorySha256: inventory.inventorySha256 };
+    return {
+      id: null,
+      fileCount: 0,
+      totalBytes: 0,
+      inventorySha256: inventory.inventorySha256,
+      treeSha256: inventory.treeSha256,
+    };
   }
   for (const file of fixture.inventory.files) {
     const sourcePath = path.join(fixture.root, file.path);
@@ -1030,6 +1057,7 @@ function materializeInputFixture(workspace, fixture) {
     fileCount: inventory.fileCount,
     totalBytes: inventory.totalBytes,
     inventorySha256: inventory.inventorySha256,
+    treeSha256: inventory.treeSha256,
   };
 }
 
@@ -1149,7 +1177,7 @@ async function executeRun({
       const requestPath = path.join(runRoot, `subject-turn-${turnLabel}-request.json`);
       const subjectOutputPath = path.join(runRoot, `subject-turn-${turnLabel}-result.json`);
       writeNewJson(requestPath, request);
-      const requestFileSha256 = sha256(fs.readFileSync(requestPath));
+      const requestFileIdentity = fileIdentity(requestPath, `subject request turn ${turnIndex}`);
       const subjectProcess = await runAdapter(subject.adapterArgv, requestPath, subjectOutputPath, {
         cwd: runRoot,
         env: restrictedEnvironment(config.evidenceMode === 'FAKE_ADAPTER_TEST' ? config.environmentAllowlist : [], {
@@ -1170,7 +1198,7 @@ async function executeRun({
       if (subjectProcess.timedOut) fail('SUBJECT_TIMEOUT', `subject adapter turn ${turnIndex} timed out after ${config.timeoutMs}ms`);
       if (subjectProcess.captureExceeded) fail('SUBJECT_CAPTURE_LIMIT', `subject adapter turn ${turnIndex} stdout or stderr exceeded the capture limit`);
       if (subjectProcess.exitCode !== 0) fail('SUBJECT_ADAPTER_FAILED', `subject adapter turn ${turnIndex} exited ${subjectProcess.exitCode}`, { signal: subjectProcess.signal });
-      assertFileUnchanged(requestPath, requestFileSha256, `subject request turn ${turnIndex}`);
+      assertFileUnchanged(requestPath, requestFileIdentity, `subject request turn ${turnIndex}`);
       assertSecretValuesAbsent(runRoot, secretEnvironment);
       if (!fs.existsSync(subjectOutputPath)) fail('SUBJECT_RESULT_MISSING', `subject adapter turn ${turnIndex} did not create its result file`);
       const parsedSubject = parseAdapterOutput(subjectOutputPath, `subject adapter turn ${turnIndex} result`);
@@ -1184,16 +1212,16 @@ async function executeRun({
       });
       const workspaceInventory = inventoryDirectory(workspace);
       const responseSha256 = sha256(Buffer.from(subjectResult.result.responseText, 'utf8'));
-      const subjectResultFileSha256 = sha256(fs.readFileSync(subjectOutputPath));
+      const subjectResultFileIdentity = fileIdentity(subjectOutputPath, `subject result turn ${turnIndex}`);
       subjectTurns.push({
         turn: turnIndex,
         message,
         requestSha256,
         requestPath,
-        requestFileSha256,
+        requestFileIdentity,
         result: subjectResult,
         resultPath: subjectOutputPath,
-        resultFileSha256: subjectResultFileSha256,
+        resultFileIdentity: subjectResultFileIdentity,
         resultReceipt: receiptRecord(path.relative(outputRoot, subjectOutputPath), subjectOutputPath),
         responseSha256,
         workspaceInventory,
@@ -1205,6 +1233,7 @@ async function executeRun({
         assistantResponseText: subjectResult.result.responseText,
         assistantResponseSha256: responseSha256,
         workspaceInventorySha256: workspaceInventory.inventorySha256,
+        workspaceTreeSha256: workspaceInventory.treeSha256,
         resultOutcome: subjectResult.result.outcome,
       });
     }
@@ -1239,6 +1268,7 @@ async function executeRun({
           responseSha256: turn.responseSha256,
           resultOutcome: turn.result.result.outcome,
           workspaceInventorySha256: turn.workspaceInventory.inventorySha256,
+          workspaceTreeSha256: turn.workspaceInventory.treeSha256,
           activation: turn.result.activation,
           provider: turn.result.provider,
         })),
@@ -1251,7 +1281,7 @@ async function executeRun({
     const judgeRequestPath = path.join(runRoot, 'judge-request.json');
     const judgeOutputPath = path.join(runRoot, 'judge-result.json');
     writeNewJson(judgeRequestPath, judgeRequest);
-    const judgeRequestFileSha256 = sha256(fs.readFileSync(judgeRequestPath));
+    const judgeRequestFileIdentity = fileIdentity(judgeRequestPath, 'judge request');
     const judgeProcess = await runAdapter(config.judge.adapterArgv, judgeRequestPath, judgeOutputPath, {
       cwd: runRoot,
       env: restrictedEnvironment(config.evidenceMode === 'FAKE_ADAPTER_TEST' ? config.environmentAllowlist : [], {
@@ -1269,12 +1299,12 @@ async function executeRun({
     if (judgeProcess.timedOut) fail('JUDGE_TIMEOUT', `judge adapter timed out after ${config.timeoutMs}ms`);
     if (judgeProcess.captureExceeded) fail('JUDGE_CAPTURE_LIMIT', 'judge adapter stdout or stderr exceeded the capture limit');
     if (judgeProcess.exitCode !== 0) fail('JUDGE_ADAPTER_FAILED', `judge adapter exited ${judgeProcess.exitCode}`, { signal: judgeProcess.signal });
-    assertFileUnchanged(judgeRequestPath, judgeRequestFileSha256, 'judge request');
+    assertFileUnchanged(judgeRequestPath, judgeRequestFileIdentity, 'judge request');
     assertSecretValuesAbsent(runRoot, secretEnvironment);
     try {
       for (const turn of subjectTurns) {
-        assertFileUnchanged(turn.requestPath, turn.requestFileSha256, `subject request turn ${turn.turn}`);
-        assertFileUnchanged(turn.resultPath, turn.resultFileSha256, `subject result turn ${turn.turn}`);
+        assertFileUnchanged(turn.requestPath, turn.requestFileIdentity, `subject request turn ${turn.turn}`);
+        assertFileUnchanged(turn.resultPath, turn.resultFileIdentity, `subject result turn ${turn.turn}`);
       }
       const postJudgeInventory = inventoryDirectory(workspace);
       const postJudgeRepository = gitMetadata(workspace);
@@ -1364,6 +1394,7 @@ async function executeRun({
           requestSha256: turn.requestSha256,
           responseSha256: turn.responseSha256,
           workspaceInventorySha256: turn.workspaceInventory.inventorySha256,
+          workspaceTreeSha256: turn.workspaceInventory.treeSha256,
           activation: turn.result.activation,
           provider: turn.result.provider,
           result: {
@@ -1515,9 +1546,10 @@ export async function runJourneyBenchmark({
         path: subject.skillPath,
         skillMdSha256: before.skillMdSha256,
         inventorySha256: before.inventorySha256,
+        treeSha256: before.treeSha256,
         fileCount: before.fileCount,
         totalBytes: before.totalBytes,
-        unchanged: before.inventorySha256 === after.inventorySha256,
+        unchanged: before.treeSha256 === after.treeSha256,
       },
     };
   });
