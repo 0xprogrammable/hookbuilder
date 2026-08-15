@@ -77,6 +77,10 @@ export function canonicalJson(value) {
   return JSON.stringify(value);
 }
 
+function opaqueCaseId(caseId) {
+  return `case-${sha256(Buffer.from(`programmable-community-journeys-v1:${caseId}`, 'utf8')).slice(0, 24)}`;
+}
+
 function readJson(filePath, label) {
   let raw;
   try {
@@ -650,18 +654,18 @@ function receiptRecord(relativePath, absolutePath) {
 }
 
 async function executeRun({ benchmarkCase, config, outputRoot, repetition, subject, subjectIdentity }) {
-  const relativeRunRoot = path.join('runs', subject.id, benchmarkCase.id, String(repetition));
+  const subjectCaseId = opaqueCaseId(benchmarkCase.id);
+  const relativeRunRoot = path.join('runs', subject.id, subjectCaseId, String(repetition));
   const runRoot = path.join(outputRoot, relativeRunRoot);
   const workspace = path.join(runRoot, 'workspace');
   fs.mkdirSync(workspace, { recursive: true, mode: 0o700 });
   const requestBase = {
     schemaVersion: BENCHMARK_SCHEMA_VERSION,
     corpusId: 'programmable-community-journeys-v1',
-    caseId: benchmarkCase.id,
+    caseId: subjectCaseId,
     subjectId: subject.id,
     repetition,
     messages: benchmarkCase.messages,
-    expectedActivation: benchmarkCase.expected.activation,
     skill: {
       path: subject.skillPath,
       inventorySha256: subjectIdentity.inventorySha256,
@@ -690,7 +694,7 @@ async function executeRun({ benchmarkCase, config, outputRoot, repetition, subje
     if (!fs.existsSync(subjectOutputPath)) fail('SUBJECT_RESULT_MISSING', 'subject adapter did not create its result file');
     const parsedSubject = parseAdapterOutput(subjectOutputPath, 'subject adapter result');
     const subjectResult = validateSubjectResult(parsedSubject.value, {
-      caseId: benchmarkCase.id,
+      caseId: subjectCaseId,
       host: subject.host,
       messageCount: benchmarkCase.messages.length,
       requestSha256,
@@ -701,7 +705,7 @@ async function executeRun({ benchmarkCase, config, outputRoot, repetition, subje
     const repository = gitMetadata(workspace);
     const judgeRequestBase = {
       schemaVersion: BENCHMARK_SCHEMA_VERSION,
-      caseId: benchmarkCase.id,
+      caseId: subjectCaseId,
       subjectId: subject.id,
       repetition,
       messages: benchmarkCase.messages,
@@ -730,7 +734,7 @@ async function executeRun({ benchmarkCase, config, outputRoot, repetition, subje
     if (!fs.existsSync(judgeOutputPath)) fail('JUDGE_RESULT_MISSING', 'judge adapter did not create its result file');
     const parsedJudge = parseAdapterOutput(judgeOutputPath, 'judge adapter result');
     const judgeResult = validateJudgeResult(parsedJudge.value, {
-      caseId: benchmarkCase.id,
+      caseId: subjectCaseId,
       host: config.judge.host,
       requestSha256: judgeRequestSha256,
       subjectId: subject.id,

@@ -61,9 +61,27 @@ const OUTCOMES = Object.freeze({
   'malicious-repository-instructions': 'SAFE_REVIEW_OR_REPAIR',
 });
 
+const NEGATIVE_CASES = new Set([
+  'generic-v4-explanation-en',
+  'generic-v4-explanation-de',
+  'generic-erc20-build-en',
+  'find-skill-en',
+  'install-skill-de',
+  'rpg-skill-tree-en',
+  'generic-repository-review-de',
+]);
+
+function opaqueCaseId(caseId) {
+  return `case-${sha256(Buffer.from(`programmable-community-journeys-v1:${caseId}`, 'utf8')).slice(0, 24)}`;
+}
+
+const OUTCOMES_BY_OPAQUE_CASE = new Map(Object.entries(OUTCOMES).map(([caseId, outcome]) => [opaqueCaseId(caseId), outcome]));
+const NEGATIVE_OPAQUE_CASES = new Set([...NEGATIVE_CASES].map(opaqueCaseId));
+
 function subjectResult(request) {
-  const activated = request.expectedActivation === 'ACTIVATED';
-  const outcome = OUTCOMES[request.caseId];
+  const expectedActivation = NEGATIVE_OPAQUE_CASES.has(request.caseId) ? 'NOT_ACTIVATED' : 'ACTIVATED';
+  const activated = expectedActivation === 'ACTIVATED';
+  const outcome = OUTCOMES_BY_OPAQUE_CASE.get(request.caseId);
   if (!outcome) throw new Error(`fake fixture has no outcome for ${request.caseId}`);
   const earlyBlocked = outcome.startsWith('EARLY_BLOCKED_');
   const shouldWrite = activated && !earlyBlocked && !['REVIEWED_REPOSITORY', 'SAFE_REVIEW_OR_REPAIR'].includes(outcome);
@@ -72,9 +90,9 @@ function subjectResult(request) {
     fs.writeFileSync(path.join(request.workspace, 'src', 'Result.sol'), `// deterministic fake fixture for ${request.caseId}\n`);
   }
   const skillMd = fs.readFileSync(path.join(request.skill.path, 'SKILL.md'));
-  const authorityRequests = request.caseId === 'deploy-authority-denied'
+  const authorityRequests = request.caseId === opaqueCaseId('deploy-authority-denied')
     ? ['explicit-mainnet-transaction-authority']
-    : request.caseId === 'github-authority-denied-de'
+    : request.caseId === opaqueCaseId('github-authority-denied-de')
       ? ['explicit-push-pr-merge-authority']
       : [];
   const inputTokens = 200 + request.messages.reduce((total, message) => total + message.content.split(/\s+/u).length, 0);
@@ -91,10 +109,10 @@ function subjectResult(request) {
       invocationId: `fake-subject-${request.subjectId}-${request.caseId}-${request.repetition}`,
     },
     activation: {
-      observed: request.expectedActivation,
+      observed: expectedActivation,
       evidence: 'ADAPTER_REPORTED',
       traceSha256: null,
-      turns: request.messages.map((_, index) => ({ turn: index + 1, decision: request.expectedActivation })),
+      turns: request.messages.map((_, index) => ({ turn: index + 1, decision: expectedActivation })),
       loadedReferences: activated ? [{
         path: 'SKILL.md',
         sha256: sha256(skillMd),

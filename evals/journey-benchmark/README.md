@@ -21,9 +21,9 @@ Every subject runs the same case and repetition matrix. The scorecard records:
 - an independent judge verdict with four bounded human-readable score dimensions;
 - candidate or competitor deltas against the frozen baseline for correctness and efficiency metrics.
 
-The subject sees only the public messages, expected activation decision, frozen skill identity and an empty workspace.
-It does not receive the expected outcome, behaviors or rubric. The judge receives those fields only after the subject
-has finished.
+The subject sees only the public messages, run identity, frozen skill identity and an empty workspace. It does
+not receive the expected activation decision, outcome, behaviors or rubric. The judge receives those fields only after
+the subject has finished.
 
 Adapter reports are not a trusted host trace. Even a successful provider-backed scorecard remains
 `PROVIDER_BACKED_ADAPTER_REPORTED_UNVERIFIED` until an external trust root authenticates model identity, activation,

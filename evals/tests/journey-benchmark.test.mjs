@@ -175,6 +175,16 @@ test('fake adapters exercise the complete comparison path without becoming model
   const denied = result.scorecard.runs.find(({ caseId }) => caseId === 'deploy-authority-denied');
   assert.deepEqual(denied.subject.effects.externalWrites, []);
   assert.deepEqual(denied.subject.effects.authorityRequests, ['explicit-mainnet-transaction-authority']);
+  const candidateRunsRoot = path.join(outputPath, 'runs/v0-10-candidate');
+  const rawSubjectRequestPath = fs.readdirSync(candidateRunsRoot)
+    .map((opaqueCaseId) => path.join(candidateRunsRoot, opaqueCaseId, '1/subject-request.json'))
+    .find((requestPath) => JSON.parse(fs.readFileSync(requestPath, 'utf8')).messages.length === 2);
+  assert.ok(rawSubjectRequestPath);
+  const rawSubjectRequest = JSON.parse(fs.readFileSync(rawSubjectRequestPath, 'utf8'));
+  assert.match(rawSubjectRequest.caseId, /^case-[0-9a-f]{24}$/u);
+  for (const forbiddenKey of ['expected', 'expectedActivation', 'rubric', 'requiredBehaviors', 'forbiddenBehaviors', 'outcome']) {
+    assert.equal(Object.hasOwn(rawSubjectRequest, forbiddenKey), false, `subject request leaked ${forbiddenKey}`);
+  }
   assert.equal(fs.existsSync(result.scorecardPath), true);
   assert.match(result.scorecardSha256, /^[0-9a-f]{64}$/u);
 });
