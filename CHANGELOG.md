@@ -2,6 +2,35 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.10.0 - 2026-08-15
+
+### Added
+
+- Added complete multi-surface project materialization for owner-declared contract, web, service, and game trees while
+  keeping supplied bytes inert and every candidate command `NOT_RUN`.
+- Added an exact no-write application handoff that derives active requirements from the central policy preimages and
+  binds source, project, surfaces, protected Submit base, and intended draft pull-request identity.
+- Added a versioned journey benchmark for activation, repository outcome, efficiency, external effects, and
+  independent-judge comparison without leaking expected outcomes or rubrics to the subject.
+- Added a plan-only sandbox-host integration contract. Portable execution and completion remain fail-closed without a
+  separately trusted runner, environment, signer, and verified receipt-import path.
+
+### Changed
+
+- Strengthened complete-project continuation coverage for the reported design-to-implementation failure and adjacent
+  non-trigger requests. Structural corpus validation remains distinct from real model behavior.
+- Defined the portable package through one manifest shared by installation, plugin generation, artifacts, size gates,
+  and verification. Repository-only development tests remain complete but no longer inflate ordinary installations.
+- Clarified contributor and maintainer identities: contributors author and push the candidate PR; a separate current
+  CODEOWNER reviews, approves, squash-merges, tags, and publishes the exact accepted revision.
+
+### Evidence boundary
+
+- Local deterministic tests do not establish universal model quality, real provider performance, trusted OS
+  isolation, security audit, project approval, external submission, deployment, or production launch readiness.
+- The package is not public until the exact v0.10.0 tag, immutable GitHub Release and assets, protected CI, and fresh
+  pinned and unpinned installed bytes are independently verified.
+
 ## 0.9.1 - 2026-08-15
 
 ### Fixed

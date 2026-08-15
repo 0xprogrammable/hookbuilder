@@ -4,7 +4,7 @@ Releases are immutable supply-chain events, not documentation edits.
 
 ## Current identities
 
-- Current release-package and installation identity: `v0.9.1`. Treat it as public only after the exact tag, GitHub
+- Current release-package and installation identity: `v0.10.0`. Treat it as public only after the exact tag, GitHub
   release and installed bytes are verified.
 - Bundled lifecycle reports retain `publicationStateVerified: false`; source identity alone is not a published or live
   state assertion.
@@ -56,8 +56,8 @@ input for monotonic version checks, provenance, and exact public identity; it ne
 Run the local infrastructure and packaging rehearsal:
 
 ```bash
-candidate_output=/absolute/path/to/programmable-v4-builder-v0.9.1-candidate
-npm run release:candidate -- --tag v0.9.1 --output-dir "$candidate_output"
+candidate_output=/absolute/path/to/programmable-v4-builder-v0.10.0-candidate
+npm run release:candidate -- --tag v0.10.0 --output-dir "$candidate_output"
 ```
 
 The `release:candidate` name is retained for CLI compatibility. A successful run is not a release-candidate verdict.
@@ -128,7 +128,7 @@ publication, create one immutable GitHub release. Run the Skill publication vali
 create a mutable release:
 
 ```bash
-release_tag=v0.9.1
+release_tag=v0.10.0
 gh skill publish --dry-run
 test "$(git rev-parse HEAD)" = "$(gh api repos/0xprogrammable/hookbuilder/commits/main --jq .sha)"
 test -z "$(git status --porcelain=v1 --untracked-files=all)"
@@ -146,7 +146,7 @@ gh release create "$release_tag" "$candidate_output"/artifacts/* \
   --verify-tag \
   --fail-on-no-commits \
   --title "Programmable v4 Builder $release_tag" \
-  --notes-file docs/releases/v0.9.1.md \
+  --notes-file docs/releases/v0.10.0.md \
   --latest
 
 gh release verify "$release_tag" --repo 0xprogrammable/hookbuilder
