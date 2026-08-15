@@ -62,7 +62,7 @@ test("Autopilot starts from the compact compiler with the productive completion 
   assert.doesNotMatch(skill, /context --mode explore --capability owner-defined-capability/u);
   assert.match(skill, /Before materializing read no other reference; `project --help` is complete\.[\s\S]*Dry-run this custom-tradable command, then add `--write`/u);
   assert.doesNotMatch(skill, /--classification no-market --source-contract "\$SOURCE_CONTRACT" --test-source "\$TEST_SOURCE"/u);
-  assert.match(coldContext, /project materialize --idea-file "\$IDEA_FILE" --application-id "\$APPLICATION_ID" --classification tradable --market-ref "\$MARKET_REF" --project-profile foundry --source-root "\$SOURCE_ROOT" --test-root "\$TEST_ROOT" --output "\$NEW_REPOSITORY"/u);
+  assert.match(coldContext, /project materialize --idea-file "\$IDEA_FILE" --application-id "\$APPLICATION_ID" --classification tradable --market-ref "\$MARKET_REF" --project-profile foundry --contract-config-root "\$CONTRACT_CONFIG_ROOT" --source-root "\$SOURCE_ROOT" --test-root "\$TEST_ROOT" --output "\$NEW_REPOSITORY"/u);
   assert.match(coldContext, /Missing catalog\/profile never justifies refusal/u);
   assert.match(coldContext, /policy gates\s+launch, never source/iu);
   assert.match(coldContext, /No trusted sandbox\? Materialize source\/tests/u);

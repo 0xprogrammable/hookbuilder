@@ -121,7 +121,7 @@
           "observedBytes": 26310,
           "observedComplexityScore": 104,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.10.0 reviewed generic handoff dispatch and concise golden-path help"
+          "reviewRef": "v0.9.2 reviewed generic handoff dispatch and concise golden-path help"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/companion-manifest-contract.mjs",
@@ -361,7 +361,7 @@
           "observedBytes": 35696,
           "observedComplexityScore": 90,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.10.0 reviewed lean-package manifest and installed semantic-evidence verification"
+          "reviewRef": "v0.9.2 reviewed lean-package manifest and installed semantic-evidence verification"
         }
       ]
     },
@@ -374,8 +374,8 @@
   },
   "portablePackage": {
     "path": "skills/programmable-v4-hook-builder",
-    "observedFiles": 616,
-    "observedBytes": 8611732,
+    "observedFiles": 618,
+    "observedBytes": 8656209,
     "maxFiles": 620,
     "maxBytes": 8750000
   }

@@ -1,7 +1,9 @@
 # Community journey benchmark
 
-`v1/corpus.json` is the immutable public base corpus. The active `v2/corpus.json` overlay binds that exact v1 digest and
-adds the case-specific Forge-denial execution policy without editing v1. Together they reproduce the reported Mizu
+`v1/corpus.json` is the immutable public base corpus. The immutable `v2/corpus.json` overlay binds that exact v1 digest
+and adds the case-specific Forge-denial execution policy without editing v1. The active `v3/corpus.json` overlay binds
+both predecessors and records the Mizu journey's exact per-turn activation boundary: design-only stays inactive, then
+the explicit implementation continuation activates. Together they reproduce the reported Mizu
 design-to-implementation failure, then cover 20 natural English/German positive and adjacent-negative prompts plus
 malformed input, missing Foundry, denied deployment/GitHub authority, and untrusted repository instructions. It is
 deliberately public and must never be described as a blind holdout.
@@ -10,7 +12,7 @@ The existing encrypted `evals/holdout/` population remains a separate evidence l
 holdout plaintext, key, decrypted metadata, membership oracle, or derived case list. Each adjacent `corpus.sha256` is a
 co-versioned tamper-detection checksum, not an independent freeze. The independent in-repository version authority is
 `config/journey-benchmark-corpus-versions.json`, backed by a hard-coded loader/test pin. The pinned v1 bytes are
-immutable: changing v1 or v2 requires a new overlay version instead of regenerating an adjacent checksum.
+immutable: changing v1, v2 or v3 requires a new overlay version instead of regenerating an adjacent checksum.
 
 ## What the harness measures
 
@@ -79,9 +81,9 @@ path, regular file or symlink target fails closed and removes that newly created
       "host": { "name": "codex", "version": "exact-host-version", "provider": "exact-provider", "model": "subject-model-a" }
     },
     {
-      "id": "v0-10-candidate",
+      "id": "v0-9-2-candidate",
       "role": "candidate",
-      "skillPath": "/absolute/frozen/v0.10.0/skill",
+      "skillPath": "/absolute/frozen/v0.9.2/skill",
       "adapterArgv": ["/absolute/trusted/subject-adapter", "--host", "codex"],
       "host": { "name": "codex", "version": "exact-host-version", "provider": "exact-provider", "model": "subject-model-a" }
     },

@@ -425,7 +425,7 @@ test("review target follows static JavaScript re-exports and literal dynamic imp
     integrationTestPaths: ["submissions/fixture/test/entry.mjs"],
     additionalFiles: {
       "submissions/fixture/test/entry.mjs": [
-        'export { visibleValue } from "../../app/reexport.js";',
+        'export { visibleValue } from "../app/reexport.js";',
         'export async function loadLazy() { return import("../app/lazy.js"); }'
       ].join("\n"),
       "submissions/fixture/app/reexport.js": 'export * from "./hidden.js";\n',
@@ -823,7 +823,7 @@ test("Solidity npm imports are marked as local package evidence and stay inside 
     remappings: "@openzeppelin/contracts/=node_modules/@openzeppelin/contracts/\n",
     sdkDependencies: [dependency],
     additionalFiles: {
-      "node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol": 'import { IERC20 } from "../../IERC20.sol"; library SafeERC20 {}',
+      "node_modules/@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol": 'import { IERC20 } from "../IERC20.sol"; library SafeERC20 {}',
       "node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol": "interface IERC20 {}"
     }
   });

@@ -172,7 +172,7 @@ test("canonical config version and generated package identities agree", () => {
   assert.equal(packageDocument.homepage, "https://github.com/0xprogrammable/hookbuilder#readme");
   assert.equal(Object.hasOwn(packageDocument, "dependencies"), false);
   assert.equal(Object.hasOwn(packageDocument, "devDependencies"), false);
-  assert.equal(metadata.version, "0.10.0");
+  assert.equal(metadata.version, "0.9.2");
   assert.equal(packageLock.name, packageDocument.name);
   assert.equal(packageLock.version, packageDocument.version);
   assert.equal(packageLock.packages[""].name, packageDocument.name);
@@ -246,19 +246,18 @@ test("global skill boundaries apply v4 mechanics conditionally and distinguish d
     skill,
     /description: Use only when the user asks to .*complete Programmable or Uniswap v4 project; this includes architecture or brainstorming that explicitly continues into implementation\. Do not use for explanation-only or brainstorming-only questions;/u
   );
-  assert.match(skill, /For design-first requests with explicit implementation intent,[\s\S]*continue through the Golden path in the same task/u);
-  assert.match(skill, /For v4 start with all 14 permissions disabled\./u);
-  assert.match(skill, /for canonical v4 cover all four direction\/exactness\s+quadrants and prove support or pre-effects rejection\./u);
-  assert.match(skill, /Hidden mint, seizure, fee, pause, upgrade or payout redirection conflicts/u);
-  assert.match(skill, /disclosed powers require review/iu);
+  assert.match(skill, /Continue design into implementation\./u);
+  assert.match(skill, /Start v4 with 14 permissions disabled;/u);
+  assert.match(skill, /canonical v4 covers four direction\/exactness quadrants/u);
+  assert.match(skill, /Disclose privileged mint\/seizure\/fee\/pause\/upgrade\/payout powers\./u);
+  assert.match(skill, /Escalate novel\/value-bearing ambiguity/u);
   assert.match(skill, /node "\$BUILDER_CLI" policy/u);
-  assert.match(skill, /complete Programmable rule set/iu);
-  assert.match(skill, /use every available `build` Rule ID, add none/u);
-  assert.match(skill, /If\s+unavailable, continue source as `POLICY_UNRESOLVED`; block only submit, approval and launch/u);
+  assert.match(skill, /Use every `build` Rule ID from `0xprogrammable\/submit-launch`; add none/u);
+  assert.match(skill, /If unavailable, keep source\s+`POLICY_UNRESOLVED` and block only submit\/approval\/launch/u);
   assert.match(skill, /Before materializing read no other reference/u);
-  assert.match(skill, /active\s+workspace run install and offline fmt\/test once/u);
-  assert.match(skill, /`LOCAL_ONLY`, never\s+completion/u);
-  assert.match(skill, /Fix input roots and\s+rematerialize; never patch output/u);
+  assert.match(skill, /Active workspaces may\s+run one `LOCAL_ONLY` offline check/u);
+  assert.match(skill, /Only exact-byte `PROJECT_PREFLIGHT_VALID` completes Autopilot/u);
+  assert.match(skill, /Fix inputs and rematerialize/u);
   assert.match(skill, /Missing catalog\/profile never justifies refusal/u);
   assert.match(skill, /policy gates\s+launch, never source/iu);
   assert.doesNotMatch(skill, /hidden mint,\s*confiscation, blacklist, fee, pause, upgrade or payout-redirection power/u);
@@ -278,7 +277,7 @@ test("plugin manifests are generated from canonical metadata and package version
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(result.stdout);
   assert.equal(report.status, "PLUGIN_MANIFESTS_VALID");
-  assert.equal(report.version, "0.10.0");
+  assert.equal(report.version, "0.9.2");
   assert.deepEqual(report.outputs, [
     ".codex-plugin/plugin.json",
     ".agents/plugins/marketplace.json",
@@ -292,10 +291,10 @@ test("plugin manifests are generated from canonical metadata and package version
   assert.equal(report.payload.sourceByteVerified, true);
   assert.equal(report.payload.sourceModeVerified, true);
   assert.deepEqual(report.payload.portableSkill, {
-    files: 616,
-    bytes: 8_611_699,
+    files: 618,
+    bytes: 8_656_209,
     repositoryOnlyFiles: 97,
-    repositoryOnlyBytes: 2_984_509,
+    repositoryOnlyBytes: 3_015_475,
     repositorySourcesVerified: true
   });
 });
@@ -713,7 +712,7 @@ test("release output containment rejects an in-repository ..x directory and perm
     process.execPath,
     [
       script,
-      "--tag", "v0.10.0",
+      "--tag", "v0.9.2",
       "--output-dir", path.join(repositoryRoot, "..x-release-output"),
       "--kernel-evidence", evidence
     ],
@@ -727,7 +726,7 @@ test("release output containment rejects an in-repository ..x directory and perm
   fs.writeFileSync(path.join(outside, "sentinel"), "keep non-empty\n");
   const escaped = childProcess.spawnSync(
     process.execPath,
-    [script, "--tag", "v0.10.0", "--output-dir", outside, "--kernel-evidence", evidence],
+    [script, "--tag", "v0.9.2", "--output-dir", outside, "--kernel-evidence", evidence],
     { cwd: repositoryRoot, encoding: "utf8", shell: false, stdio: ["ignore", "pipe", "pipe"] }
   );
   assert.notEqual(escaped.status, 0);

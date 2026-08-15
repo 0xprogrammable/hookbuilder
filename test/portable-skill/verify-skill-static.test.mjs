@@ -459,9 +459,9 @@ test("portable verifier deletion-guards its exact required inventory in one boun
     .update(`${requiredPaths.join("\n")}\n`)
     .digest("hex");
 
-  assert.equal(requiredPaths.length, 335);
+  assert.equal(requiredPaths.length, 345);
   assert.equal(new Set(requiredPaths).size, requiredPaths.length);
-  assert.equal(inventorySha256, "375a32a6daf35a6d016a2beca814650b5b178130b3703d5484c77d5cc8059cbd");
+  assert.equal(inventorySha256, "120e26778b78690b0e1f3770bc9ba900a3070a41efe4120cefbf9bb35f59abb7");
   for (const requiredPath of requiredPaths) {
     const entry = fs.lstatSync(path.join(skillRoot, requiredPath));
     assert.ok(entry.isFile(), `${requiredPath} must be a regular file`);

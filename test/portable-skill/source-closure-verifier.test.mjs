@@ -173,7 +173,10 @@ test("local source-closure resource ceilings hold for split review without rejec
 });
 
 test("source Git cleanup and deadline fallbacks keep awaited promises live and close race-free", () => {
-  const source = fs.readFileSync(new URL("../public-pr-application-v3-source-git.mjs", import.meta.url), "utf8");
+  const source = fs.readFileSync(
+    new URL("../../skills/programmable-v4-hook-builder/scripts/public-pr-application-v3-source-git.mjs", import.meta.url),
+    "utf8"
+  );
   const closeStart = source.indexOf("  async close() {");
   const closeEnd = source.indexOf("\n  }\n}\n\nfunction validateSourceClosureEntry", closeStart);
   assert.ok(closeStart >= 0 && closeEnd > closeStart);

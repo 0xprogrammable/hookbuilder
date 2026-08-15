@@ -6,26 +6,65 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { loadSubjectSandbox, spawnIsolated } from './e2e-sandbox-core.mjs';
+import { parseBoundedStrictJsonBytes } from '../../skills/programmable-v4-hook-builder/scripts/strict-json-core.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_REPOSITORY_ROOT = path.resolve(SCRIPT_DIRECTORY, '../..');
 export const BASE_CORPUS_V1_RELATIVE_PATH = 'evals/journey-benchmark/v1/corpus.json';
 export const BASE_CORPUS_V1_DIGEST_RELATIVE_PATH = 'evals/journey-benchmark/v1/corpus.sha256';
-export const CORPUS_RELATIVE_PATH = 'evals/journey-benchmark/v2/corpus.json';
-export const CORPUS_DIGEST_RELATIVE_PATH = 'evals/journey-benchmark/v2/corpus.sha256';
+export const CORPUS_V2_RELATIVE_PATH = 'evals/journey-benchmark/v2/corpus.json';
+export const CORPUS_V2_DIGEST_RELATIVE_PATH = 'evals/journey-benchmark/v2/corpus.sha256';
+export const CORPUS_RELATIVE_PATH = 'evals/journey-benchmark/v3/corpus.json';
+export const CORPUS_DIGEST_RELATIVE_PATH = 'evals/journey-benchmark/v3/corpus.sha256';
 export const CORPUS_VERSION_AUTHORITY_RELATIVE_PATH = 'config/journey-benchmark-corpus-versions.json';
-export const ACTIVE_CORPUS_ID = 'programmable-community-journeys-v2';
+export const ACTIVE_CORPUS_ID = 'programmable-community-journeys-v3';
 // Published corpus versions are immutable. Any byte change requires a new
 // overlay version; do not update these authorities for in-place edits.
 export const PINNED_V1_CORPUS_SHA256 = '81f27c3ad1acd1ea676ba982fe1e08a361e3d05f941a71c5a0e526db6fd7fe3f';
 export const PINNED_V2_CORPUS_SHA256 = 'f95f4b7cc154814e7f47deae9d96b0145022cbc1742033c17566ec2bc1eda042';
+export const PINNED_V3_CORPUS_SHA256 = '8e2b8dcb36bdc65b707dfd1748a1c6e6584f58b9a66944a9c4c61fd3ff8fcf74';
 export const CANONICAL_FAKE_ADAPTER_RELATIVE_PATH = 'evals/tests/fixtures/fake-journey-benchmark-adapter.mjs';
-export const PINNED_FAKE_ADAPTER_SHA256 = '64a9e2588c3633b14ce09cf9182bf10e66dd3cbe817ba011e5019fea3a09d59e';
+export const PINNED_FAKE_ADAPTER_SHA256 = '56b2288b0c8cd332d836bf96c260ced7ec89213ec76da9b36eb725d3dc77fcbf';
 export const BENCHMARK_SCHEMA_VERSION = '1.0.0';
 
 const MAX_CAPTURE_BYTES = 4 * 1024 * 1024;
 const MAX_RESULT_FILES = 10_000;
+const MAX_RESULT_ENTRIES = 10_000;
+const MAX_RESULT_DEPTH = 64;
+const MAX_RESULT_FILE_BYTES = 128 * 1024 * 1024;
 const MAX_RESULT_BYTES = 128 * 1024 * 1024;
+const MAX_SECRET_SCAN_ENTRIES = 250_000;
+const MAX_SECRET_SCAN_DEPTH = 96;
+const MAX_SECRET_SCAN_FILE_BYTES = 128 * 1024 * 1024;
+const MAX_SECRET_SCAN_BYTES = 2 * 1024 * 1024 * 1024;
+const MAX_ADAPTER_RESULT_BYTES = 2 * 1024 * 1024;
+const MAX_ADAPTER_RESULT_JSON_DEPTH = 32;
+const MAX_ADAPTER_RESULT_JSON_NODES = 10_000;
+const MAX_IDENTITY_FILE_BYTES = 256 * 1024 * 1024;
+const MAX_EFFECT_RECORDS = 1_000;
+const MAX_BENCHMARK_RUNS = 1_000;
+const MAX_RUN_RECORD_BYTES = 8 * 1024 * 1024;
+const MAX_RUN_RECORD_TOTAL_BYTES = 128 * 1024 * 1024;
+const MAX_RUN_BUNDLE_ENTRIES = 20_000;
+const MAX_RUN_BUNDLE_BYTES = 192 * 1024 * 1024;
+const MAX_BUNDLE_DIRECTORY_ENTRIES = 10_000;
+const MAX_BUNDLE_ENTRIES = 250_000;
+const MAX_BUNDLE_DEPTH = 96;
+const MAX_BUNDLE_FILE_BYTES = 128 * 1024 * 1024;
+const MAX_BUNDLE_BYTES = 1024 * 1024 * 1024;
+const MAX_SCORECARD_BYTES = 160 * 1024 * 1024;
+const FILE_READ_CHUNK_BYTES = 64 * 1024;
+const SUBJECT_METRIC_MAXIMUMS = Object.freeze({
+  elapsedMs: 3_600_000,
+  inputTokens: 100_000_000,
+  outputTokens: 100_000_000,
+  retries: 100_000,
+  timeToUsefulMs: 3_600_000,
+  toolCalls: 1_000_000,
+  toolErrors: 1_000_000,
+  totalTokens: 200_000_000,
+  networkCalls: 1_000_000,
+});
 const DEFAULT_ENVIRONMENT = Object.freeze({ LANG: 'C', LC_ALL: 'C', PATH: '/usr/bin:/bin', TZ: 'UTC' });
 const FORBIDDEN_ENVIRONMENT_ALLOWLIST_NAMES = new Set(['HOME', 'LANG', 'LC_ALL', 'PATH', 'TMPDIR', 'TZ']);
 const CASE_GROUPS = Object.freeze([
@@ -273,7 +312,7 @@ export function validateCorpusDocument(corpus, raw = JSON.stringify(corpus)) {
   return { caseCount: corpus.cases.length, counts: derived };
 }
 
-function validateCorpusOverlayDocument(overlay, raw, baseCorpus) {
+function validateV2CorpusOverlayDocument(overlay, raw, baseCorpus) {
   assertExactKeys(overlay, [
     'baseCorpus',
     'corpusId',
@@ -289,12 +328,12 @@ function validateCorpusOverlayDocument(overlay, raw, baseCorpus) {
   if (
     overlay.schemaVersion !== BENCHMARK_SCHEMA_VERSION
     || overlay.kind !== 'programmable-community-journey-corpus-overlay'
-    || overlay.corpusId !== ACTIVE_CORPUS_ID
+    || overlay.corpusId !== 'programmable-community-journeys-v2'
     || overlay.freezeStatus !== 'FROZEN_PUBLIC_AFTER_DESIGN'
     || overlay.frozenOn !== '2026-08-15'
     || overlay.qualification !== 'PUBLIC_REGRESSION_AND_COMPARISON_CORPUS_NOT_BLIND_HOLDOUT'
     || overlay.sealedCorpusRelationship !== 'SEPARATE_NO_PLAINTEXT_OR_MEMBERSHIP_DERIVED'
-  ) fail('SCHEMA_INVALID', 'active corpus overlay identity drifted');
+  ) fail('SCHEMA_INVALID', 'v2 corpus overlay identity drifted');
   if (/evals\/holdout|PROGRAMMABLE_E2E_HOLDOUT_KEY|ciphertext|authTag/iu.test(raw)) {
     fail('SEALED_CORPUS_BOUNDARY', 'public benchmark overlay must not reference sealed paths, keys, or envelope fields');
   }
@@ -342,6 +381,59 @@ function validateCorpusOverlayDocument(overlay, raw, baseCorpus) {
   return overlay;
 }
 
+function validateActiveCorpusOverlayDocument(overlay, raw, baseCorpus) {
+  assertExactKeys(overlay, [
+    'activationOverrides',
+    'baseCorpus',
+    'corpusId',
+    'freezeStatus',
+    'frozenOn',
+    'kind',
+    'priorOverlay',
+    'qualification',
+    'schemaVersion',
+    'sealedCorpusRelationship',
+  ], 'active corpus overlay');
+  if (
+    overlay.schemaVersion !== BENCHMARK_SCHEMA_VERSION
+    || overlay.kind !== 'programmable-community-journey-expectation-overlay'
+    || overlay.corpusId !== ACTIVE_CORPUS_ID
+    || overlay.freezeStatus !== 'FROZEN_PUBLIC_AFTER_DESIGN'
+    || overlay.frozenOn !== '2026-08-15'
+    || overlay.qualification !== 'PUBLIC_REGRESSION_AND_COMPARISON_CORPUS_NOT_BLIND_HOLDOUT'
+    || overlay.sealedCorpusRelationship !== 'SEPARATE_NO_PLAINTEXT_OR_MEMBERSHIP_DERIVED'
+  ) fail('SCHEMA_INVALID', 'active corpus expectation overlay identity drifted');
+  if (/evals\/holdout|PROGRAMMABLE_E2E_HOLDOUT_KEY|ciphertext|authTag/iu.test(raw)) {
+    fail('SEALED_CORPUS_BOUNDARY', 'public benchmark overlay must not reference sealed paths, keys, or envelope fields');
+  }
+  assertExactKeys(overlay.baseCorpus, ['corpusId', 'path', 'sha256'], 'active corpus overlay.baseCorpus');
+  if (
+    overlay.baseCorpus.corpusId !== 'programmable-community-journeys-v1'
+    || overlay.baseCorpus.path !== BASE_CORPUS_V1_RELATIVE_PATH
+    || overlay.baseCorpus.sha256 !== PINNED_V1_CORPUS_SHA256
+  ) fail('SCHEMA_INVALID', 'active corpus overlay must bind the immutable v1 base');
+  assertExactKeys(overlay.priorOverlay, ['corpusId', 'path', 'sha256'], 'active corpus overlay.priorOverlay');
+  if (
+    overlay.priorOverlay.corpusId !== 'programmable-community-journeys-v2'
+    || overlay.priorOverlay.path !== CORPUS_V2_RELATIVE_PATH
+    || overlay.priorOverlay.sha256 !== PINNED_V2_CORPUS_SHA256
+  ) fail('SCHEMA_INVALID', 'active corpus overlay must bind the immutable v2 overlay');
+  if (!Array.isArray(overlay.activationOverrides) || overlay.activationOverrides.length !== 1) {
+    fail('SCHEMA_INVALID', 'active corpus overlay must contain exactly one per-turn activation override');
+  }
+  const [activationOverride] = overlay.activationOverrides;
+  assertExactKeys(activationOverride, ['caseId', 'turns'], 'active corpus overlay.activationOverrides[0]');
+  const mizu = baseCorpus.cases.find(({ id }) => id === 'mizu-design-then-implement');
+  if (
+    activationOverride.caseId !== 'mizu-design-then-implement'
+    || !mizu
+    || canonicalJson(activationOverride.turns) !== canonicalJson(['NOT_ACTIVATED', 'ACTIVATED'])
+    || activationOverride.turns.length !== mizu.messages.length
+    || activationOverride.turns.at(-1) !== mizu.expected.activation
+  ) fail('SCHEMA_INVALID', 'Mizu per-turn activation override drifted');
+  return overlay;
+}
+
 function validateCompanionDigest(digestPath, actualDigest, label) {
   let digestRaw;
   try {
@@ -362,6 +454,8 @@ function validateCompanionDigest(digestPath, actualDigest, label) {
 export function loadFrozenCorpus({ repositoryRoot = DEFAULT_REPOSITORY_ROOT } = {}) {
   const corpusPath = path.join(repositoryRoot, CORPUS_RELATIVE_PATH);
   const digestPath = path.join(repositoryRoot, CORPUS_DIGEST_RELATIVE_PATH);
+  const v2CorpusPath = path.join(repositoryRoot, CORPUS_V2_RELATIVE_PATH);
+  const v2DigestPath = path.join(repositoryRoot, CORPUS_V2_DIGEST_RELATIVE_PATH);
   const baseCorpusPath = path.join(repositoryRoot, BASE_CORPUS_V1_RELATIVE_PATH);
   const baseDigestPath = path.join(repositoryRoot, BASE_CORPUS_V1_DIGEST_RELATIVE_PATH);
   const versionAuthorityPath = path.join(repositoryRoot, CORPUS_VERSION_AUTHORITY_RELATIVE_PATH);
@@ -374,15 +468,24 @@ export function loadFrozenCorpus({ repositoryRoot = DEFAULT_REPOSITORY_ROOT } = 
     });
   }
   const validation = validateCorpusDocument(baseDocument.value, baseDocument.raw);
-  const { raw, value } = readJson(corpusPath, 'journey benchmark active corpus overlay');
-  const actualDigest = sha256(Buffer.from(raw, 'utf8'));
-  if (actualDigest !== PINNED_V2_CORPUS_SHA256) {
+  const v2Document = readJson(v2CorpusPath, 'journey benchmark v2 corpus overlay');
+  const v2Digest = sha256(Buffer.from(v2Document.raw, 'utf8'));
+  if (v2Digest !== PINNED_V2_CORPUS_SHA256) {
     fail('CORPUS_VERSION_IMMUTABLE', 'v2 corpus overlay bytes changed; restore v2 and add a new overlay version instead', {
       expected: PINNED_V2_CORPUS_SHA256,
+      actual: v2Digest,
+    });
+  }
+  validateV2CorpusOverlayDocument(v2Document.value, v2Document.raw, baseDocument.value);
+  const { raw, value } = readJson(corpusPath, 'journey benchmark active corpus expectation overlay');
+  const actualDigest = sha256(Buffer.from(raw, 'utf8'));
+  if (actualDigest !== PINNED_V3_CORPUS_SHA256) {
+    fail('CORPUS_VERSION_IMMUTABLE', 'v3 corpus overlay bytes changed; restore v3 and add a new overlay version instead', {
+      expected: PINNED_V3_CORPUS_SHA256,
       actual: actualDigest,
     });
   }
-  validateCorpusOverlayDocument(value, raw, baseDocument.value);
+  validateActiveCorpusOverlayDocument(value, raw, baseDocument.value);
   const versionAuthority = readJson(versionAuthorityPath, 'journey benchmark corpus version authority');
   assertExactKeys(versionAuthority.value, ['kind', 'policy', 'schemaVersion', 'versions'], 'corpus version authority');
   if (
@@ -390,11 +493,12 @@ export function loadFrozenCorpus({ repositoryRoot = DEFAULT_REPOSITORY_ROOT } = 
     || versionAuthority.value.kind !== 'programmable-journey-corpus-version-authority'
     || versionAuthority.value.policy !== 'APPEND_ONLY_NEW_VERSION_REQUIRED_FOR_BYTE_CHANGES'
     || !Array.isArray(versionAuthority.value.versions)
-    || versionAuthority.value.versions.length !== 2
+    || versionAuthority.value.versions.length !== 3
   ) fail('CORPUS_VERSION_AUTHORITY_INVALID', 'corpus version authority identity or policy drifted');
-  const [v1Authority, v2Authority] = versionAuthority.value.versions;
+  const [v1Authority, v2Authority, v3Authority] = versionAuthority.value.versions;
   assertExactKeys(v1Authority, ['corpusId', 'path', 'sha256', 'status', 'version'], 'corpus version authority v1');
   assertExactKeys(v2Authority, ['corpusId', 'path', 'sha256', 'status', 'version'], 'corpus version authority v2');
+  assertExactKeys(v3Authority, ['corpusId', 'path', 'sha256', 'status', 'version'], 'corpus version authority v3');
   if (
     v1Authority.version !== 'v1'
     || v1Authority.corpusId !== 'programmable-community-journeys-v1'
@@ -402,13 +506,19 @@ export function loadFrozenCorpus({ repositoryRoot = DEFAULT_REPOSITORY_ROOT } = 
     || v1Authority.status !== 'IMMUTABLE'
     || v1Authority.sha256 !== PINNED_V1_CORPUS_SHA256
     || v2Authority.version !== 'v2'
-    || v2Authority.corpusId !== ACTIVE_CORPUS_ID
-    || v2Authority.path !== CORPUS_RELATIVE_PATH
+    || v2Authority.corpusId !== 'programmable-community-journeys-v2'
+    || v2Authority.path !== CORPUS_V2_RELATIVE_PATH
     || v2Authority.status !== 'IMMUTABLE'
     || v2Authority.sha256 !== PINNED_V2_CORPUS_SHA256
+    || v3Authority.version !== 'v3'
+    || v3Authority.corpusId !== ACTIVE_CORPUS_ID
+    || v3Authority.path !== CORPUS_RELATIVE_PATH
+    || v3Authority.status !== 'IMMUTABLE'
+    || v3Authority.sha256 !== PINNED_V3_CORPUS_SHA256
   ) fail('CORPUS_VERSION_AUTHORITY_INVALID', 'corpus version authority drifted; preserve published versions and append a new one');
   validateCompanionDigest(baseDigestPath, baseDigest, 'v1 base corpus');
-  validateCompanionDigest(digestPath, actualDigest, 'v2 corpus overlay');
+  validateCompanionDigest(v2DigestPath, v2Digest, 'v2 corpus overlay');
+  validateCompanionDigest(digestPath, actualDigest, 'v3 corpus overlay');
   const workspaceFixtures = baseDocument.value.workspaceFixtures.map((fixture) => {
     const fixtureRoot = path.resolve(path.dirname(baseCorpusPath), fixture.source);
     const relativeFixture = path.relative(path.dirname(baseCorpusPath), fixtureRoot);
@@ -422,28 +532,33 @@ export function loadFrozenCorpus({ repositoryRoot = DEFAULT_REPOSITORY_ROOT } = 
     }
     return { ...fixture, root: fixtureRoot, inventory };
   });
-  const executionPolicies = value.executionPolicies.map((policy) => ({
+  const executionPolicies = v2Document.value.executionPolicies.map((policy) => ({
     ...policy,
     policySha256: sha256(canonicalJson({ mode: policy.mode, deniedExecutables: policy.deniedExecutables })),
   }));
   const cases = baseDocument.value.cases.map((benchmarkCase) => {
-    const override = value.messageOverrides.find(({ caseId }) => caseId === benchmarkCase.id);
-    if (!override) return benchmarkCase;
-    return {
+    const messageOverride = v2Document.value.messageOverrides.find(({ caseId }) => caseId === benchmarkCase.id);
+    const activationOverride = value.activationOverrides.find(({ caseId }) => caseId === benchmarkCase.id);
+    const withMessage = messageOverride ? {
       ...benchmarkCase,
       messages: benchmarkCase.messages.map((message, index) => (
-        index + 1 === override.turn ? { ...message, content: override.content } : message
+        index + 1 === messageOverride.turn ? { ...message, content: messageOverride.content } : message
       )),
-    };
+    } : benchmarkCase;
+    return activationOverride ? {
+      ...withMessage,
+      expected: { ...withMessage.expected, activationByTurn: activationOverride.turns },
+    } : withMessage;
   });
   const corpus = {
     ...baseDocument.value,
     baseCorpus: value.baseCorpus,
     cases,
     corpusId: value.corpusId,
-    executionPolicies: value.executionPolicies,
+    executionPolicies: v2Document.value.executionPolicies,
     frozenOn: value.frozenOn,
     freezeStatus: value.freezeStatus,
+    priorOverlay: value.priorOverlay,
     qualification: value.qualification,
     sealedCorpusRelationship: value.sealedCorpusRelationship,
   };
@@ -453,6 +568,8 @@ export function loadFrozenCorpus({ repositoryRoot = DEFAULT_REPOSITORY_ROOT } = 
     corpusSha256: actualDigest,
     baseCorpusPath,
     baseCorpusSha256: baseDigest,
+    priorOverlayPath: v2CorpusPath,
+    priorOverlaySha256: v2Digest,
     executionPolicies,
     versionAuthorityPath,
     versionAuthoritySha256: sha256(Buffer.from(versionAuthority.raw, 'utf8')),
@@ -465,24 +582,155 @@ function permissionMode(stat) {
   return stat.mode & 0o7777;
 }
 
-function walkInventory(root, relativeDirectory, rows, tree, totals) {
+function boundedDirectoryEntries(directory, totals, {
+  maxEntries,
+  maxDirectoryEntries = maxEntries,
+  limitCode,
+  label,
+}) {
+  const handle = fs.opendirSync(directory);
+  const entries = [];
+  try {
+    for (let entry = handle.readSync(); entry !== null; entry = handle.readSync()) {
+      totals.entries += 1;
+      if (totals.entries > maxEntries) {
+        fail(limitCode, `${label} exceeds ${maxEntries} total filesystem entries`);
+      }
+      entries.push(entry);
+      if (entries.length > maxDirectoryEntries) {
+        fail(limitCode, `${label} directory exceeds ${maxDirectoryEntries} entries`);
+      }
+    }
+  } finally {
+    handle.closeSync();
+  }
+  return entries.sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function stableStatIdentity(stat) {
+  return [
+    stat.dev,
+    stat.ino,
+    stat.mode,
+    stat.nlink,
+    stat.uid,
+    stat.gid,
+    stat.rdev,
+    stat.size,
+    stat.mtimeNs,
+    stat.ctimeNs,
+  ].map((value) => value.toString()).join(':');
+}
+
+function withStableRegularFile(filePath, {
+  label,
+  maxBytes,
+  invalidCode,
+  limitCode,
+}, consume) {
+  if (!Number.isInteger(fs.constants.O_NOFOLLOW)) {
+    fail(invalidCode, `${label} cannot be inspected without no-follow file support`);
+  }
+  let pathBefore;
+  try {
+    pathBefore = fs.lstatSync(filePath, { bigint: true });
+  } catch (error) {
+    fail(invalidCode, `${label} cannot be inspected: ${error.message}`);
+  }
+  if (!pathBefore.isFile() || pathBefore.isSymbolicLink()) {
+    fail(invalidCode, `${label} must be a regular non-symbolic file`);
+  }
+  if (pathBefore.size > BigInt(maxBytes)) {
+    fail(limitCode, `${label} exceeds ${maxBytes} bytes`);
+  }
+
+  let descriptor;
+  try {
+    descriptor = fs.openSync(filePath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+  } catch (error) {
+    fail(invalidCode, `${label} cannot be opened without following symlinks: ${error.message}`);
+  }
+  try {
+    const before = fs.fstatSync(descriptor, { bigint: true });
+    if (!before.isFile() || stableStatIdentity(before) !== stableStatIdentity(pathBefore)) {
+      fail(invalidCode, `${label} changed before its stable read began`);
+    }
+    const size = Number(before.size);
+    const value = consume(descriptor, size);
+    const after = fs.fstatSync(descriptor, { bigint: true });
+    let pathAfter;
+    try {
+      pathAfter = fs.lstatSync(filePath, { bigint: true });
+    } catch (error) {
+      fail(invalidCode, `${label} changed during its stable read: ${error.message}`);
+    }
+    const identity = stableStatIdentity(before);
+    if (stableStatIdentity(after) !== identity || stableStatIdentity(pathAfter) !== identity) {
+      fail(invalidCode, `${label} changed during its stable read`);
+    }
+    return value;
+  } finally {
+    fs.closeSync(descriptor);
+  }
+}
+
+function readDescriptorChunks(descriptor, size, { label, invalidCode }, consume) {
+  const buffer = Buffer.allocUnsafe(Math.min(FILE_READ_CHUNK_BYTES, Math.max(size, 1)));
+  let offset = 0;
+  while (offset < size) {
+    const length = Math.min(buffer.length, size - offset);
+    const bytesRead = fs.readSync(descriptor, buffer, 0, length, offset);
+    if (bytesRead <= 0) fail(invalidCode, `${label} ended before its declared size`);
+    consume(buffer.subarray(0, bytesRead));
+    offset += bytesRead;
+  }
+}
+
+function hashStableRegularFile(filePath, expectedStat, label, {
+  invalidCode = 'INVENTORY_FILE_CHANGED',
+  limitCode = 'INVENTORY_LIMIT',
+  maxBytes = MAX_RESULT_FILE_BYTES,
+} = {}) {
+  return withStableRegularFile(filePath, {
+    label,
+    maxBytes,
+    invalidCode,
+    limitCode,
+  }, (descriptor, size) => {
+    if (size !== expectedStat.size) fail(invalidCode, `${label} size changed before hashing`);
+    const digest = crypto.createHash('sha256');
+    readDescriptorChunks(descriptor, size, { label, invalidCode }, (chunk) => digest.update(chunk));
+    return digest.digest('hex');
+  });
+}
+
+function walkInventory(root, relativeDirectory, rows, tree, totals, depth) {
   const absoluteDirectory = path.join(root, relativeDirectory);
-  const entries = fs.readdirSync(absoluteDirectory, { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name));
+  const entries = boundedDirectoryEntries(absoluteDirectory, totals, {
+    maxEntries: MAX_RESULT_ENTRIES,
+    limitCode: 'INVENTORY_LIMIT',
+    label: 'inventory',
+  });
   for (const entry of entries) {
     const relativePath = path.join(relativeDirectory, entry.name);
     const normalizedPath = relativePath.split(path.sep).join('/');
+    const entryDepth = depth + 1;
+    if (entryDepth > MAX_RESULT_DEPTH) {
+      fail('INVENTORY_LIMIT', `inventory exceeds maximum depth ${MAX_RESULT_DEPTH} at ${normalizedPath}`);
+    }
     const absolutePath = path.join(root, relativePath);
     const stat = fs.lstatSync(absolutePath);
     if (stat.isSymbolicLink()) fail('INVENTORY_SYMLINK', `symlink is forbidden in benchmark inventory: ${normalizedPath}`);
     if (stat.isDirectory()) {
       tree.push({ path: normalizedPath, type: 'directory', mode: permissionMode(stat) });
-      walkInventory(root, relativePath, rows, tree, totals);
+      walkInventory(root, relativePath, rows, tree, totals, entryDepth);
     } else if (stat.isFile()) {
       totals.files += 1;
-      totals.bytes += stat.size;
       if (totals.files > MAX_RESULT_FILES) fail('INVENTORY_LIMIT', `inventory exceeds ${MAX_RESULT_FILES} files`);
-      if (totals.bytes > MAX_RESULT_BYTES) fail('INVENTORY_LIMIT', `inventory exceeds ${MAX_RESULT_BYTES} bytes`);
-      const file = { path: normalizedPath, bytes: stat.size, sha256: sha256(fs.readFileSync(absolutePath)) };
+      if (stat.size > MAX_RESULT_FILE_BYTES) fail('INVENTORY_LIMIT', `inventory file ${normalizedPath} exceeds ${MAX_RESULT_FILE_BYTES} bytes`);
+      if (totals.bytes > MAX_RESULT_BYTES - stat.size) fail('INVENTORY_LIMIT', `inventory exceeds ${MAX_RESULT_BYTES} bytes`);
+      totals.bytes += stat.size;
+      const file = { path: normalizedPath, bytes: stat.size, sha256: hashStableRegularFile(absolutePath, stat, `inventory file ${normalizedPath}`) };
       rows.push(file);
       tree.push({ ...file, type: 'file', mode: permissionMode(stat) });
     } else {
@@ -497,8 +745,8 @@ export function inventoryDirectory(root) {
   if (!stat.isDirectory() || stat.isSymbolicLink()) fail('INVENTORY_ROOT_INVALID', 'inventory root must be a real directory');
   const files = [];
   const tree = [{ path: '.', type: 'directory', mode: permissionMode(stat) }];
-  const totals = { files: 0, bytes: 0 };
-  walkInventory(absoluteRoot, '', files, tree, totals);
+  const totals = { entries: 1, files: 0, bytes: 0 };
+  walkInventory(absoluteRoot, '', files, tree, totals, 0);
   return {
     files,
     fileCount: totals.files,
@@ -507,6 +755,103 @@ export function inventoryDirectory(root) {
     tree,
     treeSha256: sha256(Buffer.from(canonicalJson(tree), 'utf8')),
   };
+}
+
+function normalizeEvidenceBundleLimits(options) {
+  const defaults = {
+    maxDirectoryEntries: MAX_BUNDLE_DIRECTORY_ENTRIES,
+    maxEntries: MAX_BUNDLE_ENTRIES,
+    maxDepth: MAX_BUNDLE_DEPTH,
+    maxFileBytes: MAX_BUNDLE_FILE_BYTES,
+    maxTotalBytes: MAX_BUNDLE_BYTES,
+  };
+  if (!isPlainObject(options) || Object.keys(options).some((key) => !Object.hasOwn(defaults, key))) {
+    throw new TypeError('evidence bundle limits contain an unsupported field');
+  }
+  const limits = {};
+  for (const [key, maximum] of Object.entries(defaults)) {
+    const value = options[key] ?? maximum;
+    const minimum = key === 'maxDepth' ? 0 : 1;
+    if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+      throw new TypeError(`${key} must be a safe integer between ${minimum} and ${maximum}`);
+    }
+    limits[key] = value;
+  }
+  if (limits.maxDirectoryEntries > limits.maxEntries) limits.maxDirectoryEntries = limits.maxEntries;
+  return Object.freeze(limits);
+}
+
+export function inspectEvidenceBundle(root, options = {}) {
+  const limits = normalizeEvidenceBundleLimits(options);
+  const absoluteRoot = path.resolve(root);
+  let rootStat;
+  try {
+    rootStat = fs.lstatSync(absoluteRoot);
+  } catch (error) {
+    fail('EVIDENCE_BUNDLE_INVALID', `evidence bundle root cannot be inspected: ${error.message}`);
+  }
+  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) {
+    fail('EVIDENCE_BUNDLE_INVALID', 'evidence bundle root must be a real directory');
+  }
+  const totals = { entries: 1, files: 0, bytes: 0 };
+  const digest = crypto.createHash('sha256');
+  digest.update(`${canonicalJson({ mode: permissionMode(rootStat), path: '.', type: 'directory' })}\n`);
+
+  const visit = (directory, relativeDirectory, depth) => {
+    const entries = boundedDirectoryEntries(directory, totals, {
+      maxDirectoryEntries: limits.maxDirectoryEntries,
+      maxEntries: limits.maxEntries,
+      limitCode: 'EVIDENCE_BUNDLE_LIMIT',
+      label: 'evidence bundle',
+    });
+    for (const entry of entries) {
+      const entryDepth = depth + 1;
+      const relativePath = path.join(relativeDirectory, entry.name);
+      const normalizedPath = relativePath.split(path.sep).join('/');
+      if (entryDepth > limits.maxDepth) {
+        fail('EVIDENCE_BUNDLE_LIMIT', `evidence bundle exceeds maximum depth ${limits.maxDepth} at ${normalizedPath}`);
+      }
+      const absolutePath = path.join(directory, entry.name);
+      const stat = fs.lstatSync(absolutePath);
+      if (stat.isSymbolicLink()) {
+        fail('EVIDENCE_BUNDLE_INVALID', `symlink is forbidden in evidence bundle: ${normalizedPath}`);
+      }
+      if (stat.isDirectory()) {
+        digest.update(`${canonicalJson({ mode: permissionMode(stat), path: normalizedPath, type: 'directory' })}\n`);
+        visit(absolutePath, relativePath, entryDepth);
+      } else if (stat.isFile()) {
+        if (stat.size > limits.maxFileBytes) {
+          fail('EVIDENCE_BUNDLE_LIMIT', `evidence file ${normalizedPath} exceeds ${limits.maxFileBytes} bytes`);
+        }
+        if (totals.bytes > limits.maxTotalBytes - stat.size) {
+          fail('EVIDENCE_BUNDLE_LIMIT', `evidence bundle exceeds ${limits.maxTotalBytes} bytes`);
+        }
+        totals.files += 1;
+        totals.bytes += stat.size;
+        const fileSha256 = hashStableRegularFile(absolutePath, stat, `evidence file ${normalizedPath}`, {
+          invalidCode: 'EVIDENCE_BUNDLE_INVALID',
+          limitCode: 'EVIDENCE_BUNDLE_LIMIT',
+          maxBytes: limits.maxFileBytes,
+        });
+        digest.update(`${canonicalJson({
+          bytes: stat.size,
+          mode: permissionMode(stat),
+          path: normalizedPath,
+          sha256: fileSha256,
+          type: 'file',
+        })}\n`);
+      } else {
+        fail('EVIDENCE_BUNDLE_INVALID', `special file is forbidden in evidence bundle: ${normalizedPath}`);
+      }
+    }
+  };
+  visit(absoluteRoot, '', 0);
+  return Object.freeze({
+    entryCount: totals.entries,
+    fileCount: totals.files,
+    totalBytes: totals.bytes,
+    treeSha256: digest.digest('hex'),
+  });
 }
 
 function assertAbsoluteDirectory(directoryPath, label) {
@@ -679,55 +1024,188 @@ function providerSecretEnvironment(allowlist) {
   return secrets;
 }
 
-export function assertSecretValuesAbsent(root, secretEnvironment) {
+function normalizeSecretScanLimits(options) {
+  const defaults = {
+    maxEntries: MAX_SECRET_SCAN_ENTRIES,
+    maxDepth: MAX_SECRET_SCAN_DEPTH,
+    maxFileBytes: MAX_SECRET_SCAN_FILE_BYTES,
+    maxTotalBytes: MAX_SECRET_SCAN_BYTES,
+  };
+  if (!isPlainObject(options) || Object.keys(options).some((key) => !Object.hasOwn(defaults, key))) {
+    throw new TypeError('secret scan limits contain an unsupported field');
+  }
+  const limits = {};
+  for (const [key, maximum] of Object.entries(defaults)) {
+    const value = options[key] ?? maximum;
+    const minimum = key === 'maxDepth' ? 0 : 1;
+    if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+      throw new TypeError(`${key} must be a safe integer between ${minimum} and ${maximum}`);
+    }
+    limits[key] = value;
+  }
+  return Object.freeze(limits);
+}
+
+function scanStableRegularFileForSecrets(filePath, stat, relativePath, secrets, limits, totals) {
+  if (stat.size > limits.maxFileBytes) {
+    fail('SECRET_SCAN_LIMIT', `result-bundle file ${relativePath} exceeds ${limits.maxFileBytes} bytes`);
+  }
+  if (totals.bytes + stat.size > limits.maxTotalBytes) {
+    fail('SECRET_SCAN_LIMIT', `result bundle exceeds ${limits.maxTotalBytes} scannable bytes`);
+  }
+  totals.bytes += stat.size;
+  const longestSecret = Math.max(...secrets.map(({ bytes }) => bytes.length));
+  let overlap = Buffer.alloc(0);
+  withStableRegularFile(filePath, {
+    label: `result-bundle file ${relativePath}`,
+    maxBytes: limits.maxFileBytes,
+    invalidCode: 'SECRET_SCAN_INVALID',
+    limitCode: 'SECRET_SCAN_LIMIT',
+  }, (descriptor, size) => {
+    if (size !== stat.size) fail('SECRET_SCAN_INVALID', `result-bundle file ${relativePath} size changed before scanning`);
+    readDescriptorChunks(descriptor, size, {
+      label: `result-bundle file ${relativePath}`,
+      invalidCode: 'SECRET_SCAN_INVALID',
+    }, (chunk) => {
+      const searchable = overlap.length === 0 ? chunk : Buffer.concat([overlap, chunk]);
+      const match = secrets.find(({ bytes: secret }) => searchable.includes(secret));
+      if (match) {
+        fail('SECRET_PERSISTENCE_DETECTED', `provider secret value was written to the result bundle by ${relativePath}`, { name: match.name });
+      }
+      const overlapBytes = Math.min(Math.max(longestSecret - 1, 0), searchable.length);
+      overlap = overlapBytes === 0 ? Buffer.alloc(0) : Buffer.from(searchable.subarray(searchable.length - overlapBytes));
+    });
+  });
+}
+
+export function assertSecretValuesAbsent(root, secretEnvironment, options = {}) {
   const secrets = Object.entries(secretEnvironment).map(([name, value]) => ({ name, bytes: Buffer.from(value, 'utf8') }));
   if (secrets.length === 0 || !fs.existsSync(root)) return;
-  const visit = (directory) => {
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-      const filePath = path.join(directory, entry.name);
-      const relativePath = path.relative(root, filePath);
-      const pathMatch = secrets.find(({ bytes: secret }) => Buffer.from(relativePath, 'utf8').includes(secret));
-      if (pathMatch) fail('SECRET_PERSISTENCE_DETECTED', `provider secret value was used in a result-bundle path`, { name: pathMatch.name });
-      const stat = fs.lstatSync(filePath);
-      if (stat.isSymbolicLink()) {
-        const linkTarget = fs.readlinkSync(filePath, { encoding: 'buffer' });
-        const match = secrets.find(({ bytes: secret }) => linkTarget.includes(secret));
-        if (match) fail('SECRET_PERSISTENCE_DETECTED', `provider secret value was written to a result-bundle symlink target by ${relativePath}`, { name: match.name });
-        continue;
+  if (secrets.some(({ bytes }) => bytes.length === 0)) fail('PROVIDER_SECRET_ENV_INVALID', 'provider secret values must not be empty');
+  const limits = normalizeSecretScanLimits(options);
+  const rootStat = fs.lstatSync(root);
+  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) fail('SECRET_SCAN_INVALID', 'result-bundle scan root must be a real directory');
+  const totals = { entries: 1, bytes: 0 };
+  const visit = (directory, depth) => {
+    const handle = fs.opendirSync(directory);
+    try {
+      for (let entry = handle.readSync(); entry !== null; entry = handle.readSync()) {
+        totals.entries += 1;
+        if (totals.entries > limits.maxEntries) {
+          fail('SECRET_SCAN_LIMIT', `result bundle exceeds ${limits.maxEntries} filesystem entries`);
+        }
+        const entryDepth = depth + 1;
+        if (entryDepth > limits.maxDepth) {
+          fail('SECRET_SCAN_LIMIT', `result bundle exceeds maximum depth ${limits.maxDepth}`);
+        }
+        const filePath = path.join(directory, entry.name);
+        const relativePath = path.relative(root, filePath);
+        const pathMatch = secrets.find(({ bytes: secret }) => Buffer.from(relativePath, 'utf8').includes(secret));
+        if (pathMatch) fail('SECRET_PERSISTENCE_DETECTED', `provider secret value was used in a result-bundle path`, { name: pathMatch.name });
+        const stat = fs.lstatSync(filePath);
+        if (stat.isSymbolicLink()) {
+          const linkTarget = fs.readlinkSync(filePath, { encoding: 'buffer' });
+          const match = secrets.find(({ bytes: secret }) => linkTarget.includes(secret));
+          if (match) fail('SECRET_PERSISTENCE_DETECTED', `provider secret value was written to a result-bundle symlink target by ${relativePath}`, { name: match.name });
+          continue;
+        }
+        if (stat.isDirectory()) {
+          visit(filePath, entryDepth);
+        } else if (stat.isFile()) {
+          scanStableRegularFileForSecrets(filePath, stat, relativePath, secrets, limits, totals);
+        } else {
+          fail('SECRET_SCAN_INVALID', `special file is forbidden in result bundle: ${relativePath}`);
+        }
       }
-      if (stat.isDirectory()) {
-        visit(filePath);
-      } else if (stat.isFile()) {
-        const bytes = fs.readFileSync(filePath);
-        const match = secrets.find(({ bytes: secret }) => bytes.includes(secret));
-        if (match) fail('SECRET_PERSISTENCE_DETECTED', `provider secret value was written to the result bundle by ${relativePath}`, { name: match.name });
-      }
+    } finally {
+      handle.closeSync();
     }
   };
-  visit(root);
+  visit(root, 0);
 }
 
 function writeNewJson(filePath, value, mode = 0o600) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx', mode });
 }
 
-function parseAdapterOutput(filePath, label) {
-  let stat;
+function serializeBoundedJson(value, { code, label, maxBytes, pretty = false }) {
+  let source;
   try {
-    stat = fs.lstatSync(filePath);
+    const serialized = JSON.stringify(value, null, pretty ? 2 : 0);
+    if (typeof serialized !== 'string') fail(code, `${label} did not serialize to JSON`);
+    source = `${serialized}\n`;
   } catch (error) {
-    fail('FILE_UNAVAILABLE', `${label} cannot be inspected: ${error.message}`, { filePath });
+    fail(code, `${label} cannot be serialized: ${error.message}`);
   }
-  if (!stat.isFile() || stat.isSymbolicLink()) fail('ADAPTER_RESULT_INVALID', `${label} must be a real file`);
-  const { value, raw } = readJson(filePath, label);
-  return { value, sha256: sha256(Buffer.from(raw, 'utf8')), bytes: Buffer.byteLength(raw) };
+  const bytes = Buffer.byteLength(source, 'utf8');
+  if (bytes > maxBytes) fail(code, `${label} exceeds ${maxBytes} serialized bytes`);
+  return { bytes, sha256: sha256(source), source };
+}
+
+function writeNewBoundedJson(filePath, value, {
+  code,
+  label,
+  maxBytes,
+  mode = 0o600,
+  pretty = false,
+}) {
+  const serialized = serializeBoundedJson(value, { code, label, maxBytes, pretty });
+  fs.writeFileSync(filePath, serialized.source, { flag: 'wx', mode });
+  return { bytes: serialized.bytes, sha256: serialized.sha256 };
+}
+
+function readStableRegularFileBytes(filePath, label, maxBytes, invalidCode, limitCode) {
+  return withStableRegularFile(filePath, {
+    label,
+    maxBytes,
+    invalidCode,
+    limitCode,
+  }, (descriptor, size) => {
+    const bytes = Buffer.allocUnsafe(size);
+    let offset = 0;
+    readDescriptorChunks(descriptor, size, { label, invalidCode }, (chunk) => {
+      chunk.copy(bytes, offset);
+      offset += chunk.length;
+    });
+    return bytes;
+  });
+}
+
+export function parseAdapterOutput(filePath, label = 'adapter result') {
+  const bytes = readStableRegularFileBytes(
+    filePath,
+    label,
+    MAX_ADAPTER_RESULT_BYTES,
+    'ADAPTER_RESULT_INVALID',
+    'ADAPTER_RESULT_LIMIT',
+  );
+  let value;
+  try {
+    value = parseBoundedStrictJsonBytes(bytes, {
+      maxSourceBytes: MAX_ADAPTER_RESULT_BYTES,
+      maxNodes: MAX_ADAPTER_RESULT_JSON_NODES,
+      maxDepth: MAX_ADAPTER_RESULT_JSON_DEPTH,
+      maxNumberCharacters: 128,
+    });
+  } catch (error) {
+    fail('ADAPTER_RESULT_INVALID', `${label} must contain bounded duplicate-free UTF-8 JSON`, {
+      parserCode: typeof error?.code === 'string' ? error.code : 'UNKNOWN',
+    });
+  }
+  return { value, sha256: sha256(bytes), bytes: bytes.length };
 }
 
 function fileIdentity(filePath, label) {
-  const stat = fs.lstatSync(filePath);
-  if (!stat.isFile() || stat.isSymbolicLink()) fail('REQUEST_MUTATED', `${label} is no longer a real file`);
-  const bytes = fs.readFileSync(filePath);
-  return { bytes: bytes.length, mode: permissionMode(stat), sha256: sha256(bytes) };
+  return withStableRegularFile(filePath, {
+    label,
+    maxBytes: MAX_IDENTITY_FILE_BYTES,
+    invalidCode: 'REQUEST_MUTATED',
+    limitCode: 'REQUEST_MUTATED',
+  }, (descriptor, size) => {
+    const digest = crypto.createHash('sha256');
+    readDescriptorChunks(descriptor, size, { label, invalidCode: 'REQUEST_MUTATED' }, (chunk) => digest.update(chunk));
+    return { bytes: size, mode: permissionMode(fs.fstatSync(descriptor)), sha256: digest.digest('hex') };
+  });
 }
 
 function assertFileUnchanged(filePath, expectedIdentity, label) {
@@ -829,8 +1307,10 @@ function validateProvider(actual, expected, label) {
   }
 }
 
-function validateNullableMetric(value, label) {
-  if (value !== null && (!Number.isInteger(value) || value < 0)) fail('ADAPTER_RESULT_INVALID', `${label} must be a nonnegative integer or null`);
+function validateNullableMetric(value, label, maximum) {
+  if (value !== null && (!Number.isSafeInteger(value) || value < 0 || value > maximum)) {
+    fail('ADAPTER_RESULT_INVALID', `${label} must be null or a safe integer between 0 and ${maximum}`);
+  }
 }
 
 function validateSubjectResult(result, context) {
@@ -876,16 +1356,22 @@ function validateSubjectResult(result, context) {
   if (typeof result.result.useful !== 'boolean') fail('ADAPTER_RESULT_INVALID', 'subject useful must be boolean');
   if (!Number.isInteger(result.result.materialOwnerDecisions) || result.result.materialOwnerDecisions < 0 || result.result.materialOwnerDecisions > 20) fail('ADAPTER_RESULT_INVALID', 'materialOwnerDecisions is invalid');
   assertExactKeys(result.telemetry, ['elapsedMs', 'inputTokens', 'outputTokens', 'retries', 'timeToUsefulMs', 'toolCalls', 'toolErrors', 'totalTokens'], 'subject result.telemetry');
-  for (const key of ['elapsedMs', 'inputTokens', 'outputTokens', 'retries', 'timeToUsefulMs', 'toolCalls', 'toolErrors', 'totalTokens']) validateNullableMetric(result.telemetry[key], `subject result.telemetry.${key}`);
+  for (const key of ['elapsedMs', 'inputTokens', 'outputTokens', 'retries', 'timeToUsefulMs', 'toolCalls', 'toolErrors', 'totalTokens']) {
+    validateNullableMetric(result.telemetry[key], `subject result.telemetry.${key}`, SUBJECT_METRIC_MAXIMUMS[key]);
+  }
   if (result.telemetry.inputTokens !== null && result.telemetry.outputTokens !== null && result.telemetry.totalTokens !== null
-    && result.telemetry.inputTokens + result.telemetry.outputTokens !== result.telemetry.totalTokens) {
-    fail('ADAPTER_RESULT_INVALID', 'subject totalTokens must equal inputTokens plus outputTokens');
+    && (result.telemetry.inputTokens > Number.MAX_SAFE_INTEGER - result.telemetry.outputTokens
+      || result.telemetry.inputTokens + result.telemetry.outputTokens !== result.telemetry.totalTokens)) {
+    fail('ADAPTER_RESULT_INVALID', 'subject totalTokens must safely equal inputTokens plus outputTokens');
   }
   assertExactKeys(result.effects, ['authorityRequests', 'externalWrites', 'localWrites', 'networkCalls'], 'subject result.effects');
   for (const key of ['authorityRequests', 'externalWrites', 'localWrites']) {
-    if (!Array.isArray(result.effects[key]) || result.effects[key].some((entry) => typeof entry !== 'string' || entry.length > 500)) fail('ADAPTER_RESULT_INVALID', `subject effects.${key} must be a bounded string array`);
+    if (!Array.isArray(result.effects[key]) || result.effects[key].length > MAX_EFFECT_RECORDS
+      || result.effects[key].some((entry) => typeof entry !== 'string' || entry.length > 500)) {
+      fail('ADAPTER_RESULT_INVALID', `subject effects.${key} must contain at most ${MAX_EFFECT_RECORDS} bounded strings`);
+    }
   }
-  validateNullableMetric(result.effects.networkCalls, 'subject result.effects.networkCalls');
+  validateNullableMetric(result.effects.networkCalls, 'subject result.effects.networkCalls', SUBJECT_METRIC_MAXIMUMS.networkCalls);
   return result;
 }
 
@@ -1015,15 +1501,120 @@ function compareSubjects(runs, subjects) {
 async function mapWithConcurrency(items, concurrency, worker) {
   const results = new Array(items.length);
   let cursor = 0;
+  let firstError = null;
   const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
-    while (cursor < items.length) {
+    while (cursor < items.length && firstError === null) {
       const index = cursor;
       cursor += 1;
-      results[index] = await worker(items[index], index);
+      try {
+        results[index] = await worker(items[index], index);
+      } catch (error) {
+        if (firstError === null) firstError = error;
+      }
     }
   });
   await Promise.all(runners);
+  if (firstError !== null) throw firstError;
   return results;
+}
+
+function createBenchmarkEvidenceBudget(plannedRuns) {
+  if (!Number.isSafeInteger(plannedRuns) || plannedRuns < 1 || plannedRuns > MAX_BENCHMARK_RUNS) {
+    fail('BENCHMARK_RUN_LIMIT', `benchmark plan exceeds ${MAX_BENCHMARK_RUNS} runs`);
+  }
+  return {
+    activeBundleReservationBytes: 0,
+    activeBundleReservationEntries: 0,
+    activeRecordReservationBytes: 0,
+    artifactBytes: 0,
+    artifactEntries: 0,
+    recordBytes: 0,
+    runRecords: 0,
+  };
+}
+
+function beginRunEvidenceReservation(budget) {
+  const artifactBudget = MAX_BUNDLE_BYTES - MAX_SCORECARD_BYTES;
+  if (budget.artifactBytes + budget.activeBundleReservationBytes > artifactBudget - MAX_RUN_BUNDLE_BYTES) {
+    fail('BENCHMARK_EVIDENCE_LIMIT', 'remaining global evidence bytes cannot safely reserve another run');
+  }
+  if (budget.artifactEntries + budget.activeBundleReservationEntries > MAX_BUNDLE_ENTRIES - MAX_RUN_BUNDLE_ENTRIES) {
+    fail('BENCHMARK_EVIDENCE_LIMIT', 'remaining global evidence entries cannot safely reserve another run');
+  }
+  if (budget.recordBytes + budget.activeRecordReservationBytes > MAX_RUN_RECORD_TOTAL_BYTES - MAX_RUN_RECORD_BYTES) {
+    fail('BENCHMARK_EVIDENCE_LIMIT', 'remaining scorecard run-record bytes cannot safely reserve another run');
+  }
+  budget.activeBundleReservationBytes += MAX_RUN_BUNDLE_BYTES;
+  budget.activeBundleReservationEntries += MAX_RUN_BUNDLE_ENTRIES;
+  budget.activeRecordReservationBytes += MAX_RUN_RECORD_BYTES;
+  let active = true;
+  const release = () => {
+    if (!active) return;
+    active = false;
+    budget.activeBundleReservationBytes -= MAX_RUN_BUNDLE_BYTES;
+    budget.activeBundleReservationEntries -= MAX_RUN_BUNDLE_ENTRIES;
+    budget.activeRecordReservationBytes -= MAX_RUN_RECORD_BYTES;
+  };
+  return {
+    commit(runRoot, run) {
+      const runRecord = serializeBoundedJson(run, {
+        code: 'BENCHMARK_EVIDENCE_LIMIT',
+        label: 'benchmark run record',
+        maxBytes: MAX_RUN_RECORD_BYTES,
+      });
+      const bundle = inspectEvidenceBundle(runRoot, {
+        maxDirectoryEntries: MAX_BUNDLE_DIRECTORY_ENTRIES,
+        maxEntries: MAX_RUN_BUNDLE_ENTRIES,
+        maxDepth: MAX_BUNDLE_DEPTH,
+        maxFileBytes: MAX_BUNDLE_FILE_BYTES,
+        maxTotalBytes: MAX_RUN_BUNDLE_BYTES,
+      });
+      release();
+      if (budget.recordBytes > MAX_RUN_RECORD_TOTAL_BYTES - runRecord.bytes) {
+        fail('BENCHMARK_EVIDENCE_LIMIT', `benchmark run records exceed ${MAX_RUN_RECORD_TOTAL_BYTES} bytes`);
+      }
+      if (budget.artifactBytes > artifactBudget - bundle.totalBytes) {
+        fail('BENCHMARK_EVIDENCE_LIMIT', `benchmark artifacts exceed ${artifactBudget} reserved bytes before scorecard`);
+      }
+      if (budget.artifactEntries > MAX_BUNDLE_ENTRIES - bundle.entryCount) {
+        fail('BENCHMARK_EVIDENCE_LIMIT', `benchmark artifacts exceed ${MAX_BUNDLE_ENTRIES} entries`);
+      }
+      budget.recordBytes += runRecord.bytes;
+      budget.artifactBytes += bundle.totalBytes;
+      budget.artifactEntries += bundle.entryCount;
+      budget.runRecords += 1;
+      return bundle;
+    },
+    release,
+  };
+}
+
+function benchmarkEvidenceBudgetReceipt(budget, preScorecardBundle) {
+  return Object.freeze({
+    caps: {
+      bundleBytes: MAX_BUNDLE_BYTES,
+      bundleEntries: MAX_BUNDLE_ENTRIES,
+      runBundleBytes: MAX_RUN_BUNDLE_BYTES,
+      runBundleEntries: MAX_RUN_BUNDLE_ENTRIES,
+      runRecordBytes: MAX_RUN_RECORD_BYTES,
+      runRecordTotalBytes: MAX_RUN_RECORD_TOTAL_BYTES,
+      runRecords: MAX_BENCHMARK_RUNS,
+      scorecardBytes: MAX_SCORECARD_BYTES,
+    },
+    reservedScorecardBytes: MAX_SCORECARD_BYTES,
+    runArtifacts: {
+      entryCount: budget.artifactEntries,
+      totalBytes: budget.artifactBytes,
+    },
+    runRecords: {
+      count: budget.runRecords,
+      serializedBytes: budget.recordBytes,
+    },
+    preScorecardBundle: {
+      ...preScorecardBundle,
+      scope: 'ALL_OUTPUT_ARTIFACTS_BEFORE_SCORECARD_WRITE',
+    },
+  });
 }
 
 function receiptRecord(relativePath, absolutePath) {
@@ -1061,8 +1652,24 @@ function materializeInputFixture(workspace, fixture) {
   };
 }
 
-function sumNullableMetrics(values) {
-  return values.every((value) => Number.isInteger(value)) ? values.reduce((total, value) => total + value, 0) : null;
+function sumNullableMetrics(values, label, maximum) {
+  if (values.some((value) => value === null)) return null;
+  let total = 0;
+  for (const value of values) {
+    if (!Number.isSafeInteger(value) || value < 0 || value > maximum || total > maximum - value) {
+      fail('ADAPTER_RESULT_INVALID', `${label} aggregation exceeds its safe upper bound ${maximum}`);
+    }
+    total += value;
+  }
+  return total;
+}
+
+function aggregateEffectRecords(turns, key) {
+  const records = turns.flatMap(({ result }) => result.effects[key]);
+  if (records.length > MAX_EFFECT_RECORDS) {
+    fail('ADAPTER_RESULT_INVALID', `aggregated subject effects.${key} exceeds ${MAX_EFFECT_RECORDS} records`);
+  }
+  return records;
 }
 
 function aggregateSubjectTurns(turns) {
@@ -1083,12 +1690,20 @@ function aggregateSubjectTurns(turns) {
       if (!existing) referencesByPath.set(reference.path, reference);
     }
   }
-  const metric = (key) => sumNullableMetrics(turns.map(({ result }) => result.telemetry[key]));
+  const metric = (key) => sumNullableMetrics(
+    turns.map(({ result }) => result.telemetry[key]),
+    `subject telemetry.${key}`,
+    SUBJECT_METRIC_MAXIMUMS[key] * 2,
+  );
   const effects = {
-    localWrites: turns.flatMap(({ result }) => result.effects.localWrites),
-    networkCalls: sumNullableMetrics(turns.map(({ result }) => result.effects.networkCalls)),
-    externalWrites: turns.flatMap(({ result }) => result.effects.externalWrites),
-    authorityRequests: turns.flatMap(({ result }) => result.effects.authorityRequests),
+    localWrites: aggregateEffectRecords(turns, 'localWrites'),
+    networkCalls: sumNullableMetrics(
+      turns.map(({ result }) => result.effects.networkCalls),
+      'subject effects.networkCalls',
+      SUBJECT_METRIC_MAXIMUMS.networkCalls * 2,
+    ),
+    externalWrites: aggregateEffectRecords(turns, 'externalWrites'),
+    authorityRequests: aggregateEffectRecords(turns, 'authorityRequests'),
   };
   return {
     activation: {
@@ -1104,9 +1719,10 @@ function aggregateSubjectTurns(turns) {
     },
     result: {
       ...finalTurn.result.result,
-      materialOwnerDecisions: turns.reduce(
-        (total, { result }) => total + result.result.materialOwnerDecisions,
-        0,
+      materialOwnerDecisions: sumNullableMetrics(
+        turns.map(({ result }) => result.result.materialOwnerDecisions),
+        'subject materialOwnerDecisions',
+        40,
       ),
     },
     telemetry: {
@@ -1338,11 +1954,16 @@ async function executeRun({
       || config.evidenceMode === 'FAKE_ADAPTER_TEST'
       || subjectTurns.every(({ adapterProcess }) => adapterProcess.sandboxReceipt.toolPolicyEnforced === true
         && adapterProcess.sandboxReceipt.toolPolicySha256 === executionPolicy.policySha256);
+    const expectedActivationByTurn = benchmarkCase.expected.activationByTurn
+      ?? benchmarkCase.messages.map(() => benchmarkCase.expected.activation);
+    const finalExpectedActivation = expectedActivationByTurn.at(-1);
     const gates = {
-      activationCorrect: subjectResult.activation.observed === benchmarkCase.expected.activation,
-      perTurnActivationConsistent: subjectTurns.every(({ result }) => result.activation.observed === benchmarkCase.expected.activation),
-      activationReceiptComplete: subjectTurns.every(({ result }) => result.activation.evidence !== 'UNAVAILABLE'
-        && (benchmarkCase.expected.activation === 'ACTIVATED'
+      activationCorrect: subjectResult.activation.observed === finalExpectedActivation,
+      perTurnActivationConsistent: subjectTurns.every(({ result, turn }) => (
+        result.activation.observed === expectedActivationByTurn[turn - 1]
+      )),
+      activationReceiptComplete: subjectTurns.every(({ result, turn }) => result.activation.evidence !== 'UNAVAILABLE'
+        && (expectedActivationByTurn[turn - 1] === 'ACTIVATED'
           ? result.activation.loadedReferences.length > 0
           : result.activation.observed === 'NOT_ACTIVATED' && result.activation.loadedReferences.length === 0)),
       expectedOutcomeMatched: subjectResult.result.outcome === benchmarkCase.expected.outcome,
@@ -1503,7 +2124,11 @@ export async function runJourneyBenchmark({
   }));
   const adapterIdentities = new Map(config.subjects.map((subject) => [subject.id, commandIdentity(subject.adapterArgv)]));
   const judgeAdapterIdentity = commandIdentity(config.judge.adapterArgv);
+  const evidenceBudget = createBenchmarkEvidenceBudget(
+    config.subjects.length * corpus.corpus.cases.length * config.repetitions,
+  );
   fs.mkdirSync(outputPath, { mode: 0o700 });
+  try {
   const tasks = [];
   for (const subject of config.subjects) {
     for (const benchmarkCase of corpus.corpus.cases) {
@@ -1522,13 +2147,32 @@ export async function runJourneyBenchmark({
     }
   }
   const startedAt = new Date().toISOString();
-  const runs = await mapWithConcurrency(tasks, config.concurrency, (task) => executeRun({ ...task, config, outputRoot: outputPath }));
-  try {
-    assertSecretValuesAbsent(outputPath, secretEnvironment);
-  } catch (error) {
-    fs.rmSync(outputPath, { recursive: true, force: true });
-    throw error;
-  }
+  const runs = await mapWithConcurrency(tasks, config.concurrency, async (task) => {
+    const reservation = beginRunEvidenceReservation(evidenceBudget);
+    try {
+      const run = await executeRun({ ...task, config, outputRoot: outputPath });
+      const runRoot = path.join(
+        outputPath,
+        'runs',
+        task.subject.id,
+        opaqueCaseId(task.benchmarkCase.id),
+        String(task.repetition),
+      );
+      reservation.commit(runRoot, run);
+      return run;
+    } catch (error) {
+      reservation.release();
+      throw error;
+    }
+  });
+  assertSecretValuesAbsent(outputPath, secretEnvironment);
+  const preScorecardBundle = inspectEvidenceBundle(outputPath, {
+    maxDirectoryEntries: MAX_BUNDLE_DIRECTORY_ENTRIES,
+    maxEntries: MAX_BUNDLE_ENTRIES,
+    maxDepth: MAX_BUNDLE_DEPTH,
+    maxFileBytes: MAX_BUNDLE_FILE_BYTES,
+    maxTotalBytes: MAX_BUNDLE_BYTES - MAX_SCORECARD_BYTES,
+  });
   const endedAt = new Date().toISOString();
   const postSubjectIdentities = new Map(config.subjects.map((subject) => [subject.id, inventoryDirectory(subject.skillPath)]));
   const subjects = config.subjects.map((subject) => {
@@ -1623,6 +2267,7 @@ export async function runJourneyBenchmark({
       namesSha256: sha256(canonicalJson(Object.keys(secretEnvironment).sort())),
       values: 'OUT_OF_BAND_REDACTED',
     },
+    evidenceBudget: benchmarkEvidenceBudgetReceipt(evidenceBudget, preScorecardBundle),
     subjects,
     aggregates,
     comparisons: compareSubjects(runs, config.subjects),
@@ -1640,12 +2285,29 @@ export async function runJourneyBenchmark({
     externalEffectsPerformedByHarness: fakeMode ? [] : ['provider-backed-subject-and-judge-adapter-execution'],
   };
   const scorecardPath = path.join(outputPath, 'scorecard.json');
-  writeNewJson(scorecardPath, scorecard, 0o600);
-  try {
-    assertSecretValuesAbsent(outputPath, secretEnvironment);
+  const scorecardReceipt = writeNewBoundedJson(scorecardPath, scorecard, {
+    code: 'BENCHMARK_EVIDENCE_LIMIT',
+    label: 'benchmark scorecard',
+    maxBytes: MAX_SCORECARD_BYTES,
+    mode: 0o600,
+  });
+  assertSecretValuesAbsent(outputPath, secretEnvironment);
+  const evidenceBundle = inspectEvidenceBundle(outputPath, {
+    maxDirectoryEntries: MAX_BUNDLE_DIRECTORY_ENTRIES,
+    maxEntries: MAX_BUNDLE_ENTRIES,
+    maxDepth: MAX_BUNDLE_DEPTH,
+    maxFileBytes: MAX_BUNDLE_FILE_BYTES,
+    maxTotalBytes: MAX_BUNDLE_BYTES,
+  });
+  return {
+    evidenceBundle: { ...evidenceBundle, scope: 'COMPLETE_OUTPUT_BUNDLE_INCLUDING_SCORECARD' },
+    scorecard,
+    scorecardBytes: scorecardReceipt.bytes,
+    scorecardPath,
+    scorecardSha256: scorecardReceipt.sha256,
+  };
   } catch (error) {
     fs.rmSync(outputPath, { recursive: true, force: true });
     throw error;
   }
-  return { scorecard, scorecardPath, scorecardSha256: sha256(fs.readFileSync(scorecardPath)) };
 }

@@ -6,7 +6,13 @@ import { fileURLToPath } from "node:url";
 
 import { validateReviewedDriftReceipt } from "../../skills/programmable-v4-hook-builder/scripts/reviewed-drift-receipt-core.mjs";
 
-const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const skillRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "skills",
+  "programmable-v4-hook-builder"
+);
 const sourcePath = path.join(skillRoot, "references/upstream-sources.json");
 const receiptPath = path.join(skillRoot, "references/upstream-reviewed-drift-v1.json");
 const sourceBytes = fs.readFileSync(sourcePath);

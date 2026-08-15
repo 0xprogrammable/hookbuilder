@@ -16,6 +16,15 @@ import {
   revalidateCustomTradableSurface,
   renderCustomTradableSurfaceConfig
 } from "./project-no-market-authoring-core.mjs";
+import {
+  contractConfigurationPlan,
+  closedJsonEqual,
+  createDefaultCustomTradableContractConfiguration,
+  deriveReceiptContractConfiguration,
+  readCustomTradableContractConfiguration,
+  revalidateCustomTradableContractConfiguration,
+  validateCustomTradableContractConfiguration
+} from "./project-contract-configuration-core.mjs";
 import { createNoMarketProjectAuthoring } from "./project-state-core.mjs";
 import { bindTradableReferenceIntent, TRADABLE_REFERENCE_PROFILE_ID } from "./project-tradable-authoring-core.mjs";
 import { validateRepositoryPlan } from "./repository-completion-core.mjs";
@@ -44,7 +53,7 @@ export async function materializeProject(options, failUsage) {
   return materializeNoMarket({ options, ideaText, outputRoot, failUsage });
 }
 
-export function createCustomTradableProjectAuthoring({ applicationId, ideaText, marketRef, compilerVersion, sourceFiles, testFiles, projectProfile = "foundry", surface = null } = {}) {
+export function createCustomTradableProjectAuthoring({ applicationId, ideaText, marketRef, compilerVersion, sourceFiles, testFiles, projectProfile = "foundry", contractConfiguration, surface = null } = {}) {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(applicationId ?? "") || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(marketRef ?? "")) {
     throw new TypeError("custom tradable authoring requires exact application and market slugs");
   }
@@ -58,10 +67,13 @@ export function createCustomTradableProjectAuthoring({ applicationId, ideaText, 
   }
 
   const ideaBytes = Buffer.from(ideaText, "utf8");
-  const packageLock = customPackageLock(applicationId);
-  const packageJson = customPackageJson(applicationId, packageLock.packages[""].dependencies);
+  const normalizedContractConfiguration = normalizeCustomTradableContractConfiguration(contractConfiguration);
   const files = new Map([...sources, ...tests].map(({ path: filePath, bytes }) => [filePath, Buffer.from(bytes)]));
   const fileModes = new Map();
+  for (const { path: filePath, bytes, mode } of normalizedContractConfiguration.files) {
+    addAuthoredFile(files, filePath, bytes);
+    fileModes.set(filePath, mode);
+  }
   if ((projectProfile === "foundry") !== (surface === null)) throw new TypeError("custom tradable surface must exactly match its multi-surface project profile");
   if (surface !== null) {
     for (const { path: filePath, bytes, mode } of surface.files) {
@@ -70,13 +82,9 @@ export function createCustomTradableProjectAuthoring({ applicationId, ideaText, 
     }
     addAuthoredFile(files, `${surface.outputRoot}/programmable-surface.json`, jsonBytes(renderCustomTradableSurfaceConfig(surface)));
   }
-  files.set("package.json", jsonBytes(packageJson));
-  files.set("package-lock.json", jsonBytes(packageLock));
-  files.set("remappings.txt", fs.readFileSync(path.join(referenceKernelRoot, "remappings.txt")));
-  files.set("foundry.toml", Buffer.from(foundryToml(compilerVersion)));
   files.set(".gitignore", Buffer.from("node_modules/\ncache/\nout/\nbroadcast/\nsurfaces/*/node_modules/\nsurfaces/*/build/\nsurfaces/*/dist/\nsurfaces/*/coverage/\n.programmable/custom-tradable-materialization-receipt.v1.json\n.programmable/project-repair-attempt-*.v1.json\n"));
   files.set("LICENSE", Buffer.from(MIT_LICENSE));
-  files.set("evidence/architecture.md", Buffer.from(architectureEvidence(applicationId, marketRef, sha256Bytes(ideaBytes), projectProfile, surface)));
+  files.set("evidence/architecture.md", Buffer.from(architectureEvidence(applicationId, marketRef, sha256Bytes(ideaBytes), projectProfile, normalizedContractConfiguration, surface)));
   files.set("GITHUB-SUBMISSION.md", Buffer.from("# GitHub submission handoff\n\nStatus: **NOT_SUBMITTED**.\n\nThis repository is a local custom-tradable implementation. It creates no approval, audit, deployment, publication, Registry write, or launch.\n"));
 
   const plan = {
@@ -89,10 +97,13 @@ export function createCustomTradableProjectAuthoring({ applicationId, ideaText, 
     projectProfile,
     marketRef,
     intent: { encoding: "utf-8", byteLength: ideaBytes.length, sha256: sha256Bytes(ideaBytes) },
+    contractConfiguration: contractConfigurationPlan(normalizedContractConfiguration),
     toolchain: {
       profile: "foundry",
       solidity: compilerVersion,
       dependencyLock: { path: "package-lock.json", sha256: sha256Bytes(files.get("package-lock.json")), byteLength: files.get("package-lock.json").length },
+      configurationSource: normalizedContractConfiguration.source,
+      configurationInventorySha256: normalizedContractConfiguration.inventorySha256,
       networkRequiredForInstall: true
     },
     source: bindings(sources),
@@ -137,7 +148,7 @@ export function createCustomTradableProjectAuthoring({ applicationId, ideaText, 
   };
   const planBytes = jsonBytes(plan);
   files.set(planPath, planBytes);
-  files.set("README.md", Buffer.from(readme(applicationId, marketRef, plan.intent.sha256, projectProfile, surface)));
+  files.set("README.md", Buffer.from(readme(applicationId, marketRef, plan.intent.sha256, projectProfile, normalizedContractConfiguration, surface)));
   return {
     files,
     fileModes,
@@ -145,6 +156,7 @@ export function createCustomTradableProjectAuthoring({ applicationId, ideaText, 
     ideaSha256: plan.intent.sha256,
     sourcePaths: sources.map(({ path: filePath }) => filePath),
     testPaths: tests.map(({ path: filePath }) => filePath),
+    contractConfiguration: normalizedContractConfiguration,
     surface
   };
 }
@@ -153,10 +165,14 @@ function materializeTradableSelection({ options, ideaBytes, ideaText, outputRoot
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(options.marketRef ?? "") || options.marketRef.length > 120) failUsage("tradable materialize requires --market-ref as a lowercase slug of at most 120 characters");
   if (options.referenceProfile !== null) {
     if (options.referenceProfile !== TRADABLE_REFERENCE_PROFILE_ID) failUsage(`unknown frozen legacy reference profile: ${options.referenceProfile}`);
-    if ([options.projectProfile, options.sourceRoot, options.testRoot, options.surfaceRoot, options.sourceContract, options.testSource].some((value) => value !== null)) failUsage("legacy tradable materialize does not accept custom authoring profile, root, source, or test options");
+    if ([options.projectProfile, options.contractConfigRoot, options.contractConfigProfile, options.sourceRoot, options.testRoot, options.surfaceRoot, options.sourceContract, options.testSource].some((value) => value !== null)) failUsage("legacy tradable materialize does not accept custom authoring profile, contract configuration, root, source, or test options");
     bindTradableReferenceIntent(ideaText, options.referenceProfile);
     return materializeLegacyTradable({ ...options, ideaBytes, outputRoot });
   }
+  const contractConfigRootSelected = options.contractConfigRoot !== null;
+  const defaultContractConfigSelected = options.contractConfigProfile === "foundry-default";
+  if (options.contractConfigProfile !== null && !defaultContractConfigSelected) failUsage("--contract-config-profile must be foundry-default");
+  if (contractConfigRootSelected && defaultContractConfigSelected) failUsage("custom tradable materialize accepts only one of --contract-config-root or --contract-config-profile foundry-default");
   if (!CUSTOM_TRADABLE_PROJECT_PROFILES.includes(options.projectProfile) || options.sourceContract !== null || options.testSource !== null) {
     failUsage(`custom tradable materialize requires --project-profile ${CUSTOM_TRADABLE_PROJECT_PROFILES.join(", ")} with --source-root and --test-root`);
   }
@@ -166,13 +182,17 @@ function materializeTradableSelection({ options, ideaBytes, ideaText, outputRoot
     throw error;
   }
   const { compilerVersion, sourceFiles, testFiles } = readLocalAuthoringInputs({ ...options, projectProfile: "foundry" });
-  const authored = createCustomTradableProjectAuthoring({ applicationId: options.applicationId, ideaText, marketRef: options.marketRef, compilerVersion, sourceFiles, testFiles, projectProfile: options.projectProfile, surface });
+  const contractConfiguration = contractConfigRootSelected
+    ? readCustomTradableContractConfiguration({ contractConfigRoot: options.contractConfigRoot })
+    : createDefaultCustomTradableContractConfiguration({ applicationId: options.applicationId, compilerVersion, referenceKernelRoot });
+  const authored = createCustomTradableProjectAuthoring({ applicationId: options.applicationId, ideaText, marketRef: options.marketRef, compilerVersion, sourceFiles, testFiles, projectProfile: options.projectProfile, contractConfiguration, surface });
   return materializeCustomTradable({ ...options, authored, compilerVersion, outputRoot });
 }
 
 function materializeNoMarket({ options, ideaText, outputRoot, failUsage }) {
   if (options.marketRef !== null) failUsage("no-market materialize does not accept --market-ref");
   if (options.referenceProfile !== null) failUsage("no-market materialize does not accept --reference-profile");
+  if (options.contractConfigRoot !== null || options.contractConfigProfile !== null) failUsage("no-market materialize does not accept custom tradable contract configuration options");
   if (options.surfaceRoot !== null) failUsage("no-market materialize does not accept --surface-root");
   const { projectProfile, compilerVersion, sourceFiles, testFiles } = readLocalAuthoringInputs(options);
   const sourcePaths = sourceFiles.map(({ path: filePath }) => filePath);
@@ -238,6 +258,8 @@ function materializeCustomTradable({ applicationId, marketRef, projectProfile, a
     ideaSha256: authored.ideaSha256,
     sourcePaths: authored.sourcePaths,
     testPaths: authored.testPaths,
+    contractConfigurationSource: authored.contractConfiguration.source,
+    contractConfigurationInventorySha256: authored.contractConfiguration.inventorySha256,
     inventory: fileInventory(authored.files, authored.fileModes),
     planPath,
     planSha256: canonicalJsonSha256V2(authored.plan),
@@ -257,6 +279,7 @@ function materializeCustomTradable({ applicationId, marketRef, projectProfile, a
       writeOutputJson(root, receiptPath, receipt);
       validateCustomTradableMaterializationReceipt(receipt, { repositoryRoot: root });
       if (git(root, ["status", "--porcelain=v1", "--untracked-files=all"]) !== "") throw Object.assign(new Error("custom tradable export must remain clean"), { code: "PROJECT_CUSTOM_TRADABLE_EXPORT_DIRTY" });
+      revalidateCustomTradableContractConfiguration(authored.contractConfiguration);
       revalidateCustomTradableSurface(authored.surface);
       report.receiptSha256 = canonicalJsonSha256V2(receipt);
       const bytes = jsonBytes(receipt);
@@ -373,6 +396,8 @@ function emitMaterialization(fields, brief) {
     classification: report.classification,
     projectProfile: report.projectProfile ?? null,
     compilerVersion: report.compilerVersion ?? null,
+    contractConfigurationSource: report.contractConfigurationSource ?? null,
+    contractConfigurationInventorySha256: report.contractConfigurationInventorySha256 ?? null,
     marketRef: report.marketRef ?? null,
     writeRequested: report.writeRequested,
     writePerformed: report.writePerformed,
@@ -518,26 +543,9 @@ function materializationIntegrityError(message) {
 
 function comparePaths(left, right) { return left < right ? -1 : left > right ? 1 : 0; }
 
-function customPackageLock(applicationId) {
-  const lock = JSON.parse(fs.readFileSync(path.join(referenceKernelRoot, "package-lock.json"), "utf8"));
-  lock.name = applicationId;
-  lock.version = "0.0.0";
-  lock.packages[""].name = applicationId;
-  lock.packages[""].version = "0.0.0";
-  lock.packages[""].description = "Intent-bound custom Uniswap v4 implementation.";
-  return lock;
-}
-
-function customPackageJson(applicationId, dependencies) {
-  return {
-    name: applicationId,
-    version: "0.0.0",
-    private: true,
-    description: "Intent-bound custom Uniswap v4 implementation.",
-    license: "MIT",
-    scripts: { build: "forge build --offline", test: "forge test --offline" },
-    dependencies
-  };
+function normalizeCustomTradableContractConfiguration(configuration) {
+  validateCustomTradableContractConfiguration(configuration);
+  return configuration;
 }
 
 function bindings(files) {
@@ -548,18 +556,17 @@ function command(id, argv, cwd = ".", networkAccess = "forbidden") {
   return { id, kind: id, argv, cwd, required: true, timeoutMs: 600_000, executionPolicy: { networkAccess, externalWrites: false }, status: "NOT_RUN", externalActionsPerformed: [] };
 }
 
-function foundryToml(compilerVersion) {
-  return `[profile.default]\nsrc = "src"\ntest = "test"\nout = "out"\ncache_path = "cache"\nlibs = ["node_modules"]\nsolc_version = "${compilerVersion}"\nevm_version = "cancun"\noffline = true\noptimizer = true\noptimizer_runs = 1000\nvia_ir = false\nbytecode_hash = "none"\ncbor_metadata = false\nffi = false\nfs_permissions = []\n\n[profile.default.fuzz]\nruns = 256\n\n[profile.default.invariant]\nruns = 64\ndepth = 32\nfail_on_revert = false\n`;
-}
 
-function architectureEvidence(applicationId, marketRef, ideaSha256, projectProfile, surface) {
+function architectureEvidence(applicationId, marketRef, ideaSha256, projectProfile, contractConfiguration, surface) {
   const surfaceText = surface === null ? "No additional application surface was supplied." : `The accepted regular-file tree is byte-and-mode-bound at \`${surface.outputRoot}\`; \`${surface.layoutLabel}\` is an owner-declared layout label, not a semantic product certification.`;
-  return `# Architecture evidence\n\nApplication: \`${applicationId}\`  \nMarket: \`${marketRef}\`  \nIntent: \`${ideaSha256}\`\n\nThe complete supplied custom source and tests are byte-bound in the local build plan. ${surfaceText} Architecture is not restricted to bundled profiles. Launch policy is evaluated later for submission and does not decide which technically viable source may be authored.\n\nNo command, network request, deployment, approval, audit, publication, Registry write, or launch was performed.\n`;
+  const configurationText = contractConfiguration.source === "caller-supplied" ? "The complete caller-supplied root contract configuration is byte-and-mode-bound without semantic certification." : "The Builder's Foundry configuration is the backward-compatible convenience default when no caller configuration is supplied.";
+  return `# Architecture evidence\n\nApplication: \`${applicationId}\`  \nMarket: \`${marketRef}\`  \nIntent: \`${ideaSha256}\`\n\nThe complete supplied custom source and tests are byte-bound in the local build plan. ${configurationText} ${surfaceText} Architecture is not restricted to bundled profiles. Launch policy is evaluated later for submission and does not decide which technically viable source may be authored.\n\nNo command, network request, deployment, approval, audit, publication, Registry write, or launch was performed.\n`;
 }
 
-function readme(applicationId, marketRef, ideaSha256, projectProfile, surface) {
+function readme(applicationId, marketRef, ideaSha256, projectProfile, contractConfiguration, surface) {
   const surfaceText = surface === null ? "" : ` The accepted regular-file source, tests, configuration, caller-supplied lock bytes and modes are preserved under \`${surface.outputRoot}\` with owner-declared layout label \`${surface.layoutLabel}\`; empty directories are omitted and no web/service/game semantics are certified.`;
-  return `# ${applicationId}\n\nIdea-bound custom tradable Uniswap v4 implementation for \`${marketRef}\`. Intent SHA-256: \`${ideaSha256}\`.\n\nCustom tradable source is not restricted to bundled profiles or templates. The Builder may implement any technically viable architecture and preserve it with tests.${surfaceText} All planned commands remain \`NOT_RUN\`; dependency acquisition and candidate execution require an authorized external sandbox.\n\nLaunch policy is checked at submission time. This source repository is **NOT_SUBMITTED** and **NOT_APPROVED** and makes no audit, deployment, production, publication, Registry, or launch claim.\n`;
+  const configurationText = contractConfiguration.source === "caller-supplied" ? " The complete caller-supplied root contract configuration, dependencies, remappings and Foundry settings are preserved byte-for-byte with Git modes; their semantics remain unexecuted." : " The Builder's Foundry configuration is the backward-compatible convenience default when no caller configuration is supplied, not an architecture requirement.";
+  return `# ${applicationId}\n\nIdea-bound custom tradable Uniswap v4 implementation for \`${marketRef}\`. Intent SHA-256: \`${ideaSha256}\`.\n\nCustom tradable source is not restricted to bundled profiles or templates. The Builder may implement any technically viable architecture and preserve it with tests.${configurationText}${surfaceText} All planned commands remain \`NOT_RUN\`; dependency acquisition and candidate execution require an authorized external sandbox.\n\nLaunch policy is checked at submission time. This source repository is **NOT_SUBMITTED** and **NOT_APPROVED** and makes no audit, deployment, production, publication, Registry, or launch claim.\n`;
 }
 
 function customTradableMaterializationReceipt({ authored, applicationId, projectProfile, marketRef, binding }) {
@@ -575,6 +582,7 @@ function customTradableMaterializationReceipt({ authored, applicationId, project
     intent: authored.plan.intent,
     source: { commit: binding.sourceCommit, tree: binding.sourceTree },
     plan,
+    contractConfiguration: authored.plan.contractConfiguration,
     repository: { inventoryProfile: "exact-regular-files-git-modes-v1", emptyDirectories: "OMITTED", files: binding.inventory, inventorySha256: canonicalJsonSha256V2(binding.inventory) },
     surfaces: authored.surface === null ? [] : [{ id: authored.surface.id, kind: authored.surface.kind, layoutLabel: authored.surface.layoutLabel, root: authored.surface.outputRoot, inventorySha256: authored.surface.inventorySha256, semanticValidationPerformed: false, lockEvidence: "CALLER_SUPPLIED_LOCK_BYTES_ONLY" }],
     artifact: { path: receiptPath, tracked: false, ignored: true },
@@ -625,6 +633,13 @@ function deriveCustomTradableReceipt({ trackedPlan, commit, tree, repositoryFile
     || !closedJsonEqual(trackedPlan.materializationReceipt, { path: receiptPath, status: "LOCAL_TRANSIENT_GENERATED_AFTER_COMMIT" })) fail("tracked authority or receipt boundary is invalid");
   if (!Array.isArray(trackedPlan.commands) || trackedPlan.commands.length === 0
     || trackedPlan.commands.some((commandValue) => commandValue?.status !== "NOT_RUN" || !closedJsonEqual(commandValue?.externalActionsPerformed, []))) fail("tracked commands do not support a not-executed observation");
+  const contractConfiguration = deriveReceiptContractConfiguration({
+    trackedPlan,
+    repositoryFiles,
+    generatedPaths: [".gitignore", planPath, "GITHUB-SUBMISSION.md", "LICENSE", "README.md", "evidence/architecture.md"],
+    referenceKernelRoot,
+    fail
+  });
   const surfaces = deriveReceiptSurfaces(trackedPlan, repositoryFiles, fail);
   return {
     schemaVersion: "1.0.0",
@@ -637,6 +652,7 @@ function deriveCustomTradableReceipt({ trackedPlan, commit, tree, repositoryFile
     intent,
     source: { commit, tree },
     plan,
+    contractConfiguration,
     repository: { inventoryProfile: "exact-regular-files-git-modes-v1", emptyDirectories: "OMITTED", files: repositoryFiles, inventorySha256: canonicalJsonSha256V2(repositoryFiles) },
     surfaces,
     artifact: { path: receiptPath, tracked: false, ignored: true },
@@ -674,16 +690,6 @@ function deriveReceiptSurfaces(trackedPlan, repositoryFiles, fail) {
   if (surface.inventorySha256 !== inventorySha256 || !closedJsonEqual(trackedSurfaceFiles, bindings)
     || !repositoryFiles.some(({ path: filePath }) => filePath === generatedConfig)) fail("tracked surface inventory does not match the committed repository");
   return [{ id: label, kind: "application-surface", layoutLabel: label, root, inventorySha256, semanticValidationPerformed: false, lockEvidence: "CALLER_SUPPLIED_LOCK_BYTES_ONLY" }];
-}
-
-function closedJsonEqual(actual, expected) {
-  if (Array.isArray(expected)) return Array.isArray(actual) && actual.length === expected.length && expected.every((value, index) => closedJsonEqual(actual[index], value));
-  if (expected !== null && typeof expected === "object") {
-    if (actual === null || typeof actual !== "object" || Array.isArray(actual)) return false;
-    const actualKeys = Object.keys(actual).sort(comparePaths), expectedKeys = Object.keys(expected).sort(comparePaths);
-    return closedJsonEqual(actualKeys, expectedKeys) && expectedKeys.every((key) => closedJsonEqual(actual[key], expected[key]));
-  }
-  return Object.is(actual, expected);
 }
 
 function validReceiptSlug(value) { return typeof value === "string" && value.length <= 120 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value); }

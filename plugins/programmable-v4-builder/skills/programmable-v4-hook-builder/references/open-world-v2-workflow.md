@@ -25,12 +25,18 @@ Custom tradable implementation is open-ended. Once architecture is selected, aut
 test roots and materialize them without choosing a bundled profile:
 
 ```bash
-node "$SKILL_ROOT/scripts/cli.mjs" project materialize --idea-file "$IDEA_FILE" --application-id "$APPLICATION_ID" --classification tradable --market-ref "$MARKET_REF" --project-profile foundry --source-root "$SOURCE_ROOT" --test-root "$TEST_ROOT" --output "$NEW_REPOSITORY"
+node "$SKILL_ROOT/scripts/cli.mjs" project materialize --idea-file "$IDEA_FILE" --application-id "$APPLICATION_ID" --classification tradable --market-ref "$MARKET_REF" --project-profile foundry --contract-config-root "$CONTRACT_CONFIG_ROOT" --source-root "$SOURCE_ROOT" --test-root "$TEST_ROOT" --output "$NEW_REPOSITORY"
 ```
 
-Dry-run first, then repeat with `--write`. This writes inert source, tests, exact dependencies and a local build plan;
-it executes no candidate bytes. A missing trusted sandbox may leave test evidence unverified, but it must never block
-source implementation. Central launch policy is evaluated later and is not an architecture or source allowlist.
+Dry-run first, then repeat with `--write`. The contract configuration root must contain caller-owned `package.json`,
+`package-lock.json`, `remappings.txt` and `foundry.toml`; additional safe root build configuration is accepted. Its exact
+files, bytes and executable modes are bound without running or semantically certifying them, so custom dependencies,
+remappings, `via_ir`, EVM selection and other technically valid Foundry choices are not replaced by Fee V2 defaults.
+Use `--contract-config-profile foundry-default` instead as an explicit convenience choice. Older invocations that omit
+both configuration flags retain that same default for compatibility. This writes inert source,
+tests, configuration and a local build plan; it executes no candidate bytes. A missing trusted sandbox may leave test
+evidence unverified, but it must never block source implementation. Central launch policy is evaluated later and is not
+an architecture or source allowlist.
 
 When the selected architecture includes an application surface, replace `foundry` with the owner-declared layout label
 `foundry-web`, `foundry-service`, or `foundry-game` and add `--surface-root "$SURFACE_ROOT"`. Accepted regular files,
@@ -80,7 +86,8 @@ plan boundary, then exits 2 with `PROJECT_EXTERNAL_SANDBOX_REQUIRED`:
 Custom tradable materialization commits `.programmable/custom-tradable-build-plan.v1.json`. It then emits the ignored,
 local-only `.programmable/custom-tradable-materialization-receipt.v1.json` outside the commit so the receipt can bind the
 actual emitted commit/tree without a self-reference. Validation checks that receipt against every committed path, byte,
-Git mode and cloned working file, and reconstructs its closed semantic schema from the tracked plan and declared profile.
+Git mode and cloned working file, and reconstructs its closed semantic schema from the tracked plan, declared profile and
+complete root contract-configuration inventory.
 Commands remain `NOT_RUN`; absence of execution evidence does not erase the
 implemented repository or turn its source status into `EXTERNAL_BLOCKED`.
 

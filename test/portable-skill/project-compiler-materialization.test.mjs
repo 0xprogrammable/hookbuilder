@@ -28,8 +28,9 @@ import {
   commandReceiptSchema, deterministicTradeReceipt, deterministicForgeOutput,
   deterministicRelevantTrace, disabledReleaseActions, writeFile, artifactRecord, git, sha256, slug
 } from "./project-compiler-fixture.mjs";
-import { validateCustomTradableMaterializationReceipt } from "../project-materialization-core.mjs";
-import { readCustomTradableSurface, revalidateCustomTradableSurface } from "../project-no-market-authoring-core.mjs";
+import { validateCustomTradableMaterializationReceipt } from "../../skills/programmable-v4-hook-builder/scripts/project-materialization-core.mjs";
+import { readCustomTradableSurface, readLocalAuthoringInputs, revalidateCustomTradableSurface } from "../../skills/programmable-v4-hook-builder/scripts/project-no-market-authoring-core.mjs";
+import { readCustomTradableContractConfiguration, revalidateCustomTradableContractConfiguration, validateCustomTradableContractConfiguration } from "../../skills/programmable-v4-hook-builder/scripts/project-contract-configuration-core.mjs";
 
 test("project materialize authors an arbitrary tradable Foundry hook without requiring a bundled profile", (t) => {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-custom-tradable-authoring-"));
@@ -52,6 +53,7 @@ test("project materialize authors an arbitrary tradable Foundry hook without req
     "--classification", "tradable",
     "--market-ref", "mizu-eth",
     "--project-profile", "foundry",
+    "--contract-config-profile", "foundry-default",
     "--source-root", sourceRoot,
     "--test-root", testRoot,
     "--output", output
@@ -88,6 +90,8 @@ test("project materialize authors an arbitrary tradable Foundry hook without req
   assert.equal(plan.launch.approval, false);
   assert.equal(plan.launch.policyIsSourceAllowlist, false);
   assert.equal(Object.hasOwn(plan, "referenceProfile"), false);
+  assert.equal(plan.contractConfiguration.source, "builder-convenience-default");
+  assert.equal(plan.contractConfiguration.semanticValidationPerformed, false);
   assert.deepEqual(plan.source.map(({ path: filePath }) => filePath), ["src/MizuDynamicFeeHook.sol"]);
   assert.deepEqual(plan.tests.map(({ path: filePath }) => filePath), ["test/MizuDynamicFeeHook.t.sol"]);
   assert.match(fs.readFileSync(path.join(output, "README.md"), "utf8"), /custom tradable.*not restricted to bundled profiles/isu);
@@ -99,6 +103,189 @@ test("project materialize authors an arbitrary tradable Foundry hook without req
   commitTrackedTestFile(output, "surfaces/game/undeclared.txt");
   const topologyTamper = rewriteReceiptForCurrentHead(output, receipt);
   assert.throws(() => validateCustomTradableMaterializationReceipt(topologyTamper, { repositoryRoot: output }), /PROJECT_MATERIALIZATION_RECEIPT_INVALID.*reserved surfaces namespace/iu);
+});
+
+test("custom tradable materializes a complete caller-supplied contract configuration without executing it", (t) => {
+  const fixture = createCustomContractConfigurationFixture(t);
+  const args = customContractConfigurationArgs(fixture);
+
+  const dry = childProcess.spawnSync(process.execPath, [...args, "--brief"], { encoding: "utf8", shell: false, timeout: 30_000 });
+  assert.equal(dry.status, 0, dry.stderr || dry.stdout);
+  assert.equal(JSON.parse(dry.stdout).status, "PROJECT_MATERIALIZATION_DRY_RUN_READY");
+  assert.equal(fs.existsSync(fixture.output), false);
+  assert.equal(fs.existsSync(fixture.marker), false);
+
+  const written = childProcess.spawnSync(process.execPath, [...args, "--write", "--brief"], { encoding: "utf8", shell: false, timeout: 60_000 });
+  assert.equal(written.status, 0, written.stderr || written.stdout);
+  const report = JSON.parse(written.stdout);
+  assert.equal(report.status, "PROJECT_MATERIALIZATION_PLAN_WRITTEN");
+  assert.equal(fs.existsSync(fixture.marker), false);
+  for (const relativePath of fixture.configurationPaths) {
+    assert.deepEqual(fs.readFileSync(path.join(fixture.output, relativePath)), fs.readFileSync(path.join(fixture.contractConfigRoot, relativePath)), `changed ${relativePath}`);
+  }
+  assert.notEqual(fs.statSync(path.join(fixture.output, "hardhat.config.ts")).mode & 0o111, 0);
+  assert.match(fs.readFileSync(path.join(fixture.output, "foundry.toml"), "utf8"), /evm_version = "prague"[\s\S]*via_ir = true/u);
+  assert.match(fs.readFileSync(path.join(fixture.output, "remappings.txt"), "utf8"), /custom-v4-core/u);
+
+  const planPath = path.join(fixture.output, ".programmable/custom-tradable-build-plan.v1.json");
+  const plan = readMultiSurfaceJson(planPath);
+  assert.equal(plan.contractConfiguration.source, "caller-supplied");
+  assert.equal(plan.contractConfiguration.root, ".");
+  assert.equal(plan.contractConfiguration.inventoryProfile, "exact-regular-files-git-modes-v1");
+  assert.equal(plan.contractConfiguration.semanticValidationPerformed, false);
+  assert.deepEqual(plan.contractConfiguration.requiredPaths, ["foundry.toml", "package-lock.json", "package.json", "remappings.txt"]);
+  assert.deepEqual(plan.contractConfiguration.files.map(({ path: filePath }) => filePath), fixture.configurationPaths);
+  assert.equal(plan.contractConfiguration.files.find(({ path: filePath }) => filePath === "hardhat.config.ts").mode, "100755");
+  assert.equal(plan.toolchain.configurationInventorySha256, plan.contractConfiguration.inventorySha256);
+  assert.equal(plan.toolchain.dependencyLock.sha256, sha256Bytes(fs.readFileSync(path.join(fixture.contractConfigRoot, "package-lock.json"))));
+  assert.ok(plan.commands.every(({ status, externalActionsPerformed }) => status === "NOT_RUN" && externalActionsPerformed.length === 0));
+
+  const receiptPath = path.join(fixture.output, ".programmable/custom-tradable-materialization-receipt.v1.json");
+  const receiptBytes = fs.readFileSync(receiptPath);
+  const receipt = readMultiSurfaceJson(receiptPath);
+  assert.deepEqual(receipt.contractConfiguration, plan.contractConfiguration);
+  assert.equal(validateCustomTradableMaterializationReceipt(receipt, { repositoryRoot: fixture.output }), true);
+  const tampered = structuredClone(receipt);
+  tampered.contractConfiguration.files[0].sha256 = `sha256:${"0".repeat(64)}`;
+  fs.writeFileSync(receiptPath, `${canonicalJsonV2(tampered)}\n`);
+  assert.throws(() => validateCustomTradableMaterializationReceipt(tampered, { repositoryRoot: fixture.output }), /PROJECT_MATERIALIZATION_RECEIPT_INVALID.*closed semantic schema/iu);
+  fs.writeFileSync(receiptPath, receiptBytes);
+  assert.equal(git(fixture.output, ["status", "--porcelain=v1", "--untracked-files=all"]), "");
+});
+
+test("custom tradable contract configuration preserves the legacy default and accepts a safe complete caller root", (t) => {
+  const fixture = createCustomContractConfigurationFixture(t);
+  const withoutChoice = customContractConfigurationArgs(fixture).filter((argument, index, values) => argument !== "--contract-config-root" && values[index - 1] !== "--contract-config-root");
+  const implicit = childProcess.spawnSync(process.execPath, withoutChoice, { encoding: "utf8", shell: false, timeout: 30_000 });
+  assert.equal(implicit.status, 0, implicit.stderr || implicit.stdout);
+  const implicitReport = JSON.parse(implicit.stdout);
+  assert.equal(implicitReport.status, "PROJECT_MATERIALIZATION_DRY_RUN_READY");
+  assert.equal(implicitReport.contractConfigurationSource, "builder-convenience-default");
+  assert.equal(fs.existsSync(fixture.output), false);
+
+  fs.rmSync(path.join(fixture.contractConfigRoot, "remappings.txt"));
+  const incomplete = childProcess.spawnSync(process.execPath, customContractConfigurationArgs(fixture), { encoding: "utf8", shell: false, timeout: 30_000 });
+  assert.equal(incomplete.status, 2, incomplete.stderr || incomplete.stdout);
+  assert.match(incomplete.stderr, /PROJECT_CONTRACT_CONFIGURATION_INCOMPLETE.*remappings\.txt/iu);
+  assert.equal(fs.existsSync(fixture.output), false);
+  fs.writeFileSync(path.join(fixture.contractConfigRoot, "remappings.txt"), "custom-v4-core/=node_modules/@custom/v4-core/src/\n");
+
+  const rejectFile = (relativePath, expected) => {
+    const target = path.join(fixture.contractConfigRoot, relativePath);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, "must not enter output\n");
+    const result = childProcess.spawnSync(process.execPath, customContractConfigurationArgs(fixture), { encoding: "utf8", shell: false, timeout: 30_000 });
+    assert.equal(result.status, 2, result.stderr || result.stdout);
+    assert.match(result.stderr, expected);
+    assert.equal(fs.existsSync(fixture.output), false);
+    fs.rmSync(target);
+  };
+  rejectFile(".env", /PROJECT_CONTRACT_CONFIGURATION_INVALID.*secret-risk/iu);
+  rejectFile(".gitignore", /PROJECT_CONTRACT_CONFIGURATION_INVALID.*Git control/iu);
+  rejectFile("README.md", /PROJECT_CONTRACT_CONFIGURATION_INVALID.*generated output path/iu);
+  const accepted = readCustomTradableContractConfiguration({ contractConfigRoot: fixture.contractConfigRoot });
+  const collision = { ...accepted, files: [...accepted.files, { ...accepted.files.find(({ path: filePath }) => filePath === "foundry.toml"), path: "Foundry.toml" }] };
+  assert.throws(() => validateCustomTradableContractConfiguration(collision), /contract configuration paths collide portably.*foundry\.toml/iu);
+  const symlinkTarget = path.join(fixture.parent, "outside.toml");
+  fs.writeFileSync(symlinkTarget, "outside = true\n");
+  fs.symlinkSync(symlinkTarget, path.join(fixture.contractConfigRoot, "linked.toml"));
+  assert.throws(() => readCustomTradableContractConfiguration({ contractConfigRoot: fixture.contractConfigRoot }), /symbolic link/iu);
+  fs.rmSync(path.join(fixture.contractConfigRoot, "linked.toml"));
+  fs.appendFileSync(path.join(fixture.contractConfigRoot, "foundry.toml"), "# drift\n");
+  assert.throws(() => revalidateCustomTradableContractConfiguration(accepted), /PROJECT_CONTRACT_CONFIGURATION_INPUT_CHANGED/iu);
+});
+
+test("materializer walkers stream bounded single-directory fanout before retaining entries", (t) => {
+  const configuration = createCustomContractConfigurationFixture(t);
+  createEmptyDirectoryFanout(configuration.contractConfigRoot, "empty-config", 257);
+  const authoring = createCustomContractConfigurationFixture(t);
+  createEmptyDirectoryFanout(authoring.sourceRoot, "empty-source", 257);
+  const surface = createMultiSurfaceFixture(t, multiSurfaceProfiles[0]);
+  createEmptyDirectoryFanout(surface.surfaceRoot, "empty-surface", 257);
+  withSynchronousReaddirForbidden(() => {
+    assert.throws(
+      () => readCustomTradableContractConfiguration({ contractConfigRoot: configuration.contractConfigRoot }),
+      /(?:entry|director).*cap/iu
+    );
+    assert.throws(
+      () => readLocalAuthoringInputs({ projectProfile: "foundry", sourceRoot: authoring.sourceRoot, testRoot: authoring.testRoot }),
+      /(?:entry|director).*cap/iu
+    );
+    assert.throws(
+      () => readCustomTradableSurface({ projectProfile: "foundry-web", surfaceRoot: surface.surfaceRoot }),
+      /(?:entry|director).*cap/iu
+    );
+  });
+});
+
+test("Foundry source and test walkers reject excessive empty-directory depth", (t) => {
+  const fixture = createCustomContractConfigurationFixture(t);
+  createEmptyDirectoryChain(fixture.sourceRoot, 17);
+  assert.throws(
+    () => readLocalAuthoringInputs({ projectProfile: "foundry", sourceRoot: fixture.sourceRoot, testRoot: fixture.testRoot }),
+    /depth cap/iu
+  );
+});
+
+test("Foundry source and test trees share one byte budget before retaining 64 large files", (t) => {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-shared-authoring-byte-budget-"));
+  t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
+  const sourceRoot = path.join(parent, "src"), testRoot = path.join(parent, "test");
+  fs.mkdirSync(sourceRoot); fs.mkdirSync(testRoot);
+  writeSparseFile(path.join(sourceRoot, "Source.sol"), 1_000_000);
+  for (let index = 0; index < 64; index += 1) writeSparseFile(path.join(testRoot, `Huge${String(index).padStart(2, "0")}.t.sol`), 1_000_000);
+  const reads = captureDescriptorReadLengths(() => assert.throws(
+    () => readLocalAuthoringInputs({ projectProfile: "foundry", sourceRoot, testRoot }),
+    /source and test trees exceed the 2000000-byte authoring cap/iu
+  ));
+  assert.deepEqual(reads, [1_000_000, 1_000_000]);
+});
+
+test("Foundry per-tree file cap rejects the 65th file before opening it", (t) => {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-authoring-file-budget-"));
+  t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
+  const sourceRoot = path.join(parent, "src"), testRoot = path.join(parent, "test");
+  fs.mkdirSync(sourceRoot); fs.mkdirSync(testRoot);
+  for (let index = 0; index < 65; index += 1) fs.writeFileSync(path.join(sourceRoot, `Source${String(index).padStart(2, "0")}.sol`), "x");
+  fs.writeFileSync(path.join(testRoot, "Source.t.sol"), "x");
+  const reads = captureDescriptorReadLengths(() => assert.throws(
+    () => readLocalAuthoringInputs({ projectProfile: "foundry", sourceRoot, testRoot }),
+    /64-file per-tree cap/iu
+  ));
+  assert.equal(reads.length, 64);
+});
+
+test("contract configuration file cap rejects the 257th file before opening it", (t) => {
+  const fixture = createCustomContractConfigurationFixture(t);
+  for (let index = 0; index < 251; index += 1) fs.writeFileSync(path.join(fixture.contractConfigRoot, `extra-${String(index).padStart(3, "0")}.txt`), "x");
+  const reads = captureDescriptorReadLengths(() => assert.throws(
+    () => readCustomTradableContractConfiguration({ contractConfigRoot: fixture.contractConfigRoot }),
+    /256-file cap/iu
+  ));
+  assert.equal(reads.length, 256);
+});
+
+test("surface aggregate byte cap rejects the 65th megabyte before opening it", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-surface-byte-budget-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  for (let index = 0; index < 65; index += 1) writeSparseFile(path.join(root, `asset-${String(index).padStart(2, "0")}.bin`), 1_000_000);
+  const reads = captureDescriptorReadLengths(() => assert.throws(
+    () => readCustomTradableSurface({ projectProfile: "foundry-web", surfaceRoot: root }),
+    /surface tree exceeds the 64000000-byte cap/iu
+  ));
+  assert.equal(reads.length, 64);
+  assert.equal(reads.reduce((sum, byteLength) => sum + byteLength, 0), 64_000_000);
+});
+
+test("surface file cap rejects the 1025th file before opening it", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-surface-file-budget-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  for (let index = 0; index < 1_025; index += 1) fs.writeFileSync(path.join(root, `asset-${String(index).padStart(4, "0")}.txt`), "x");
+  const reads = captureDescriptorReadLengths(() => assert.throws(
+    () => readCustomTradableSurface({ projectProfile: "foundry-web", surfaceRoot: root }),
+    /surface tree exceeds the 1024-file cap/iu
+  ));
+  assert.equal(reads.length, 1_024);
 });
 
 test("project materialize writes an idea-specific no-market source plan without executing candidate bytes", (t) => {
@@ -757,9 +944,77 @@ function multiSurfaceMaterializeArgs(fixture, projectProfile) {
   return [
     unifiedCli, "project", "materialize", "--idea-file", fixture.ideaPath,
     "--application-id", "mizu", "--classification", "tradable", "--market-ref", "mizu-eth",
-    "--project-profile", projectProfile, "--source-root", fixture.sourceRoot, "--test-root", fixture.testRoot,
+    "--project-profile", projectProfile, "--contract-config-profile", "foundry-default",
+    "--source-root", fixture.sourceRoot, "--test-root", fixture.testRoot,
     "--surface-root", fixture.surfaceRoot, "--output", fixture.output
   ];
+}
+
+function createCustomContractConfigurationFixture(t) {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-custom-contract-configuration-"));
+  t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
+  const ideaPath = path.join(parent, "idea.txt"), sourceRoot = path.join(parent, "contract-src"), testRoot = path.join(parent, "contract-test");
+  const contractConfigRoot = path.join(parent, "contract-config"), output = path.join(parent, "output"), marker = path.join(parent, "candidate-executed");
+  fs.mkdirSync(sourceRoot); fs.mkdirSync(testRoot); fs.mkdirSync(path.join(contractConfigRoot, "config"), { recursive: true });
+  fs.writeFileSync(ideaPath, "Build a custom directional, size-sensitive and decaying Uniswap v4 LP-fee hook with an independently selected build configuration.\n");
+  fs.writeFileSync(path.join(sourceRoot, "CustomDynamicFeeHook.sol"), "// SPDX-License-Identifier: MIT\npragma solidity 0.8.26;\ncontract CustomDynamicFeeHook {}\n");
+  fs.writeFileSync(path.join(testRoot, "CustomDynamicFeeHook.t.sol"), "// SPDX-License-Identifier: MIT\npragma solidity 0.8.26;\ncontract CustomDynamicFeeHookTest { function testSimulationCustomFee() external {} function testFuzzCustomFee(uint256) external {} function invariantCustomFee() external pure returns (bool) { return true; } function testDeploymentCustomFee() external {} }\n");
+  const packageDocument = { name: "custom-dynamic-fee", version: "0.0.0", private: true, scripts: { build: "forge build", test: "forge test" }, dependencies: { "@custom/v4-core": "1.2.3", "forge-std": "1.9.7" } };
+  const lockDocument = { name: "custom-dynamic-fee", version: "0.0.0", lockfileVersion: 3, requires: true, packages: { "": { name: "custom-dynamic-fee", version: "0.0.0", dependencies: packageDocument.dependencies }, "node_modules/@custom/v4-core": { version: "1.2.3", resolved: "https://registry.example.invalid/custom-v4-core-1.2.3.tgz", integrity: "sha512-inert-test-fixture" }, "node_modules/forge-std": { version: "1.9.7", resolved: "https://registry.example.invalid/forge-std-1.9.7.tgz", integrity: "sha512-inert-test-fixture" } } };
+  fs.writeFileSync(path.join(contractConfigRoot, "package.json"), `${JSON.stringify(packageDocument, null, 2)}\r\n`);
+  fs.writeFileSync(path.join(contractConfigRoot, "package-lock.json"), `${JSON.stringify(lockDocument)}\n`);
+  fs.writeFileSync(path.join(contractConfigRoot, "remappings.txt"), "custom-v4-core/=node_modules/@custom/v4-core/src/\nforge-std/=node_modules/forge-std/src/\n");
+  fs.writeFileSync(path.join(contractConfigRoot, "foundry.toml"), "[profile.default]\nsrc = \"src\"\ntest = \"test\"\nlibs = [\"node_modules\"]\nsolc_version = \"0.8.26\"\nevm_version = \"prague\"\noptimizer = true\noptimizer_runs = 777\nvia_ir = true\nffi = true\n");
+  fs.writeFileSync(path.join(contractConfigRoot, "hardhat.config.ts"), `import fs from "node:fs"; fs.writeFileSync(${JSON.stringify(marker)}, "executed"); export default { solidity: "0.8.26" };\n`, { mode: 0o755 });
+  fs.chmodSync(path.join(contractConfigRoot, "hardhat.config.ts"), 0o755);
+  fs.writeFileSync(path.join(contractConfigRoot, "config/compiler.json"), "{\"profile\":\"custom\",\"viaIR\":true}\n");
+  return {
+    parent, ideaPath, sourceRoot, testRoot, contractConfigRoot, output, marker,
+    configurationPaths: ["config/compiler.json", "foundry.toml", "hardhat.config.ts", "package-lock.json", "package.json", "remappings.txt"]
+  };
+}
+
+function customContractConfigurationArgs(fixture) {
+  return [
+    unifiedCli, "project", "materialize", "--idea-file", fixture.ideaPath,
+    "--application-id", "custom-dynamic-fee", "--classification", "tradable", "--market-ref", "custom-eth",
+    "--project-profile", "foundry", "--contract-config-root", fixture.contractConfigRoot,
+    "--source-root", fixture.sourceRoot, "--test-root", fixture.testRoot, "--output", fixture.output
+  ];
+}
+
+function createEmptyDirectoryFanout(root, prefix, count) {
+  for (let index = 0; index < count; index += 1) fs.mkdirSync(path.join(root, `${prefix}-${String(index).padStart(4, "0")}`));
+}
+
+function createEmptyDirectoryChain(root, depth) {
+  let directory = root;
+  for (let index = 0; index < depth; index += 1) {
+    directory = path.join(directory, `level-${String(index).padStart(2, "0")}`);
+    fs.mkdirSync(directory);
+  }
+}
+
+function withSynchronousReaddirForbidden(operation) {
+  const original = fs.readdirSync;
+  fs.readdirSync = () => { throw new Error("unbounded readdirSync retention is forbidden"); };
+  try { return operation(); } finally { fs.readdirSync = original; }
+}
+
+function captureDescriptorReadLengths(operation) {
+  const original = fs.readFileSync, lengths = [];
+  fs.readFileSync = (target, ...rest) => {
+    const result = original(target, ...rest);
+    if (typeof target === "number") lengths.push(result.length);
+    return result;
+  };
+  try { operation(); } finally { fs.readFileSync = original; }
+  return lengths;
+}
+
+function writeSparseFile(filePath, byteLength) {
+  const descriptor = fs.openSync(filePath, "w");
+  try { fs.ftruncateSync(descriptor, byteLength); } finally { fs.closeSync(descriptor); }
 }
 
 function commitTrackedTestFile(repositoryRoot, relativePath) {

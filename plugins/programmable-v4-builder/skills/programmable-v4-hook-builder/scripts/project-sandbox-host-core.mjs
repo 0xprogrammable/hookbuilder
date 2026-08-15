@@ -10,7 +10,11 @@ import {
   sha256Bytes
 } from "./project-command-executor-core.mjs";
 import { validateProjectSandboxReceiptV1 } from "./project-sandbox-receipt-core.mjs";
-import { spawnSafeGitSync } from "./repository-root.mjs";
+import {
+  PROJECT_SANDBOX_SOURCE_ARCHIVE_MAXIMUM_BYTES,
+  exactGitTreeTarBytesV1,
+  exactGitTreeTarIdentityV1
+} from "./project-sandbox-source-archive-core.mjs";
 import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
 import {
   PROJECT_SANDBOX_HOST_ATTESTATION_KIND,
@@ -68,7 +72,7 @@ export function createProjectSandboxSourceArchiveV1({ repositoryRoot, expectedRe
   const absolute = path.join(parent, path.basename(requestedAbsolute));
   if (isInside(root, absolute)) fail("PROJECT_SANDBOX_HOST_PATH_OVERLAP", "source archive must be outside the source repository");
   if (fs.existsSync(absolute)) fail("PROJECT_SANDBOX_SOURCE_ARCHIVE_EXISTS", "source archive output already exists");
-  const bytes = gitArchiveBytes(root, source.headCommit);
+  const bytes = exactGitTreeTarBytesV1({ repositoryRoot: root, headCommit: source.headCommit });
   const temporary = `${absolute}.${process.pid}.${crypto.randomUUID()}.tmp`;
   let descriptor;
   try {
@@ -77,7 +81,15 @@ export function createProjectSandboxSourceArchiveV1({ repositoryRoot, expectedRe
     fs.fsyncSync(descriptor);
     fs.closeSync(descriptor);
     descriptor = undefined;
-    fs.renameSync(temporary, absolute);
+    try {
+      fs.linkSync(temporary, absolute);
+    } catch (error) {
+      if (error?.code === "EEXIST") {
+        fail("PROJECT_SANDBOX_SOURCE_ARCHIVE_EXISTS", "source archive output already exists");
+      }
+      throw error;
+    }
+    fs.unlinkSync(temporary);
   } finally {
     if (descriptor !== undefined) fs.closeSync(descriptor);
     if (fs.existsSync(temporary)) fs.unlinkSync(temporary);
@@ -121,7 +133,11 @@ export function createDockerSandboxInvocationV1({
   if (canonicalJsonV2(source) !== canonicalJsonV2(expectedRequest.source)) {
     fail("PROJECT_SANDBOX_SOURCE_DRIFT", "repository source identity differs from the sandbox request");
   }
-  const sourceArchive = exactRegularFile(sourceArchivePath, "sourceArchivePath", 512 * 1024 * 1024);
+  const sourceArchive = exactRegularFile(
+    sourceArchivePath,
+    "sourceArchivePath",
+    PROJECT_SANDBOX_SOURCE_ARCHIVE_MAXIMUM_BYTES
+  );
   const sidecar = exactRegularFile(requestPath, "requestPath", 8 * 1024 * 1024);
   const planSidecar = exactRegularFile(planPath, "planPath", 64 * 1024 * 1024);
   const outputDirectory = exactDirectory(outputRoot, "outputRoot", { mustBeEmpty: true });
@@ -132,8 +148,8 @@ export function createDockerSandboxInvocationV1({
       observed: tool.sha256
     });
   }
-  const expectedArchive = gitArchiveBytes(sourceRoot, source.headCommit);
-  if (sourceArchive.byteLength !== expectedArchive.length || sourceArchive.sha256 !== sha256Bytes(expectedArchive)) {
+  const expectedArchive = exactGitTreeTarIdentityV1({ repositoryRoot: sourceRoot, headCommit: source.headCommit });
+  if (sourceArchive.byteLength !== expectedArchive.byteLength || sourceArchive.sha256 !== expectedArchive.sha256) {
     fail("PROJECT_SANDBOX_SOURCE_ARCHIVE_DRIFT", "source archive differs from the exact requested Git commit");
   }
   for (const hostPath of [sourceArchive.path, sidecar.path, planSidecar.path, outputDirectory]) {
@@ -361,7 +377,35 @@ function exactRegularFile(value, label, maximumBytes) {
   }
   const stat = fs.lstatSync(resolved);
   if (!stat.isFile() || stat.isSymbolicLink() || stat.size > maximumBytes) fail("PROJECT_SANDBOX_HOST_PATH_INVALID", `${label} must be a bounded regular non-symlink file`);
-  return { path: resolved, sha256: sha256Bytes(fs.readFileSync(resolved)), byteLength: stat.size };
+  return { path: resolved, sha256: sha256RegularFile(resolved, stat.size, label), byteLength: stat.size };
+}
+
+function sha256RegularFile(filePath, expectedBytes, label) {
+  const hash = crypto.createHash("sha256");
+  const buffer = Buffer.allocUnsafe(64 * 1024);
+  let descriptor;
+  let observedBytes = 0;
+  try {
+    descriptor = fs.openSync(filePath, "r");
+    while (observedBytes < expectedBytes) {
+      const byteLength = fs.readSync(
+        descriptor,
+        buffer,
+        0,
+        Math.min(buffer.length, expectedBytes - observedBytes),
+        null
+      );
+      if (byteLength === 0) fail("PROJECT_SANDBOX_HOST_PATH_INVALID", `${label} changed while it was hashed`);
+      hash.update(buffer.subarray(0, byteLength));
+      observedBytes += byteLength;
+    }
+    if (fs.readSync(descriptor, buffer, 0, 1, null) !== 0) {
+      fail("PROJECT_SANDBOX_HOST_PATH_INVALID", `${label} changed while it was hashed`);
+    }
+  } finally {
+    if (descriptor !== undefined) fs.closeSync(descriptor);
+  }
+  return `sha256:${hash.digest("hex")}`;
 }
 
 function readStrictJson(filePath, maximumBytes, label) {
@@ -375,20 +419,6 @@ function readStrictJson(filePath, maximumBytes, label) {
   }
   if (!bytes.equals(Buffer.from(`${canonicalJsonV2(value)}\n`, "utf8"))) fail("PROJECT_SANDBOX_HOST_JSON_NOT_CANONICAL", `${label} must be canonical JSON plus one LF`);
   return value;
-}
-
-function gitArchiveBytes(root, headCommit) {
-  const result = spawnSafeGitSync(["-C", root, "archive", "--format=tar", headCommit], {
-    encoding: null,
-    timeout: 120_000,
-    maxBuffer: 512 * 1024 * 1024
-  });
-  if (result.status !== 0 || !Buffer.isBuffer(result.stdout) || result.stdout.length === 0) {
-    fail("PROJECT_SANDBOX_SOURCE_ARCHIVE_FAILED", "exact Git source archive could not be generated", {
-      error: Buffer.isBuffer(result.stderr) ? result.stderr.toString("utf8").trim() : String(result.stderr ?? "")
-    });
-  }
-  return result.stdout;
 }
 
 function isInside(root, target) {

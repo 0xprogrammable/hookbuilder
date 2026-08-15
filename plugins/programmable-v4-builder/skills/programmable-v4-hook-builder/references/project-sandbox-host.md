@@ -7,9 +7,15 @@ Both `plan-docker` and `inspect-evidence` end at `EXTERNAL_BLOCKED`.
 ## What the portable tools do
 
 The existing sandbox request binds the clean Git commit/tree/status, materializing RepositoryPlan, command inventory,
-policy, and input artifacts. `source-archive` exports only that committed Git tree, so ignored worktree files and `.git`
-are not included. `plan-docker` then checks the canonical request and plan sidecars, exact archive bytes, selected Docker
-CLI digest, digest-addressed image reference, non-root requested UID/GID, fixed mount layout, and exact planned argv.
+policy, and input artifacts. `source-archive` reads the exact committed tree with raw `git ls-tree` and `git cat-file`
+plumbing, then emits deterministic USTAR/PAX bytes. Candidate `.gitattributes` entries such as `export-ignore` and
+`export-subst` remain ordinary committed bytes and cannot change that mapping. Ignored worktree files and `.git` are not
+included. Archive paths are sorted, regular-file modes remain `0644` or `0755`, inferred directories are `0755`, and
+UID, GID, and modification time are fixed to zero. Symbolic links, gitlinks, special modes, non-UTF-8 or unsafe paths,
+more than 200,000 combined file/directory entries, paths above 4,096 bytes, more than 48 MiB of unique committed blob
+bytes, a tree listing above 16 MiB, and archives above 64 MiB fail closed before archive allocation. `plan-docker`
+then checks the canonical request and plan sidecars, exact archive bytes, selected Docker CLI digest, digest-addressed
+image reference, non-root requested UID/GID, fixed mount layout, and exact planned argv.
 
 The argv describes a networkless, read-only-root container with dropped capabilities, `no-new-privileges`, init, PID,
 memory, CPU, tmpfs, and explicit launcher options. This is a desired invocation, not proof that the Docker client,

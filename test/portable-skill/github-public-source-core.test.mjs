@@ -1318,10 +1318,10 @@ test("a stalled companion shares the one total deadline", async () => {
 
 test("frozen machine reference matches implementation constants and authority boundary", () => {
   const schemaBytes = fs.readFileSync(
-    new URL("../../references/github-public-source-contract-v1.schema.json", import.meta.url),
+    new URL("../../skills/programmable-v4-hook-builder/references/github-public-source-contract-v1.schema.json", import.meta.url),
   );
   const contract = JSON.parse(
-    fs.readFileSync(new URL("../../references/github-public-source-contract-v1.json", import.meta.url), "utf8"),
+    fs.readFileSync(new URL("../../skills/programmable-v4-hook-builder/references/github-public-source-contract-v1.json", import.meta.url), "utf8"),
   );
   const schema = JSON.parse(schemaBytes.toString("utf8"));
 

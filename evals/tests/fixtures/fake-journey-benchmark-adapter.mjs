@@ -72,7 +72,7 @@ const NEGATIVE_CASES = new Set([
 ]);
 
 function opaqueCaseId(caseId) {
-  return `case-${sha256(Buffer.from(`programmable-community-journeys-v2:${caseId}`, 'utf8')).slice(0, 24)}`;
+  return `case-${sha256(Buffer.from(`programmable-community-journeys-v3:${caseId}`, 'utf8')).slice(0, 24)}`;
 }
 
 const OUTCOMES_BY_OPAQUE_CASE = new Map(Object.entries(OUTCOMES).map(([caseId, outcome]) => [opaqueCaseId(caseId), outcome]));
@@ -80,12 +80,14 @@ const NEGATIVE_OPAQUE_CASES = new Set([...NEGATIVE_CASES].map(opaqueCaseId));
 
 function subjectResult(request) {
   const mode = process.env.PROGRAMMABLE_FAKE_BENCHMARK_MODE ?? 'pass';
-  const expectedActivation = NEGATIVE_OPAQUE_CASES.has(request.caseId) ? 'NOT_ACTIVATED' : 'ACTIVATED';
-  const activated = expectedActivation === 'ACTIVATED';
   const turnIndex = request.turn?.index ?? 1;
   const turnCount = request.turn?.count ?? request.messages?.length ?? 1;
   const messages = request.messages ?? [request.turn.message];
   const isMizu = request.caseId === opaqueCaseId('mizu-design-then-implement');
+  const expectedActivation = isMizu && turnIndex === 1
+    ? 'NOT_ACTIVATED'
+    : NEGATIVE_OPAQUE_CASES.has(request.caseId) ? 'NOT_ACTIVATED' : 'ACTIVATED';
+  const activated = expectedActivation === 'ACTIVATED';
   const outcome = isMizu && turnIndex < turnCount
     ? mode === 'mizu-first-early-blocked' ? 'EARLY_BLOCKED_MISSING_INTENT' : 'DESIGN_SELECTED'
     : OUTCOMES_BY_OPAQUE_CASE.get(request.caseId);
@@ -111,7 +113,9 @@ function subjectResult(request) {
   const authorityRequests = [];
   const inputTokens = 200 + messages.reduce((total, message) => total + message.content.split(/\s+/u).length, 0);
   const outputTokens = 80;
-  const observedActivation = mode === 'turn-inconsistent' && turnIndex === 1 ? 'NOT_ACTIVATED' : expectedActivation;
+  const observedActivation = mode === 'turn-inconsistent' && turnIndex === 1
+    ? expectedActivation === 'ACTIVATED' ? 'NOT_ACTIVATED' : 'ACTIVATED'
+    : expectedActivation;
   const loadedReferences = observedActivation === 'ACTIVATED' ? [{
     path: 'SKILL.md',
     sha256: sha256(skillMd),
@@ -126,7 +130,7 @@ function subjectResult(request) {
     phase: 'trigger',
     reason: 'invalid negative activation fixture',
   });
-  return {
+  const result = {
     schemaVersion: '1.0.0',
     requestSha256: request.requestSha256,
     caseId: request.caseId,
@@ -164,12 +168,19 @@ function subjectResult(request) {
       timeToUsefulMs: 8,
     },
     effects: {
-      localWrites,
+      localWrites: mode === 'oversized-effects'
+        ? Array.from({ length: 1_001 }, (_, index) => `synthetic-write-${index}`)
+        : localWrites,
       networkCalls: 0,
       externalWrites: [],
       authorityRequests,
     },
   };
+  if (mode === 'unsafe-metric') {
+    result.telemetry.inputTokens = 1e308;
+    result.telemetry.totalTokens = 1e308;
+  }
+  return result;
 }
 
 function judgeResult(request) {

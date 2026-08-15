@@ -4,7 +4,7 @@ import * as sandboxHostCore from "../../skills/programmable-v4-hook-builder/scri
 
 import {
   assert, crypto, fs, os, path,
-  canonicalJsonSha256V2, canonicalJsonV2,
+  canonicalJsonSha256V2, canonicalJsonV2, git,
   createMaterializedRepository, executeProjectCommands, sha256Bytes
 } from "./project-compiler-fixture.mjs";
 import { inspectCleanProjectSource } from "../../skills/programmable-v4-hook-builder/scripts/project-command-executor-core.mjs";
@@ -12,6 +12,12 @@ import {
   createProjectSandboxRequestV1,
   verifyProjectSandboxReceiptV1
 } from "../../skills/programmable-v4-hook-builder/scripts/project-sandbox-receipt-core.mjs";
+import {
+  PROJECT_SANDBOX_SOURCE_ARCHIVE_MAXIMUM_BYTES,
+  PROJECT_SANDBOX_SOURCE_UNIQUE_BLOB_MAXIMUM_BYTES,
+  exactGitTreeTarBytesV1,
+  exactGitTreeTarIdentityV1
+} from "../../skills/programmable-v4-hook-builder/scripts/project-sandbox-source-archive-core.mjs";
 import {
   PROJECT_SANDBOX_HOST_EXTERNAL_REQUIREMENTS,
   createDockerSandboxInvocationV1,
@@ -43,6 +49,210 @@ test("portable host module exposes no completion verifier or signing helper", ()
   }
   assert.doesNotMatch(cliSource, /operation === "verify"/u);
   assert.match(cliSource, /operation === "inspect-evidence"/u);
+});
+
+test("source archive finalization never replaces a concurrently created output", (t) => {
+  const project = createMaterializedRepository(t);
+  const source = inspectCleanProjectSource(project.root);
+  const request = createProjectSandboxRequestV1({ repositoryPlan: project.plan, source });
+  const sidecarRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-sandbox-archive-race-"));
+  const outputPath = path.join(sidecarRoot, "source.tar");
+  const competingBytes = Buffer.from("CONCURRENT_OUTPUT_MUST_SURVIVE\n", "utf8");
+  const originalLinkSync = fs.linkSync;
+  t.after(() => {
+    fs.linkSync = originalLinkSync;
+    fs.rmSync(sidecarRoot, { recursive: true, force: true });
+  });
+  fs.linkSync = (...arguments_) => {
+    fs.writeFileSync(outputPath, competingBytes, { flag: "wx", mode: 0o600 });
+    return originalLinkSync(...arguments_);
+  };
+
+  assert.throws(
+    () => createProjectSandboxSourceArchiveV1({
+      repositoryRoot: project.root,
+      expectedRequest: request,
+      outputPath
+    }),
+    ({ code }) => code === "PROJECT_SANDBOX_SOURCE_ARCHIVE_EXISTS"
+  );
+  assert.deepEqual(fs.readFileSync(outputPath), competingBytes);
+  assert.deepEqual(fs.readdirSync(sidecarRoot), ["source.tar"]);
+});
+
+test("source archive maps exact Git tree bytes without applying candidate export attributes", (t) => {
+  const ignoredBytes = Buffer.from("EXPORTED_EVEN_WITH_EXPORT_IGNORE\n", "utf8");
+  const substitutionBytes = Buffer.from("literal-$Format:%H$-bytes\n", "utf8");
+  const longPath = `long/${"a".repeat(90)}/${"b".repeat(90)}/${"c".repeat(90)}.txt`;
+  const longPathBytes = Buffer.from("LONG_PATH_BYTES\n", "utf8");
+  const project = createMaterializedRepository(t, {
+    extraFiles: [
+      ["export-ignored.txt", ignoredBytes],
+      ["export-substituted.txt", substitutionBytes],
+      ["bin/executable", "#!/bin/sh\nexit 0\n"],
+      [longPath, longPathBytes]
+    ],
+    setup(root) {
+      fs.writeFileSync(
+        path.join(root, ".gitattributes"),
+        "export-ignored.txt export-ignore\nexport-substituted.txt export-subst\n"
+      );
+      fs.chmodSync(path.join(root, "bin/executable"), 0o755);
+    }
+  });
+  const source = inspectCleanProjectSource(project.root);
+  const request = createProjectSandboxRequestV1({ repositoryPlan: project.plan, source });
+  const sidecarRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-sandbox-exact-tree-"));
+  t.after(() => fs.rmSync(sidecarRoot, { recursive: true, force: true }));
+  const firstPath = path.join(sidecarRoot, "source-a.tar");
+  const secondPath = path.join(sidecarRoot, "source-b.tar");
+
+  createProjectSandboxSourceArchiveV1({ repositoryRoot: project.root, expectedRequest: request, outputPath: firstPath });
+  createProjectSandboxSourceArchiveV1({ repositoryRoot: project.root, expectedRequest: request, outputPath: secondPath });
+  const first = fs.readFileSync(firstPath);
+  const second = fs.readFileSync(secondPath);
+
+  assert.deepEqual(second, first, "the same tree must produce byte-identical deterministic tar bytes");
+  assert.deepEqual(exactGitTreeTarIdentityV1({ repositoryRoot: project.root, headCommit: source.headCommit }), {
+    sha256: sha256Bytes(first),
+    byteLength: first.length
+  }, "hash-only identity must cover the same USTAR/PAX stream without materializing another tar");
+  assert.equal(first.includes(ignoredBytes), true, "export-ignore must not remove a committed blob");
+  assert.equal(first.includes(substitutionBytes), true, "export-subst must not rewrite committed blob bytes");
+  assert.equal(first.includes(Buffer.from(source.headCommit, "utf8")), false, "archive metadata must not inject the commit id");
+  const entries = parseTarEntries(first);
+  assert.deepEqual(entries.get("export-ignored.txt")?.bytes, ignoredBytes);
+  assert.deepEqual(entries.get("export-substituted.txt")?.bytes, substitutionBytes);
+  assert.deepEqual(entries.get(longPath)?.bytes, longPathBytes, "PAX path must preserve an exact long tree path");
+  assert.equal(entries.get("bin/executable")?.mode, 0o755);
+  assert.equal(entries.get("README.md")?.mode, 0o644);
+  for (const entry of entries.values()) {
+    assert.equal(entry.uid, 0);
+    assert.equal(entry.gid, 0);
+    assert.equal(entry.mtime, 0);
+  }
+});
+
+test("source archive rejects symbolic-link tree entries", (t) => {
+  const project = createMaterializedRepository(t, {
+    setup(root) {
+      fs.symlinkSync("README.md", path.join(root, "readme-link"));
+    }
+  });
+  assertUnsupportedSourceTree(t, project, "symlink-source", "120000");
+});
+
+test("source archive rejects gitlink tree entries", (t) => {
+  const project = createMaterializedRepository(t, {
+    setup(root) {
+      const nested = path.join(root, "vendor", "embedded");
+      fs.mkdirSync(nested, { recursive: true });
+      git(nested, ["init", "-q"]);
+      git(nested, ["config", "user.name", "Embedded Fixture"]);
+      git(nested, ["config", "user.email", "embedded@example.invalid"]);
+      fs.writeFileSync(path.join(nested, "README.md"), "# Embedded\n");
+      git(nested, ["add", "."]);
+      git(nested, ["commit", "-qm", "embedded fixture"]);
+    }
+  });
+  assertUnsupportedSourceTree(t, project, "gitlink-source", "160000");
+});
+
+test("combined file and inferred-directory cap fails before retaining an excess deep entry", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-sandbox-entry-cap-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const deepDirectory = path.join(root, "a", "b", "c", "d", "e");
+  fs.mkdirSync(deepDirectory, { recursive: true });
+  fs.writeFileSync(path.join(deepDirectory, "source.txt"), "bounded tree\n");
+  git(root, ["init", "-q"]);
+  git(root, ["config", "user.name", "Entry Cap Fixture"]);
+  git(root, ["config", "user.email", "entry-cap@example.invalid"]);
+  git(root, ["add", "."]);
+  git(root, ["commit", "-qm", "deep tree fixture"]);
+  const headCommit = git(root, ["rev-parse", "HEAD"]);
+
+  assert.throws(
+    () => exactGitTreeTarBytesV1({ repositoryRoot: root, headCommit, maximumTreeEntries: 4 }),
+    ({ code, maximumEntries, retainedEntries, attemptedEntryKind, attemptedPath }) => (
+      code === "PROJECT_SANDBOX_SOURCE_TREE_LIMIT_EXCEEDED"
+      && maximumEntries === 4
+      && retainedEntries === 4
+      && attemptedEntryKind === "directory"
+      && attemptedPath === "a/b/c/d/e/"
+    )
+  );
+});
+
+test("source archive enforces bounded unique-blob and final-tar bytes while hash-only identity stays exact", (t) => {
+  assert.equal(PROJECT_SANDBOX_SOURCE_ARCHIVE_MAXIMUM_BYTES, 64 * 1024 * 1024);
+  assert.equal(PROJECT_SANDBOX_SOURCE_UNIQUE_BLOB_MAXIMUM_BYTES, 48 * 1024 * 1024);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-sandbox-byte-cap-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const sourceBytes = Buffer.alloc(1_024, 0x61);
+  fs.writeFileSync(path.join(root, "source.bin"), sourceBytes);
+  git(root, ["init", "-q"]);
+  git(root, ["config", "user.name", "Byte Cap Fixture"]);
+  git(root, ["config", "user.email", "byte-cap@example.invalid"]);
+  git(root, ["add", "."]);
+  git(root, ["commit", "-qm", "bounded byte fixture"]);
+  const headCommit = git(root, ["rev-parse", "HEAD"]);
+  const exactArchiveBytes = 2_560;
+
+  const archive = exactGitTreeTarBytesV1({
+    repositoryRoot: root,
+    headCommit,
+    maximumArchiveBytes: exactArchiveBytes,
+    maximumUniqueBlobBytes: sourceBytes.length
+  });
+  assert.equal(archive.length, exactArchiveBytes);
+  assert.deepEqual(exactGitTreeTarIdentityV1({
+    repositoryRoot: root,
+    headCommit,
+    maximumArchiveBytes: exactArchiveBytes,
+    maximumUniqueBlobBytes: sourceBytes.length
+  }), {
+    sha256: sha256Bytes(archive),
+    byteLength: exactArchiveBytes
+  });
+
+  assert.throws(
+    () => exactGitTreeTarBytesV1({
+      repositoryRoot: root,
+      headCommit,
+      maximumArchiveBytes: exactArchiveBytes,
+      maximumUniqueBlobBytes: sourceBytes.length - 1
+    }),
+    ({ code, maximumBytes, retainedBytes, attemptedBytes }) => (
+      code === "PROJECT_SANDBOX_SOURCE_TREE_LIMIT_EXCEEDED"
+      && maximumBytes === sourceBytes.length - 1
+      && retainedBytes === 0
+      && attemptedBytes === sourceBytes.length
+    )
+  );
+  assert.throws(
+    () => exactGitTreeTarBytesV1({
+      repositoryRoot: root,
+      headCommit,
+      maximumArchiveBytes: exactArchiveBytes - 1,
+      maximumUniqueBlobBytes: sourceBytes.length
+    }),
+    ({ code, maximumBytes, requiredBytes }) => (
+      code === "PROJECT_SANDBOX_SOURCE_TREE_LIMIT_EXCEEDED"
+      && maximumBytes === exactArchiveBytes - 1
+      && requiredBytes === exactArchiveBytes
+    )
+  );
+  assert.throws(
+    () => exactGitTreeTarBytesV1({
+      repositoryRoot: root,
+      headCommit,
+      maximumArchiveBytes: PROJECT_SANDBOX_SOURCE_ARCHIVE_MAXIMUM_BYTES + 1
+    }),
+    ({ code, maximumAllowedBytes }) => (
+      code === "PROJECT_SANDBOX_SOURCE_TREE_LIMIT_INVALID"
+      && maximumAllowedBytes === PROJECT_SANDBOX_SOURCE_ARCHIVE_MAXIMUM_BYTES
+    )
+  );
 });
 
 test("Docker planning emits restrictive desired argv but remains externally blocked", (t) => {
@@ -534,4 +744,81 @@ function rawSignAttestation(payload, privateKey) {
 
 function digest(value) {
   return sha256Bytes(Buffer.from(value, "utf8"));
+}
+
+function assertUnsupportedSourceTree(t, project, archiveName, expectedMode) {
+  const source = inspectCleanProjectSource(project.root);
+  const request = createProjectSandboxRequestV1({ repositoryPlan: project.plan, source });
+  const sidecarRoot = fs.mkdtempSync(path.join(os.tmpdir(), `programmable-sandbox-${archiveName}-`));
+  t.after(() => fs.rmSync(sidecarRoot, { recursive: true, force: true }));
+  const outputPath = path.join(sidecarRoot, "source.tar");
+  assert.throws(
+    () => createProjectSandboxSourceArchiveV1({
+      repositoryRoot: project.root,
+      expectedRequest: request,
+      outputPath
+    }),
+    ({ code, mode }) => (
+      code === "PROJECT_SANDBOX_SOURCE_TREE_ENTRY_UNSUPPORTED"
+      && mode === expectedMode
+    )
+  );
+  assert.equal(fs.existsSync(outputPath), false);
+}
+
+function parseTarEntries(bytes) {
+  const entries = new Map();
+  let offset = 0;
+  let paxPath = null;
+  while (offset + 512 <= bytes.length) {
+    const header = bytes.subarray(offset, offset + 512);
+    if (header.every((byte) => byte === 0)) break;
+    const name = tarString(header.subarray(0, 100));
+    const prefix = tarString(header.subarray(345, 500));
+    const type = String.fromCharCode(header[156] || 0x30);
+    const size = Number.parseInt(tarString(header.subarray(124, 136)).trim() || "0", 8);
+    const mode = Number.parseInt(tarString(header.subarray(100, 108)).trim() || "0", 8);
+    const uid = Number.parseInt(tarString(header.subarray(108, 116)).trim() || "0", 8);
+    const gid = Number.parseInt(tarString(header.subarray(116, 124)).trim() || "0", 8);
+    const mtime = Number.parseInt(tarString(header.subarray(136, 148)).trim() || "0", 8);
+    const recordedChecksum = Number.parseInt(tarString(header.subarray(148, 156)).trim() || "0", 8);
+    const checksumHeader = Buffer.from(header);
+    checksumHeader.fill(0x20, 148, 156);
+    assert.equal(checksumHeader.reduce((sum, byte) => sum + byte, 0), recordedChecksum, "valid tar header checksum");
+    const bodyStart = offset + 512;
+    const bodyEnd = bodyStart + size;
+    assert.ok(Number.isSafeInteger(size) && size >= 0 && bodyEnd <= bytes.length, "valid bounded tar entry");
+    const body = Buffer.from(bytes.subarray(bodyStart, bodyEnd));
+    offset = bodyStart + Math.ceil(size / 512) * 512;
+    if (type === "x") {
+      paxPath = parsePaxPath(body);
+      continue;
+    }
+    const headerPath = prefix.length > 0 ? `${prefix}/${name}` : name;
+    const entryPath = paxPath ?? headerPath;
+    paxPath = null;
+    if (type === "0" || type === "\0") entries.set(entryPath, { bytes: body, mode, uid, gid, mtime, type });
+  }
+  return entries;
+}
+
+function parsePaxPath(bytes) {
+  let offset = 0;
+  let pathValue = null;
+  while (offset < bytes.length) {
+    const separator = bytes.indexOf(0x20, offset);
+    assert.ok(separator > offset, "valid PAX length separator");
+    const length = Number.parseInt(bytes.subarray(offset, separator).toString("ascii"), 10);
+    assert.ok(Number.isSafeInteger(length) && length > 0 && offset + length <= bytes.length, "valid PAX record length");
+    const record = bytes.subarray(separator + 1, offset + length - 1).toString("utf8");
+    if (record.startsWith("path=")) pathValue = record.slice("path=".length);
+    offset += length;
+  }
+  assert.equal(typeof pathValue, "string");
+  return pathValue;
+}
+
+function tarString(bytes) {
+  const end = bytes.indexOf(0);
+  return bytes.subarray(0, end === -1 ? bytes.length : end).toString("utf8");
 }

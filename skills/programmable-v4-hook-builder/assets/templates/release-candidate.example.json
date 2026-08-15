@@ -1,16 +1,16 @@
 {
   "schemaVersion": "1.0.0",
-  "candidateId": "programmable-v4-builder-v0.10.0-local-20260815",
+  "candidateId": "programmable-v4-builder-v0.9.2-local-20260815",
   "privateCandidate": true,
   "publicState": "not-published",
-  "releaseVersion": "0.10.0",
+  "releaseVersion": "0.9.2",
   "channel": "canary",
   "releaseKind": "normal",
   "plannedRelease": {
     "builder": {
       "fromVersion": "0.9.1",
-      "toVersion": "0.10.0",
-      "semanticClassification": "minor"
+      "toVersion": "0.9.2",
+      "semanticClassification": "patch"
     },
     "submissionStandard": {
       "fromVersion": "1.6.0",
@@ -46,7 +46,7 @@
     {
       "id": "multi-surface-materialization",
       "kind": "feature",
-      "summary": "For custom tradable projects, pair a bounded caller-supplied Foundry contract tree with exactly one selected web, service, or game source tree as inert, byte-bound local inputs without executing candidate code."
+      "summary": "For custom tradable projects, preserve a complete caller-supplied dependency lock, remappings, Foundry settings, safe root configuration and contract tree with at most one web, service, or game source tree as inert byte-and-mode-bound inputs; omitted new configuration flags retain the v0.9.1 convenience default, and all input trees enforce incremental entry, directory, depth, file, and byte limits."
     },
     {
       "id": "generic-application-handoff",
@@ -56,12 +56,12 @@
     {
       "id": "sandbox-host-contract",
       "kind": "feature",
-      "summary": "Add a deterministic external sandbox-host integration plan while keeping portable execution and completion fail-closed until independently trusted host evidence exists."
+      "summary": "Add a deterministic external sandbox-host plan and exact raw-Git tree archive that ignores export attributes, rejects unsupported modes, bounds combined entries and retained bytes, and finalizes without replacement, while keeping portable execution and completion fail-closed until independently trusted host evidence exists."
     },
     {
       "id": "journey-benchmark",
       "kind": "feature",
-      "summary": "Add a versioned, anti-leakage benchmark harness for comparing Builder journeys, activation traces, repository outcomes, efficiency, effects, and independent judge results."
+      "summary": "Add a versioned anti-leakage benchmark harness for Builder journeys with bounded workspaces, sidecars, metrics, effects, and aggregate evidence, including an append-only correction that keeps the Mizu design-only turn NOT_ACTIVATED and requires its explicit implementation continuation to become ACTIVATED."
     },
     {
       "id": "lean-portable-package",
@@ -71,7 +71,7 @@
     {
       "id": "contributor-maintainer-authority-split",
       "kind": "documentation",
-      "summary": "Document that contributors author and push the candidate while a separate current CODEOWNER reviews, approves, squash-merges, tags, and publishes the exact accepted revision."
+      "summary": "Document that a pre-1.0 patch may add optional backward-compatible capabilities without new required existing inputs or incompatible contracts, and that contributors author and push the candidate while a separate current CODEOWNER reviews, approves, squash-merges, tags, and publishes the exact accepted revision."
     }
   ],
   "unbundledChangeIds": [],

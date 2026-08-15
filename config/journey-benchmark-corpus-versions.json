@@ -16,6 +16,13 @@
       "path": "evals/journey-benchmark/v2/corpus.json",
       "sha256": "f95f4b7cc154814e7f47deae9d96b0145022cbc1742033c17566ec2bc1eda042",
       "status": "IMMUTABLE"
+    },
+    {
+      "version": "v3",
+      "corpusId": "programmable-community-journeys-v3",
+      "path": "evals/journey-benchmark/v3/corpus.json",
+      "sha256": "8e2b8dcb36bdc65b707dfd1748a1c6e6584f58b9a66944a9c4c61fd3ff8fcf74",
+      "status": "IMMUTABLE"
     }
   ]
 }

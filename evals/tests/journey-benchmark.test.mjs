@@ -9,17 +9,23 @@ import { fileURLToPath } from 'node:url';
 
 import {
   BASE_CORPUS_V1_RELATIVE_PATH,
+  BASE_CORPUS_V1_DIGEST_RELATIVE_PATH,
   CORPUS_DIGEST_RELATIVE_PATH,
   CORPUS_RELATIVE_PATH,
+  CORPUS_V2_DIGEST_RELATIVE_PATH,
+  CORPUS_V2_RELATIVE_PATH,
   CORPUS_VERSION_AUTHORITY_RELATIVE_PATH,
   JourneyBenchmarkError,
   PINNED_V1_CORPUS_SHA256,
   PINNED_V2_CORPUS_SHA256,
+  PINNED_V3_CORPUS_SHA256,
   PINNED_FAKE_ADAPTER_SHA256,
   assertSecretValuesAbsent,
   canonicalJson,
+  inspectEvidenceBundle,
   inventoryDirectory,
   loadFrozenCorpus,
+  parseAdapterOutput,
   runJourneyBenchmark,
   sha256,
   validateBenchmarkConfig,
@@ -57,7 +63,7 @@ function fakeConfig(overrides = {}) {
         host: { name: 'fake-host', version: '1', provider: 'local-fixture', model: 'fake-subject-model' },
       },
       {
-        id: 'v0-10-candidate',
+        id: 'v0-9-2-candidate',
         role: 'candidate',
         skillPath: SKILL_PATH,
         adapterArgv: [process.execPath, FAKE_ADAPTER],
@@ -78,7 +84,7 @@ function writeJson(filePath, value) {
 
 test('frozen public journey corpus covers the exact complaint and required neighboring groups', () => {
   const result = loadFrozenCorpus({ repositoryRoot: REPOSITORY_ROOT });
-  assert.equal(result.corpus.corpusId, 'programmable-community-journeys-v2');
+  assert.equal(result.corpus.corpusId, 'programmable-community-journeys-v3');
   assert.equal(result.corpus.qualification, 'PUBLIC_REGRESSION_AND_COMPARISON_CORPUS_NOT_BLIND_HOLDOUT');
   assert.deepEqual(result.counts, {
     cases: 27,
@@ -95,6 +101,7 @@ test('frozen public journey corpus covers the exact complaint and required neigh
   const mizu = result.corpus.cases.find(({ id }) => id === 'mizu-design-then-implement');
   assert.equal(mizu.messages.length, 2);
   assert.equal(mizu.expected.activation, 'ACTIVATED');
+  assert.deepEqual(mizu.expected.activationByTurn, ['NOT_ACTIVATED', 'ACTIVATED']);
   assert.equal(mizu.expected.outcome, 'MATERIALIZED_REPOSITORY');
   assert.ok(mizu.expected.forbiddenBehaviors.includes('implementation-refusal-because-custom-profile'));
   const forgePolicy = result.corpus.executionPolicies.find(({ id }) => id === 'forge-unavailable-v1');
@@ -104,36 +111,45 @@ test('frozen public journey corpus covers the exact complaint and required neigh
   const missingForge = result.corpus.cases.find(({ id }) => id === 'missing-foundry-tool');
   assert.match(missingForge.messages[0].content, /case-bound sandbox policy disables Forge execution/iu);
   assert.doesNotMatch(missingForge.messages[0].content, /unavailable on this machine/iu);
-  assert.equal(result.corpusSha256, PINNED_V2_CORPUS_SHA256);
+  assert.equal(result.corpusSha256, PINNED_V3_CORPUS_SHA256);
   assert.equal(result.baseCorpusSha256, PINNED_V1_CORPUS_SHA256);
   assert.equal(PINNED_V1_CORPUS_SHA256, '81f27c3ad1acd1ea676ba982fe1e08a361e3d05f941a71c5a0e526db6fd7fe3f');
   assert.equal(PINNED_V2_CORPUS_SHA256, 'f95f4b7cc154814e7f47deae9d96b0145022cbc1742033c17566ec2bc1eda042');
+  assert.equal(PINNED_V3_CORPUS_SHA256, '8e2b8dcb36bdc65b707dfd1748a1c6e6584f58b9a66944a9c4c61fd3ff8fcf74');
   const authority = JSON.parse(fs.readFileSync(path.join(REPOSITORY_ROOT, CORPUS_VERSION_AUTHORITY_RELATIVE_PATH), 'utf8'));
   assert.equal(authority.versions[0].sha256, PINNED_V1_CORPUS_SHA256);
   assert.equal(authority.versions[1].sha256, PINNED_V2_CORPUS_SHA256);
-  assert.equal(PINNED_FAKE_ADAPTER_SHA256, '64a9e2588c3633b14ce09cf9182bf10e66dd3cbe817ba011e5019fea3a09d59e');
+  assert.equal(authority.versions[2].sha256, PINNED_V3_CORPUS_SHA256);
+  assert.equal(PINNED_FAKE_ADAPTER_SHA256, '56b2288b0c8cd332d836bf96c260ced7ec89213ec76da9b36eb725d3dc77fcbf');
   assert.equal(sha256(fs.readFileSync(FAKE_ADAPTER)), PINNED_FAKE_ADAPTER_SHA256);
 });
 
-test('active corpus rejects an in-place edit even when its co-versioned digest is regenerated', (t) => {
-  const repositoryRoot = temporaryDirectory(t, 'programmable-corpus-version-test-');
-  const sourceBenchmarkRoot = path.join(REPOSITORY_ROOT, 'evals/journey-benchmark');
-  const targetBenchmarkRoot = path.join(repositoryRoot, 'evals/journey-benchmark');
-  fs.mkdirSync(path.dirname(targetBenchmarkRoot), { recursive: true });
-  fs.cpSync(sourceBenchmarkRoot, targetBenchmarkRoot, { recursive: true });
-  const authorityTarget = path.join(repositoryRoot, CORPUS_VERSION_AUTHORITY_RELATIVE_PATH);
-  fs.mkdirSync(path.dirname(authorityTarget), { recursive: true });
-  fs.copyFileSync(path.join(REPOSITORY_ROOT, CORPUS_VERSION_AUTHORITY_RELATIVE_PATH), authorityTarget);
-  const corpusTarget = path.join(repositoryRoot, CORPUS_RELATIVE_PATH);
-  const corpus = JSON.parse(fs.readFileSync(corpusTarget, 'utf8'));
-  corpus.frozenOn = '2026-08-16';
-  writeJson(corpusTarget, corpus);
-  const mutatedDigest = crypto.createHash('sha256').update(fs.readFileSync(corpusTarget)).digest('hex');
-  fs.writeFileSync(path.join(repositoryRoot, CORPUS_DIGEST_RELATIVE_PATH), `${mutatedDigest}  corpus.json\n`);
-  assert.throws(
-    () => loadFrozenCorpus({ repositoryRoot }),
-    (error) => error instanceof JourneyBenchmarkError && error.code === 'CORPUS_VERSION_IMMUTABLE',
-  );
+test('every frozen corpus version rejects an in-place edit even when its co-versioned digest is regenerated', (t) => {
+  for (const [version, corpusRelativePath, digestRelativePath] of [
+    ['v1', BASE_CORPUS_V1_RELATIVE_PATH, BASE_CORPUS_V1_DIGEST_RELATIVE_PATH],
+    ['v2', CORPUS_V2_RELATIVE_PATH, CORPUS_V2_DIGEST_RELATIVE_PATH],
+    ['v3', CORPUS_RELATIVE_PATH, CORPUS_DIGEST_RELATIVE_PATH],
+  ]) {
+    const repositoryRoot = temporaryDirectory(t, `programmable-corpus-${version}-version-test-`);
+    const sourceBenchmarkRoot = path.join(REPOSITORY_ROOT, 'evals/journey-benchmark');
+    const targetBenchmarkRoot = path.join(repositoryRoot, 'evals/journey-benchmark');
+    fs.mkdirSync(path.dirname(targetBenchmarkRoot), { recursive: true });
+    fs.cpSync(sourceBenchmarkRoot, targetBenchmarkRoot, { recursive: true });
+    const authorityTarget = path.join(repositoryRoot, CORPUS_VERSION_AUTHORITY_RELATIVE_PATH);
+    fs.mkdirSync(path.dirname(authorityTarget), { recursive: true });
+    fs.copyFileSync(path.join(REPOSITORY_ROOT, CORPUS_VERSION_AUTHORITY_RELATIVE_PATH), authorityTarget);
+    const corpusTarget = path.join(repositoryRoot, corpusRelativePath);
+    const corpus = JSON.parse(fs.readFileSync(corpusTarget, 'utf8'));
+    corpus.frozenOn = '2026-08-16';
+    writeJson(corpusTarget, corpus);
+    const mutatedDigest = crypto.createHash('sha256').update(fs.readFileSync(corpusTarget)).digest('hex');
+    fs.writeFileSync(path.join(repositoryRoot, digestRelativePath), `${mutatedDigest}  corpus.json\n`);
+    assert.throws(
+      () => loadFrozenCorpus({ repositoryRoot }),
+      (error) => error instanceof JourneyBenchmarkError && error.code === 'CORPUS_VERSION_IMMUTABLE',
+      version,
+    );
+  }
 });
 
 test('corpus validation rejects count drift and any sealed-holdout reference', () => {
@@ -212,7 +228,7 @@ test('fake adapters exercise the complete comparison path without becoming model
   assert.ok(result.scorecard.runs.every(({ resultInventory }) => resultInventory.tree[0].path === '.'));
   assert.ok(result.scorecard.subjects.every(({ skill }) => skill.unchanged));
   assert.equal(result.scorecard.comparisons.length, 1);
-  assert.equal(result.scorecard.comparisons[0].comparedSubjectId, 'v0-10-candidate');
+  assert.equal(result.scorecard.comparisons[0].comparedSubjectId, 'v0-9-2-candidate');
   assert.deepEqual(result.scorecard.comparisons[0].medianDeltas, {
     totalTokens: 0,
     toolCalls: 0,
@@ -220,9 +236,10 @@ test('fake adapters exercise the complete comparison path without becoming model
     elapsedMs: 0,
     timeToUsefulMs: 0,
   });
-  const mizu = result.scorecard.runs.find(({ caseId, subjectId }) => caseId === 'mizu-design-then-implement' && subjectId === 'v0-10-candidate');
+  const mizu = result.scorecard.runs.find(({ caseId, subjectId }) => caseId === 'mizu-design-then-implement' && subjectId === 'v0-9-2-candidate');
   assert.equal(mizu.subject.result.outcome, 'MATERIALIZED_REPOSITORY');
   assert.equal(mizu.subject.activation.turns.length, 2);
+  assert.deepEqual(mizu.subject.activation.turns.map(({ decision }) => decision), ['NOT_ACTIVATED', 'ACTIVATED']);
   const missingTool = result.scorecard.runs.find(({ caseId }) => caseId === 'missing-foundry-tool');
   assert.equal(missingTool.subject.result.outcome, 'MATERIALIZED_UNVERIFIED_REPOSITORY');
   assert.deepEqual(missingTool.executionPolicy.deniedExecutables, ['forge']);
@@ -231,7 +248,7 @@ test('fake adapters exercise the complete comparison path without becoming model
   const denied = result.scorecard.runs.find(({ caseId }) => caseId === 'deploy-authority-denied');
   assert.deepEqual(denied.subject.effects.externalWrites, []);
   assert.deepEqual(denied.subject.effects.authorityRequests, []);
-  const candidateRunsRoot = path.join(outputPath, 'runs/v0-10-candidate');
+  const candidateRunsRoot = path.join(outputPath, 'runs/v0-9-2-candidate');
   const rawSubjectRequestPaths = fs.readdirSync(candidateRunsRoot)
     .flatMap((opaqueCaseId) => {
       const runRoot = path.join(candidateRunsRoot, opaqueCaseId, '1');
@@ -257,11 +274,19 @@ test('fake adapters exercise the complete comparison path without becoming model
   assert.notEqual(mizu.subject.turns[0].provider.invocationId, mizu.subject.turns[1].provider.invocationId);
   const rawSubjectRequest = mizuRequests[1];
   assert.match(rawSubjectRequest.caseId, /^case-[0-9a-f]{24}$/u);
-  for (const forbiddenKey of ['expected', 'expectedActivation', 'rubric', 'requiredBehaviors', 'forbiddenBehaviors', 'outcome']) {
+  for (const forbiddenKey of ['expected', 'expectedActivation', 'activationByTurn', 'rubric', 'requiredBehaviors', 'forbiddenBehaviors', 'outcome']) {
     assert.equal(Object.hasOwn(rawSubjectRequest, forbiddenKey), false, `subject request leaked ${forbiddenKey}`);
   }
   assert.equal(fs.existsSync(result.scorecardPath), true);
   assert.match(result.scorecardSha256, /^[0-9a-f]{64}$/u);
+  assert.equal(result.scorecardBytes <= 160 * 1024 * 1024, true);
+  assert.equal(result.scorecard.evidenceBudget.runRecords.count, 54);
+  assert.equal(result.scorecard.evidenceBudget.runRecords.serializedBytes <= 128 * 1024 * 1024, true);
+  assert.equal(result.scorecard.evidenceBudget.preScorecardBundle.scope, 'ALL_OUTPUT_ARTIFACTS_BEFORE_SCORECARD_WRITE');
+  assert.match(result.scorecard.evidenceBudget.preScorecardBundle.treeSha256, /^[0-9a-f]{64}$/u);
+  assert.equal(result.evidenceBundle.scope, 'COMPLETE_OUTPUT_BUNDLE_INCLUDING_SCORECARD');
+  assert.match(result.evidenceBundle.treeSha256, /^[0-9a-f]{64}$/u);
+  assert.equal(result.evidenceBundle.totalBytes <= 1024 * 1024 * 1024, true);
 });
 
 test('existing-repository journeys receive a deterministic non-empty fixture', async (t) => {
@@ -271,7 +296,7 @@ test('existing-repository journeys receive a deterministic non-empty fixture', a
   writeJson(configPath, fakeConfig());
   const result = await runJourneyBenchmark({ configPath, outputPath, repositoryRoot: REPOSITORY_ROOT });
   for (const caseId of ['repair-existing-hook-en', 'upgrade-existing-hook-de', 'review-only-de', 'submission-preflight-de']) {
-    const run = result.scorecard.runs.find(({ subjectId, caseId: runCaseId }) => subjectId === 'v0-10-candidate' && runCaseId === caseId);
+    const run = result.scorecard.runs.find(({ subjectId, caseId: runCaseId }) => subjectId === 'v0-9-2-candidate' && runCaseId === caseId);
     assert.ok(run.resultInventory.files.some(({ path: filePath }) => filePath === 'src/LegacyDirectionalHook.sol'), caseId);
     assert.ok(run.resultInventory.files.some(({ path: filePath }) => filePath === 'test/LegacyDirectionalHook.t.sol'), caseId);
     assert.equal(run.inputFixture.id, 'existing-hook-repository-v1');
@@ -300,6 +325,8 @@ test('invalid status, usefulness, references, turn decisions, and sequential dec
     'turn-inconsistent',
     'decision-each-turn',
     'mizu-first-early-blocked',
+    'unsafe-metric',
+    'oversized-effects',
   ]) {
     const configPath = path.join(root, `${mode}.json`);
     const outputPath = path.join(root, `${mode}-result`);
@@ -310,7 +337,7 @@ test('invalid status, usefulness, references, turn decisions, and sequential dec
       const result = await runJourneyBenchmark({ configPath, outputPath, repositoryRoot: REPOSITORY_ROOT });
       assert.equal(result.scorecard.status, 'BENCHMARK_FAILED', mode);
       const mizu = result.scorecard.runs.find(({ caseId, subjectId }) => (
-        caseId === 'mizu-design-then-implement' && subjectId === 'v0-10-candidate'
+        caseId === 'mizu-design-then-implement' && subjectId === 'v0-9-2-candidate'
       ));
       if (mode === 'decision-each-turn') {
         assert.equal(mizu.subject.result.materialOwnerDecisions, 2);
@@ -319,6 +346,9 @@ test('invalid status, usefulness, references, turn decisions, and sequential dec
       if (mode === 'mizu-first-early-blocked') {
         assert.equal(mizu.subject.turns[0].result.status, 'EARLY_BLOCKED');
         assert.equal(mizu.gates.intermediateTurnsProgressed, false);
+      }
+      if (mode === 'unsafe-metric' || mode === 'oversized-effects') {
+        assert.equal(result.scorecard.runs.some(({ error }) => error?.code === 'ADAPTER_RESULT_INVALID'), true, mode);
       }
     } finally {
       delete process.env.PROGRAMMABLE_FAKE_BENCHMARK_MODE;
@@ -509,6 +539,26 @@ test('configuration requires an independent judge model and explicit absolute ad
   }
 });
 
+test('run plans are rejected before output creation when the bounded scorecard matrix exceeds 1000 runs', async (t) => {
+  const root = temporaryDirectory(t);
+  const config = fakeConfig({ repetitions: 5 });
+  for (let index = 0; index < 6; index += 1) {
+    config.subjects.push({
+      ...structuredClone(config.subjects[1]),
+      id: `competitor-${index}`,
+      role: 'competitor',
+    });
+  }
+  const configPath = path.join(root, 'config.json');
+  const outputPath = path.join(root, 'result-bundle');
+  writeJson(configPath, config);
+  await assert.rejects(
+    () => runJourneyBenchmark({ configPath, outputPath, repositoryRoot: REPOSITORY_ROOT }),
+    (error) => error instanceof JourneyBenchmarkError && error.code === 'BENCHMARK_RUN_LIMIT',
+  );
+  assert.equal(fs.existsSync(outputPath), false);
+});
+
 test('inventories are deterministic and reject symlinked result evidence', (t) => {
   const root = temporaryDirectory(t);
   fs.writeFileSync(path.join(root, 'a.txt'), 'alpha\n');
@@ -522,6 +572,31 @@ test('inventories are deterministic and reject symlinked result evidence', (t) =
   );
 });
 
+test('inventory entry and depth caps reject empty-directory fanout and deep empty trees', (t) => {
+  const root = temporaryDirectory(t);
+  const fanout = path.join(root, 'fanout');
+  fs.mkdirSync(fanout);
+  for (let index = 0; index < 10_000; index += 1) {
+    fs.mkdirSync(path.join(fanout, `empty-${String(index).padStart(5, '0')}`));
+  }
+  assert.throws(
+    () => inventoryDirectory(fanout),
+    (error) => error instanceof JourneyBenchmarkError && error.code === 'INVENTORY_LIMIT' && /filesystem entries/u.test(error.message),
+  );
+
+  const deep = path.join(root, 'deep');
+  fs.mkdirSync(deep);
+  let cursor = deep;
+  for (let depth = 0; depth < 65; depth += 1) {
+    cursor = path.join(cursor, 'd');
+    fs.mkdirSync(cursor);
+  }
+  assert.throws(
+    () => inventoryDirectory(deep),
+    (error) => error instanceof JourneyBenchmarkError && error.code === 'INVENTORY_LIMIT' && /maximum depth 64/u.test(error.message),
+  );
+});
+
 test('secret scanning rejects secret bytes persisted in a dangling symlink target', (t) => {
   const root = temporaryDirectory(t);
   const secretName = 'PROGRAMMABLE_PROVIDER_TOKEN';
@@ -530,6 +605,109 @@ test('secret scanning rejects secret bytes persisted in a dangling symlink targe
   assert.throws(
     () => assertSecretValuesAbsent(root, { [secretName]: secretValue }),
     (error) => error instanceof JourneyBenchmarkError && error.code === 'SECRET_PERSISTENCE_DETECTED',
+  );
+});
+
+test('secret scanning is bounded across sparse files, aggregate bytes, fanout, depth, and chunk boundaries', (t) => {
+  const root = temporaryDirectory(t);
+  const secretEnvironment = { PROGRAMMABLE_PROVIDER_TOKEN: 'synthetic-cross-chunk-secret' };
+
+  const sparse = path.join(root, 'sparse');
+  fs.mkdirSync(sparse);
+  fs.closeSync(fs.openSync(path.join(sparse, 'oversized.bin'), 'w'));
+  fs.truncateSync(path.join(sparse, 'oversized.bin'), 2_048);
+  assert.throws(
+    () => assertSecretValuesAbsent(sparse, secretEnvironment, { maxFileBytes: 1_024 }),
+    (error) => error instanceof JourneyBenchmarkError && error.code === 'SECRET_SCAN_LIMIT',
+  );
+
+  const aggregate = path.join(root, 'aggregate');
+  fs.mkdirSync(aggregate);
+  fs.writeFileSync(path.join(aggregate, 'a.bin'), Buffer.alloc(700, 0x61));
+  fs.writeFileSync(path.join(aggregate, 'b.bin'), Buffer.alloc(700, 0x62));
+  assert.throws(
+    () => assertSecretValuesAbsent(aggregate, secretEnvironment, { maxFileBytes: 1_024, maxTotalBytes: 1_024 }),
+    (error) => error instanceof JourneyBenchmarkError && error.code === 'SECRET_SCAN_LIMIT',
+  );
+
+  const fanout = path.join(root, 'fanout');
+  fs.mkdirSync(fanout);
+  for (let index = 0; index < 4; index += 1) fs.mkdirSync(path.join(fanout, `empty-${index}`));
+  assert.throws(
+    () => assertSecretValuesAbsent(fanout, secretEnvironment, { maxEntries: 4 }),
+    (error) => error instanceof JourneyBenchmarkError && error.code === 'SECRET_SCAN_LIMIT',
+  );
+
+  const deep = path.join(root, 'deep');
+  fs.mkdirSync(path.join(deep, 'a', 'b', 'c'), { recursive: true });
+  assert.throws(
+    () => assertSecretValuesAbsent(deep, secretEnvironment, { maxDepth: 2 }),
+    (error) => error instanceof JourneyBenchmarkError && error.code === 'SECRET_SCAN_LIMIT',
+  );
+
+  const chunked = path.join(root, 'chunked');
+  fs.mkdirSync(chunked);
+  const secret = Buffer.from(secretEnvironment.PROGRAMMABLE_PROVIDER_TOKEN);
+  const prefix = Buffer.alloc(64 * 1024 - Math.floor(secret.length / 2), 0x78);
+  fs.writeFileSync(path.join(chunked, 'cross-boundary.bin'), Buffer.concat([prefix, secret]));
+  assert.throws(
+    () => assertSecretValuesAbsent(chunked, secretEnvironment),
+    (error) => error instanceof JourneyBenchmarkError && error.code === 'SECRET_PERSISTENCE_DETECTED',
+  );
+});
+
+test('adapter sidecars are byte bounded and parsed as shallow duplicate-free JSON', (t) => {
+  const root = temporaryDirectory(t);
+  const oversized = path.join(root, 'oversized.json');
+  fs.closeSync(fs.openSync(oversized, 'w'));
+  fs.truncateSync(oversized, 2 * 1024 * 1024 + 1);
+  assert.throws(
+    () => parseAdapterOutput(oversized),
+    (error) => error instanceof JourneyBenchmarkError && error.code === 'ADAPTER_RESULT_LIMIT',
+  );
+
+  const deep = path.join(root, 'deep.json');
+  fs.writeFileSync(deep, `${'['.repeat(34)}0${']'.repeat(34)}\n`);
+  assert.throws(
+    () => parseAdapterOutput(deep),
+    (error) => error instanceof JourneyBenchmarkError
+      && error.code === 'ADAPTER_RESULT_INVALID'
+      && error.details.parserCode === 'STRICT_JSON_DEPTH_LIMIT',
+  );
+
+  const duplicate = path.join(root, 'duplicate.json');
+  fs.writeFileSync(duplicate, '{"decoded":1,"decoded":2}\n');
+  assert.throws(
+    () => parseAdapterOutput(duplicate),
+    (error) => error instanceof JourneyBenchmarkError
+      && error.code === 'ADAPTER_RESULT_INVALID'
+      && error.details.parserCode === 'STRICT_JSON_DUPLICATE_KEY',
+  );
+});
+
+test('digest-only evidence receipts bind all regular artifacts and reject bounded overflow or symlinks', (t) => {
+  const root = temporaryDirectory(t);
+  fs.mkdirSync(path.join(root, 'empty'));
+  fs.writeFileSync(path.join(root, 'result.json'), '{}\n');
+  const receipt = inspectEvidenceBundle(root);
+  assert.deepEqual(
+    { entryCount: receipt.entryCount, fileCount: receipt.fileCount, totalBytes: receipt.totalBytes },
+    { entryCount: 3, fileCount: 1, totalBytes: 3 },
+  );
+  assert.match(receipt.treeSha256, /^[0-9a-f]{64}$/u);
+
+  const sparse = path.join(root, 'sparse.bin');
+  fs.closeSync(fs.openSync(sparse, 'w'));
+  fs.truncateSync(sparse, 2_048);
+  assert.throws(
+    () => inspectEvidenceBundle(root, { maxFileBytes: 1_024, maxTotalBytes: 1_024 }),
+    (error) => error instanceof JourneyBenchmarkError && error.code === 'EVIDENCE_BUNDLE_LIMIT',
+  );
+  fs.rmSync(sparse);
+  fs.symlinkSync('missing-target', path.join(root, 'unknown-artifact'));
+  assert.throws(
+    () => inspectEvidenceBundle(root),
+    (error) => error instanceof JourneyBenchmarkError && error.code === 'EVIDENCE_BUNDLE_INVALID',
   );
 });
 

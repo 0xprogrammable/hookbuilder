@@ -20,7 +20,13 @@ import {
 } from "../../skills/programmable-v4-hook-builder/scripts/template-catalog-core.mjs";
 
 const LEGACY_FEE_V2_DRAFT_AGGREGATE_SHA256 = "775b67bd6b1edb671544944b6150fb8fd347c259b459036814d779ce54a0f3d7";
-const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const skillRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "skills",
+  "programmable-v4-hook-builder"
+);
 
 function aggregatePackageFiles(files) {
   const preimage = [...files]

@@ -12,10 +12,17 @@ import { projectArtifactSha256 } from "./project-contracts-core.mjs";
 import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
 
 const MAX_TREE_FILES = 64;
+const MAX_TREE_ENTRIES = 256;
+const MAX_TREE_DIRECTORY_ENTRIES = 256;
+const MAX_TREE_DIRECTORIES = 128;
+const MAX_TREE_DEPTH = 16;
 const MAX_TOTAL_FILES = 128;
 const MAX_FILE_BYTES = 1_000_000;
 const MAX_TOTAL_BYTES = 2_000_000;
 const MAX_SURFACE_FILES = 1_024;
+const MAX_SURFACE_ENTRIES = 2_048;
+const MAX_SURFACE_DIRECTORY_ENTRIES = 2_048;
+const MAX_SURFACE_DIRECTORIES = 256;
 const MAX_SURFACE_FILE_BYTES = 16_000_000;
 const MAX_SURFACE_TOTAL_BYTES = 64_000_000;
 const MAX_SURFACE_DEPTH = 32;
@@ -40,11 +47,9 @@ export function readLocalAuthoringInputs({ projectProfile, sourceRoot, testRoot,
   if (rootsRequested) {
     if (projectProfile !== "foundry") throw authoringError("source/test roots require --project-profile foundry");
     if ([sourceRoot, testRoot].some((value) => value === null || value === undefined)) throw authoringError("Foundry materialize requires both --source-root and --test-root");
-    const sourceFiles = readAuthoredTree(sourceRoot, "src", false);
-    const testFiles = readAuthoredTree(testRoot, "test", true);
-    if (sourceFiles.length + testFiles.length > MAX_TOTAL_FILES) throw treeError(`Foundry source and test trees exceed the ${MAX_TOTAL_FILES}-file authoring cap`);
-    const totalBytes = [...sourceFiles, ...testFiles].reduce((sum, file) => sum + file.bytes.length, 0);
-    if (totalBytes > MAX_TOTAL_BYTES) throw treeError(`Foundry source and test trees exceed the ${MAX_TOTAL_BYTES}-byte authoring cap`);
+    const sharedBudget = { remainingFiles: MAX_TOTAL_FILES, remainingBytes: MAX_TOTAL_BYTES };
+    const sourceFiles = readAuthoredTree(sourceRoot, "src", false, sharedBudget);
+    const testFiles = readAuthoredTree(testRoot, "test", true, sharedBudget);
     const compilerVersion = exactSolidityCompilerVersion([...sourceFiles, ...testFiles]);
     assertFoundryTestGates(testFiles);
     return { projectProfile: "foundry", compilerVersion, sourceFiles, testFiles };
@@ -154,22 +159,36 @@ function foundryCommands(command) {
   ];
 }
 
-function readAuthoredTree(inputRoot, outputPrefix, testTree) {
+function readAuthoredTree(inputRoot, outputPrefix, testTree, sharedBudget) {
   const requestedRoot = path.resolve(inputRoot);
   const rootStat = fs.lstatSync(requestedRoot);
   if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw treeError("authoring root must be a real non-symlink directory");
   const root = fs.realpathSync(requestedRoot), files = [];
-  const visit = (directory, relativeDirectory = "") => {
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name))) {
+  let totalEntries = 0, totalDirectories = 0;
+  const visit = (directory, relativeDirectory = "", depth = 0) => {
+    if (depth > MAX_TREE_DEPTH) throw treeError(`authoring tree exceeds the ${MAX_TREE_DEPTH}-level depth cap`);
+    const observed = readBoundedDirectoryEntries(directory, totalEntries, MAX_TREE_DIRECTORY_ENTRIES, MAX_TREE_ENTRIES, treeError, "authoring tree", (left, right) => left.name.localeCompare(right.name));
+    totalEntries = observed.totalEntries;
+    for (const entry of observed.entries) {
       if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/u.test(entry.name) || [".git", ".programmable"].includes(entry.name)) throw treeError(`authoring tree contains an unsafe path segment: ${entry.name}`);
       const absolute = path.join(directory, entry.name), relative = relativeDirectory === "" ? entry.name : `${relativeDirectory}/${entry.name}`;
       const stat = fs.lstatSync(absolute);
       if (stat.isSymbolicLink()) throw treeError(`authoring tree contains a symbolic link: ${relative}`);
-      if (stat.isDirectory()) { visit(absolute, relative); continue; }
+      if (stat.isDirectory()) {
+        totalDirectories += 1;
+        if (totalDirectories > MAX_TREE_DIRECTORIES) throw treeError(`authoring tree exceeds the ${MAX_TREE_DIRECTORIES}-directory cap`);
+        visit(absolute, relative, depth + 1);
+        continue;
+      }
       if (!stat.isFile() || stat.size < 1 || stat.size > MAX_FILE_BYTES) throw treeError(`authoring tree file is not a bounded regular file: ${relative}`);
       if (!relative.endsWith(".sol")) throw treeError(`Foundry authoring trees accept only Solidity files: ${relative}`);
-      files.push({ path: `${outputPrefix}/${relative}`, bytes: readStableTreeFile(root, absolute, relative, stat) });
-      if (files.length > MAX_TREE_FILES) throw treeError(`authoring tree exceeds the ${MAX_TREE_FILES}-file per-tree cap`);
+      if (files.length >= MAX_TREE_FILES) throw treeError(`authoring tree exceeds the ${MAX_TREE_FILES}-file per-tree cap`);
+      if (sharedBudget.remainingFiles < 1) throw treeError(`Foundry source and test trees exceed the ${MAX_TOTAL_FILES}-file authoring cap`);
+      if (stat.size > sharedBudget.remainingBytes) throw treeError(`Foundry source and test trees exceed the ${MAX_TOTAL_BYTES}-byte authoring cap`);
+      const bytes = readStableTreeFile(root, absolute, relative, stat);
+      sharedBudget.remainingFiles -= 1;
+      sharedBudget.remainingBytes -= bytes.length;
+      files.push({ path: `${outputPrefix}/${relative}`, bytes });
     }
   };
   visit(root);
@@ -188,7 +207,7 @@ function readStableTreeFile(root, absolute, relative, stat) {
     if (!opened.isFile() || opened.dev !== stat.dev || opened.ino !== stat.ino || opened.size !== stat.size) throw treeError(`authoring tree file changed before it was bound: ${relative}`);
     bytes = fs.readFileSync(descriptor);
     const after = fs.fstatSync(descriptor);
-    if (after.dev !== opened.dev || after.ino !== opened.ino || after.size !== opened.size || after.mtimeMs !== opened.mtimeMs || after.ctimeMs !== opened.ctimeMs) throw treeError(`authoring tree file changed while it was read: ${relative}`);
+    if (bytes.length !== opened.size || after.dev !== opened.dev || after.ino !== opened.ino || after.size !== opened.size || after.mtimeMs !== opened.mtimeMs || after.ctimeMs !== opened.ctimeMs) throw treeError(`authoring tree file changed while it was read: ${relative}`);
   } finally { fs.closeSync(descriptor); }
   const pathAfter = fs.lstatSync(absolute);
   if (pathAfter.isSymbolicLink() || pathAfter.dev !== stat.dev || pathAfter.ino !== stat.ino || pathAfter.size !== stat.size || pathAfter.mtimeMs !== stat.mtimeMs || pathAfter.ctimeMs !== stat.ctimeMs) throw treeError(`authoring tree file changed after it was bound: ${relative}`);
@@ -349,10 +368,12 @@ function readSurfaceTree(inputRoot) {
   try { rootStat = fs.lstatSync(requestedRoot); } catch { throw surfaceTreeError("surface root must exist as a real non-symlink directory"); }
   if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw surfaceTreeError("surface root must be a real non-symlink directory");
   const root = fs.realpathSync(requestedRoot), files = [], collisionKeys = new Map();
-  let totalBytes = 0;
+  let remainingBytes = MAX_SURFACE_TOTAL_BYTES, totalEntries = 0, totalDirectories = 0;
   const visit = (directory, relativeDirectory = "", depth = 0) => {
     if (depth > MAX_SURFACE_DEPTH) throw surfaceTreeError(`surface tree exceeds the ${MAX_SURFACE_DEPTH}-level depth cap`);
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((left, right) => compareUtf8(left.name, right.name))) {
+    const observed = readBoundedDirectoryEntries(directory, totalEntries, MAX_SURFACE_DIRECTORY_ENTRIES, MAX_SURFACE_ENTRIES, surfaceTreeError, "surface tree", (left, right) => compareUtf8(left.name, right.name));
+    totalEntries = observed.totalEntries;
+    for (const entry of observed.entries) {
       try { assertSafeVisibleText(entry.name, "surface path entry", 255); } catch { throw surfaceTreeError(`surface tree contains an unsafe path segment: ${entry.name}`); }
       const absolute = path.join(directory, entry.name);
       const relative = relativeDirectory === "" ? entry.name : `${relativeDirectory}/${entry.name}`;
@@ -367,15 +388,17 @@ function readSurfaceTree(inputRoot) {
       if (relativeDirectory === "" && collisionKey === GENERATED_SURFACE_CONFIG) throw Object.assign(new Error(`surface input collides with generated ${GENERATED_SURFACE_CONFIG}`), { code: "PROJECT_SURFACE_TREE_COLLISION" });
       if (entry.isDirectory()) {
         if (rejectedSurfaceDirectories.has(entry.name.toLowerCase())) throw surfaceTreeError(`surface tree contains a generated, dependency, or authority directory: ${relative}`);
+        totalDirectories += 1;
+        if (totalDirectories > MAX_SURFACE_DIRECTORIES) throw surfaceTreeError(`surface tree exceeds the ${MAX_SURFACE_DIRECTORIES}-directory cap`);
         visit(absolute, relative, depth + 1);
         continue;
       }
       if (!stat.isFile() || stat.size > MAX_SURFACE_FILE_BYTES) throw surfaceTreeError(`surface tree file is not a bounded regular file: ${relative}`);
+      if (files.length >= MAX_SURFACE_FILES) throw surfaceTreeError(`surface tree exceeds the ${MAX_SURFACE_FILES}-file cap`);
+      if (stat.size > remainingBytes) throw surfaceTreeError(`surface tree exceeds the ${MAX_SURFACE_TOTAL_BYTES}-byte cap`);
       const bytes = readStableSurfaceFile(root, absolute, relative, stat);
-      totalBytes += bytes.length;
-      if (totalBytes > MAX_SURFACE_TOTAL_BYTES) throw surfaceTreeError(`surface tree exceeds the ${MAX_SURFACE_TOTAL_BYTES}-byte cap`);
+      remainingBytes -= bytes.length;
       files.push({ path: relative, bytes, mode: stat.mode & 0o111 ? "100755" : "100644" });
-      if (files.length > MAX_SURFACE_FILES) throw surfaceTreeError(`surface tree exceeds the ${MAX_SURFACE_FILES}-file cap`);
     }
   };
   visit(root);
@@ -408,7 +431,7 @@ function readStableSurfaceFile(root, absolute, relative, stat) {
     if (!opened.isFile() || opened.dev !== stat.dev || opened.ino !== stat.ino || opened.size !== stat.size || (opened.mode & 0o777) !== (stat.mode & 0o777)) throw surfaceTreeError(`surface tree file changed before it was bound: ${relative}`);
     bytes = fs.readFileSync(descriptor);
     const after = fs.fstatSync(descriptor);
-    if (after.dev !== opened.dev || after.ino !== opened.ino || after.size !== opened.size || (after.mode & 0o777) !== (opened.mode & 0o777) || after.mtimeMs !== opened.mtimeMs || after.ctimeMs !== opened.ctimeMs) throw surfaceTreeError(`surface tree file changed while it was read: ${relative}`);
+    if (bytes.length !== opened.size || after.dev !== opened.dev || after.ino !== opened.ino || after.size !== opened.size || (after.mode & 0o777) !== (opened.mode & 0o777) || after.mtimeMs !== opened.mtimeMs || after.ctimeMs !== opened.ctimeMs) throw surfaceTreeError(`surface tree file changed while it was read: ${relative}`);
   } finally { fs.closeSync(descriptor); }
   const pathAfter = fs.lstatSync(absolute);
   if (pathAfter.isSymbolicLink() || pathAfter.dev !== stat.dev || pathAfter.ino !== stat.ino || pathAfter.size !== stat.size || (pathAfter.mode & 0o777) !== (stat.mode & 0o777) || pathAfter.mtimeMs !== stat.mtimeMs || pathAfter.ctimeMs !== stat.ctimeMs) throw surfaceTreeError(`surface tree file changed after it was bound: ${relative}`);
@@ -483,6 +506,20 @@ function uniqueSurfaceCommands(commands) {
 
 function surfaceBindings(files) {
   return files.map(({ path: filePath, bytes, mode = "100644" }) => ({ path: filePath, sha256: sha256Bytes(bytes), byteLength: bytes.length, mode }));
+}
+
+function readBoundedDirectoryEntries(directory, currentTotal, perDirectoryCap, totalCap, createError, label, compare) {
+  const entries = [], handle = fs.opendirSync(directory, { bufferSize: 32 });
+  let totalEntries = currentTotal;
+  try {
+    for (let entry = handle.readSync(); entry !== null; entry = handle.readSync()) {
+      if (entries.length >= perDirectoryCap) throw createError(`${label} exceeds the ${perDirectoryCap}-entry per-directory cap`);
+      if (totalEntries >= totalCap) throw createError(`${label} exceeds the ${totalCap}-entry cap`);
+      totalEntries += 1;
+      entries.push(entry);
+    }
+  } finally { handle.closeSync(); }
+  return { entries: entries.sort(compare), totalEntries };
 }
 
 function surfaceOptionsError(message) { return Object.assign(new Error(message), { code: "PROJECT_SURFACE_OPTIONS_INVALID" }); }
