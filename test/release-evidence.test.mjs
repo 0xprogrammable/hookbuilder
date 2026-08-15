@@ -447,7 +447,7 @@ test("candidate quantitative docs match current inventories and one hash-bound r
     { files: 686, bytes: 10_722_006 }
   );
   assert.equal(sizeReport.portablePackage.files, 618);
-  assert.equal(sizeReport.portablePackage.bytes, 8_656_209);
+  assert.equal(sizeReport.portablePackage.bytes, 8_656_525);
 
   for (const document of [maturity]) {
     assert.match(document, new RegExp(`${productionModuleCount} production`, "u"));
@@ -457,7 +457,7 @@ test("candidate quantitative docs match current inventories and one hash-bound r
     assert.match(document, new RegExp(`${registry.inventory.validatorClosureDistinctModuleCount} distinct modules`, "u"));
   }
   assert.match(candidateNotes, /342 production/u);
-  assert.match(candidateNotes, /686 files \/ 10,722,006 bytes[\s\S]{0,100}618 files \/\s+8,656,209 bytes/u);
+  assert.match(candidateNotes, /686 files \/ 10,722,006 bytes[\s\S]{0,100}618 files \/\s+8,656,525 bytes/u);
   for (const document of [maturity, readiness, candidateNotes]) {
     assert.match(document, /54 unit, one fuzz and three invariant/u);
     assert.match(document, new RegExp(
