@@ -21,12 +21,22 @@ Review the preview, then repeat with `--write` only when an unconfirmed proposal
 Autopilot build use the productive `project materialize` command after the architecture and implementation inputs are
 ready. Perform no network or GitHub action.
 
+Custom tradable implementation is open-ended. Once architecture is selected, author the complete Solidity and Foundry
+test roots and materialize them without choosing a bundled profile:
+
+```bash
+node "$SKILL_ROOT/scripts/cli.mjs" project materialize --idea-file "$IDEA_FILE" --application-id "$APPLICATION_ID" --classification tradable --market-ref "$MARKET_REF" --project-profile foundry --source-root "$SOURCE_ROOT" --test-root "$TEST_ROOT" --output "$NEW_REPOSITORY"
+```
+
+Dry-run first, then repeat with `--write`. This writes inert source, tests, exact dependencies and a local build plan;
+it executes no candidate bytes. A missing trusted sandbox may leave test evidence unverified, but it must never block
+source implementation. Central launch policy is evaluated later and is not an architecture or source allowlist.
+
 The one bundled tradable profile is frozen legacy compatibility, not a current platform requirement. Require a natural
 idea that independently names a Uniswap v4 hook, fees on executed gross quote volume, buy/sell rates immutable after
 registration, policy `programmable-volume-fee-v2@2.0.0`, its inclusive 10 bps Programmable platform share, and claimant
-`0x4957f49620AFf3Adbbe8195a4f633E49cc93376c`. Preview this command without `--write`; never add or infer missing intent.
-The portable release rejects `--write` because productive tradable materialization requires candidate dependency and
-test execution, and no trusted sandbox authority is bundled:
+`0x4957f49620AFf3Adbbe8195a4f633E49cc93376c`. Preview this legacy command without `--write`; never add or infer missing
+intent. Its exact profile replay remains dry-run-only:
 
 ```bash
 node "$SKILL_ROOT/scripts/cli.mjs" project materialize --idea-file "$IDEA_FILE" --application-id "$APPLICATION_ID" --classification tradable --market-ref "$MARKET_REF" --reference-profile programmable-volume-fee-v2 --output "$NEW_REPOSITORY"
@@ -40,8 +50,8 @@ unresolved facts and owner/external blockers instead of inventing them.
 Classify the ProjectSpec routing entry as `tradable`, `no-market`, or `unresolved`. Every selected tradable market needs
 content-addressed, policy-neutral route and quote/execution evidence; `no-market` gets neither. The bundled
 `trade-capability.v1.json` carries the frozen Fee V2 projection and is emitted only by the exact intent-bound legacy
-profile. Other tradable materialization stays unresolved until a policy-neutral successor exists rather than inheriting
-that compatibility contract.
+profile. Custom tradable source and tests still materialize; only canonical launch-manifest, route evidence and approval
+remain unresolved until their later submission gates are satisfied.
 
 Validate the hash-bound phase without executing its planned commands:
 
@@ -56,6 +66,10 @@ After no-market source materialization, the output contains one clean source com
 that exact commit and branch. The plan is transient on one specifically ignored path and every command declares
 `executionPolicy.externalWrites: false`. The portable command below never executes its argv; it validates the source and
 plan boundary, then exits 2 with `PROJECT_EXTERNAL_SANDBOX_REQUIRED`:
+
+Custom tradable materialization instead commits `.programmable/custom-tradable-build-plan.v1.json` with exact source,
+test, dependency and intent hashes. Its commands remain `NOT_RUN`; absence of execution evidence does not erase the
+implemented repository or turn its source status into `EXTERNAL_BLOCKED`.
 
 For iterative developer feedback only, an already active workspace sandbox may run the generated plan's explicit
 offline format/test commands. Treat that output as unauthenticated `LOCAL_ONLY` evidence: it cannot complete the plan.

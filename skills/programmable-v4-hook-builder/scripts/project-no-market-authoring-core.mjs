@@ -11,10 +11,10 @@ const MAX_TOTAL_FILES = 128;
 const MAX_FILE_BYTES = 1_000_000;
 const MAX_TOTAL_BYTES = 2_000_000;
 
-export function readNoMarketAuthoringInputs({ projectProfile, sourceRoot, testRoot, sourceContract, testSource } = {}) {
+export function readLocalAuthoringInputs({ projectProfile, sourceRoot, testRoot, sourceContract, testSource } = {}) {
   const rootsRequested = [sourceRoot, testRoot].some((value) => value !== null && value !== undefined);
   const legacyRequested = [sourceContract, testSource].some((value) => value !== null && value !== undefined);
-  if (rootsRequested && legacyRequested) throw authoringError("no-market materialize cannot mix source/test roots with legacy source/test files");
+  if (rootsRequested && legacyRequested) throw authoringError("materialize cannot mix source/test roots with legacy source/test files");
   if (rootsRequested) {
     if (projectProfile !== "foundry") throw authoringError("source/test roots require --project-profile foundry");
     if ([sourceRoot, testRoot].some((value) => value === null || value === undefined)) throw authoringError("Foundry materialize requires both --source-root and --test-root");
@@ -28,7 +28,7 @@ export function readNoMarketAuthoringInputs({ projectProfile, sourceRoot, testRo
     return { projectProfile: "foundry", compilerVersion, sourceFiles, testFiles };
   }
   if (projectProfile !== null && projectProfile !== undefined && projectProfile !== "node") throw authoringError("legacy source/test files accept only --project-profile node");
-  if ([sourceContract, testSource].some((value) => value === null || value === undefined)) throw authoringError("no-market materialize requires either Foundry source/test roots or --source-contract and --test-source");
+  if ([sourceContract, testSource].some((value) => value === null || value === undefined)) throw authoringError("materialize requires either Foundry source/test roots or --source-contract and --test-source");
   const sourceInput = readAuthoredModule(sourceContract, false);
   const testInput = readAuthoredModule(testSource, true);
   return {
@@ -38,6 +38,8 @@ export function readNoMarketAuthoringInputs({ projectProfile, sourceRoot, testRo
     testFiles: [{ path: `test/${testInput.basename}`, bytes: testInput.bytes }]
   };
 }
+
+export const readNoMarketAuthoringInputs = readLocalAuthoringInputs;
 
 export function normalizeNoMarketAuthoringFiles(files, legacyPath, legacyBytes, requiredPrefix) {
   if (files !== null && (legacyPath !== undefined || legacyBytes !== undefined)) throw new TypeError("authoring file arrays cannot be mixed with legacy file arguments");

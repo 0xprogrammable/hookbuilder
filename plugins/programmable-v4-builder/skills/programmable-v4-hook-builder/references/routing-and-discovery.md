@@ -16,8 +16,8 @@ The bundled `trade-capability-manifest-v1` is a frozen Fee V2 compatibility cont
 legacy reference profile whose preserved intent binds that exact platform policy, rate, and claimant. A current
 tradable design still needs exact PoolKey, route, funding, hookData, slippage, deadline, quote, execution, and generic
 fee evidence, but the Builder must not manufacture a V1 manifest or its branded `programmableFeeV2` projection. Until
-a policy-neutral successor is centrally published, keep other tradable materialization unresolved instead of treating
-V1 as the default. The frozen manifest remains declarative and always `NOT_APPROVED`; typed results and receipts are
+a policy-neutral successor is centrally published, keep other canonical launch manifests unresolved instead of treating
+V1 as the default. This does not restrict local custom source/test materialization. The frozen manifest remains declarative and always `NOT_APPROVED`; typed results and receipts are
 separate content-addressed evidence.
 
 A standard v4 route must use an executable V4Quoter or equally reviewed callback-executing simulation, then execute the

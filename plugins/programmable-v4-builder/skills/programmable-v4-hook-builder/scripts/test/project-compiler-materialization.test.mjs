@@ -29,6 +29,70 @@ import {
   deterministicRelevantTrace, disabledReleaseActions, writeFile, artifactRecord, git, sha256, slug
 } from "./project-compiler-fixture.mjs";
 
+test("project materialize authors an arbitrary tradable Foundry hook without requiring a bundled profile", (t) => {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-custom-tradable-authoring-"));
+  t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
+  const ideaPath = path.join(parent, "mizu-idea.txt");
+  const sourceRoot = path.join(parent, "src");
+  const testRoot = path.join(parent, "test");
+  const output = path.join(parent, "mizu");
+  const marker = path.join(parent, "candidate-executed");
+  const sourceText = `// SPDX-License-Identifier: MIT\npragma solidity 0.8.26;\ncontract MizuDynamicFeeHook {\n  function feePips(bool sell, uint128 size, uint128 decayedVolume) external pure returns (uint24) {\n    uint256 pressure = uint256(size) / 1e15 + uint256(decayedVolume) / 1e16;\n    return uint24((sell ? 3_000 : 1_000) + (pressure > 97_000 ? 97_000 : pressure));\n  }\n}\n`;
+  const testText = `// SPDX-License-Identifier: MIT\npragma solidity 0.8.26;\ncontract MizuDynamicFeeHookTest {\n  function testSimulationDirectionalFee() external {}\n  function testFuzzFeeBound(uint128 size, uint128 volume) external { size; volume; }\n  function invariantLiquidityChangesUntaxed() external pure returns (bool) { return true; }\n  function testDeploymentPermissionBits() external {}\n}\n// Candidate bytes are inert during materialization: ${marker}\n`;
+  fs.mkdirSync(sourceRoot); fs.mkdirSync(testRoot);
+  fs.writeFileSync(ideaPath, "Build Mizu as a canonical Uniswap v4 dynamic LP-fee hook. Buys cost less than sells; the fee is directional, size-sensitive, and decays with recent volume. Liquidity modifications are untaxed.\n");
+  fs.writeFileSync(path.join(sourceRoot, "MizuDynamicFeeHook.sol"), sourceText);
+  fs.writeFileSync(path.join(testRoot, "MizuDynamicFeeHook.t.sol"), testText);
+  const args = [
+    unifiedCli, "project", "materialize",
+    "--idea-file", ideaPath,
+    "--application-id", "mizu",
+    "--classification", "tradable",
+    "--market-ref", "mizu-eth",
+    "--project-profile", "foundry",
+    "--source-root", sourceRoot,
+    "--test-root", testRoot,
+    "--output", output
+  ];
+
+  const dry = childProcess.spawnSync(process.execPath, [...args, "--brief"], { encoding: "utf8", shell: false, timeout: 30000 });
+  assert.equal(dry.status, 0, dry.stderr || dry.stdout);
+  const dryReport = JSON.parse(dry.stdout);
+  assert.equal(dryReport.status, "PROJECT_MATERIALIZATION_DRY_RUN_READY");
+  assert.equal(dryReport.classification, "tradable");
+  assert.equal(dryReport.marketRef, "mizu-eth");
+  assert.equal(fs.existsSync(output), false);
+
+  const written = childProcess.spawnSync(process.execPath, [...args, "--write", "--brief"], { encoding: "utf8", shell: false, timeout: 60000 });
+  assert.equal(written.status, 0, written.stderr || written.stdout);
+  const report = JSON.parse(written.stdout);
+  assert.equal(report.status, "PROJECT_MATERIALIZATION_PLAN_WRITTEN");
+  assert.equal(report.classification, "tradable");
+  assert.equal(report.projectProfile, "foundry");
+  assert.equal(report.executionStatus, "EXTERNAL_SANDBOX_REQUIRED");
+  assert.deepEqual(report.blockers, []);
+  assert.equal(report.evidenceBoundary.planCreated, true);
+  assert.equal(report.evidenceBoundary.executionCompleted, false);
+  assert.equal(report.evidenceBoundary.approvalCreated, false);
+  assert.equal(report.evidenceBoundary.auditClaimed, false);
+  assert.equal(fs.existsSync(marker), false);
+  assert.equal(fs.readFileSync(path.join(output, "src/MizuDynamicFeeHook.sol"), "utf8"), sourceText);
+  assert.equal(fs.readFileSync(path.join(output, "test/MizuDynamicFeeHook.t.sol"), "utf8"), testText);
+  const plan = JSON.parse(fs.readFileSync(path.join(output, ".programmable/custom-tradable-build-plan.v1.json"), "utf8"));
+  assert.equal(plan.kind, "custom-tradable-local-build-plan");
+  assert.equal(plan.status, "SOURCE_AND_TESTS_MATERIALIZED");
+  assert.equal(plan.marketRef, "mizu-eth");
+  assert.equal(plan.launch.status, "NOT_SUBMITTED");
+  assert.equal(plan.launch.approval, false);
+  assert.equal(plan.launch.policyIsSourceAllowlist, false);
+  assert.equal(Object.hasOwn(plan, "referenceProfile"), false);
+  assert.deepEqual(plan.source.map(({ path: filePath }) => filePath), ["src/MizuDynamicFeeHook.sol"]);
+  assert.deepEqual(plan.tests.map(({ path: filePath }) => filePath), ["test/MizuDynamicFeeHook.t.sol"]);
+  assert.match(fs.readFileSync(path.join(output, "README.md"), "utf8"), /custom tradable.*not restricted to bundled profiles/isu);
+  assert.equal(fs.existsSync(path.join(output, "submission")), false);
+  assert.equal(git(output, ["status", "--porcelain", "--untracked-files=all"]), "");
+});
+
 test("project materialize writes an idea-specific no-market source plan without executing candidate bytes", (t) => {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-no-market-authoring-"));
   t.after(() => fs.rmSync(parent, { recursive: true, force: true }));

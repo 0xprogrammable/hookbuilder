@@ -1,22 +1,15 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
-import childProcess from "node:child_process";
-import os from "node:os";
 import path from "node:path";
 import process from "node:process";
-import { TextDecoder } from "node:util";
 
 import { canonicalJsonSha256V2, canonicalJsonV2 } from "./canonical-json-core.mjs";
 import { parseCliOrExit } from "./cli-args.mjs";
 import { sha256Bytes } from "./open-world-v2-core.mjs";
 import { executeProjectCommands, inspectCleanProjectSource } from "./project-command-executor-core.mjs";
 import { compileProjectBundle, preflightProjectOutput, validateProjectOutput } from "./project-compiler-core.mjs";
-import { validateArchitectureCandidates, validateProductGraph, validateProjectSpec } from "./project-contracts-core.mjs";
-import { readNoMarketAuthoringInputs } from "./project-no-market-authoring-core.mjs";
-import { createNoMarketProjectAuthoring } from "./project-state-core.mjs";
-import { bindTradableReferenceIntent, TRADABLE_REFERENCE_PROFILE_ID } from "./project-tradable-authoring-core.mjs";
-import { validateRepositoryPlan } from "./repository-completion-core.mjs";
+import { materializeProject } from "./project-materialization-core.mjs";
 import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
 import { sha256 } from "./template-catalog-shared.mjs";
 import { createProjectSandboxRequestV1 } from "./project-sandbox-receipt-core.mjs";
@@ -61,7 +54,7 @@ const PROJECT_COMPILER_BRIEF_FIELD_JSON_BYTES = Object.freeze({
 const cli = parseCliOrExit({
   command: "project-compiler",
   usage: "project-compiler <validate|validate-output|preflight|require-output|execute|diagnose|materialize> [command options]",
-  summary: "Validate project phases and outputs, diagnose a signed failed attempt, or author a source-bound plan. No-market Node uses --source-contract/--test-source; Foundry uses exact-pragma Solidity roots and testSimulation*, testFuzz*, invariant*, and testDeployment* functions. Dry-run before repeating with --write.",
+  summary: "Validate project phases and outputs, diagnose a signed failed attempt, or author a source-bound plan. Foundry supports no-market and unrestricted custom-tradable Solidity roots with exact pragmas plus testSimulation*, testFuzz*, invariant*, and testDeployment* functions. Dry-run before repeating with --write.",
   positionals: { min: 1, max: 1, names: ["command"] },
   options: [
     { name: "--repository-root", key: "repositoryRoot", type: "value", valueName: "path", description: "Existing project repository root." },
@@ -76,14 +69,14 @@ const cli = parseCliOrExit({
     { name: "--application-id", key: "applicationId", type: "value", valueName: "slug", description: "Application identity for materialize." },
     { name: "--classification", key: "classification", type: "value", valueName: "no-market|tradable", description: "Explicit trade classification for materialize." },
     { name: "--market-ref", key: "marketRef", type: "value", valueName: "slug", description: "Exact selected market identity for tradable materialize." },
-    { name: "--reference-profile", key: "referenceProfile", type: "value", valueName: "profile-id", description: "Exact frozen legacy compatibility profile requested by preserved tradable intent." },
-    { name: "--project-profile", key: "projectProfile", type: "value", valueName: "node|foundry", description: "Bounded no-market authoring profile; required with source/test roots." },
+    { name: "--reference-profile", key: "referenceProfile", type: "value", valueName: "profile-id", description: "Optional exact frozen legacy compatibility profile; omit for custom tradable source." },
+    { name: "--project-profile", key: "projectProfile", type: "value", valueName: "node|foundry", description: "Bounded authoring profile; custom tradable hooks use foundry." },
     { name: "--source-root", key: "sourceRoot", type: "value", valueName: "directory", description: "Nested inert source tree for Foundry materialize." },
     { name: "--test-root", key: "testRoot", type: "value", valueName: "directory", description: "Nested inert test tree for Foundry materialize." },
     { name: "--source-contract", key: "sourceContract", type: "value", valueName: "mjs-file", description: "Single Node-profile ESM source module for materialize." },
     { name: "--test-source", key: "testSource", type: "value", valueName: "test-mjs-file", description: "Single Node-profile node:test module for materialize." },
     { name: "--output", key: "output", type: "value", valueName: "new-directory", description: "New repository directory for materialize." },
-    { name: "--write", key: "write", type: "boolean", description: "Write no-market source and a materializing plan; tradable write requires an external sandbox." },
+    { name: "--write", key: "write", type: "boolean", description: "Write inert source and its local plan without executing candidate bytes; approval and launch remain separate." },
     { name: "--brief", key: "brief", type: "boolean", description: "Return a bounded materialization, validation, preflight, or diagnosis view; omit for complete canonical JSON." }
   ]
 });
@@ -98,7 +91,7 @@ try {
     failUsage("--attempt and --previous-attempt are accepted only by diagnose");
   }
   if (cli.positionals[0] === "materialize") {
-    await materializeProject(cli.options);
+    await materializeProject(cli.options, failUsage);
   } else if (cli.positionals[0] === "validate") {
     if (cli.options.state === null) failUsage("validate requires --state");
     if (cli.options.submissionRoot !== null || cli.options.plan !== null || cli.options.outputPlan !== null) failUsage("validate does not accept --submission-root, --plan or --output-plan");
@@ -171,118 +164,6 @@ try {
   const code = typeof error?.code === "string" ? `${error.code}: ` : "";
   process.stderr.write(`project-compiler: ${code}${error instanceof Error ? error.message : String(error)}\n`);
   process.exitCode = 2;
-}
-
-async function materializeProject(options) {
-  const prohibited = [options.repositoryRoot, options.state, options.previousState, options.submissionRoot, options.plan, options.outputPlan, options.attempt];
-  if (prohibited.some((value) => value !== null) || options.previousAttempts.length > 0) failUsage("materialize does not accept repository validation, execution, or diagnosis options");
-  for (const key of ["ideaFile", "applicationId", "classification", "output"]) if (options[key] === null) failUsage(`materialize requires --${key.replace(/[A-Z]/gu, (letter) => `-${letter.toLowerCase()}`)}`);
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(options.applicationId) || options.applicationId.length > 120) failUsage("--application-id must be a lowercase slug");
-  if (!["no-market", "tradable"].includes(options.classification)) failUsage("--classification must be no-market or tradable");
-  const ideaBytes = readInputBytes(options.ideaFile, 1_000_000, "idea file");
-  const ideaText = new TextDecoder("utf-8", { fatal: true }).decode(ideaBytes);
-  if (ideaText.trim().length === 0) failUsage("--idea-file must contain non-whitespace UTF-8 text");
-  const outputRoot = resolveNewOutput(options.output);
-  if (options.classification === "tradable") {
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(options.marketRef ?? "") || options.marketRef.length > 120) failUsage("tradable materialize requires --market-ref as a lowercase slug of at most 120 characters");
-    if (options.referenceProfile !== TRADABLE_REFERENCE_PROFILE_ID) failUsage(`tradable materialize requires --reference-profile ${TRADABLE_REFERENCE_PROFILE_ID}`);
-    if ([options.projectProfile, options.sourceRoot, options.testRoot, options.sourceContract, options.testSource].some((value) => value !== null)) failUsage("tradable materialize does not accept no-market authoring profile, root, source, or test options");
-    return materializeTradableProject({ ...options, ideaText, ideaBytes, intentProfileBinding: bindTradableReferenceIntent(ideaText, options.referenceProfile), outputRoot });
-  }
-  if (options.marketRef !== null) failUsage("no-market materialize does not accept --market-ref");
-  if (options.referenceProfile !== null) failUsage("no-market materialize does not accept --reference-profile");
-  const { projectProfile, compilerVersion, sourceFiles, testFiles } = readNoMarketAuthoringInputs(options);
-  const sourcePaths = sourceFiles.map(({ path: filePath }) => filePath);
-  const testPaths = testFiles.map(({ path: filePath }) => filePath);
-  const authored = createNoMarketProjectAuthoring({ applicationId: options.applicationId, ideaText, projectProfile, compilerVersion, sourceFiles, testFiles });
-  const authoringFindings = [
-    ...validateProjectSpec(authored.projectSpec),
-    ...validateProductGraph(authored.projectSpec, authored.productGraph),
-    ...validateArchitectureCandidates(authored.projectSpec, authored.productGraph, authored.architectureCandidates),
-    ...validateRepositoryPlan(authored.projectSpec, authored.productGraph, authored.architectureCandidates, authored.repositoryPlan)
-  ];
-  if (authoringFindings.some(({ severity }) => severity === "blocker")) throw Object.assign(new Error("generated project artifacts fail bundled validation"), { code: "PROJECT_AUTHORING_INVALID", findings: authoringFindings });
-  const inventory = fileInventory(authored.files);
-  if (!options.write) {
-    const payload = materializationReport({ status: "PROJECT_MATERIALIZATION_DRY_RUN_READY", applicationId: options.applicationId, classification: "no-market", projectProfile, compilerVersion, writeRequested: false, writePerformed: false, outputRoot, ideaSha256: authored.projectSpec.intent.sha256, sourcePaths, testPaths, inventory, blockers: [] });
-    writeMaterializationReport(payload, options.brief);
-    return;
-  }
-  const temporaryRoot = fs.mkdtempSync(path.join(path.dirname(outputRoot), ".programmable-project-materialize-"));
-  let exportRoot = null;
-  try {
-    for (const [relativePath, bytes] of authored.files) writeOutputFile(temporaryRoot, relativePath, bytes);
-    writeOutputJson(temporaryRoot, ".programmable/project-spec.v1.json", authored.projectSpec);
-    writeOutputJson(temporaryRoot, ".programmable/product-graph.v1.json", authored.productGraph);
-    writeOutputJson(temporaryRoot, ".programmable/architecture-candidates.v1.json", authored.architectureCandidates);
-    git(temporaryRoot, ["init", "-q", "-b", "main"]);
-    git(temporaryRoot, ["config", "user.name", "Programmable Local Builder"]);
-    git(temporaryRoot, ["config", "user.email", "local-builder@example.invalid"]);
-    git(temporaryRoot, ["add", "."]);
-    git(temporaryRoot, ["commit", "-qm", "materialize intent-bound local source"]);
-    authored.repositoryPlan.repository.branch = git(temporaryRoot, ["branch", "--show-current"]);
-    authored.repositoryPlan.repository.headCommit = git(temporaryRoot, ["rev-parse", "HEAD"]);
-    const sourceCommit = authored.repositoryPlan.repository.headCommit;
-    const sourceTree = git(temporaryRoot, ["rev-parse", "HEAD^{tree}"]);
-    exportRoot = fs.mkdtempSync(path.join(path.dirname(outputRoot), ".programmable-project-export-"));
-    git(path.dirname(outputRoot), ["clone", "-q", "--no-hardlinks", temporaryRoot, exportRoot]);
-    git(exportRoot, ["remote", "remove", "origin"]);
-    const planPath = ".programmable/repository-plan.materializing.v1.json";
-    writeOutputJson(exportRoot, planPath, authored.repositoryPlan);
-    if (git(exportRoot, ["status", "--porcelain=v1", "--untracked-files=all"]) !== "") {
-      throw Object.assign(new Error("plan-only export must remain clean with its transient plan ignored"), { code: "PROJECT_PLAN_EXPORT_DIRTY" });
-    }
-    fs.renameSync(exportRoot, outputRoot);
-    exportRoot = null;
-    const payload = materializationReport({
-      status: "PROJECT_MATERIALIZATION_PLAN_WRITTEN",
-      operation: "PROJECT_SOURCE_AND_PLAN_MATERIALIZED",
-      applicationId: options.applicationId,
-      classification: "no-market",
-      projectProfile,
-      compilerVersion,
-      writeRequested: true,
-      writePerformed: true,
-      outputRoot,
-      ideaSha256: authored.projectSpec.intent.sha256,
-      sourcePaths,
-      testPaths,
-      inventory: fileInventory(authored.files),
-      sourceCommit,
-      sourceTree,
-      planPath,
-      planSha256: canonicalJsonSha256V2(authored.repositoryPlan),
-      executionStatus: "EXTERNAL_SANDBOX_REQUIRED",
-      commandsExecuted: false,
-      blockers: ["PROJECT_EXTERNAL_SANDBOX_REQUIRED"]
-    });
-    writeMaterializationReport(payload, options.brief);
-  } finally {
-    if (fs.existsSync(temporaryRoot)) fs.rmSync(temporaryRoot, { recursive: true, force: true });
-    if (exportRoot !== null && fs.existsSync(exportRoot)) fs.rmSync(exportRoot, { recursive: true, force: true });
-  }
-}
-
-async function materializeTradableProject({ applicationId, marketRef, ideaText, ideaBytes, intentProfileBinding, outputRoot, write, brief }) {
-  void ideaText;
-  void intentProfileBinding;
-  if (!write) {
-    writeMaterializationReport(materializationReport({ status: "PROJECT_MATERIALIZATION_DRY_RUN_READY", applicationId, classification: "tradable", marketRef, writeRequested: false, writePerformed: false, outputRoot, ideaSha256: sha256Bytes(ideaBytes), blockers: [] }), brief);
-    return;
-  }
-  throw Object.assign(
-    new Error("tradable source generation requires candidate dependency and test execution, so portable same-UID materialization is disabled"),
-    {
-      code: "PROJECT_EXTERNAL_SANDBOX_REQUIRED",
-      status: "PROJECT_EXECUTION_BLOCKED",
-      planCreated: false,
-      executionCompleted: false,
-      commandsExecuted: false,
-      networkAccessed: false,
-      externalWritesPerformed: false,
-      trustedSandboxAuthorityConfigured: false
-    }
-  );
 }
 
 export function renderForkCanary() {
@@ -554,125 +435,6 @@ function writeProjectRepairDiagnosis(report, brief) {
   if (bytes.length > PROJECT_COMPILER_BRIEF_MAX_OUTPUT_BYTES) throw new Error("project repair diagnosis brief exceeds its complete output budget");
   process.stdout.write(bytes);
 }
-function readInputBytes(inputPath, maximumBytes, label) {
-  const resolved = path.resolve(inputPath);
-  const stat = fs.lstatSync(resolved);
-  if (!stat.isFile() || stat.isSymbolicLink() || stat.size < 1 || stat.size > maximumBytes) throw Object.assign(new Error(`${label} must be a bounded regular non-symlink file`), { code: "PROJECT_AUTHORING_INPUT_INVALID" });
-  return fs.readFileSync(resolved);
-}
-function resolveNewOutput(outputPath) {
-  const requested = path.resolve(outputPath);
-  const parent = fs.realpathSync(path.dirname(requested));
-  const resolved = path.join(parent, path.basename(requested));
-  if (fs.existsSync(resolved)) throw Object.assign(new Error("--output must name a new directory"), { code: "PROJECT_OUTPUT_EXISTS" });
-  return resolved;
-}
-function writeOutputFile(root, relativePath, bytes) {
-  if (path.isAbsolute(relativePath) || relativePath.split("/").includes("..")) throw Object.assign(new Error("unsafe generated output path"), { code: "PROJECT_OUTPUT_PATH_INVALID" });
-  const target = path.join(root, relativePath);
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.writeFileSync(target, bytes);
-}
-function writeOutputJson(root, relativePath, value) {
-  writeOutputFile(root, relativePath, Buffer.from(`${canonicalJsonV2(value)}\n`, "utf8"));
-}
-function git(root, args) {
-  const result = childProcess.spawnSync("git", args, { cwd: root, encoding: "utf8", shell: false, env: { PATH: process.env.PATH ?? "", HOME: path.join(root, ".git", "programmable-home"), LANG: "C", LC_ALL: "C", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0", GIT_AUTHOR_DATE: "2000-01-01T00:00:00Z", GIT_COMMITTER_DATE: "2000-01-01T00:00:00Z" } });
-  if (result.status !== 0) throw Object.assign(new Error(result.stderr.trim() || `git ${args[0]} failed`), { code: "PROJECT_LOCAL_GIT_FAILED" });
-  return result.stdout.trim();
-}
-function fileInventory(files) {
-  return [...files].map(([filePath, bytes]) => ({ path: filePath, sha256: sha256Bytes(bytes), byteLength: bytes.length })).sort((left, right) => left.path.localeCompare(right.path));
-}
-function materializationReport(fields) {
-  const { outputRoot: _environmentSpecificOutputRoot, ...stableFields } = fields;
-  const commandsExecuted = fields.commandsExecuted === true;
-  const payload = {
-    schemaVersion: "1.0.0",
-    kind: "project-materialization-report",
-    ...stableFields,
-    outputLocationBound: false,
-    canonicalOutput: fields.status === "PROJECT_PREFLIGHT_VALID",
-    evidenceBoundary: {
-      scope: "local-project-authoring",
-      planCreated: fields.status === "PROJECT_MATERIALIZATION_PLAN_WRITTEN",
-      executionCompleted: false,
-      commandsExecuted,
-      executionPolicy: "external-sandbox-required-fail-closed",
-      executionIsolationEnforced: false,
-      networkAccessed: false,
-      externalWritesObserved: false,
-      authoredCommandExternalActionsObserved: false,
-      builderExternalActionsPerformed: [],
-      approvalCreated: false,
-      auditClaimed: false,
-      deploymentClaimed: false,
-      productionClaimed: false
-    }
-  };
-  return { ...payload, reportSha256: canonicalJsonSha256V2(payload) };
-}
-
-function writeMaterializationReport(report, brief) {
-  if (!brief) {
-    process.stdout.write(`${canonicalJsonV2(report)}\n`);
-    return;
-  }
-  const inventory = Array.isArray(report.inventory) ? report.inventory : [];
-  const sourcePaths = Array.isArray(report.sourcePaths) ? report.sourcePaths : [];
-  const testPaths = Array.isArray(report.testPaths) ? report.testPaths : [];
-  const summary = {
-    schemaVersion: "1.0.0",
-    kind: "project-materialization-brief",
-    status: report.status,
-    applicationId: report.applicationId,
-    classification: report.classification,
-    projectProfile: report.projectProfile ?? null,
-    compilerVersion: report.compilerVersion ?? null,
-    marketRef: report.marketRef ?? null,
-    writeRequested: report.writeRequested,
-    writePerformed: report.writePerformed,
-    ideaSha256: report.ideaSha256,
-    sourcePaths: { count: sourcePaths.length, sha256: canonicalJsonSha256V2(sourcePaths), items: sourcePaths },
-    testPaths: { count: testPaths.length, sha256: canonicalJsonSha256V2(testPaths), items: testPaths },
-    inventory: {
-      fileCount: inventory.length,
-      totalBytes: inventory.reduce((sum, file) => sum + file.byteLength, 0),
-      sha256: canonicalJsonSha256V2(inventory)
-    },
-    sourceCommit: report.sourceCommit ?? null,
-    sourceTree: report.sourceTree ?? null,
-    planPath: report.planPath ?? null,
-    planSha256: report.planSha256 ?? null,
-    executionStatus: report.executionStatus ?? null,
-    blockers: report.blockers,
-    outputLocationBound: false,
-    canonicalOutput: false,
-    evidenceBoundary: report.evidenceBoundary,
-    reportSha256: report.reportSha256,
-    fullReport: {
-      available: true,
-      instruction: "Rerun the same command without --brief for the complete canonical JSON report."
-    }
-  };
-  let bytes = Buffer.from(`${canonicalJsonV2(summary)}\n`, "utf8");
-  if (bytes.length > PROJECT_COMPILER_BRIEF_MAX_OUTPUT_BYTES) {
-    const fallback = {
-      ...summary,
-      sourcePaths: { ...summary.sourcePaths, items: [] },
-      testPaths: { ...summary.testPaths, items: [] },
-      budgetFallback: {
-        applied: true,
-        reason: "PATH_DETAILS_EXCEEDED_BRIEF_OUTPUT_BUDGET",
-        maximumOutputBytes: PROJECT_COMPILER_BRIEF_MAX_OUTPUT_BYTES
-      }
-    };
-    bytes = Buffer.from(`${canonicalJsonV2(fallback)}\n`, "utf8");
-  }
-  if (bytes.length > PROJECT_COMPILER_BRIEF_MAX_OUTPUT_BYTES) throw new Error("project materialization brief fallback exceeds its complete output budget");
-  process.stdout.write(bytes);
-}
-
 function resolveRepositoryDirectory(repositoryRoot, repositoryPath) {
   if (typeof repositoryPath !== "string" || repositoryPath.length === 0 || path.isAbsolute(repositoryPath)) {
     throw new Error("submission root must be non-empty and repository-relative");

@@ -251,11 +251,14 @@ test("global skill boundaries apply v4 mechanics conditionally and distinguish d
   assert.match(skill, /disclosed powers require review/iu);
   assert.match(skill, /node "\$BUILDER_CLI" policy/u);
   assert.match(skill, /complete Programmable rule set/iu);
-  assert.match(skill, /Use every\s+`build` Rule ID, add none, and stop if unavailable/u);
-  assert.match(skill, /Before materializing read no other reference\/full context/u);
-  assert.match(skill, /active workspace sandbox run offline fmt\/test once/u);
+  assert.match(skill, /use every available `build` Rule ID, add none/u);
+  assert.match(skill, /If\s+unavailable, continue source as `POLICY_UNRESOLVED`; block only submit, approval and launch/u);
+  assert.match(skill, /Before materializing read no other reference/u);
+  assert.match(skill, /active\s+workspace run install and offline fmt\/test once/u);
   assert.match(skill, /`LOCAL_ONLY`, never\s+completion/u);
-  assert.match(skill, /Fix inputs and rematerialize on failure\. Never edit output/u);
+  assert.match(skill, /Fix input roots and\s+rematerialize; never patch output/u);
+  assert.match(skill, /Missing catalog\/profile never justifies refusal/u);
+  assert.match(skill, /policy gates\s+launch, never source/iu);
   assert.doesNotMatch(skill, /hidden mint,\s*confiscation, blacklist, fee, pause, upgrade or payout-redirection power/u);
 });
 
