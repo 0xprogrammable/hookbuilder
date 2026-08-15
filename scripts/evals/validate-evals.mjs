@@ -120,19 +120,76 @@ const DAILY_SENTINEL_TRIGGER_KEYS = Object.freeze([
   'language',
   'prompt',
 ]);
-const COMPLETE_PROJECT_DELIVERY_ACTION = /\b(?:build|implement|create|turn|repair|review|test|upgrade|submit|prepare|bau(?:e|en|t)?|implementier(?:e|en|t)?|erstell(?:e|en|t)?|reparier(?:e|en|t)?|prüf(?:e|en|t)?|test(?:e|en|t)?|verbesser(?:e|n|t)?|bereit(?:e|en|t)?|reich(?:e|en|t)?)\b/iu;
-const EXPLICIT_NON_DELIVERY_INTENT = /(?:\b(?:do\s+not|don't|dont|never|not)\s+(?:\w+\s+){0,2}(?:build|implement|create|repair|test|upgrade|submit|prepare)\b|\b(?:noch\s+)?nichts\s+(?:\w+\s+){0,2}(?:bau(?:en)?|implementier(?:en)?|erstell(?:en)?|reparier(?:en)?|test(?:en)?|einreich(?:en)?)\b|\b(?:only|just)\s+(?:\w+\s+){0,3}(?:brainstorm|ideas?|explanations?)\b|\b(?:nur|lediglich)\s+(?:\w+\s+){0,3}(?:brainstorm(?:en)?|ideen?|erklär(?:ung|en)?)\b)/iu;
 const EXPLANATION_MARKER = /\b(?:explain|explanation|erklär(?:e|en|t|ung|ungen)?)\b/iu;
 const BRAINSTORM_MARKER = /\b(?:brainstorm(?:ing)?|ideen?)\b/iu;
+const DELIVERY_ACTION_TOKEN = /^(?:build|builds|building|built|implement(?:s|ed|ing)?|creat(?:e|es|ed|ing)|turn(?:s|ed|ing)?|repair(?:s|ed|ing)?|review(?:s|ed|ing)?|test(?:s|ed|ing)?|upgrad(?:e|es|ed|ing)|submit(?:s|ted|ting)?|prepar(?:e|es|ed|ing)|bau(?:e|st|t|en)|implementier(?:e|st|t|en)|erstell(?:e|st|t|en)|reparier(?:e|st|t|en)|prüf(?:e|st|t|en)|test(?:e|st|t|en)|verbesser(?:e|st|t|en)|bereit(?:e|est|et|en)|einreich(?:e|st|t|en))$/iu;
+const TRIGGER_TOKEN = /[\p{L}\p{N}]+(?:'[\p{L}\p{N}]+)*|[.!?;,:]/gu;
+const STRONG_CLAUSE_BOUNDARIES = new Set([
+  '.', '!', '?', ';', ':',
+  'aber', 'afterward', 'afterwards', 'anschließend', 'but', 'danach', 'dann', 'however', 'jedoch', 'sondern', 'then', 'yet',
+]);
+const EMBEDDING_BOUNDARIES = new Set(['and', 'und']);
+const NEGATION_TOKENS = new Set([
+  "don't", 'dont', 'kein', 'keine', 'keinen', 'keiner', 'keines', 'never', 'nicht', 'nichts', 'nie', 'no', 'not', 'ohne', 'without',
+]);
+const DELIVERY_CONTEXT_TOKEN_LIMIT = 12;
 
-function hasAffirmativeCompleteProjectDeliveryIntent(prompt) {
-  return COMPLETE_PROJECT_DELIVERY_ACTION.test(prompt)
-    && !EXPLICIT_NON_DELIVERY_INTENT.test(prompt);
+function normalizeTriggerPrompt(prompt) {
+  return typeof prompt === 'string'
+    ? prompt
+      .normalize('NFKC')
+      .replace(/[‘’‛ʼ`´]/gu, "'")
+      .replace(/[‐‑‒–—―]/gu, '-')
+    : '';
+}
+
+function tokenizeTriggerPrompt(prompt) {
+  return [...normalizeTriggerPrompt(prompt).matchAll(TRIGGER_TOKEN)]
+    .map(([surface]) => surface.toLocaleLowerCase('und'));
+}
+
+function boundedContextStart(tokens, actionIndex, extraBoundaries = new Set()) {
+  const minimum = Math.max(0, actionIndex - DELIVERY_CONTEXT_TOKEN_LIMIT);
+  for (let index = actionIndex - 1; index >= minimum; index -= 1) {
+    if (STRONG_CLAUSE_BOUNDARIES.has(tokens[index]) || extraBoundaries.has(tokens[index])) return index + 1;
+  }
+  return minimum;
+}
+
+function includesMarker(tokens, pattern) {
+  return tokens.some((token) => pattern.test(token));
+}
+
+export function classifyCompleteProjectDeliveryActions(prompt) {
+  // This guards the frozen structural corpus; it is not a model-level natural-language trigger judge.
+  const tokens = tokenizeTriggerPrompt(prompt);
+  const actions = [];
+  for (const [index, action] of tokens.entries()) {
+    if (!DELIVERY_ACTION_TOKEN.test(action)) continue;
+    const clauseStart = boundedContextStart(tokens, index);
+    const clauseContext = tokens.slice(clauseStart, index).filter((token) => !/^[.!?;,:]$/u.test(token));
+    const embeddingStart = boundedContextStart(tokens, index, EMBEDDING_BOUNDARIES);
+    const embeddingContext = tokens.slice(embeddingStart, index).filter((token) => !/^[.!?;,:]$/u.test(token));
+    let classification = 'AFFIRMED';
+    if (clauseContext.some((token) => NEGATION_TOKENS.has(token))) classification = 'NEGATED';
+    else if (includesMarker(embeddingContext, EXPLANATION_MARKER)) classification = 'EXPLANATION_EMBEDDED';
+    else if (includesMarker(embeddingContext, BRAINSTORM_MARKER)) classification = 'BRAINSTORM_EMBEDDED';
+    actions.push({ action, classification });
+  }
+  return {
+    actions,
+    hasAffirmative: actions.some(({ classification }) => classification === 'AFFIRMED'),
+  };
 }
 
 function hasInScopeProjectSubject(prompt) {
   return /\bProgrammable\b/u.test(prompt)
     || /\bUniswap(?:[\s-]+)v4\b/iu.test(prompt);
+}
+
+function hasAffirmativeInScopeProjectDeliveryIntent(prompt) {
+  return hasInScopeProjectSubject(prompt)
+    && classifyCompleteProjectDeliveryActions(prompt).hasAffirmative;
 }
 
 export class EvalValidationError extends Error {
@@ -483,7 +540,7 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
   for (const [index, { prompt }] of positivePrompts.entries()) {
     addIssue(
       issues,
-      hasAffirmativeCompleteProjectDeliveryIntent(prompt ?? ''),
+      hasAffirmativeInScopeProjectDeliveryIntent(prompt ?? ''),
       `daily sentinel: positive[${index}] must express affirmative complete-project delivery intent`,
     );
   }
@@ -497,8 +554,7 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
   for (const [index, { prompt }] of negativePrompts.entries()) {
     addIssue(
       issues,
-      !hasInScopeProjectSubject(prompt ?? '')
-        || !hasAffirmativeCompleteProjectDeliveryIntent(prompt ?? ''),
+      !hasAffirmativeInScopeProjectDeliveryIntent(prompt ?? ''),
       `daily sentinel: negative[${index}] mislabels an affirmative complete-project build as not activated`,
     );
   }
@@ -507,7 +563,7 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
     negativePrompts.some(({ prompt }) => (
       /\bProgrammable\b/u.test(prompt ?? '')
       && EXPLANATION_MARKER.test(prompt ?? '')
-      && !hasAffirmativeCompleteProjectDeliveryIntent(prompt ?? '')
+      && !hasAffirmativeInScopeProjectDeliveryIntent(prompt ?? '')
     )),
     'daily sentinel: negative prompts must cover a branded explanation-only request',
   );
@@ -517,7 +573,7 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
       !/\bProgrammable\b/u.test(prompt ?? '')
       && /\bUniswap(?:[\s-]+)v4\b/iu.test(prompt ?? '')
       && BRAINSTORM_MARKER.test(prompt ?? '')
-      && !hasAffirmativeCompleteProjectDeliveryIntent(prompt ?? '')
+      && !hasAffirmativeInScopeProjectDeliveryIntent(prompt ?? '')
     )),
     'daily sentinel: negative prompts must cover an unbranded v4 brainstorming-only request',
   );

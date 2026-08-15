@@ -8,6 +8,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  classifyCompleteProjectDeliveryActions,
   EvalValidationError,
   isOutsideRootRelative,
   validateSuite,
@@ -269,6 +270,65 @@ test('daily sentinel reuses public cases and keeps balanced trigger coverage', (
       /implicit positive\[\d+\] must name Uniswap v4/u,
     ),
   );
+});
+
+test('delivery intent classification is bounded to each action clause', () => {
+  const cases = [
+    {
+      prompt: 'Do not, under any circumstances, build a complete Uniswap v4 project.',
+      expected: ['build:NEGATED'],
+    },
+    {
+      prompt: 'Don’t build this Uniswap v4 project.',
+      expected: ['build:NEGATED'],
+    },
+    {
+      prompt: 'Only explain how to build a Uniswap v4 hook.',
+      expected: ['build:EXPLANATION_EMBEDDED'],
+    },
+    {
+      prompt: 'Bitte nicht bauen; ich will nur die Idee für einen Uniswap-v4-Hook besprechen.',
+      expected: ['bauen:NEGATED'],
+    },
+    {
+      prompt: 'Erkläre mir nur, wie man einen Uniswap-v4-Hook baut.',
+      expected: ['baut:EXPLANATION_EMBEDDED'],
+    },
+    {
+      prompt: 'Build the complete Uniswap v4 project locally, but do not submit it.',
+      expected: ['build:AFFIRMED', 'submit:NEGATED'],
+    },
+    {
+      prompt: 'Do not submit anything; build and test the complete Uniswap v4 project locally.',
+      expected: ['submit:NEGATED', 'build:AFFIRMED', 'test:AFFIRMED'],
+    },
+    {
+      prompt: 'Explain the Uniswap v4 architecture, then build the complete project.',
+      expected: ['build:AFFIRMED'],
+    },
+    {
+      prompt: 'Erkläre kurz die Architektur und baue danach das vollständige Uniswap-v4-Projekt.',
+      expected: ['baue:AFFIRMED'],
+    },
+    {
+      prompt: 'Brainstorm how to build the hook, then implement the complete Uniswap v4 project.',
+      expected: ['build:BRAINSTORM_EMBEDDED', 'implement:AFFIRMED'],
+    },
+  ];
+
+  for (const { prompt, expected } of cases) {
+    const result = classifyCompleteProjectDeliveryActions(prompt);
+    assert.deepEqual(
+      result.actions.map(({ action, classification }) => `${action}:${classification}`),
+      expected,
+      prompt,
+    );
+    assert.equal(
+      result.hasAffirmative,
+      expected.some((entry) => entry.endsWith(':AFFIRMED')),
+      prompt,
+    );
+  }
 });
 
 test('prompt wrapper rejects every supported Nunjucks raw-block terminator shape', () => {
