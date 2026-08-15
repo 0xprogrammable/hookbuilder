@@ -45,9 +45,9 @@
     ],
     "negative": [
       {
-        "id": "generic-v4-question",
+        "id": "branded-explanation-only-en",
         "language": "en",
-        "prompt": "Explain how Uniswap v4 hook permissions are encoded in an address.",
+        "prompt": "Explain how Programmable handles Uniswap v4 hook permissions; I only need an explanation, not an implementation.",
         "expectedActivation": "NOT_ACTIVATED"
       },
       {

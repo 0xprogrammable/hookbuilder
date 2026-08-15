@@ -125,7 +125,7 @@ test('canonical eval suite passes deterministic structure validation', () => {
     dailySentinelPositiveTriggerCount: 5,
     dailySentinelNegativeTriggerCount: 5,
     dailySentinelQualification: 'STRUCTURE_AND_COVERAGE_ONLY',
-    dailySentinelSha256: 'a48dde811854c004afa83bf37a02ee90715a6c328234f591d49d31a15e469844',
+    dailySentinelSha256: '5221de36581d1d55915db8bae4c8088c9476c80c57462a30df0308cdc7152155',
     e2ePublicResponseCaseCount: 47,
     e2eSealedRepositoryEnvelopeCount: 24,
     e2eComparablePublicRepositoryCaseCount: 0,
@@ -163,8 +163,12 @@ test('daily sentinel reuses public cases and keeps balanced trigger coverage', (
     assert.match(prompt, /\b(?:build|implement|repair|review|test|upgrade|prepare|bau(?:e|en|t)?|implementier(?:e|en|t)?|reparier(?:e|en|t)?|prüf(?:e|en|t)?|test(?:e|en|t)?|verbesser(?:e|n|t)?|bereit(?:e|en|t)?|reich(?:e|en|t)?)\b/iu);
   }
   assert.ok(
-    sentinel.triggerPrompts.negative.every(({ prompt }) => !/\bProgrammable\b/u.test(prompt)),
-    'adjacent unbranded questions must stay outside the skill',
+    sentinel.triggerPrompts.negative.some(({ prompt }) => /\bProgrammable\b/u.test(prompt) && /\bexplanation\b/iu.test(prompt)),
+    'a branded explanation-only request must stay outside the skill',
+  );
+  assert.ok(
+    sentinel.triggerPrompts.negative.some(({ prompt }) => /\bUniswap(?:[\s-]+)v4\b/iu.test(prompt) && /\b(?:brainstorm|ideen)\b/iu.test(prompt)),
+    'an unbranded v4 brainstorming-only request must stay outside the skill',
   );
 
   withTemporaryRepository(
@@ -185,13 +189,41 @@ test('daily sentinel reuses public cases and keeps balanced trigger coverage', (
     (temporaryRoot) => {
       const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
       const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
+      candidate.triggerPrompts.positive.find(({ id }) => id === 'game-theory-then-build-en').prompt =
+        'Do not build or implement anything; only brainstorm possible Uniswap v4 game architectures.';
+      fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /positive\[\d+\] must express affirmative complete-project delivery intent/u,
+    ),
+  );
+
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
+      const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
+      candidate.triggerPrompts.negative.find(({ id }) => id === 'brainstorm-only-de').prompt =
+        'Build a complete Uniswap v4 hook project with source and tests for this fee idea.';
+      fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /negative\[\d+\] mislabels an affirmative complete-project build as not activated/u,
+    ),
+  );
+
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
+      const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
       candidate.triggerPrompts.positive.find(({ id }) => id === 'implicit-design-then-build-de').prompt =
         'Entwirf mir ein paar mögliche Architekturen für einen Uniswap-v4-Hook; wir wollen heute nur brainstormen.';
       fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
     },
     (temporaryRoot) => expectInvalid(
       temporaryRoot,
-      /positive\[\d+\] must express complete-project delivery rather than explanation-only or brainstorming-only intent/u,
+      /positive\[\d+\] must express affirmative complete-project delivery intent/u,
     ),
   );
 
@@ -205,7 +237,7 @@ test('daily sentinel reuses public cases and keeps balanced trigger coverage', (
     },
     (temporaryRoot) => expectInvalid(
       temporaryRoot,
-      /positive\[\d+\] must express complete-project delivery rather than explanation-only or brainstorming-only intent/u,
+      /positive\[\d+\] must express affirmative complete-project delivery intent/u,
     ),
   );
 

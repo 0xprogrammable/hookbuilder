@@ -120,7 +120,20 @@ const DAILY_SENTINEL_TRIGGER_KEYS = Object.freeze([
   'language',
   'prompt',
 ]);
-const COMPLETE_PROJECT_DELIVERY_INTENT = /\b(?:build|implement|create|turn|repair|review|test|upgrade|submit|prepare|bau(?:e|en|t)?|implementier(?:e|en|t)?|erstell(?:e|en|t)?|reparier(?:e|en|t)?|prüf(?:e|en|t)?|test(?:e|en|t)?|verbesser(?:e|n|t)?|bereit(?:e|en|t)?|reich(?:e|en|t)?)\b/iu;
+const COMPLETE_PROJECT_DELIVERY_ACTION = /\b(?:build|implement|create|turn|repair|review|test|upgrade|submit|prepare|bau(?:e|en|t)?|implementier(?:e|en|t)?|erstell(?:e|en|t)?|reparier(?:e|en|t)?|prüf(?:e|en|t)?|test(?:e|en|t)?|verbesser(?:e|n|t)?|bereit(?:e|en|t)?|reich(?:e|en|t)?)\b/iu;
+const EXPLICIT_NON_DELIVERY_INTENT = /(?:\b(?:do\s+not|don't|dont|never|not)\s+(?:\w+\s+){0,2}(?:build|implement|create|repair|test|upgrade|submit|prepare)\b|\b(?:noch\s+)?nichts\s+(?:\w+\s+){0,2}(?:bau(?:en)?|implementier(?:en)?|erstell(?:en)?|reparier(?:en)?|test(?:en)?|einreich(?:en)?)\b|\b(?:only|just)\s+(?:\w+\s+){0,3}(?:brainstorm|ideas?|explanations?)\b|\b(?:nur|lediglich)\s+(?:\w+\s+){0,3}(?:brainstorm(?:en)?|ideen?|erklär(?:ung|en)?)\b)/iu;
+const EXPLANATION_MARKER = /\b(?:explain|explanation|erklär(?:e|en|t|ung|ungen)?)\b/iu;
+const BRAINSTORM_MARKER = /\b(?:brainstorm(?:ing)?|ideen?)\b/iu;
+
+function hasAffirmativeCompleteProjectDeliveryIntent(prompt) {
+  return COMPLETE_PROJECT_DELIVERY_ACTION.test(prompt)
+    && !EXPLICIT_NON_DELIVERY_INTENT.test(prompt);
+}
+
+function hasInScopeProjectSubject(prompt) {
+  return /\bProgrammable\b/u.test(prompt)
+    || /\bUniswap(?:[\s-]+)v4\b/iu.test(prompt);
+}
 
 export class EvalValidationError extends Error {
   constructor(issues) {
@@ -451,16 +464,10 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
       addIssue(issues, !seenPrompts.has(record?.prompt), `${label} prompt is duplicated`);
       seenPrompts.add(record?.prompt);
       addIssue(issues, record?.expectedActivation === expectedActivation, `${label} activation decision drift`);
-      if (group === 'negative') {
-        addIssue(
-          issues,
-          !/\bProgrammable\b/u.test(record?.prompt ?? ''),
-          `${label} trigger boundary is ambiguous`,
-        );
-      }
     }
   }
   const positivePrompts = value.triggerPrompts?.positive ?? [];
+  const negativePrompts = value.triggerPrompts?.negative ?? [];
   const brandedPrompts = positivePrompts.filter(({ prompt }) => /\bProgrammable\b/u.test(prompt ?? ''));
   const implicitV4Work = positivePrompts.filter(({ prompt }) => !/\bProgrammable\b/u.test(prompt ?? ''));
   addIssue(
@@ -476,8 +483,8 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
   for (const [index, { prompt }] of positivePrompts.entries()) {
     addIssue(
       issues,
-      COMPLETE_PROJECT_DELIVERY_INTENT.test(prompt ?? ''),
-      `daily sentinel: positive[${index}] must express complete-project delivery rather than explanation-only or brainstorming-only intent`,
+      hasAffirmativeCompleteProjectDeliveryIntent(prompt ?? ''),
+      `daily sentinel: positive[${index}] must express affirmative complete-project delivery intent`,
     );
   }
   for (const [index, { prompt }] of implicitV4Work.entries()) {
@@ -487,6 +494,33 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
       `daily sentinel: implicit positive[${index}] must name Uniswap v4`,
     );
   }
+  for (const [index, { prompt }] of negativePrompts.entries()) {
+    addIssue(
+      issues,
+      !hasInScopeProjectSubject(prompt ?? '')
+        || !hasAffirmativeCompleteProjectDeliveryIntent(prompt ?? ''),
+      `daily sentinel: negative[${index}] mislabels an affirmative complete-project build as not activated`,
+    );
+  }
+  addIssue(
+    issues,
+    negativePrompts.some(({ prompt }) => (
+      /\bProgrammable\b/u.test(prompt ?? '')
+      && EXPLANATION_MARKER.test(prompt ?? '')
+      && !hasAffirmativeCompleteProjectDeliveryIntent(prompt ?? '')
+    )),
+    'daily sentinel: negative prompts must cover a branded explanation-only request',
+  );
+  addIssue(
+    issues,
+    negativePrompts.some(({ prompt }) => (
+      !/\bProgrammable\b/u.test(prompt ?? '')
+      && /\bUniswap(?:[\s-]+)v4\b/iu.test(prompt ?? '')
+      && BRAINSTORM_MARKER.test(prompt ?? '')
+      && !hasAffirmativeCompleteProjectDeliveryIntent(prompt ?? '')
+    )),
+    'daily sentinel: negative prompts must cover an unbranded v4 brainstorming-only request',
+  );
   for (const group of ['positive', 'negative']) {
     const languages = new Set((value.triggerPrompts?.[group] ?? []).map(({ language }) => language));
     addIssue(issues, languages.has('de') && languages.has('en'), `daily sentinel: ${group} prompts must cover de and en`);
