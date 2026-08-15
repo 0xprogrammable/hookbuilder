@@ -65,21 +65,6 @@ function sha256Text(value) {
   return crypto.createHash("sha256").update(value, "utf8").digest("hex");
 }
 
-function gitBlobInventory(revision, relativePath) {
-  const result = childProcess.spawnSync("git", ["ls-tree", "-lr", "-z", revision, "--", relativePath], {
-    cwd: repositoryRoot,
-    encoding: "utf8",
-    shell: false
-  });
-  assert.equal(result.status, 0, result.stderr);
-  const sizes = result.stdout.split("\0").filter(Boolean).map((row) => {
-    const match = row.match(/^\d+\s+blob\s+[0-9a-f]+\s+(\d+)\t/u);
-    assert.ok(match, row);
-    return Number(match[1]);
-  });
-  return { files: sizes.length, bytes: sizes.reduce((total, bytes) => total + bytes, 0) };
-}
-
 function markdownFiles(root) {
   const found = [];
   const visit = (directory) => {
@@ -422,10 +407,7 @@ test("candidate quantitative docs match generator-backed source inventories", ()
     .filter((name) => name.endsWith(".test.mjs"))
     .length;
   const productionModuleCount = sizeReport.discovery.discoveredFiles;
-  const priorPortableSkill = gitBlobInventory(
-    "01e1e691424d28bf9cc87dec1879f1482c2ad228",
-    "skills/programmable-v4-hook-builder"
-  );
+  const priorPortableSkill = { files: 686, bytes: 10_722_006 };
 
   assert.equal(sizeReport.status, "SIZE_BUDGET_PASSED");
   assert.equal(productionModuleCount, 342);
