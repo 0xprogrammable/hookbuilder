@@ -11,7 +11,8 @@ import {
   verifyCompanionManifestV2Closure as verifyCompanionManifestV2ClosureRaw
 } from "../../skills/programmable-v4-hook-builder/scripts/companion-manifest-contract.mjs";
 
-const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const skillRoot = path.join(repositoryRoot, "skills", "programmable-v4-hook-builder");
 const manifestPath = ".programmable/companions/game.json";
 
 function verifyCompanionManifestV2Closure(manifest, records, evidence, options = { manifestPath }) {
@@ -106,7 +107,7 @@ function fixture() {
     }, null, 2)}\n`,
     "src/main.ts": 'import "three";\nimport { add } from "./math";\nexport const score = add(1, 2);\n',
     "src/math.ts": "export const add = (left: number, right: number) => left + right;\n",
-    "test/main.test.ts": 'import test from "node:test";\nimport { score } from "../../src/main";\ntest("score", () => { if (score !== 3) throw new Error("bad score"); });\n',
+    "test/main.test.ts": 'import test from "node:test";\nimport { score } from "../src/main";\ntest("score", () => { if (score !== 3) throw new Error("bad score"); });\n',
     "vite.config.ts": 'import { defineConfig } from "vite";\nexport default defineConfig({});\n'
   };
   const records = new Map(Object.entries(files).map(([filePath, source], index) => {

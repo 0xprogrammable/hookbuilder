@@ -296,7 +296,7 @@ function createRuntimeAssetFixture({
   fs.mkdirSync(path.join(packageRoot, "app"), { recursive: true });
   fs.mkdirSync(path.join(packageRoot, "public", "assets"), { recursive: true });
   fs.mkdirSync(path.join(packageRoot, "docs", "assets"), { recursive: true });
-  fs.writeFileSync(path.join(repositoryRoot, sourcePath), `import worldUrl from "../../public/assets/${assetFileName}?url";\nexport { worldUrl };\n`);
+  fs.writeFileSync(path.join(repositoryRoot, sourcePath), `import worldUrl from "../public/assets/${assetFileName}?url";\nexport { worldUrl };\n`);
   const contentSha = crypto.createHash("sha256").update(assetContent).digest("hex");
   const assetBytes = assetContent.byteLength;
   if (lfsPointer) {
