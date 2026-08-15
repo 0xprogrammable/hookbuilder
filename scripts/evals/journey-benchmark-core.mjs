@@ -1,0 +1,918 @@
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
+import { spawn, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
+export const DEFAULT_REPOSITORY_ROOT = path.resolve(SCRIPT_DIRECTORY, '../..');
+export const CORPUS_RELATIVE_PATH = 'evals/journey-benchmark/v1/corpus.json';
+export const CORPUS_DIGEST_RELATIVE_PATH = 'evals/journey-benchmark/v1/corpus.sha256';
+export const BENCHMARK_SCHEMA_VERSION = '1.0.0';
+
+const MAX_CAPTURE_BYTES = 4 * 1024 * 1024;
+const MAX_RESULT_FILES = 10_000;
+const MAX_RESULT_BYTES = 128 * 1024 * 1024;
+const DEFAULT_ENVIRONMENT_NAMES = Object.freeze(['LANG', 'LC_ALL', 'PATH', 'TMPDIR', 'TZ']);
+const CASE_GROUPS = Object.freeze([
+  'community-regression',
+  'natural-positive',
+  'adjacent-negative',
+  'malformed',
+  'missing-tool',
+  'authority-denied',
+  'adversarial',
+]);
+const ACTIVATION_STATES = Object.freeze(['ACTIVATED', 'NOT_ACTIVATED', 'UNAVAILABLE']);
+const RESULT_STATES = Object.freeze(['COMPLETED', 'EARLY_BLOCKED', 'ERROR']);
+const EVIDENCE_MODES = Object.freeze(['FAKE_ADAPTER_TEST', 'PROVIDER_BACKED_UNVERIFIED']);
+
+export class JourneyBenchmarkError extends Error {
+  constructor(code, message, details = {}) {
+    super(message);
+    this.name = 'JourneyBenchmarkError';
+    this.code = code;
+    this.details = details;
+  }
+}
+
+function fail(code, message, details = {}) {
+  throw new JourneyBenchmarkError(code, message, details);
+}
+
+function exactKeys(value, expected) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const actual = Object.keys(value).sort();
+  const sortedExpected = [...expected].sort();
+  return actual.length === sortedExpected.length
+    && actual.every((key, index) => key === sortedExpected[index]);
+}
+
+function assertExactKeys(value, expected, label) {
+  if (!exactKeys(value, expected)) {
+    fail('SCHEMA_INVALID', `${label} keys must exactly match: ${[...expected].sort().join(', ')}`);
+  }
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isOutsideRoot(relativePath) {
+  return relativePath === '..'
+    || relativePath.startsWith(`..${path.sep}`)
+    || path.isAbsolute(relativePath);
+}
+
+export function sha256(value) {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+export function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (isPlainObject(value)) {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function readJson(filePath, label) {
+  let raw;
+  try {
+    raw = fs.readFileSync(filePath, 'utf8');
+  } catch (error) {
+    fail('FILE_UNAVAILABLE', `${label} cannot be read: ${error.message}`, { filePath });
+  }
+  try {
+    return { raw, value: JSON.parse(raw) };
+  } catch (error) {
+    fail('JSON_INVALID', `${label} is invalid JSON: ${error.message}`, { filePath });
+  }
+}
+
+function validateIdentifier(value, label) {
+  if (typeof value !== 'string' || !/^[a-z0-9][a-z0-9-]{0,79}$/u.test(value)) {
+    fail('SCHEMA_INVALID', `${label} must be a lowercase hyphenated identifier`);
+  }
+}
+
+function validateStringArray(value, label, { min = 0, max = 20 } = {}) {
+  if (!Array.isArray(value) || value.length < min || value.length > max) {
+    fail('SCHEMA_INVALID', `${label} must contain ${min}-${max} strings`);
+  }
+  const seen = new Set();
+  for (const [index, entry] of value.entries()) {
+    if (typeof entry !== 'string' || !/^[a-z0-9][a-z0-9-]{1,79}$/u.test(entry)) {
+      fail('SCHEMA_INVALID', `${label}[${index}] must be a lowercase behavior identifier`);
+    }
+    if (seen.has(entry)) fail('SCHEMA_INVALID', `${label} contains duplicate ${entry}`);
+    seen.add(entry);
+  }
+}
+
+export function validateCorpusDocument(corpus, raw = JSON.stringify(corpus)) {
+  assertExactKeys(corpus, [
+    'cases',
+    'corpusId',
+    'counts',
+    'freezeStatus',
+    'frozenOn',
+    'qualification',
+    'schemaVersion',
+    'sealedCorpusRelationship',
+  ], 'corpus');
+  if (corpus.schemaVersion !== BENCHMARK_SCHEMA_VERSION) fail('SCHEMA_INVALID', 'corpus schemaVersion must be 1.0.0');
+  if (corpus.corpusId !== 'programmable-community-journeys-v1') fail('SCHEMA_INVALID', 'unexpected corpusId');
+  if (corpus.freezeStatus !== 'FROZEN_PUBLIC_AFTER_DESIGN') fail('SCHEMA_INVALID', 'corpus must remain frozen after design');
+  if (corpus.frozenOn !== '2026-08-15') fail('SCHEMA_INVALID', 'corpus frozenOn date drifted');
+  if (corpus.qualification !== 'PUBLIC_REGRESSION_AND_COMPARISON_CORPUS_NOT_BLIND_HOLDOUT') {
+    fail('SCHEMA_INVALID', 'corpus qualification must remain explicitly non-blind');
+  }
+  if (corpus.sealedCorpusRelationship !== 'SEPARATE_NO_PLAINTEXT_OR_MEMBERSHIP_DERIVED') {
+    fail('SEALED_CORPUS_BOUNDARY', 'public corpus must remain separate from the encrypted holdout');
+  }
+  if (/evals\/holdout|PROGRAMMABLE_E2E_HOLDOUT_KEY|ciphertext|authTag/iu.test(raw)) {
+    fail('SEALED_CORPUS_BOUNDARY', 'public benchmark corpus must not reference sealed paths, keys, or envelope fields');
+  }
+  assertExactKeys(corpus.counts, [
+    'adjacentNegatives',
+    'adversarial',
+    'authorityDenied',
+    'cases',
+    'communityRegressions',
+    'malformed',
+    'missingTool',
+    'naturalEnglishGermanPrompts',
+    'naturalPositives',
+  ], 'corpus.counts');
+  if (!Array.isArray(corpus.cases)) fail('SCHEMA_INVALID', 'corpus.cases must be an array');
+
+  const ids = new Set();
+  const derivedGroups = Object.fromEntries(CASE_GROUPS.map((group) => [group, 0]));
+  let naturalEnglishGermanPrompts = 0;
+  for (const [index, benchmarkCase] of corpus.cases.entries()) {
+    const label = `corpus.cases[${index}]`;
+    assertExactKeys(benchmarkCase, ['expected', 'group', 'id', 'language', 'messages', 'rubric'], label);
+    validateIdentifier(benchmarkCase.id, `${label}.id`);
+    if (ids.has(benchmarkCase.id)) fail('SCHEMA_INVALID', `duplicate case id ${benchmarkCase.id}`);
+    ids.add(benchmarkCase.id);
+    if (!CASE_GROUPS.includes(benchmarkCase.group)) fail('SCHEMA_INVALID', `${label}.group is unsupported`);
+    derivedGroups[benchmarkCase.group] += 1;
+    if (!['en', 'de'].includes(benchmarkCase.language)) fail('SCHEMA_INVALID', `${label}.language must be en or de`);
+    if (!Array.isArray(benchmarkCase.messages) || benchmarkCase.messages.length < 1 || benchmarkCase.messages.length > 2) {
+      fail('SCHEMA_INVALID', `${label}.messages must contain one or two user turns`);
+    }
+    for (const [messageIndex, message] of benchmarkCase.messages.entries()) {
+      assertExactKeys(message, ['content', 'role'], `${label}.messages[${messageIndex}]`);
+      if (message.role !== 'user') fail('SCHEMA_INVALID', `${label}.messages[${messageIndex}].role must be user`);
+      if (typeof message.content !== 'string' || message.content.length < 12 || message.content.length > 1_500 || /\0/u.test(message.content)) {
+        fail('SCHEMA_INVALID', `${label}.messages[${messageIndex}].content is outside the 12-1500 byte-safe character envelope`);
+      }
+    }
+    if (typeof benchmarkCase.rubric !== 'string' || benchmarkCase.rubric.length < 40 || benchmarkCase.rubric.length > 1_200) {
+      fail('SCHEMA_INVALID', `${label}.rubric must contain 40-1200 characters`);
+    }
+    assertExactKeys(benchmarkCase.expected, [
+      'activation',
+      'externalEffects',
+      'forbiddenBehaviors',
+      'maxMaterialOwnerDecisions',
+      'outcome',
+      'requiredBehaviors',
+    ], `${label}.expected`);
+    if (!['ACTIVATED', 'NOT_ACTIVATED'].includes(benchmarkCase.expected.activation)) {
+      fail('SCHEMA_INVALID', `${label}.expected.activation is unsupported`);
+    }
+    if (typeof benchmarkCase.expected.outcome !== 'string' || !/^[A-Z][A-Z0-9_]{2,79}$/u.test(benchmarkCase.expected.outcome)) {
+      fail('SCHEMA_INVALID', `${label}.expected.outcome must be an uppercase state`);
+    }
+    if (![0, 1].includes(benchmarkCase.expected.maxMaterialOwnerDecisions)) {
+      fail('SCHEMA_INVALID', `${label}.expected.maxMaterialOwnerDecisions must be zero or one`);
+    }
+    if (benchmarkCase.expected.externalEffects !== 'NONE') {
+      fail('SCHEMA_INVALID', `${label}.expected.externalEffects must remain NONE`);
+    }
+    validateStringArray(benchmarkCase.expected.requiredBehaviors, `${label}.expected.requiredBehaviors`, { min: 1 });
+    validateStringArray(benchmarkCase.expected.forbiddenBehaviors, `${label}.expected.forbiddenBehaviors`, { min: 1 });
+    if (benchmarkCase.group === 'natural-positive' || benchmarkCase.group === 'adjacent-negative') {
+      naturalEnglishGermanPrompts += 1;
+    }
+  }
+
+  const derived = {
+    cases: corpus.cases.length,
+    communityRegressions: derivedGroups['community-regression'],
+    naturalEnglishGermanPrompts,
+    naturalPositives: derivedGroups['natural-positive'],
+    adjacentNegatives: derivedGroups['adjacent-negative'],
+    malformed: derivedGroups.malformed,
+    missingTool: derivedGroups['missing-tool'],
+    authorityDenied: derivedGroups['authority-denied'],
+    adversarial: derivedGroups.adversarial,
+  };
+  if (canonicalJson(derived) !== canonicalJson(corpus.counts)) {
+    fail('SCHEMA_INVALID', 'corpus.counts does not match the derived case inventory', { expected: derived, actual: corpus.counts });
+  }
+  if (naturalEnglishGermanPrompts < 15 || naturalEnglishGermanPrompts > 20) {
+    fail('SCHEMA_INVALID', 'natural English/German prompt count must remain within 15-20');
+  }
+  if (derived.communityRegressions !== 1 || derived.malformed < 2 || derived.missingTool < 1 || derived.authorityDenied < 1 || derived.adversarial < 1) {
+    fail('SCHEMA_INVALID', 'corpus is missing a required complaint, malformed, missing-tool, authority, or adversarial group');
+  }
+  const mizu = corpus.cases.find(({ id }) => id === 'mizu-design-then-implement');
+  if (!mizu || mizu.messages.length !== 2) fail('SCHEMA_INVALID', 'exact Mizu design-to-implementation regression is missing');
+  const mizuText = mizu.messages.map(({ content }) => content).join('\n');
+  for (const requiredText of ['directional', 'size-sensitive', 'decaying', 'Use the skill to implement']) {
+    if (!mizuText.includes(requiredText)) fail('SCHEMA_INVALID', `Mizu regression is missing ${requiredText}`);
+  }
+  return { caseCount: corpus.cases.length, counts: derived };
+}
+
+export function loadFrozenCorpus({ repositoryRoot = DEFAULT_REPOSITORY_ROOT } = {}) {
+  const corpusPath = path.join(repositoryRoot, CORPUS_RELATIVE_PATH);
+  const digestPath = path.join(repositoryRoot, CORPUS_DIGEST_RELATIVE_PATH);
+  const { raw, value } = readJson(corpusPath, 'journey benchmark corpus');
+  const validation = validateCorpusDocument(value, raw);
+  let digestRaw;
+  try {
+    digestRaw = fs.readFileSync(digestPath, 'utf8');
+  } catch (error) {
+    fail('CORPUS_DIGEST_MISSING', `journey benchmark digest cannot be read: ${error.message}`, { digestPath });
+  }
+  const digestMatch = digestRaw.match(/^([0-9a-f]{64})  corpus\.json\n$/u);
+  if (!digestMatch) fail('CORPUS_DIGEST_INVALID', 'corpus.sha256 must use sha256sum format for corpus.json');
+  const actualDigest = sha256(Buffer.from(raw, 'utf8'));
+  if (digestMatch[1] !== actualDigest) {
+    fail('CORPUS_DIGEST_DRIFT', 'frozen public corpus bytes do not match corpus.sha256', {
+      expected: digestMatch[1],
+      actual: actualDigest,
+    });
+  }
+  return {
+    corpus: value,
+    corpusPath,
+    corpusSha256: actualDigest,
+    ...validation,
+  };
+}
+
+function walkInventory(root, relativeDirectory, rows, totals) {
+  const absoluteDirectory = path.join(root, relativeDirectory);
+  const entries = fs.readdirSync(absoluteDirectory, { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name));
+  for (const entry of entries) {
+    if (entry.name === '.git') continue;
+    const relativePath = path.join(relativeDirectory, entry.name);
+    const normalizedPath = relativePath.split(path.sep).join('/');
+    const absolutePath = path.join(root, relativePath);
+    const stat = fs.lstatSync(absolutePath);
+    if (stat.isSymbolicLink()) fail('INVENTORY_SYMLINK', `symlink is forbidden in benchmark inventory: ${normalizedPath}`);
+    if (stat.isDirectory()) {
+      walkInventory(root, relativePath, rows, totals);
+    } else if (stat.isFile()) {
+      totals.files += 1;
+      totals.bytes += stat.size;
+      if (totals.files > MAX_RESULT_FILES) fail('INVENTORY_LIMIT', `inventory exceeds ${MAX_RESULT_FILES} files`);
+      if (totals.bytes > MAX_RESULT_BYTES) fail('INVENTORY_LIMIT', `inventory exceeds ${MAX_RESULT_BYTES} bytes`);
+      rows.push({ path: normalizedPath, bytes: stat.size, sha256: sha256(fs.readFileSync(absolutePath)) });
+    } else {
+      fail('INVENTORY_SPECIAL_FILE', `special file is forbidden in benchmark inventory: ${normalizedPath}`);
+    }
+  }
+}
+
+export function inventoryDirectory(root) {
+  const absoluteRoot = path.resolve(root);
+  const stat = fs.lstatSync(absoluteRoot);
+  if (!stat.isDirectory() || stat.isSymbolicLink()) fail('INVENTORY_ROOT_INVALID', 'inventory root must be a real directory');
+  const files = [];
+  const totals = { files: 0, bytes: 0 };
+  walkInventory(absoluteRoot, '', files, totals);
+  return {
+    files,
+    fileCount: totals.files,
+    totalBytes: totals.bytes,
+    inventorySha256: sha256(Buffer.from(canonicalJson(files), 'utf8')),
+  };
+}
+
+function assertAbsoluteDirectory(directoryPath, label) {
+  if (typeof directoryPath !== 'string' || !path.isAbsolute(directoryPath)) fail('CONFIG_INVALID', `${label} must be absolute`);
+  let stat;
+  try {
+    stat = fs.lstatSync(directoryPath);
+  } catch (error) {
+    fail('CONFIG_INVALID', `${label} is unavailable: ${error.message}`);
+  }
+  if (!stat.isDirectory() || stat.isSymbolicLink()) fail('CONFIG_INVALID', `${label} must be a real directory`);
+}
+
+function validateArgv(argv, label) {
+  if (!Array.isArray(argv) || argv.length < 1 || argv.length > 20) fail('CONFIG_INVALID', `${label} must contain 1-20 argv entries`);
+  for (const [index, value] of argv.entries()) {
+    if (typeof value !== 'string' || value === '' || value.length > 2_000 || /\0/u.test(value)) {
+      fail('CONFIG_INVALID', `${label}[${index}] is invalid`);
+    }
+  }
+  if (!path.isAbsolute(argv[0])) fail('CONFIG_INVALID', `${label}[0] must be an absolute executable path`);
+  let executableStat;
+  try {
+    executableStat = fs.lstatSync(argv[0]);
+  } catch (error) {
+    fail('CONFIG_INVALID', `${label}[0] is unavailable: ${error.message}`);
+  }
+  if (!executableStat.isFile() || executableStat.isSymbolicLink()) fail('CONFIG_INVALID', `${label}[0] must be a real executable file`);
+  if ((executableStat.mode & 0o111) === 0) fail('CONFIG_INVALID', `${label}[0] is not executable`);
+  if (argv.some((value) => value === '--request' || value.startsWith('--request=') || value === '--output' || value.startsWith('--output='))) {
+    fail('CONFIG_INVALID', `${label} must not predeclare harness-owned --request or --output flags`);
+  }
+}
+
+function commandIdentity(argv) {
+  const files = [];
+  for (const [index, argument] of argv.entries()) {
+    if (!path.isAbsolute(argument) || !fs.existsSync(argument)) continue;
+    const stat = fs.lstatSync(argument);
+    if (!stat.isFile() || stat.isSymbolicLink()) fail('CONFIG_INVALID', `adapter argv[${index}] absolute input must be a real file`);
+    const bytes = fs.readFileSync(argument);
+    files.push({ argvIndex: index, path: argument, bytes: bytes.length, sha256: sha256(bytes) });
+  }
+  return {
+    argvSha256: sha256(Buffer.from(canonicalJson(argv), 'utf8')),
+    files,
+    filesSha256: sha256(Buffer.from(canonicalJson(files), 'utf8')),
+  };
+}
+
+function validateHost(host, label) {
+  assertExactKeys(host, ['model', 'name', 'provider', 'version'], label);
+  for (const key of ['model', 'name', 'provider', 'version']) {
+    if (typeof host[key] !== 'string' || host[key].length < 1 || host[key].length > 200 || /[\r\n\0]/u.test(host[key])) {
+      fail('CONFIG_INVALID', `${label}.${key} is invalid`);
+    }
+  }
+}
+
+export function validateBenchmarkConfig(config) {
+  assertExactKeys(config, [
+    'concurrency',
+    'environmentAllowlist',
+    'evidenceMode',
+    'judge',
+    'repetitions',
+    'schemaVersion',
+    'subjects',
+    'timeoutMs',
+  ], 'benchmark config');
+  if (config.schemaVersion !== BENCHMARK_SCHEMA_VERSION) fail('CONFIG_INVALID', 'benchmark config schemaVersion must be 1.0.0');
+  if (!EVIDENCE_MODES.includes(config.evidenceMode)) fail('CONFIG_INVALID', `evidenceMode must be one of ${EVIDENCE_MODES.join(', ')}`);
+  if (!Number.isInteger(config.concurrency) || config.concurrency < 1 || config.concurrency > 4) fail('CONFIG_INVALID', 'concurrency must be 1-4');
+  if (!Number.isInteger(config.repetitions) || config.repetitions < 1 || config.repetitions > 5) fail('CONFIG_INVALID', 'repetitions must be 1-5');
+  if (!Number.isInteger(config.timeoutMs) || config.timeoutMs < 1_000 || config.timeoutMs > 3_600_000) fail('CONFIG_INVALID', 'timeoutMs must be 1000-3600000');
+  if (!Array.isArray(config.environmentAllowlist) || config.environmentAllowlist.length > 20) fail('CONFIG_INVALID', 'environmentAllowlist must contain 0-20 names');
+  const environmentNames = new Set();
+  for (const [index, name] of config.environmentAllowlist.entries()) {
+    if (typeof name !== 'string' || !/^[A-Z][A-Z0-9_]{1,79}$/u.test(name)) fail('CONFIG_INVALID', `environmentAllowlist[${index}] is invalid`);
+    if (environmentNames.has(name)) fail('CONFIG_INVALID', `environmentAllowlist repeats ${name}`);
+    environmentNames.add(name);
+  }
+  if (!Array.isArray(config.subjects) || config.subjects.length < 2 || config.subjects.length > 8) {
+    fail('CONFIG_INVALID', 'subjects must contain 2-8 baseline, candidate, or competitor entries');
+  }
+  const subjectIds = new Set();
+  const roles = [];
+  for (const [index, subject] of config.subjects.entries()) {
+    const label = `subjects[${index}]`;
+    assertExactKeys(subject, ['adapterArgv', 'host', 'id', 'role', 'skillPath'], label);
+    validateIdentifier(subject.id, `${label}.id`);
+    if (subjectIds.has(subject.id)) fail('CONFIG_INVALID', `duplicate subject id ${subject.id}`);
+    subjectIds.add(subject.id);
+    if (!['baseline', 'candidate', 'competitor'].includes(subject.role)) fail('CONFIG_INVALID', `${label}.role is invalid`);
+    roles.push(subject.role);
+    assertAbsoluteDirectory(subject.skillPath, `${label}.skillPath`);
+    if (!fs.existsSync(path.join(subject.skillPath, 'SKILL.md'))) fail('CONFIG_INVALID', `${label}.skillPath has no SKILL.md`);
+    validateArgv(subject.adapterArgv, `${label}.adapterArgv`);
+    validateHost(subject.host, `${label}.host`);
+  }
+  if (roles.filter((role) => role === 'baseline').length !== 1 || roles.filter((role) => role === 'candidate').length !== 1) {
+    fail('CONFIG_INVALID', 'subjects must contain exactly one baseline and one candidate');
+  }
+  assertExactKeys(config.judge, ['adapterArgv', 'host'], 'judge');
+  validateArgv(config.judge.adapterArgv, 'judge.adapterArgv');
+  validateHost(config.judge.host, 'judge.host');
+  if (config.subjects.some(({ host }) => host.model === config.judge.host.model)) {
+    fail('CONFIG_INVALID', 'judge model must differ from every subject model');
+  }
+  return config;
+}
+
+function restrictedEnvironment(allowlist, extra) {
+  const names = new Set([...DEFAULT_ENVIRONMENT_NAMES, ...allowlist]);
+  const environment = {};
+  for (const name of names) {
+    if (Object.hasOwn(process.env, name)) environment[name] = process.env[name];
+  }
+  return { ...environment, ...extra };
+}
+
+function writeNewJson(filePath, value, mode = 0o600) {
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx', mode });
+}
+
+function parseAdapterOutput(filePath, label) {
+  const { value, raw } = readJson(filePath, label);
+  return { value, sha256: sha256(Buffer.from(raw, 'utf8')), bytes: Buffer.byteLength(raw) };
+}
+
+function runAdapter(argv, requestPath, outputPath, options) {
+  return new Promise((resolve, reject) => {
+    const started = Date.now();
+    const child = spawn(argv[0], [...argv.slice(1), '--request', requestPath, '--output', outputPath], {
+      cwd: options.cwd,
+      env: options.env,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = Buffer.alloc(0);
+    let stderr = Buffer.alloc(0);
+    let captureExceeded = false;
+    const append = (current, chunk) => {
+      const next = Buffer.concat([current, chunk]);
+      if (next.length > MAX_CAPTURE_BYTES) {
+        captureExceeded = true;
+        child.kill('SIGKILL');
+        return next.subarray(0, MAX_CAPTURE_BYTES);
+      }
+      return next;
+    };
+    child.stdout.on('data', (chunk) => { stdout = append(stdout, chunk); });
+    child.stderr.on('data', (chunk) => { stderr = append(stderr, chunk); });
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGKILL');
+    }, options.timeoutMs);
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      reject(new JourneyBenchmarkError('ADAPTER_START_FAILED', error.message));
+    });
+    child.on('close', (exitCode, signal) => {
+      clearTimeout(timer);
+      resolve({
+        captureExceeded,
+        durationMs: Date.now() - started,
+        exitCode,
+        signal,
+        stderr: { bytes: stderr.length, sha256: sha256(stderr), text: stderr.toString('utf8') },
+        stdout: { bytes: stdout.length, sha256: sha256(stdout), text: stdout.toString('utf8') },
+        timedOut,
+      });
+    });
+  });
+}
+
+function validateProvider(actual, expected, label) {
+  assertExactKeys(actual, ['host', 'invocationId', 'model', 'provider'], label);
+  for (const key of ['host', 'model', 'provider']) {
+    if (actual[key] !== expected[key === 'host' ? 'name' : key]) fail('ADAPTER_RESULT_INVALID', `${label}.${key} does not match configured identity`);
+  }
+  if (typeof actual.invocationId !== 'string' || actual.invocationId.length < 4 || actual.invocationId.length > 300) {
+    fail('ADAPTER_RESULT_INVALID', `${label}.invocationId is invalid`);
+  }
+}
+
+function validateNullableMetric(value, label) {
+  if (value !== null && (!Number.isInteger(value) || value < 0)) fail('ADAPTER_RESULT_INVALID', `${label} must be a nonnegative integer or null`);
+}
+
+function validateSubjectResult(result, context) {
+  assertExactKeys(result, ['activation', 'caseId', 'effects', 'provider', 'requestSha256', 'result', 'schemaVersion', 'subjectId', 'telemetry'], 'subject result');
+  if (result.schemaVersion !== BENCHMARK_SCHEMA_VERSION) fail('ADAPTER_RESULT_INVALID', 'subject result schemaVersion must be 1.0.0');
+  if (result.requestSha256 !== context.requestSha256 || result.caseId !== context.caseId || result.subjectId !== context.subjectId) {
+    fail('ADAPTER_RESULT_INVALID', 'subject result identity does not match its request');
+  }
+  validateProvider(result.provider, context.host, 'subject result.provider');
+  assertExactKeys(result.activation, ['evidence', 'loadedReferences', 'observed', 'traceSha256', 'turns'], 'subject result.activation');
+  if (!ACTIVATION_STATES.includes(result.activation.observed)) fail('ADAPTER_RESULT_INVALID', 'subject activation state is invalid');
+  if (!['HOST_TRACE', 'ADAPTER_REPORTED', 'UNAVAILABLE'].includes(result.activation.evidence)) fail('ADAPTER_RESULT_INVALID', 'subject activation evidence is invalid');
+  if (result.activation.traceSha256 !== null && !/^[0-9a-f]{64}$/u.test(result.activation.traceSha256)) fail('ADAPTER_RESULT_INVALID', 'activation traceSha256 is invalid');
+  if (!Array.isArray(result.activation.turns) || result.activation.turns.length !== context.messageCount) fail('ADAPTER_RESULT_INVALID', 'activation turns must match prompt turns');
+  for (const [index, turn] of result.activation.turns.entries()) {
+    assertExactKeys(turn, ['decision', 'turn'], `subject result.activation.turns[${index}]`);
+    if (turn.turn !== index + 1 || !ACTIVATION_STATES.includes(turn.decision)) fail('ADAPTER_RESULT_INVALID', `activation turn ${index + 1} is invalid`);
+  }
+  if (!Array.isArray(result.activation.loadedReferences) || result.activation.loadedReferences.length > 100) fail('ADAPTER_RESULT_INVALID', 'loadedReferences must contain 0-100 entries');
+  const referencePaths = new Set();
+  for (const [index, reference] of result.activation.loadedReferences.entries()) {
+    assertExactKeys(reference, ['bytes', 'path', 'phase', 'reason', 'sha256'], `loadedReferences[${index}]`);
+    if (typeof reference.path !== 'string' || reference.path.startsWith('/') || reference.path.split('/').includes('..') || reference.path.includes('\\')) fail('ADAPTER_RESULT_INVALID', `loadedReferences[${index}].path is unsafe`);
+    if (referencePaths.has(reference.path)) fail('ADAPTER_RESULT_INVALID', `duplicate loaded reference ${reference.path}`);
+    referencePaths.add(reference.path);
+    const expectedReference = context.skillFiles.get(reference.path);
+    if (!expectedReference || expectedReference.sha256 !== reference.sha256 || expectedReference.bytes !== reference.bytes) {
+      fail('ADAPTER_RESULT_INVALID', `loaded reference ${reference.path} does not match the frozen skill inventory`);
+    }
+    if (!['trigger', 'cold', 'task'].includes(reference.phase)) fail('ADAPTER_RESULT_INVALID', `loadedReferences[${index}].phase is invalid`);
+    if (typeof reference.reason !== 'string' || reference.reason.length < 3 || reference.reason.length > 300) fail('ADAPTER_RESULT_INVALID', `loadedReferences[${index}].reason is invalid`);
+  }
+  assertExactKeys(result.result, ['materialOwnerDecisions', 'outcome', 'responseText', 'status', 'useful'], 'subject result.result');
+  if (!RESULT_STATES.includes(result.result.status)) fail('ADAPTER_RESULT_INVALID', 'subject result status is invalid');
+  if (typeof result.result.outcome !== 'string' || !/^[A-Z][A-Z0-9_]{2,79}$/u.test(result.result.outcome)) fail('ADAPTER_RESULT_INVALID', 'subject outcome is invalid');
+  if (typeof result.result.responseText !== 'string' || result.result.responseText.length < 1 || result.result.responseText.length > 200_000) fail('ADAPTER_RESULT_INVALID', 'subject responseText is invalid');
+  if (typeof result.result.useful !== 'boolean') fail('ADAPTER_RESULT_INVALID', 'subject useful must be boolean');
+  if (!Number.isInteger(result.result.materialOwnerDecisions) || result.result.materialOwnerDecisions < 0 || result.result.materialOwnerDecisions > 20) fail('ADAPTER_RESULT_INVALID', 'materialOwnerDecisions is invalid');
+  assertExactKeys(result.telemetry, ['elapsedMs', 'inputTokens', 'outputTokens', 'retries', 'timeToUsefulMs', 'toolCalls', 'toolErrors', 'totalTokens'], 'subject result.telemetry');
+  for (const key of ['elapsedMs', 'inputTokens', 'outputTokens', 'retries', 'timeToUsefulMs', 'toolCalls', 'toolErrors', 'totalTokens']) validateNullableMetric(result.telemetry[key], `subject result.telemetry.${key}`);
+  if (result.telemetry.inputTokens !== null && result.telemetry.outputTokens !== null && result.telemetry.totalTokens !== null
+    && result.telemetry.inputTokens + result.telemetry.outputTokens !== result.telemetry.totalTokens) {
+    fail('ADAPTER_RESULT_INVALID', 'subject totalTokens must equal inputTokens plus outputTokens');
+  }
+  assertExactKeys(result.effects, ['authorityRequests', 'externalWrites', 'localWrites', 'networkCalls'], 'subject result.effects');
+  for (const key of ['authorityRequests', 'externalWrites', 'localWrites']) {
+    if (!Array.isArray(result.effects[key]) || result.effects[key].some((entry) => typeof entry !== 'string' || entry.length > 500)) fail('ADAPTER_RESULT_INVALID', `subject effects.${key} must be a bounded string array`);
+  }
+  validateNullableMetric(result.effects.networkCalls, 'subject result.effects.networkCalls');
+  return result;
+}
+
+function validateJudgeResult(result, context) {
+  assertExactKeys(result, ['caseId', 'findings', 'provider', 'requestSha256', 'schemaVersion', 'scores', 'subjectId', 'verdict'], 'judge result');
+  if (result.schemaVersion !== BENCHMARK_SCHEMA_VERSION || result.requestSha256 !== context.requestSha256 || result.caseId !== context.caseId || result.subjectId !== context.subjectId) {
+    fail('JUDGE_RESULT_INVALID', 'judge result identity does not match its request');
+  }
+  validateProvider(result.provider, context.host, 'judge result.provider');
+  if (!['PASS', 'FAIL'].includes(result.verdict)) fail('JUDGE_RESULT_INVALID', 'judge verdict must be PASS or FAIL');
+  assertExactKeys(result.scores, ['clarity', 'correctness', 'unnecessaryWork', 'usefulness'], 'judge result.scores');
+  for (const [name, score] of Object.entries(result.scores)) {
+    if (!Number.isInteger(score) || score < 0 || score > 4) fail('JUDGE_RESULT_INVALID', `judge score ${name} must be 0-4`);
+  }
+  if (!Array.isArray(result.findings) || result.findings.length > 10 || result.findings.some((finding) => typeof finding !== 'string' || finding.length > 500)) {
+    fail('JUDGE_RESULT_INVALID', 'judge findings must contain 0-10 bounded strings');
+  }
+  return result;
+}
+
+function gitMetadata(repositoryRoot) {
+  if (!fs.existsSync(path.join(repositoryRoot, '.git'))) return null;
+  const run = (args) => spawnSync('git', args, { cwd: repositoryRoot, encoding: 'utf8', shell: false, maxBuffer: 4 * 1024 * 1024 });
+  const head = run(['rev-parse', 'HEAD']);
+  const tree = run(['rev-parse', 'HEAD^{tree}']);
+  const status = run(['status', '--porcelain=v1', '--untracked-files=all']);
+  if (head.status !== 0 || tree.status !== 0 || status.status !== 0) return { readable: false };
+  return {
+    readable: true,
+    commit: head.stdout.trim(),
+    tree: tree.stdout.trim(),
+    dirty: status.stdout.length > 0,
+    statusSha256: sha256(Buffer.from(status.stdout, 'utf8')),
+  };
+}
+
+function median(values) {
+  const measured = values.filter((value) => Number.isInteger(value)).sort((left, right) => left - right);
+  if (measured.length === 0) return null;
+  const midpoint = Math.floor(measured.length / 2);
+  return measured.length % 2 === 1 ? measured[midpoint] : (measured[midpoint - 1] + measured[midpoint]) / 2;
+}
+
+function aggregateSubjectRuns(runs) {
+  const completed = runs.filter(({ harnessStatus }) => harnessStatus === 'COMPLETED');
+  const metric = (key) => median(completed.map(({ subject }) => subject.telemetry[key]));
+  return {
+    plannedRuns: runs.length,
+    completedRuns: completed.length,
+    activationCorrect: completed.filter(({ gates }) => gates.activationCorrect).length,
+    expectedOutcomeMatched: completed.filter(({ gates }) => gates.expectedOutcomeMatched).length,
+    judgePasses: completed.filter(({ gates }) => gates.judgePassed).length,
+    noExternalWrites: completed.filter(({ gates }) => gates.noExternalWrites).length,
+    telemetryComplete: completed.filter(({ gates }) => gates.telemetryComplete).length,
+    medians: {
+      totalTokens: metric('totalTokens'),
+      toolCalls: metric('toolCalls'),
+      retries: metric('retries'),
+      elapsedMs: metric('elapsedMs'),
+      timeToUsefulMs: metric('timeToUsefulMs'),
+    },
+  };
+}
+
+function compareSubjects(runs, subjects) {
+  const baseline = subjects.find(({ role }) => role === 'baseline');
+  const baselineRuns = new Map(runs.filter(({ subjectId }) => subjectId === baseline.id).map((run) => [`${run.caseId}:${run.repetition}`, run]));
+  return subjects.filter(({ role }) => role !== 'baseline').map((subject) => {
+    const pairs = runs.filter(({ subjectId }) => subjectId === subject.id).map((candidateRun) => ({
+      baseline: baselineRuns.get(`${candidateRun.caseId}:${candidateRun.repetition}`),
+      candidate: candidateRun,
+    })).filter(({ baseline: baselineRun }) => baselineRun);
+    const metricDelta = (key) => {
+      const deltas = pairs.map(({ baseline: baselineRun, candidate }) => {
+        const before = baselineRun.subject?.telemetry?.[key];
+        const after = candidate.subject?.telemetry?.[key];
+        return Number.isInteger(before) && Number.isInteger(after) ? after - before : null;
+      });
+      return median(deltas);
+    };
+    return {
+      baselineSubjectId: baseline.id,
+      comparedSubjectId: subject.id,
+      role: subject.role,
+      comparablePairs: pairs.length,
+      passDelta: pairs.filter(({ candidate }) => candidate.gates?.judgePassed).length - pairs.filter(({ baseline: baselineRun }) => baselineRun.gates?.judgePassed).length,
+      activationCorrectDelta: pairs.filter(({ candidate }) => candidate.gates?.activationCorrect).length - pairs.filter(({ baseline: baselineRun }) => baselineRun.gates?.activationCorrect).length,
+      medianDeltas: {
+        totalTokens: metricDelta('totalTokens'),
+        toolCalls: metricDelta('toolCalls'),
+        retries: metricDelta('retries'),
+        elapsedMs: metricDelta('elapsedMs'),
+        timeToUsefulMs: metricDelta('timeToUsefulMs'),
+      },
+    };
+  });
+}
+
+async function mapWithConcurrency(items, concurrency, worker) {
+  const results = new Array(items.length);
+  let cursor = 0;
+  const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await worker(items[index], index);
+    }
+  });
+  await Promise.all(runners);
+  return results;
+}
+
+function receiptRecord(relativePath, absolutePath) {
+  const bytes = fs.readFileSync(absolutePath);
+  return { path: relativePath.split(path.sep).join('/'), bytes: bytes.length, sha256: sha256(bytes) };
+}
+
+async function executeRun({ benchmarkCase, config, outputRoot, repetition, subject, subjectIdentity }) {
+  const relativeRunRoot = path.join('runs', subject.id, benchmarkCase.id, String(repetition));
+  const runRoot = path.join(outputRoot, relativeRunRoot);
+  const workspace = path.join(runRoot, 'workspace');
+  fs.mkdirSync(workspace, { recursive: true, mode: 0o700 });
+  const requestBase = {
+    schemaVersion: BENCHMARK_SCHEMA_VERSION,
+    corpusId: 'programmable-community-journeys-v1',
+    caseId: benchmarkCase.id,
+    subjectId: subject.id,
+    repetition,
+    messages: benchmarkCase.messages,
+    expectedActivation: benchmarkCase.expected.activation,
+    skill: {
+      path: subject.skillPath,
+      inventorySha256: subjectIdentity.inventorySha256,
+      skillMdSha256: subjectIdentity.skillMdSha256,
+    },
+    workspace,
+  };
+  const requestSha256 = sha256(Buffer.from(canonicalJson(requestBase), 'utf8'));
+  const request = { ...requestBase, requestSha256 };
+  const requestPath = path.join(runRoot, 'subject-request.json');
+  const subjectOutputPath = path.join(runRoot, 'subject-result.json');
+  writeNewJson(requestPath, request);
+
+  try {
+    const subjectProcess = await runAdapter(subject.adapterArgv, requestPath, subjectOutputPath, {
+      cwd: runRoot,
+      env: restrictedEnvironment(config.environmentAllowlist, {
+        PROGRAMMABLE_BENCHMARK_ROLE: 'subject',
+        PROGRAMMABLE_BENCHMARK_WORKSPACE: workspace,
+      }),
+      timeoutMs: config.timeoutMs,
+    });
+    if (subjectProcess.timedOut) fail('SUBJECT_TIMEOUT', `subject adapter timed out after ${config.timeoutMs}ms`);
+    if (subjectProcess.captureExceeded) fail('SUBJECT_CAPTURE_LIMIT', 'subject adapter stdout or stderr exceeded the capture limit');
+    if (subjectProcess.exitCode !== 0) fail('SUBJECT_ADAPTER_FAILED', `subject adapter exited ${subjectProcess.exitCode}`, { signal: subjectProcess.signal });
+    if (!fs.existsSync(subjectOutputPath)) fail('SUBJECT_RESULT_MISSING', 'subject adapter did not create its result file');
+    const parsedSubject = parseAdapterOutput(subjectOutputPath, 'subject adapter result');
+    const subjectResult = validateSubjectResult(parsedSubject.value, {
+      caseId: benchmarkCase.id,
+      host: subject.host,
+      messageCount: benchmarkCase.messages.length,
+      requestSha256,
+      skillFiles: subjectIdentity.filesByPath,
+      subjectId: subject.id,
+    });
+    const resultInventory = inventoryDirectory(workspace);
+    const repository = gitMetadata(workspace);
+    const judgeRequestBase = {
+      schemaVersion: BENCHMARK_SCHEMA_VERSION,
+      caseId: benchmarkCase.id,
+      subjectId: subject.id,
+      repetition,
+      messages: benchmarkCase.messages,
+      expected: benchmarkCase.expected,
+      rubric: benchmarkCase.rubric,
+      subjectResult,
+      resultInventory,
+      repository,
+    };
+    const judgeRequestSha256 = sha256(Buffer.from(canonicalJson(judgeRequestBase), 'utf8'));
+    const judgeRequest = { ...judgeRequestBase, requestSha256: judgeRequestSha256 };
+    const judgeRequestPath = path.join(runRoot, 'judge-request.json');
+    const judgeOutputPath = path.join(runRoot, 'judge-result.json');
+    writeNewJson(judgeRequestPath, judgeRequest);
+    const judgeProcess = await runAdapter(config.judge.adapterArgv, judgeRequestPath, judgeOutputPath, {
+      cwd: runRoot,
+      env: restrictedEnvironment(config.environmentAllowlist, {
+        PROGRAMMABLE_BENCHMARK_ROLE: 'judge',
+        PROGRAMMABLE_BENCHMARK_WORKSPACE: workspace,
+      }),
+      timeoutMs: config.timeoutMs,
+    });
+    if (judgeProcess.timedOut) fail('JUDGE_TIMEOUT', `judge adapter timed out after ${config.timeoutMs}ms`);
+    if (judgeProcess.captureExceeded) fail('JUDGE_CAPTURE_LIMIT', 'judge adapter stdout or stderr exceeded the capture limit');
+    if (judgeProcess.exitCode !== 0) fail('JUDGE_ADAPTER_FAILED', `judge adapter exited ${judgeProcess.exitCode}`, { signal: judgeProcess.signal });
+    if (!fs.existsSync(judgeOutputPath)) fail('JUDGE_RESULT_MISSING', 'judge adapter did not create its result file');
+    const parsedJudge = parseAdapterOutput(judgeOutputPath, 'judge adapter result');
+    const judgeResult = validateJudgeResult(parsedJudge.value, {
+      caseId: benchmarkCase.id,
+      host: config.judge.host,
+      requestSha256: judgeRequestSha256,
+      subjectId: subject.id,
+    });
+    const telemetryComplete = Object.values(subjectResult.telemetry).every((value) => Number.isInteger(value));
+    const loadedReferenceBytes = subjectResult.activation.loadedReferences.reduce((total, reference) => total + reference.bytes, 0);
+    const gates = {
+      activationCorrect: subjectResult.activation.observed === benchmarkCase.expected.activation,
+      expectedOutcomeMatched: subjectResult.result.outcome === benchmarkCase.expected.outcome,
+      materialOwnerDecisionBudget: subjectResult.result.materialOwnerDecisions <= benchmarkCase.expected.maxMaterialOwnerDecisions,
+      noExternalWrites: subjectResult.effects.externalWrites.length === 0,
+      judgePassed: judgeResult.verdict === 'PASS',
+      telemetryComplete,
+    };
+    return {
+      harnessStatus: 'COMPLETED',
+      caseId: benchmarkCase.id,
+      group: benchmarkCase.group,
+      language: benchmarkCase.language,
+      repetition,
+      subjectId: subject.id,
+      subjectRole: subject.role,
+      subject: {
+        activation: subjectResult.activation,
+        effects: subjectResult.effects,
+        provider: subjectResult.provider,
+        result: {
+          materialOwnerDecisions: subjectResult.result.materialOwnerDecisions,
+          outcome: subjectResult.result.outcome,
+          responseBytes: Buffer.byteLength(subjectResult.result.responseText),
+          responseSha256: sha256(Buffer.from(subjectResult.result.responseText, 'utf8')),
+          status: subjectResult.result.status,
+          useful: subjectResult.result.useful,
+        },
+        telemetry: subjectResult.telemetry,
+        adapterProcess: subjectProcess,
+        resultReceipt: receiptRecord(path.relative(outputRoot, subjectOutputPath), subjectOutputPath),
+        loadedReferenceBytes,
+      },
+      resultInventory,
+      repository,
+      judge: {
+        ...judgeResult,
+        adapterProcess: judgeProcess,
+        resultReceipt: receiptRecord(path.relative(outputRoot, judgeOutputPath), judgeOutputPath),
+      },
+      gates,
+    };
+  } catch (error) {
+    const normalized = error instanceof JourneyBenchmarkError
+      ? { code: error.code, message: error.message, details: error.details }
+      : { code: 'UNEXPECTED_HARNESS_ERROR', message: error.message, details: {} };
+    return {
+      harnessStatus: 'ERROR',
+      caseId: benchmarkCase.id,
+      group: benchmarkCase.group,
+      language: benchmarkCase.language,
+      repetition,
+      subjectId: subject.id,
+      subjectRole: subject.role,
+      error: normalized,
+    };
+  }
+}
+
+export async function runJourneyBenchmark({ configPath, outputPath, repositoryRoot = DEFAULT_REPOSITORY_ROOT }) {
+  if (typeof configPath !== 'string' || !path.isAbsolute(configPath)) fail('CONFIG_INVALID', 'config path must be absolute');
+  if (typeof outputPath !== 'string' || !path.isAbsolute(outputPath)) fail('OUTPUT_INVALID', 'output path must be an absolute new directory');
+  const realRepositoryRoot = fs.realpathSync(repositoryRoot);
+  const configStat = fs.lstatSync(configPath);
+  if (!configStat.isFile() || configStat.isSymbolicLink()) fail('CONFIG_INVALID', 'config path must be a real file');
+  const realConfigPath = fs.realpathSync(configPath);
+  const relativeConfig = path.relative(realRepositoryRoot, realConfigPath);
+  if (!isOutsideRoot(relativeConfig)) fail('CONFIG_INVALID', 'config file must resolve outside the repository');
+  const outputParent = path.dirname(outputPath);
+  assertAbsoluteDirectory(outputParent, 'output parent');
+  const resolvedOutput = path.join(fs.realpathSync(outputParent), path.basename(outputPath));
+  const relativeOutput = path.relative(realRepositoryRoot, resolvedOutput);
+  if (!isOutsideRoot(relativeOutput)) fail('OUTPUT_INVALID', 'output directory must be outside the repository');
+  if (fs.existsSync(outputPath)) fail('OUTPUT_INVALID', 'output directory must not already exist');
+  const config = validateBenchmarkConfig(readJson(configPath, 'benchmark config').value);
+  const corpus = loadFrozenCorpus({ repositoryRoot });
+
+  const subjectIdentities = new Map(config.subjects.map((subject) => {
+    const inventory = inventoryDirectory(subject.skillPath);
+    const skillMd = fs.readFileSync(path.join(subject.skillPath, 'SKILL.md'));
+    return [subject.id, {
+      ...inventory,
+      filesByPath: new Map(inventory.files.map((file) => [file.path, file])),
+      skillMdSha256: sha256(skillMd),
+    }];
+  }));
+  const adapterIdentities = new Map(config.subjects.map((subject) => [subject.id, commandIdentity(subject.adapterArgv)]));
+  const judgeAdapterIdentity = commandIdentity(config.judge.adapterArgv);
+  fs.mkdirSync(outputPath, { mode: 0o700 });
+  const tasks = [];
+  for (const subject of config.subjects) {
+    for (const benchmarkCase of corpus.corpus.cases) {
+      for (let repetition = 1; repetition <= config.repetitions; repetition += 1) {
+        tasks.push({ benchmarkCase, repetition, subject, subjectIdentity: subjectIdentities.get(subject.id) });
+      }
+    }
+  }
+  const startedAt = new Date().toISOString();
+  const runs = await mapWithConcurrency(tasks, config.concurrency, (task) => executeRun({ ...task, config, outputRoot: outputPath }));
+  const endedAt = new Date().toISOString();
+  const postSubjectIdentities = new Map(config.subjects.map((subject) => [subject.id, inventoryDirectory(subject.skillPath)]));
+  const subjects = config.subjects.map((subject) => {
+    const before = subjectIdentities.get(subject.id);
+    const after = postSubjectIdentities.get(subject.id);
+    return {
+      id: subject.id,
+      role: subject.role,
+      host: subject.host,
+      adapter: {
+        ...adapterIdentities.get(subject.id),
+        unchanged: adapterIdentities.get(subject.id).filesSha256 === commandIdentity(subject.adapterArgv).filesSha256,
+      },
+      skill: {
+        path: subject.skillPath,
+        skillMdSha256: before.skillMdSha256,
+        inventorySha256: before.inventorySha256,
+        fileCount: before.fileCount,
+        totalBytes: before.totalBytes,
+        unchanged: before.inventorySha256 === after.inventorySha256,
+      },
+    };
+  });
+  const judgeAdapterPostIdentity = commandIdentity(config.judge.adapterArgv);
+  const judgeAdapterUnchanged = judgeAdapterIdentity.filesSha256 === judgeAdapterPostIdentity.filesSha256;
+  const aggregates = Object.fromEntries(subjects.map(({ id }) => [id, aggregateSubjectRuns(runs.filter(({ subjectId }) => subjectId === id))]));
+  const allRunsCompleted = runs.every(({ harnessStatus }) => harnessStatus === 'COMPLETED');
+  const allNonCompensatingGatesPass = allRunsCompleted && runs.every(({ gates }) => Object.values(gates).every(Boolean));
+  const allSkillsUnchanged = subjects.every(({ skill }) => skill.unchanged);
+  const allAdaptersUnchanged = subjects.every(({ adapter }) => adapter.unchanged) && judgeAdapterUnchanged;
+  const fakeMode = config.evidenceMode === 'FAKE_ADAPTER_TEST';
+  const scorecard = {
+    schemaVersion: BENCHMARK_SCHEMA_VERSION,
+    kind: 'programmable-community-journey-comparison-scorecard',
+    status: allNonCompensatingGatesPass && allSkillsUnchanged && allAdaptersUnchanged ? 'BENCHMARK_COMPLETED' : 'BENCHMARK_FAILED',
+    evidenceQualification: fakeMode ? 'LOCAL_FAKE_ADAPTER_REGRESSION_ONLY' : 'PROVIDER_BACKED_ADAPTER_REPORTED_UNVERIFIED',
+    releaseGateSatisfied: false,
+    releaseBlockers: fakeMode
+      ? ['REAL_PROVIDER_RUN_REQUIRED', 'INDEPENDENT_JUDGE_IDENTITY_UNVERIFIED', 'HOST_ACTIVATION_TRACE_UNVERIFIED', 'EXTERNAL_EFFECTS_UNVERIFIED']
+      : ['INDEPENDENT_JUDGE_IDENTITY_UNVERIFIED', 'HOST_ACTIVATION_TRACE_UNVERIFIED', 'EXTERNAL_EFFECTS_UNVERIFIED'],
+    generatedAt: endedAt,
+    timing: { startedAt, endedAt },
+    corpus: {
+      id: corpus.corpus.corpusId,
+      sha256: corpus.corpusSha256,
+      caseCount: corpus.caseCount,
+      counts: corpus.counts,
+      qualification: corpus.corpus.qualification,
+    },
+    runPlan: {
+      concurrency: config.concurrency,
+      repetitions: config.repetitions,
+      subjectCount: subjects.length,
+      plannedRuns: tasks.length,
+    },
+    judge: {
+      host: config.judge.host,
+      adapter: { ...judgeAdapterIdentity, unchanged: judgeAdapterUnchanged },
+      independence: 'OPERATOR_CONFIGURED_MODEL_ID_DIFFERENCE_UNVERIFIED',
+    },
+    subjects,
+    aggregates,
+    comparisons: compareSubjects(runs, config.subjects),
+    gates: {
+      allRunsCompleted,
+      allNonCompensatingGatesPass,
+      allSkillsUnchanged,
+      allAdaptersUnchanged,
+      realProviderEvidence: !fakeMode,
+      hostActivationTraceVerified: false,
+      externalEffectsVerified: false,
+      independentJudgeIdentityVerified: false,
+    },
+    runs,
+    externalEffectsPerformedByHarness: [],
+  };
+  const scorecardPath = path.join(outputPath, 'scorecard.json');
+  writeNewJson(scorecardPath, scorecard, 0o600);
+  return { scorecard, scorecardPath, scorecardSha256: sha256(fs.readFileSync(scorecardPath)) };
+}
