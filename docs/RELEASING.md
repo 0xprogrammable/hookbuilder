@@ -47,8 +47,9 @@ input for monotonic version checks, provenance, and exact public identity; it ne
     placement alone is not behavioral evidence.
 11. Generate checksums, package manifest, SBOM, release notes and known-limitations record.
 12. Obtain exact owner release authority for the frozen candidate.
-13. Commit and push with the Programmable identity, create the protected tag and GitHub release, then re-install from the
-    public tag and compare the installed tree.
+13. Use the contributor identity for the candidate branch, fork push and pull request. After required checks, a separate
+    current CODEOWNER uses the Programmable maintainer identity to review the exact head, approve, squash-merge, create
+    the protected tag and publish the GitHub release. Then re-install from the public tag and compare the installed tree.
 
 ## Public commands
 
