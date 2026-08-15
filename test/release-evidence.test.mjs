@@ -164,6 +164,9 @@ test("stable v0.5.1 through v0.9.0 history is immutable and v0.9.1 is the releas
   const stableNotes = readText("docs/releases/v0.5.1.md");
   const artifactGenerator = readText("scripts/generate-release-artifacts.mjs");
   const rehearsal = readText("scripts/prepare-release-candidate.mjs");
+  const lifecycleRelease = readText("skills/programmable-v4-hook-builder/scripts/builder-lifecycle-release.mjs");
+  const lifecycleShared = readText("skills/programmable-v4-hook-builder/scripts/builder-lifecycle-shared.mjs");
+  const lifecycleReference = readText("skills/programmable-v4-hook-builder/references/upgrades-and-release.md");
   const stableSection = changelog.match(/^## 0\.5\.1[^\n]*\n[\s\S]*?(?=^## 0\.5\.0)/mu)?.[0];
   const previousSection = changelog.match(/^## 0\.6\.0[^\n]*\n[\s\S]*?(?=^## 0\.5\.1)/mu)?.[0];
   const predecessorSection = changelog.match(/^## 0\.7\.0[^\n]*\n[\s\S]*?(?=^## 0\.6\.0)/mu)?.[0];
@@ -183,8 +186,10 @@ test("stable v0.5.1 through v0.9.0 history is immutable and v0.9.1 is the releas
   assert.equal(candidate.changeSetComplete, true);
   assert.deepEqual(candidate.unbundledChangeIds, []);
   assert.deepEqual(candidate.changes.map(({ id, kind }) => ({ id, kind })), [
-    { id: "custom-tradable-materialization", kind: "bug-fix" }
+    { id: "custom-tradable-materialization", kind: "bug-fix" },
+    { id: "remove-release-cadence", kind: "maintenance" }
   ]);
+  assert.equal(candidate.requestedReleaseAt, candidate.preparedAt);
   assert.deepEqual(candidate.plannedRelease.builder, {
     fromVersion: "0.9.0",
     toVersion: "0.9.1",
@@ -212,11 +217,18 @@ test("stable v0.5.1 through v0.9.0 history is immutable and v0.9.1 is the releas
   assert.match(candidateNotes, /^# Programmable v4 Builder v0\.9\.1$/mu);
   assert.match(candidateNotes, /Custom tradable projects are buildable/u);
   assert.match(candidateNotes, /missing catalog entry or profile never justifies refusing/u);
+  assert.match(candidateNotes, /No release timer/u);
+  assert.match(candidateNotes, /no minimum interval/iu);
   assert.match(candidateNotes, /`publicationStateVerified: false`/u);
   assert.match(releasing, /Current release-package and installation identity: `v0\.9\.1`/u);
   assert.match(releasing, /`publicationStateVerified: false`/u);
   assert.match(releasing, /Prior immutable releases: `v0\.9\.0`, `v0\.8\.0`, `v0\.7\.0`, `v0\.6\.0`, and `v0\.5\.1`/u);
   assert.match(releasing, /Canonical version authority: `config\/plugin\.json`/u);
+  assert.match(releasing, /There is no minimum interval between Builder releases/u);
+  assert.match(lifecycleReference, /no minimum interval exists between Builder releases/iu);
+  for (const activeReleaseContract of [releasing, lifecycleReference, lifecycleRelease, lifecycleShared]) {
+    assert.doesNotMatch(activeReleaseContract, /rolling 24-hour|NORMAL_RELEASE_WINDOW_MS|one-normal-public-release-per-rolling-24-hours|RELEASE_TIME_IN_PAST/u);
+  }
   assert.doesNotMatch(releasing, /git tag -a "?v0\.5\.1/u);
   assert.doesNotMatch(releasing, /gh release create "?v0\.5\.1/u);
   for (const releaseSource of [artifactGenerator, rehearsal]) {

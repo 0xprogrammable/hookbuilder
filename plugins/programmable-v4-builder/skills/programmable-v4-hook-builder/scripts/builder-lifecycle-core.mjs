@@ -2,7 +2,6 @@ export {
   BUILDER_LIFECYCLE_SCHEMA_VERSION,
   BUNDLED_BUILDER_PUBLICATION_STATE,
   BUNDLED_BUILDER_VERSION,
-  NORMAL_RELEASE_WINDOW_MS,
   BuilderLifecycleError,
   digestCanonical
 } from "./builder-lifecycle-shared.mjs";

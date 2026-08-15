@@ -4,7 +4,6 @@ import {
   EXTERNAL_W5_REQUIREMENTS,
   FULL_GIT_OBJECT_PATTERN,
   HOTFIX_SEVERITIES,
-  NORMAL_RELEASE_WINDOW_MS,
   RELEASE_CHANGE_KINDS,
   RELEASE_CHANNELS,
   SECURITY_CHANGE_KINDS,
@@ -75,9 +74,6 @@ export function planPrivateRelease({ candidate, history, now }) {
   if (preparedAtMs > nowMs || preparedAtMs > requestedReleaseAtMs) {
     throw new BuilderLifecycleError("RELEASE_TIME_INVALID", "candidate preparation time must not be in the future or after its requested release time");
   }
-  if (requestedReleaseAtMs < nowMs) {
-    throw new BuilderLifecycleError("RELEASE_TIME_IN_PAST", "requested release time is earlier than the supplied planning time");
-  }
   if (history.releases.some((entry) => timestampMs(entry.releasedAt, "history releasedAt") > nowMs)) {
     throw new BuilderLifecycleError("RELEASE_HISTORY_FUTURE", "release history contains an entry later than the caller-supplied planning time");
   }
@@ -114,11 +110,8 @@ export function planPrivateRelease({ candidate, history, now }) {
   const normalReleases = history.releases
     .filter((entry) => entry.releaseKind === "normal")
     .map((entry) => ({ ...entry, releasedAtMs: timestampMs(entry.releasedAt, "history releasedAt") }))
-    .filter((entry) => entry.releasedAtMs <= requestedReleaseAtMs)
     .sort((left, right) => right.releasedAtMs - left.releasedAtMs);
   const previousNormal = normalReleases[0] ?? null;
-  const nextNormalReleaseAtMs = previousNormal === null ? null : previousNormal.releasedAtMs + NORMAL_RELEASE_WINDOW_MS;
-  const callerDeclaredNormalWindowOpen = nextNormalReleaseAtMs === null || requestedReleaseAtMs >= nextNormalReleaseAtMs;
 
   let hotfixException = {
     applicable: candidate.releaseKind === "security-hotfix",
@@ -137,6 +130,7 @@ export function planPrivateRelease({ candidate, history, now }) {
     evidenceArtifactRead: false,
     ownerIdentityAuthenticated: false,
     ownerAuthorityVerified: false,
+    cadenceExceptionRequired: false,
     cadenceExceptionProven: false
   };
   if (candidate.releaseKind === "security-hotfix") {
@@ -155,7 +149,7 @@ export function planPrivateRelease({ candidate, history, now }) {
       applicable: true,
       callerDeclaredComplete,
       callerDeclaredCriticalSeverity,
-      callerDeclaredCadenceExceptionEligible: callerDeclaredComplete && callerDeclaredCriticalSeverity,
+      callerDeclaredCadenceExceptionEligible: false,
       severity: override.severity,
       affectedVersions: cloneJson(override.affectedVersions),
       reasonCode: override.reasonCode,
@@ -168,14 +162,12 @@ export function planPrivateRelease({ candidate, history, now }) {
       evidenceArtifactRead: false,
       ownerIdentityAuthenticated: false,
       ownerAuthorityVerified: false,
+      cadenceExceptionRequired: false,
       cadenceExceptionProven: false
     };
     if (!hotfixException.callerDeclaredComplete) {
       declaredPlanningBlockers.push("Caller-declared security-hotfix coordinates need severity, sorted affected versions, a reason code, incident digest, and an intent-bound owner override granted between candidate preparation and planning time.");
     }
-  }
-  if (!callerDeclaredNormalWindowOpen && !hotfixException.callerDeclaredCadenceExceptionEligible) {
-    declaredPlanningBlockers.push(`Caller-supplied history calculates the next normal release at ${new Date(nextNormalReleaseAtMs).toISOString().replace(".000Z", "Z")}; only a complete caller-declared critical security hotfix may bypass this local calculation.`);
   }
   const callerDeclaredOwnerGoComplete = validGrantedEvidence(candidate.ownerReleaseGo, preparedAtMs, nowMs, intentSha256);
   if (!callerDeclaredOwnerGoComplete) {
@@ -226,15 +218,17 @@ export function planPrivateRelease({ candidate, history, now }) {
       liveStateVerified: false
     },
     cadence: {
-      rule: "one-normal-public-release-per-rolling-24-hours",
-      operationalTimestampRule: "independently-verified-github-release-published-at-or-earliest-public-exposure",
-      calculationOnly: true,
-      inputAuthority: "caller-supplied-release-history-and-time",
+      rule: "no-minimum-release-interval",
+      minimumIntervalRequired: false,
+      cadenceRequirementApplicable: false,
+      operationalTimestampRule: "requested-release-time-is-advisory; exact-version-revision-owner-review-and-publication-gates-remain",
+      calculationOnly: false,
+      inputAuthority: "caller-supplied-history-for-version-and-provenance-only",
       callerSuppliedHistoryEntries: history.releases.length,
       declaredPreviousNormalReleaseAt: previousNormal?.releasedAt ?? null,
-      calculatedNextNormalReleaseAt: nextNormalReleaseAtMs === null ? null : new Date(nextNormalReleaseAtMs).toISOString().replace(".000Z", "Z"),
-      callerDeclaredNormalWindowOpen,
-      timezoneRule: "absolute-rfc3339-instants",
+      calculatedNextNormalReleaseAt: null,
+      callerDeclaredNormalWindowOpen: true,
+      timezoneRule: "not-applicable-no-minimum-release-interval",
       releaseHistoryAuthenticated: false,
       trustedTimeAuthenticated: false,
       cadenceComplianceProven: false,

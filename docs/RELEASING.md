@@ -13,7 +13,7 @@ Releases are immutable supply-chain events, not documentation edits.
   MCP identity, generated plugin manifests, marketplaces, and the release-planning template are mirrors. The
   repository and plugin checks fail on version drift.
 
-Never change the immutable `v0.5.1`, `v0.6.0`, `v0.7.0`, or `v0.8.0` tags, release notes, assets, or changelog sections after publication.
+Never change the immutable `v0.5.1`, `v0.6.0`, `v0.7.0`, `v0.8.0`, or `v0.9.0` tags, release notes, assets, or changelog sections after publication.
 Future work must use a new version and preserve released package bytes.
 
 ## Versioning
@@ -23,8 +23,9 @@ Future work must use a new version and preserve released package bytes.
 - Major: incompatible agent, schema, policy, application or trust-contract change.
 - Security hotfix: separately labeled minimal fix with affected-version and advisory evidence.
 
-Normal public Builder releases are bundled no more than once in a rolling 24-hour window. Private work may continue at
-any time. The cadence calculation never proves authority, privacy, completeness or readiness.
+There is no minimum interval between Builder releases. Publish whenever the exact candidate, owner authority, required
+review and CI, immutable tag and artifacts, and post-publication verification are complete. Release history remains an
+input for monotonic version checks, provenance, and exact public identity; it never creates a waiting period.
 
 ## Candidate gates
 

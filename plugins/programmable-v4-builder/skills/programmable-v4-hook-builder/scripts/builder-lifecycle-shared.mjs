@@ -5,7 +5,6 @@ export const BUILDER_LIFECYCLE_SCHEMA_VERSION = "1.0.0";
 export const BUNDLED_BUILDER_VERSION = "0.9.1";
 export const BUNDLED_BUILDER_CHANNEL = "stable";
 export const BUNDLED_BUILDER_PUBLICATION_STATE = "release-package";
-export const NORMAL_RELEASE_WINDOW_MS = 24 * 60 * 60 * 1_000;
 
 export const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 export const SEMVER_PATTERN = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/u;
@@ -35,7 +34,7 @@ export const EXTERNAL_W5_REQUIREMENTS = Object.freeze([
   }),
   Object.freeze({
     id: "w5-release-history-and-time",
-    statement: "Authenticate complete public release history and obtain trusted time before deciding cadence."
+    statement: "Authenticate complete public release history and trusted timestamps for version ordering, provenance, and exact release identity; no minimum release interval applies."
   }),
   Object.freeze({
     id: "w5-artifact-bytes-and-digests",

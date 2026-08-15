@@ -35,13 +35,18 @@
     }
   },
   "preparedAt": "2026-08-15T07:00:14Z",
-  "requestedReleaseAt": "2026-08-15T23:19:52Z",
+  "requestedReleaseAt": "2026-08-15T07:00:14Z",
   "changeSetComplete": true,
   "changes": [
     {
       "id": "custom-tradable-materialization",
       "kind": "bug-fix",
       "summary": "Allow technically viable custom tradable Foundry source and tests without requiring a bundled reference profile, while keeping launch policy separate and preserving no-execution, no-approval, and no-launch boundaries."
+    },
+    {
+      "id": "remove-release-cadence",
+      "kind": "maintenance",
+      "summary": "Remove the minimum interval between Builder releases while retaining monotonic versioning, exact-revision review, owner authority, required CI, immutable artifacts, and publication verification."
     }
   ],
   "unbundledChangeIds": [],

@@ -303,55 +303,54 @@ test("duplicate and stale migration reasons remain ambiguous", () => {
   assert.deepEqual(result.ambiguity.staleReasonPaths, ["/unused"]);
 });
 
-test("normal release cadence is only a caller-declared 24-hour calculation", () => {
-  const candidate = readyCandidate({ requestedReleaseAt: "2026-08-04T23:59:59Z" });
+test("normal releases have no minimum interval while authority gates remain", () => {
+  const candidate = readyCandidate({ requestedReleaseAt: "2026-08-04T00:00:01Z" });
   const history = releaseHistory("2026-08-04T00:00:00Z");
-  const blocked = planPrivateRelease({ candidate, history, now: "2026-08-04T12:00:00Z" });
-  assert.equal(blocked.readyForOwnerControlledReleaseAction, false);
-  assert.equal(blocked.cadence.callerDeclaredNormalWindowOpen, false);
-  assert.equal(blocked.cadence.cadenceComplianceProven, false);
-  assert.ok(blocked.blockers.some((entry) => entry.includes("2026-08-05T00:00:00Z")));
-
-  const exact = planPrivateRelease({
-    candidate: readyCandidate({ requestedReleaseAt: "2026-08-05T00:00:00Z" }),
-    history,
-    now: "2026-08-04T12:00:00Z"
-  });
-  assert.equal(exact.cadence.callerDeclaredNormalWindowOpen, true);
-  assert.equal(exact.callerDeclaredPlanComplete, true);
-  assert.equal(exact.cadence.releaseHistoryAuthenticated, false);
-  assert.equal(exact.cadence.trustedTimeAuthenticated, false);
-  assert.equal(exact.releaseReadinessProven, false);
-  assert.equal(exact.releaseActionAuthorized, false);
-  assert.equal(exact.readyForOwnerControlledReleaseAction, false);
-  assert.equal(exact.externalVerificationRequirements.length, 5);
-  assert.equal(exact.publicationPerformed, false);
+  const result = planPrivateRelease({ candidate, history, now: "2026-08-04T12:00:00Z" });
+  assert.equal(result.cadence.rule, "no-minimum-release-interval");
+  assert.equal(result.cadence.minimumIntervalRequired, false);
+  assert.equal(result.cadence.cadenceRequirementApplicable, false);
+  assert.equal(result.cadence.callerDeclaredNormalWindowOpen, true);
+  assert.equal(result.cadence.calculatedNextNormalReleaseAt, null);
+  assert.equal(result.cadence.cadenceComplianceProven, false);
+  assert.equal(result.cadence.hotfixException.cadenceExceptionRequired, false);
+  assert.equal(result.callerDeclaredPlanComplete, true);
+  assert.equal(result.cadence.releaseHistoryAuthenticated, false);
+  assert.equal(result.cadence.trustedTimeAuthenticated, false);
+  assert.equal(result.releaseReadinessProven, false);
+  assert.equal(result.releaseActionAuthorized, false);
+  assert.equal(result.readyForOwnerControlledReleaseAction, false);
+  assert.equal(result.externalVerificationRequirements.length, 5);
+  assert.equal(result.publicationPerformed, false);
+  assert.doesNotMatch(result.declaredPlanningBlockers.join("\n"), /window|interval|bypass/iu);
 });
 
-test("calendar and timezone boundaries cannot shorten the 24-hour window", () => {
+test("calendar and timezone boundaries cannot reintroduce a release interval", () => {
   const history = releaseHistory("2026-08-03T23:30:00-07:00");
-  const candidate = readyCandidate({ requestedReleaseAt: "2026-08-05T00:00:00+02:00" });
+  const candidate = readyCandidate({ requestedReleaseAt: "2026-08-04T03:00:00+02:00" });
   const result = planPrivateRelease({ candidate, history, now: "2026-08-04T20:00:00Z" });
-  assert.equal(result.cadence.callerDeclaredNormalWindowOpen, false);
-  assert.equal(result.cadence.calculatedNextNormalReleaseAt, "2026-08-05T06:30:00Z");
+  assert.equal(result.cadence.minimumIntervalRequired, false);
+  assert.equal(result.cadence.callerDeclaredNormalWindowOpen, true);
+  assert.equal(result.cadence.calculatedNextNormalReleaseAt, null);
   assert.equal(result.cadence.cadenceComplianceProven, false);
   assert.equal(result.readyForOwnerControlledReleaseAction, false);
 });
 
-test("a caller-declared security hotfix exception never proves cadence, privacy, or authority", () => {
+test("security-hotfix evidence never creates a release-timing exception or proves privacy or authority", () => {
   const candidate = securityHotfixCandidate();
   const result = planPrivateRelease({
     candidate,
     history: releaseHistory("2026-08-04T00:00:00Z"),
     now: "2026-08-04T00:30:00Z"
   });
-  assert.equal(result.cadence.callerDeclaredNormalWindowOpen, false);
+  assert.equal(result.cadence.callerDeclaredNormalWindowOpen, true);
   assert.equal(result.cadence.hotfixException.callerDeclaredComplete, true);
   assert.equal(result.cadence.hotfixException.callerDeclaredCriticalSeverity, true);
-  assert.equal(result.cadence.hotfixException.callerDeclaredCadenceExceptionEligible, true);
+  assert.equal(result.cadence.hotfixException.callerDeclaredCadenceExceptionEligible, false);
   assert.deepEqual(result.cadence.hotfixException.affectedVersions, ["0.2.0", "0.2.1"]);
   assert.equal(result.cadence.hotfixException.ownerOverrideNotBeforePreparedAt, true);
   assert.equal(result.cadence.hotfixException.ownerOverrideNotAfterPlanningTime, true);
+  assert.equal(result.cadence.hotfixException.cadenceExceptionRequired, false);
   assert.equal(result.cadence.hotfixException.cadenceExceptionProven, false);
   assert.equal(result.cadence.hotfixException.ownerIdentityAuthenticated, false);
   assert.equal(result.cadence.hotfixException.ownerAuthorityVerified, false);
@@ -365,19 +364,20 @@ test("a caller-declared security hotfix exception never proves cadence, privacy,
   assert.equal(result.publicClaimAllowed, false);
 });
 
-test("a non-critical security hotfix cannot bypass the 24-hour calculation", () => {
+test("all complete security-hotfix severities use the same no-interval release timing", () => {
   const candidate = securityHotfixCandidate({ securityHotfix: { severity: "high" } });
   const result = planPrivateRelease({
     candidate,
     history: releaseHistory("2026-08-04T00:00:00Z"),
     now: "2026-08-04T00:30:00Z"
   });
-  assert.equal(result.cadence.callerDeclaredNormalWindowOpen, false);
+  assert.equal(result.cadence.callerDeclaredNormalWindowOpen, true);
   assert.equal(result.cadence.hotfixException.callerDeclaredComplete, true);
   assert.equal(result.cadence.hotfixException.callerDeclaredCriticalSeverity, false);
   assert.equal(result.cadence.hotfixException.callerDeclaredCadenceExceptionEligible, false);
-  assert.equal(result.callerDeclaredPlanComplete, false);
-  assert.ok(result.declaredPlanningBlockers.some((entry) => entry.includes("only a complete caller-declared critical security hotfix")));
+  assert.equal(result.cadence.hotfixException.cadenceExceptionRequired, false);
+  assert.equal(result.callerDeclaredPlanComplete, true);
+  assert.doesNotMatch(result.declaredPlanningBlockers.join("\n"), /window|interval|bypass/iu);
   assert.equal(result.releaseActionAuthorized, false);
 });
 
@@ -617,7 +617,7 @@ test("shipped candidate template remains an incomplete caller declaration", () =
   assert.equal(result.externalVerificationRequirements.length, 5);
 });
 
-test("shipped critical-hotfix template is closed but cannot declare a cadence exception complete", () => {
+test("shipped critical-hotfix template is closed and needs no release-timing exception", () => {
   const candidate = readLifecycleTemplate("release-candidate.critical-hotfix.caller-declared.example.json");
   const result = planPrivateRelease({
     candidate,
@@ -633,6 +633,7 @@ test("shipped critical-hotfix template is closed but cannot declare a cadence ex
   assert.equal(result.cadence.hotfixException.callerDeclaredCriticalSeverity, true);
   assert.equal(result.cadence.hotfixException.callerDeclaredComplete, false);
   assert.equal(result.cadence.hotfixException.callerDeclaredCadenceExceptionEligible, false);
+  assert.equal(result.cadence.hotfixException.cadenceExceptionRequired, false);
   assert.equal(result.cadence.hotfixException.cadenceExceptionProven, false);
   assert.equal(result.callerDeclaredPlanComplete, false);
   assert.equal(result.releaseActionAuthorized, false);
@@ -657,13 +658,15 @@ test("well-shaped nonexistent evidence coordinates never prove W5 readiness", ()
   assert.equal(result.blockers.length, result.externalVerificationRequirements.length);
 });
 
-test("empty caller history and caller time cannot prove an open release window", () => {
+test("empty caller history does not create a release interval or prove external readiness", () => {
   const result = planPrivateRelease({
     candidate: readyCandidate({ requestedReleaseAt: "2026-08-05T00:00:00Z" }),
     history: { schemaVersion: "1.0.0", releases: [] },
     now: "2026-08-04T12:00:00Z"
   });
   assert.equal(result.cadence.callerDeclaredNormalWindowOpen, true);
+  assert.equal(result.cadence.minimumIntervalRequired, false);
+  assert.equal(result.cadence.calculatedNextNormalReleaseAt, null);
   assert.equal(result.cadence.callerSuppliedHistoryEntries, 0);
   assert.equal(result.cadence.releaseHistoryAuthenticated, false);
   assert.equal(result.cadence.trustedTimeAuthenticated, false);
@@ -764,7 +767,7 @@ test("packaged migration examples are digest-bound and preserve protected fields
   assert.equal(result.autoApplyAllowed, false);
 });
 
-test("packaged caller-declared release history demonstrates shape without proving cadence", () => {
+test("packaged caller-declared release history preserves version provenance without a release interval", () => {
   const candidate = JSON.parse(fs.readFileSync(
     path.join(skillRoot, "assets", "templates", "release-candidate.example.json"),
     "utf8"
@@ -772,6 +775,8 @@ test("packaged caller-declared release history demonstrates shape without provin
   const history = readLifecycleTemplate("release-history.caller-declared.example.json");
   const result = planPrivateRelease({ candidate, history, now: "2026-08-15T23:19:52Z" });
   assert.equal(result.cadence.callerDeclaredNormalWindowOpen, true);
+  assert.equal(result.cadence.minimumIntervalRequired, false);
+  assert.equal(result.cadence.calculatedNextNormalReleaseAt, null);
   assert.equal(result.cadence.releaseHistoryAuthenticated, false);
   assert.equal(result.cadence.trustedTimeAuthenticated, false);
   assert.equal(result.cadence.cadenceComplianceProven, false);
@@ -821,7 +826,7 @@ test("packaged lifecycle examples run through the standalone update and migratio
   assert.equal(releaseOutput.kind, "caller-declared-local-release-plan");
   assert.equal(releaseOutput.releaseReadinessProven, false);
   assert.equal(releaseOutput.readyForOwnerControlledReleaseAction, false);
-  assert.match(release.stderr, /privacy, cadence, planned source identity, artifact and release-manifest bytes, owner authority, and release readiness are all unverified/u);
+  assert.match(release.stderr, /privacy, planned source identity, artifact and release-manifest bytes, owner authority, and release readiness are all unverified\. No minimum release interval applies/u);
   assert.doesNotMatch(release.stderr, /private candidate|ready for separate|release-ready/iu);
 });
 
