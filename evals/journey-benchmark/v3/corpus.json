@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "programmable-community-journey-expectation-overlay",
+  "corpusId": "programmable-community-journeys-v3",
+  "frozenOn": "2026-08-15",
+  "freezeStatus": "FROZEN_PUBLIC_AFTER_DESIGN",
+  "qualification": "PUBLIC_REGRESSION_AND_COMPARISON_CORPUS_NOT_BLIND_HOLDOUT",
+  "sealedCorpusRelationship": "SEPARATE_NO_PLAINTEXT_OR_MEMBERSHIP_DERIVED",
+  "baseCorpus": {
+    "corpusId": "programmable-community-journeys-v1",
+    "path": "evals/journey-benchmark/v1/corpus.json",
+    "sha256": "81f27c3ad1acd1ea676ba982fe1e08a361e3d05f941a71c5a0e526db6fd7fe3f"
+  },
+  "priorOverlay": {
+    "corpusId": "programmable-community-journeys-v2",
+    "path": "evals/journey-benchmark/v2/corpus.json",
+    "sha256": "f95f4b7cc154814e7f47deae9d96b0145022cbc1742033c17566ec2bc1eda042"
+  },
+  "activationOverrides": [
+    {
+      "caseId": "mizu-design-then-implement",
+      "turns": [
+        "NOT_ACTIVATED",
+        "ACTIVATED"
+      ]
+    }
+  ]
+}

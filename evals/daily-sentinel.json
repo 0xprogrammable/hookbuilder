@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "kind": "programmable-daily-sentinel",
   "qualification": "STRUCTURE_AND_COVERAGE_ONLY",
   "runner": "reuse-public-response-suite",
@@ -13,21 +13,21 @@
   "triggerPrompts": {
     "positive": [
       {
-        "id": "explicit-build-en",
+        "id": "community-mizu-design-continuation-en",
         "language": "en",
-        "prompt": "Use Programmable to build and test a Uniswap v4 hook for my launch idea.",
+        "prompt": "We already brainstormed and chose the optimal design for Mizu, my Programmable launch. Use the skill now to implement the complete project with source and tests.",
         "expectedActivation": "ACTIVATED"
       },
       {
-        "id": "implicit-build-de",
+        "id": "implicit-design-then-build-de",
         "language": "de",
-        "prompt": "Baue mir einen vollständigen Uniswap-v4-Hook für dynamische Liquidität und teste das Projekt lokal.",
+        "prompt": "Hilf mir zuerst, die optimale Architektur für meinen Uniswap-v4-Hook zu entwerfen, und baue danach das vollständige Projekt mit Tests.",
         "expectedActivation": "ACTIVATED"
       },
       {
-        "id": "plain-language-game-en",
+        "id": "game-theory-then-build-en",
         "language": "en",
-        "prompt": "Turn this onchain game idea into a complete Uniswap v4 hook project with source and tests.",
+        "prompt": "Brainstorm the game theory for this Uniswap v4 game with me, choose the strongest design, and then build the complete project.",
         "expectedActivation": "ACTIVATED"
       },
       {
@@ -37,17 +37,95 @@
         "expectedActivation": "ACTIVATED"
       },
       {
-        "id": "upgrade-existing-de",
+        "id": "submit-existing-de",
         "language": "de",
         "prompt": "Bereite mein fertiges Uniswap-v4-Hook-Projekt für die Einreichung vor und zeige verbleibende Blocker.",
+        "expectedActivation": "ACTIVATED"
+      },
+      {
+        "id": "local-build-no-submit-en",
+        "language": "en",
+        "prompt": "Build the complete Uniswap v4 project locally, but do not submit it.",
+        "expectedActivation": "ACTIVATED"
+      },
+      {
+        "id": "scoped-submit-negation-build-en",
+        "language": "en",
+        "prompt": "Do not submit anything; build and test the complete Uniswap v4 project locally.",
+        "expectedActivation": "ACTIVATED"
+      },
+      {
+        "id": "explain-then-build-en",
+        "language": "en",
+        "prompt": "Explain the Uniswap v4 architecture, then build the complete project.",
+        "expectedActivation": "ACTIVATED"
+      },
+      {
+        "id": "explain-then-build-de",
+        "language": "de",
+        "prompt": "Erkläre kurz die Architektur und baue danach das vollständige Uniswap-v4-Projekt.",
+        "expectedActivation": "ACTIVATED"
+      },
+      {
+        "id": "brainstorm-then-implement-en",
+        "language": "en",
+        "prompt": "Brainstorm how to build the hook, then implement the complete Uniswap v4 project.",
+        "expectedActivation": "ACTIVATED"
+      },
+      {
+        "id": "instead-build-en",
+        "language": "en",
+        "prompt": "Do not submit anything, instead build the complete Uniswap v4 project locally.",
+        "expectedActivation": "ACTIVATED"
+      },
+      {
+        "id": "sondern-build-de",
+        "language": "de",
+        "prompt": "Nicht einreichen, sondern baue das vollständige Uniswap-v4-Projekt lokal.",
+        "expectedActivation": "ACTIVATED"
+      },
+      {
+        "id": "comma-explain-build-en",
+        "language": "en",
+        "prompt": "Explain the architecture, build the complete Uniswap v4 project locally.",
+        "expectedActivation": "ACTIVATED"
+      },
+      {
+        "id": "without-delay-build-en",
+        "language": "en",
+        "prompt": "Without delay, build the complete Uniswap v4 project locally.",
+        "expectedActivation": "ACTIVATED"
+      },
+      {
+        "id": "ohne-verzoegerung-build-de",
+        "language": "de",
+        "prompt": "Ohne Verzögerung baue das vollständige Uniswap-v4-Projekt lokal.",
+        "expectedActivation": "ACTIVATED"
+      },
+      {
+        "id": "build-without-submit-en",
+        "language": "en",
+        "prompt": "Build the complete Uniswap v4 project locally without submitting it.",
         "expectedActivation": "ACTIVATED"
       }
     ],
     "negative": [
       {
-        "id": "generic-v4-question",
+        "id": "branded-explanation-only-en",
         "language": "en",
-        "prompt": "Explain how Uniswap v4 hook permissions are encoded in an address.",
+        "prompt": "Explain how Programmable handles Uniswap v4 hook permissions; I only need an explanation, not an implementation.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
+        "id": "brainstorm-only-de",
+        "language": "de",
+        "prompt": "Sammle nur ein paar Ideen für dynamische Gebühren in Uniswap v4; ich möchte ausdrücklich noch nichts implementieren.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
+        "id": "single-v4-bit-review-en",
+        "language": "en",
+        "prompt": "Review this single Uniswap v4 permission bit and tell me whether it is enabled.",
         "expectedActivation": "NOT_ACTIVATED"
       },
       {
@@ -57,21 +135,75 @@
         "expectedActivation": "NOT_ACTIVATED"
       },
       {
-        "id": "find-codex-skill",
+        "id": "find-install-codex-skill",
         "language": "en",
-        "prompt": "Find a Codex skill that can help me review Solidity contracts.",
-        "expectedActivation": "NOT_ACTIVATED"
-      },
-      {
-        "id": "install-codex-skill",
-        "language": "de",
-        "prompt": "Installiere mir bitte einen vorhandenen Codex Skill für Smart Contracts.",
+        "prompt": "Find and install a Codex skill that can help me review Solidity contracts.",
         "expectedActivation": "NOT_ACTIVATED"
       },
       {
         "id": "game-skill-tree",
         "language": "en",
         "prompt": "Design a programmable skill tree for a fantasy role playing game character.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
+        "id": "emphatic-do-not-build-en",
+        "language": "en",
+        "prompt": "Do not, under any circumstances, build a complete Uniswap v4 project.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
+        "id": "curly-dont-build-en",
+        "language": "en",
+        "prompt": "Don’t build this Uniswap v4 project.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
+        "id": "explain-how-to-build-en",
+        "language": "en",
+        "prompt": "Only explain how to build a Uniswap v4 hook.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
+        "id": "bitte-nicht-bauen-de",
+        "language": "de",
+        "prompt": "Bitte nicht bauen; ich will nur die Idee für einen Uniswap-v4-Hook besprechen.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
+        "id": "erklaere-wie-man-baut-de",
+        "language": "de",
+        "prompt": "Erkläre mir nur, wie man einen Uniswap-v4-Hook baut.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
+        "id": "build-nothing-en",
+        "language": "en",
+        "prompt": "Build nothing for this Uniswap v4 project.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
+        "id": "baue-nichts-de",
+        "language": "de",
+        "prompt": "Baue nichts für dieses Uniswap-v4-Projekt.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
+        "id": "wont-build-en",
+        "language": "en",
+        "prompt": "I won’t build this Uniswap v4 project.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
+        "id": "shouldnt-implement-en",
+        "language": "en",
+        "prompt": "I shouldn't implement this Uniswap v4 project.",
+        "expectedActivation": "NOT_ACTIVATED"
+      },
+      {
+        "id": "negated-brainstorm-only-en",
+        "language": "en",
+        "prompt": "Do not build or implement anything; only brainstorm possible Uniswap v4 game architectures.",
         "expectedActivation": "NOT_ACTIVATED"
       }
     ]

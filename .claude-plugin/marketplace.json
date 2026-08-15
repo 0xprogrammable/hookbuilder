@@ -1,6 +1,6 @@
 {
   "name": "programmable-v4-builder",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "owner": {
     "name": "Programmable"
   },
@@ -9,7 +9,7 @@
     {
       "name": "programmable-v4-builder",
       "displayName": "Programmable v4 Builder",
-      "version": "0.9.1",
+      "version": "0.9.2",
       "source": "./skills/programmable-v4-hook-builder",
       "description": "Design, build, review, and submit Programmable hooks, tokens, apps, games, services, and standalone settlement projects through Submit a Launch.",
       "author": {

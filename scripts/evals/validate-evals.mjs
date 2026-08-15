@@ -120,6 +120,53 @@ const DAILY_SENTINEL_TRIGGER_KEYS = Object.freeze([
   'language',
   'prompt',
 ]);
+const DAILY_SENTINEL_SCHEMA_VERSION = '1.1.0';
+const EXPECTED_DAILY_SENTINEL_SHA256 = '1a2f20dae53f5b85b478ec16fba6be0836fc6a8d9935bdfda275423363ccd50a';
+const REQUIRED_DAILY_SENTINEL_PUBLIC_CASE_IDS = Object.freeze([
+  'ordinary-coin-official-launchpad',
+  'german-plain-language-sell-burn-intent',
+  'novel-game-external-service',
+  'unrestricted-drain-hard-fail',
+  'autopilot-complete-measurement-market',
+]);
+const REQUIRED_DAILY_SENTINEL_TRIGGER_CASES = Object.freeze({
+  positive: Object.freeze([
+    Object.freeze({ id: 'community-mizu-design-continuation-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'implicit-design-then-build-de', language: 'de', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'game-theory-then-build-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'security-review-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'submit-existing-de', language: 'de', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'local-build-no-submit-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'scoped-submit-negation-build-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'explain-then-build-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'explain-then-build-de', language: 'de', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'brainstorm-then-implement-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'instead-build-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'sondern-build-de', language: 'de', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'comma-explain-build-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'without-delay-build-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'ohne-verzoegerung-build-de', language: 'de', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'build-without-submit-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+  ]),
+  negative: Object.freeze([
+    Object.freeze({ id: 'branded-explanation-only-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'brainstorm-only-de', language: 'de', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'single-v4-bit-review-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'generic-contract-build', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'find-install-codex-skill', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'game-skill-tree', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'emphatic-do-not-build-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'curly-dont-build-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'explain-how-to-build-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'bitte-nicht-bauen-de', language: 'de', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'erklaere-wie-man-baut-de', language: 'de', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'build-nothing-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'baue-nichts-de', language: 'de', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'wont-build-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'shouldnt-implement-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'negated-brainstorm-only-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+  ]),
+});
 
 export class EvalValidationError extends Error {
   constructor(issues) {
@@ -394,9 +441,19 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
   const sentinelPath = path.join(repositoryRoot, 'evals/daily-sentinel.json');
   const { raw, value } = readJson(sentinelPath, issues, 'daily sentinel');
   if (!value) return null;
+  const sentinelSha256 = crypto.createHash('sha256').update(raw).digest('hex');
   addIssue(issues, raw === `${JSON.stringify(value, null, 2)}\n`, 'daily sentinel: must use canonical duplicate-key-free JSON');
+  addIssue(
+    issues,
+    sentinelSha256 === EXPECTED_DAILY_SENTINEL_SHA256,
+    `daily sentinel: reviewed corpus digest drift; expected ${EXPECTED_DAILY_SENTINEL_SHA256}`,
+  );
   addIssue(issues, exactKeys(value, DAILY_SENTINEL_ROOT_KEYS), 'daily sentinel: root keys drift');
-  addIssue(issues, value.schemaVersion === '1.0.0', 'daily sentinel: schemaVersion must be 1.0.0');
+  addIssue(
+    issues,
+    value.schemaVersion === DAILY_SENTINEL_SCHEMA_VERSION,
+    `daily sentinel: schemaVersion must be ${DAILY_SENTINEL_SCHEMA_VERSION}`,
+  );
   addIssue(issues, value.kind === 'programmable-daily-sentinel', 'daily sentinel: kind drift');
   addIssue(
     issues,
@@ -410,11 +467,10 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
   );
   addIssue(
     issues,
-    Array.isArray(value.publicCaseIds) && value.publicCaseIds.length === 5,
-    'daily sentinel: exactly five public case ids are required',
+    JSON.stringify(value.publicCaseIds) === JSON.stringify(REQUIRED_DAILY_SENTINEL_PUBLIC_CASE_IDS),
+    'daily sentinel: reviewed public case id order drift',
   );
   const publicCaseIds = value.publicCaseIds ?? [];
-  addIssue(issues, new Set(publicCaseIds).size === publicCaseIds.length, 'daily sentinel: public case ids must be unique');
   for (const [index, caseId] of publicCaseIds.entries()) {
     addIssue(
       issues,
@@ -429,11 +485,17 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
   );
   const seenIds = new Set();
   const seenPrompts = new Set();
-  for (const [group, expectedActivation] of [['positive', 'ACTIVATED'], ['negative', 'NOT_ACTIVATED']]) {
+  for (const group of ['positive', 'negative']) {
     const prompts = value.triggerPrompts?.[group];
-    addIssue(issues, Array.isArray(prompts) && prompts.length === 5, `daily sentinel: ${group} must contain exactly five prompts`);
+    const requiredCases = REQUIRED_DAILY_SENTINEL_TRIGGER_CASES[group];
+    addIssue(
+      issues,
+      Array.isArray(prompts) && prompts.length === requiredCases.length,
+      `daily sentinel: ${group} must contain exactly ${requiredCases.length} reviewed prompts`,
+    );
     for (const [index, record] of (prompts ?? []).entries()) {
       const label = `daily sentinel: ${group}[${index}]`;
+      const requiredCase = requiredCases[index];
       addIssue(issues, exactKeys(record, DAILY_SENTINEL_TRIGGER_KEYS), `${label} keys drift`);
       addIssue(issues, /^[a-z0-9-]{3,80}$/u.test(record?.id ?? ''), `${label} id is invalid`);
       addIssue(issues, !seenIds.has(record?.id), `${label} id is duplicated`);
@@ -449,47 +511,22 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
       );
       addIssue(issues, !seenPrompts.has(record?.prompt), `${label} prompt is duplicated`);
       seenPrompts.add(record?.prompt);
-      addIssue(issues, record?.expectedActivation === expectedActivation, `${label} activation decision drift`);
-      if (group === 'negative') {
-        addIssue(
-          issues,
-          !/\bProgrammable\b/u.test(record?.prompt ?? ''),
-          `${label} trigger boundary is ambiguous`,
-        );
-      }
+      addIssue(
+        issues,
+        requiredCase
+          && record?.id === requiredCase.id
+          && record?.language === requiredCase.language
+          && record?.expectedActivation === requiredCase.expectedActivation,
+        `${label} reviewed id, group, language, or expected label drift`,
+      );
     }
-  }
-  const positivePrompts = value.triggerPrompts?.positive ?? [];
-  const brandedPrompts = positivePrompts.filter(({ prompt }) => /\bProgrammable\b/u.test(prompt ?? ''));
-  const implicitV4Work = positivePrompts.filter(({ prompt }) => !/\bProgrammable\b/u.test(prompt ?? ''));
-  addIssue(
-    issues,
-    brandedPrompts.length === 1,
-    'daily sentinel: positive prompts must contain exactly one explicit Programmable trigger',
-  );
-  addIssue(
-    issues,
-    implicitV4Work.length === 4,
-    'daily sentinel: positive prompts must contain exactly four implicit v4 build intents',
-  );
-  for (const [index, { prompt }] of implicitV4Work.entries()) {
-    addIssue(
-      issues,
-      /\bUniswap(?:[\s-]+)v4\b/iu.test(prompt ?? '')
-        && /\b(?:design|architect|build|create|turn|repair|review|test|upgrade|submit|prepare|entwirf|architekt|bau(?:e|en|t)?|erstell(?:e|en|t)?|reparier(?:e|en|t)?|prüf(?:e|en|t)?|test(?:e|en|t)?|verbesser(?:e|n|t)?|bereit(?:e|en|t)?|reich(?:e|en|t)?)\b/iu.test(prompt ?? ''),
-      `daily sentinel: implicit positive[${index}] must name Uniswap v4 and a build, repair, review, test, or submission action`,
-    );
-  }
-  for (const group of ['positive', 'negative']) {
-    const languages = new Set((value.triggerPrompts?.[group] ?? []).map(({ language }) => language));
-    addIssue(issues, languages.has('de') && languages.has('en'), `daily sentinel: ${group} prompts must cover de and en`);
   }
   return {
     publicCaseCount: publicCaseIds.length,
     positiveTriggerCount: value.triggerPrompts?.positive?.length ?? 0,
     negativeTriggerCount: value.triggerPrompts?.negative?.length ?? 0,
     qualification: value.qualification,
-    sha256: crypto.createHash('sha256').update(raw).digest('hex'),
+    sha256: sentinelSha256,
   };
 }
 

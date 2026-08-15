@@ -9,8 +9,8 @@ const TEST_BATCH_COUNT = 2;
 const TEST_TIMEOUT_MS = 15 * 60 * 1000;
 const TEST_OUTPUT_BYTES = 128 * 1024 * 1024;
 const monotonicNow = () => performance.now();
-export const REQUIRED_PORTABLE_TESTS = Object.freeze(`
-application-api-schema application-dependency-core application-v3-prepare-revision-core build-info
+export const REQUIRED_REPOSITORY_TESTS = Object.freeze(`
+application-api-schema application-dependency-core application-handoff application-v3-prepare-revision-core build-info
 build-profile builder-lifecycle canonical-json-core central-policy-authority-boundary cli
 cli-central-base cli-central-package cli-entry cli-open-world
 cli-open-world-github cli-output-dir cli-prepare-pr companion-manifest-v2
@@ -23,15 +23,39 @@ launch-plan-graph legacy-strict-json-boundaries official-launchpad open-world-mi
 open-world-regressions open-world-runtime open-world-security open-world-source-signals
 open-world-v2 open-world-v2-module-boundaries ordinary-launch-cli package-dependency-contract
 policy-bundle project-compiler-foundation project-compiler-materialization
-prepare-canary project-compiler-output project-compiler-plan project-compiler-receipts project-executor-safety project-repair-attempt
-project-compiler-v4-deployment project-surfaces public-claims
+prepare-canary project-compiler-output project-compiler-plan project-compiler-receipts
+project-compiler-v4-deployment project-executor-safety project-repair-attempt project-sandbox-host
+project-surfaces public-claims
 raw-git-integrity-core registry-acceptance-v3-github registry-discovery residual-json-boundaries
 resolve-contract-core review-target review-target-contract reviewed-drift-receipt
 runtime-assets-core schema-security semantic-rule-registry source-closure-verifier
 source-evidence-workflow source-manifest strict-json-core submission submit-launch-policy-client
 template-catalog trade-capability-manifest typed-launch-contracts-v1 upstream-drift
 v4-hook-semantic-contract verify-package-build-info verify-skill-static
-`.trim().split(/\s+/u).map((stem) => `scripts/test/${stem}.test.mjs`));
+`.trim().split(/\s+/u).map((stem) => `test/portable-skill/${stem}.test.mjs`));
+
+export const INSTALLED_RUNTIME_SMOKE = "scripts/installed-runtime-smoke.mjs";
+
+export function validateRepositoryTestInventory({ errors, repositoryRoot }) {
+  const discovered = fs.readdirSync(path.join(repositoryRoot, "test", "portable-skill"))
+    .filter((name) => name.endsWith(".test.mjs"))
+    .sort()
+    .map((name) => `test/portable-skill/${name}`);
+  const declaredSet = new Set(REQUIRED_REPOSITORY_TESTS);
+  const discoveredSet = new Set(discovered);
+  const missing = REQUIRED_REPOSITORY_TESTS.filter((relativePath) => !discoveredSet.has(relativePath)).sort();
+  const undeclared = discovered.filter((relativePath) => !declaredSet.has(relativePath));
+  const duplicates = REQUIRED_REPOSITORY_TESTS
+    .filter((relativePath, index) => REQUIRED_REPOSITORY_TESTS.indexOf(relativePath) !== index);
+  if (missing.length + undeclared.length + duplicates.length > 0) {
+    errors.push([
+      "repository test inventory must exactly match declared required tests",
+      `missing files: ${missing.join(", ") || "none"}`,
+      `undeclared tests: ${undeclared.join(", ") || "none"}`,
+      `duplicate declarations: ${[...new Set(duplicates)].sort().join(", ") || "none"}`
+    ].join("; "));
+  }
+}
 
 export function createDeterministicTestBatches(testFiles) {
   return Array.from({ length: TEST_BATCH_COUNT }, (_, batchIndex) =>
@@ -95,6 +119,7 @@ export async function validateScriptsAndTests({
   errors,
   installedMode,
   relative,
+  repositoryRoot,
   skillRoot,
   untrustedDataMode,
   walk
@@ -104,12 +129,10 @@ export async function validateScriptsAndTests({
     if (result.status !== 0) errors.push(`${relative(script)}: ${result.stderr.trim()}`);
   }
 
-  const testDirectory = path.join(skillRoot, "scripts", "test");
   if (!untrustedDataMode) {
-    const testFiles = fs.readdirSync(testDirectory)
-      .filter((name) => name.endsWith(".test.mjs") && (!installedMode || name === "cli.test.mjs"))
-      .sort()
-      .map((name) => path.join(testDirectory, name));
+    const testFiles = installedMode
+      ? [path.join(skillRoot, INSTALLED_RUNTIME_SMOKE)]
+      : REQUIRED_REPOSITORY_TESTS.map((relativePath) => path.join(repositoryRoot, ...relativePath.split("/")));
     const tests = await runDeterministicTestBatches({
       command: process.execPath,
       cwd: skillRoot,

@@ -1,6 +1,6 @@
 {
   "name": "@programmable/v4-builder-repository",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "Portable, evidence-first Uniswap v4 project builder for Programmable.",
   "private": true,
   "type": "module",
@@ -12,7 +12,8 @@
     "check": "node scripts/verify-repository.mjs",
     "test": "node scripts/verify-repository.mjs",
     "test:evals": "node scripts/evals/validate-evals.mjs",
-    "test:evals:e2e": "node --test --test-concurrency=2 evals/tests/e2e-corpus.test.mjs evals/tests/e2e-external-evidence.test.mjs evals/tests/e2e-run-adversarial.test.mjs evals/tests/e2e-run.test.mjs evals/tests/run-blind-forward-tests.test.mjs evals/tests/run-e2e-evals.test.mjs evals/tests/run-model-evals.test.mjs evals/tests/validate-evals.test.mjs evals/tests/validate-forward-tests.test.mjs",
+    "test:evals:e2e": "node --test --test-concurrency=2 evals/tests/e2e-corpus.test.mjs evals/tests/e2e-external-evidence.test.mjs evals/tests/e2e-run-adversarial.test.mjs evals/tests/e2e-run.test.mjs evals/tests/journey-benchmark.test.mjs evals/tests/run-blind-forward-tests.test.mjs evals/tests/run-e2e-evals.test.mjs evals/tests/run-model-evals.test.mjs evals/tests/validate-evals.test.mjs evals/tests/validate-forward-tests.test.mjs",
+    "evals:journey:validate": "node scripts/evals/run-journey-benchmark.mjs --validate-only",
     "evals:e2e:validate": "node scripts/evals/run-e2e-evals.mjs --validate-only",
     "test:repository": "node --test test/repository-contract.test.mjs test/release-evidence.test.mjs",
     "test:skill": "node skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",

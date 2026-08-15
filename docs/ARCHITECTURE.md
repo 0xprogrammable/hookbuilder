@@ -33,7 +33,8 @@ In the table below, unprefixed `references/`, `scripts/`, `assets/`, `evals/` an
 | Registry acceptance | `references/registry-acceptance-v3.schema.json` and `scripts/registry-acceptance-v3-github-core.mjs` | Historical Application V3 acceptance architecture; current requirements and outcomes come only from the exact central Submit Launch policy, while mocked transport remains inspection-only and grants no authority |
 | Launch preparation | `references/launch-bundle-input-v2.schema.json`, `launch-bundle-output-v2.schema.json` and `scripts/launch-bundle-v2*.mjs` | Exact multi-repository preparation report that always remains unsigned and `NOT_AUTHORIZED` |
 | Semantic policy | Version-matched validators under `scripts/` | Cross-field findings, evidence states, migration rules and gate ledger |
-| Executable evidence | `scripts/test/` and versioned reference kernels | Unit, integration, negative, lifecycle, fee-conformance and source-closure checks |
+| Executable evidence | `test/portable-skill/` and versioned reference kernels | Unit, integration, negative, lifecycle, fee-conformance and source-closure checks |
+| Portable package boundary | `skills/programmable-v4-hook-builder/portable-package.json` | Exact installed-file inclusion plus digest-bound repository-only test evidence; plugin and release packaging consume this manifest |
 | Agent behavior | `evals/` | Adversarial prompts and binary safety rubrics, separate from deterministic tests |
 | External E2E evidence intake | `scripts/evals/e2e-external-evidence-core.mjs` | Signature and source-binding verification without treating a caller-selected policy as an independent trust root |
 | Host distribution | `config/plugin.json` | Neutral metadata rendered into supported host manifests |
@@ -87,6 +88,14 @@ flowchart TD
 References may explain schemas and tools, but prose cannot override a machine contract. Templates contribute defaults,
 review questions and required evidence; they never decide eligibility. An agent, validator, generated report or prior
 approval cannot authorize its own new source revision.
+
+The complete JavaScript test suite is repository evidence, not installed runtime. Source verification resolves the
+digest-bound suite from root `test/portable-skill/`; installed verification runs the shipped
+`scripts/installed-runtime-smoke.mjs`. Frozen reference-kernel tests remain portable because they are executable
+compatibility assets, not repository harness duplication. The active semantic-rule validator ships only its minimal
+digest-backed source-evidence closure, and installed smoke proves both offline validation and evidence-tamper rejection.
+The package manifest also declares the exact executable paths; plugin generation and release packaging preserve and
+verify those modes alongside bytes.
 
 ## Multi-repository source closure
 

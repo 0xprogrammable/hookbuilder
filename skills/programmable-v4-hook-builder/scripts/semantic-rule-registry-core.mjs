@@ -7,6 +7,7 @@ import {
   containsExecutableTokenSequence,
   namedTestContainsExecutableEvidence
 } from "./semantic-rule-registry-evidence-core.mjs";
+import { createSemanticRuleTestEvidenceReader } from "./semantic-rule-test-evidence-core.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const defaultSkillRoot = path.resolve(scriptDirectory, "..");
@@ -33,16 +34,16 @@ const REQUIRED_RULE_CATEGORIES = new Map([
     anchorLiteral: "CROSS_CHAIN_SOURCE_DESTINATION_CONFLICT",
     trigger: "The cross-chain submission endpoint-identity slice rejects identical source and destination network identities.",
     tests: {
-      positive: [{ path: "scripts/test/cross-chain-policy.test.mjs", testCase: "complete cross-chain prototype profile passes its structural security preflight" }],
-      negative: [{ path: "scripts/test/cross-chain-policy.test.mjs", testCase: "cross-chain prototype rejects the wrong source, sender, destination or domain" }]
+      positive: [{ path: "test/portable-skill/cross-chain-policy.test.mjs", testCase: "complete cross-chain prototype profile passes its structural security preflight" }],
+      negative: [{ path: "test/portable-skill/cross-chain-policy.test.mjs", testCase: "cross-chain prototype rejects the wrong source, sender, destination or domain" }]
     },
     projections: [
       { path: "scripts/submission-cross-chain-identity-analysis.mjs", expectedOccurrences: 1 },
-      { path: "scripts/test/cross-chain-policy.test.mjs", expectedOccurrences: 1 }
+      { path: "test/portable-skill/cross-chain-policy.test.mjs", expectedOccurrences: 1 }
     ],
     ownerEvidence: ['add("blocker", "CROSS_CHAIN_SOURCE_DESTINATION_CONFLICT", `${crossChainPath}.source.network`'],
     testEvidence: [{
-      path: "scripts/test/cross-chain-policy.test.mjs",
+      path: "test/portable-skill/cross-chain-policy.test.mjs",
       testCase: "cross-chain prototype rejects the wrong source, sender, destination or domain",
       source: 'assertFinding(submission, "CROSS_CHAIN_SOURCE_DESTINATION_CONFLICT", "$.capabilities.crossChain.source.network");'
     }]
@@ -53,12 +54,12 @@ const REQUIRED_RULE_CATEGORIES = new Map([
     anchorLiteral: "uint256-rate-custom-reviewed-segregated-funding-only",
     trigger: "Frozen legacy Fee Policy V2 validates its archived rate rule.",
     tests: {
-      positive: [{ path: "scripts/test/fee-policy-v2.test.mjs", testCase: "policy document binds profiles scope owner and solvency semantics" }],
-      negative: [{ path: "scripts/test/fee-policy-v2.test.mjs", testCase: "policy validator mirrors every closed schema field and rejects unknown properties" }]
+      positive: [{ path: "test/portable-skill/fee-policy-v2.test.mjs", testCase: "policy document binds profiles scope owner and solvency semantics" }],
+      negative: [{ path: "test/portable-skill/fee-policy-v2.test.mjs", testCase: "policy validator mirrors every closed schema field and rejects unknown properties" }]
     },
     projections: [
       { path: "scripts/fee-policy-v2-contract.mjs", expectedOccurrences: 2 },
-      { path: "scripts/test/fee-policy-v2.test.mjs", expectedOccurrences: 2 }
+      { path: "test/portable-skill/fee-policy-v2.test.mjs", expectedOccurrences: 2 }
     ],
     ownerEvidence: [
       'externallyFundedRateRule: "uint256-rate-custom-reviewed-segregated-funding-only"',
@@ -66,12 +67,12 @@ const REQUIRED_RULE_CATEGORIES = new Map([
     ],
     testEvidence: [
       {
-        path: "scripts/test/fee-policy-v2.test.mjs",
+        path: "test/portable-skill/fee-policy-v2.test.mjs",
         testCase: "policy document binds profiles scope owner and solvency semantics",
         source: 'assert.equal(policy.economics.externallyFundedRateRule, "uint256-rate-custom-reviewed-segregated-funding-only");'
       },
       {
-        path: "scripts/test/fee-policy-v2.test.mjs",
+        path: "test/portable-skill/fee-policy-v2.test.mjs",
         testCase: "policy document binds profiles scope owner and solvency semantics",
         source: 'assert.equal(schema.properties.economics.properties.externallyFundedRateRule.const, "uint256-rate-custom-reviewed-segregated-funding-only");'
       }
@@ -83,16 +84,16 @@ const REQUIRED_RULE_CATEGORIES = new Map([
     anchorLiteral: "SCHEMA_KEYWORD_UNSUPPORTED",
     trigger: "The restricted submission-schema engine rejects unsupported JSON Schema keywords instead of ignoring them.",
     tests: {
-      positive: [{ path: "scripts/test/schema-security.test.mjs", testCase: "every supported composition and conditional keyword is enforced" }],
-      negative: [{ path: "scripts/test/schema-security.test.mjs", testCase: "unsupported schema keywords fail closed instead of becoming decorative" }]
+      positive: [{ path: "test/portable-skill/schema-security.test.mjs", testCase: "every supported composition and conditional keyword is enforced" }],
+      negative: [{ path: "test/portable-skill/schema-security.test.mjs", testCase: "unsupported schema keywords fail closed instead of becoming decorative" }]
     },
     projections: [
       { path: "scripts/restricted-json-schema-definition-core.mjs", expectedOccurrences: 1 },
-      { path: "scripts/test/schema-security.test.mjs", expectedOccurrences: 1 }
+      { path: "test/portable-skill/schema-security.test.mjs", expectedOccurrences: 1 }
     ],
     ownerEvidence: ['add("SCHEMA_KEYWORD_UNSUPPORTED", `${rulePath}.${unknownKeywords[0]}`'],
     testEvidence: [{
-      path: "scripts/test/schema-security.test.mjs",
+      path: "test/portable-skill/schema-security.test.mjs",
       testCase: "unsupported schema keywords fail closed instead of becoming decorative",
       source: 'assert.deepEqual(findings.map(({ code }) => code), ["SCHEMA_KEYWORD_UNSUPPORTED"]);'
     }]
@@ -103,19 +104,19 @@ const REQUIRED_RULE_CATEGORIES = new Map([
     anchorLiteral: "review-record-merged",
     trigger: "The GitHub review-status projection maps an immutable merged pull record to its bounded public status.",
     tests: {
-      positive: [{ path: "scripts/test/github-application.test.mjs", testCase: "status accepts a full first review page and selects the latest review by immutable id" }],
-      negative: [{ path: "scripts/test/github-application.test.mjs", testCase: "status maps GitHub signals without inventing approval" }]
+      positive: [{ path: "test/portable-skill/github-application.test.mjs", testCase: "status accepts a full first review page and selects the latest review by immutable id" }],
+      negative: [{ path: "test/portable-skill/github-application.test.mjs", testCase: "status maps GitHub signals without inventing approval" }]
     },
     projections: [
       { path: "scripts/github-application-status-core.mjs", expectedOccurrences: 2 },
-      { path: "scripts/test/github-application.test.mjs", expectedOccurrences: 1 }
+      { path: "test/portable-skill/github-application.test.mjs", expectedOccurrences: 1 }
     ],
     ownerEvidence: [
       'if (status === "review-record-merged")',
       'if (normalizedPull.mergedAt !== null) return "review-record-merged";'
     ],
     testEvidence: [{
-      path: "scripts/test/github-application.test.mjs",
+      path: "test/portable-skill/github-application.test.mjs",
       testCase: "status maps GitHub signals without inventing approval",
       source: '["merged record", () => ({ pull: rawPull({ state: "closed", draft: false, mergedAt: "2026-08-02T01:02:03Z" }), reviews: [], checks: [] }), "review-record-merged"]'
     }]
@@ -126,16 +127,16 @@ const REQUIRED_RULE_CATEGORIES = new Map([
     anchorLiteral: "UPDATE_DOWNGRADE_REJECTED",
     trigger: "The authenticated lifecycle-update checker rejects release-version or release-sequence downgrades.",
     tests: {
-      positive: [{ path: "scripts/test/builder-lifecycle.test.mjs", testCase: "update-check verifies the supplied pin and Ed25519 payload without activation" }],
-      negative: [{ path: "scripts/test/builder-lifecycle.test.mjs", testCase: "update-check rejects an authenticated downgrade" }]
+      positive: [{ path: "test/portable-skill/builder-lifecycle.test.mjs", testCase: "update-check verifies the supplied pin and Ed25519 payload without activation" }],
+      negative: [{ path: "test/portable-skill/builder-lifecycle.test.mjs", testCase: "update-check rejects an authenticated downgrade" }]
     },
     projections: [
       { path: "scripts/builder-lifecycle-update.mjs", expectedOccurrences: 1 },
-      { path: "scripts/test/builder-lifecycle.test.mjs", expectedOccurrences: 1 }
+      { path: "test/portable-skill/builder-lifecycle.test.mjs", expectedOccurrences: 1 }
     ],
     ownerEvidence: ['throw new BuilderLifecycleError("UPDATE_DOWNGRADE_REJECTED", "the authenticated update would downgrade release version or release sequence")'],
     testEvidence: [{
-      path: "scripts/test/builder-lifecycle.test.mjs",
+      path: "test/portable-skill/builder-lifecycle.test.mjs",
       testCase: "update-check rejects an authenticated downgrade",
       source: 'assertLifecycleCode(() => checkSignedUpdate({ state: fixture.state, signedUpdate, trustedPin: fixture.pin, now: "2026-08-03T12:00:00Z" }), "UPDATE_DOWNGRADE_REJECTED");'
     }]
@@ -152,14 +153,21 @@ export function loadSemanticRuleRegistry(skillRoot = defaultSkillRoot) {
   });
 }
 
-export function validateSemanticRuleRegistry(registry, { skillRoot = defaultSkillRoot } = {}) {
+export function validateSemanticRuleRegistry(
+  registry,
+  { skillRoot = defaultSkillRoot, repositoryRoot = path.resolve(skillRoot, "..", "..") } = {}
+) {
+  const testEvidence = createSemanticRuleTestEvidenceReader({ repositoryRoot, skillRoot });
+  const testEvidenceMode = testEvidence.mode;
   const findings = [];
   const add = (code, findingPath, message) => findings.push({ code, path: findingPath, message });
   const sourceCache = new Map();
   const readSource = (relativePath, findingPath) => {
     if (sourceCache.has(relativePath)) return sourceCache.get(relativePath);
     try {
-      const source = fs.readFileSync(resolveRegularFile(skillRoot, relativePath), "utf8");
+      const source = relativePath.startsWith("test/portable-skill/")
+        ? testEvidence.read(relativePath)
+        : fs.readFileSync(resolveRegularFile(skillRoot, relativePath), "utf8");
       sourceCache.set(relativePath, source);
       return source;
     } catch (error) {
@@ -171,7 +179,7 @@ export function validateSemanticRuleRegistry(registry, { skillRoot = defaultSkil
 
   if (!isPlainObject(registry)) {
     add("REGISTRY_TYPE_INVALID", "$", "Semantic rule registry must be one plain object.");
-    return report(findings, 0);
+    return report(findings, 0, [], undefined, testEvidenceMode);
   }
   requireExactKeys(registry, TOP_LEVEL_KEYS, "$", add);
   if (registry.$schema !== SEMANTIC_RULE_REGISTRY_V1_SCHEMA_ID) add("REGISTRY_SCHEMA_ID_INVALID", "$.$schema", "Unexpected semantic rule registry schema id.");
@@ -198,7 +206,7 @@ export function validateSemanticRuleRegistry(registry, { skillRoot = defaultSkil
   categoryValidation.claimed = registry.scope?.completeCanonicalRuleCategoryCoverageClaimed === true;
   if (!Array.isArray(registry.rules) || registry.rules.length === 0) {
     add("REGISTRY_RULES_INVALID", "$.rules", "Registry rules must be a non-empty array.");
-    return report(findings, 0, [], categoryValidation);
+    return report(findings, 0, [], categoryValidation, testEvidenceMode);
   }
 
   const findingOwners = new Map();
@@ -223,7 +231,7 @@ export function validateSemanticRuleRegistry(registry, { skillRoot = defaultSkil
 
     const ownerValid = validPath(rule.canonicalOwnerFile)
       && rule.canonicalOwnerFile.startsWith("scripts/")
-      && !rule.canonicalOwnerFile.startsWith("scripts/test/")
+      && !rule.canonicalOwnerFile.startsWith("test/portable-skill/")
       && rule.canonicalOwnerFile.endsWith(".mjs");
     if (!ownerValid) add("RULE_OWNER_INVALID", `${rulePath}.canonicalOwnerFile`, "Canonical owner must be one safe production script path.");
     const ownerSource = ownerValid ? readSource(rule.canonicalOwnerFile, `${rulePath}.canonicalOwnerFile`) : null;
@@ -261,7 +269,7 @@ export function validateSemanticRuleRegistry(registry, { skillRoot = defaultSkil
     if (!sameArray(encounteredIds, sorted)) add("RULE_ORDER_INVALID", "$.rules", "Semantic rules must be sorted by stable id.");
   }
   const namespaceInventory = validateManagedNamespaceInventory(managedNamespaces, findingOwners, readSource, add);
-  return report(findings, registry.rules.length, namespaceInventory, categoryValidation);
+  return report(findings, registry.rules.length, namespaceInventory, categoryValidation, testEvidenceMode);
 }
 
 export function assertSemanticRuleRegistry(registry, options = undefined) {
@@ -324,7 +332,7 @@ function validateRuleCategories(value, { ids, globalProjections, add, readSource
 
     const ownerValid = validPath(entry.canonicalOwnerFile)
       && entry.canonicalOwnerFile.startsWith("scripts/")
-      && !entry.canonicalOwnerFile.startsWith("scripts/test/")
+      && !entry.canonicalOwnerFile.startsWith("test/portable-skill/")
       && entry.canonicalOwnerFile.endsWith(".mjs");
     if (!ownerValid) {
       categoryAdd("RULE_CATEGORY_OWNER_INVALID", `${entryPath}.canonicalOwnerFile`, "Category owner must be one safe production script path.");
@@ -464,10 +472,10 @@ function validateTestReferences(tests, rulePath, add, readSource) {
       }
       requireExactKeys(reference, TEST_KEYS, referencePath, add);
       const pathValid = validPath(reference.path)
-        && reference.path.startsWith("scripts/test/")
+        && reference.path.startsWith("test/portable-skill/")
         && reference.path.endsWith(".test.mjs");
       if (!pathValid) {
-        add("RULE_TEST_PATH_INVALID", `${referencePath}.path`, "Test reference must target one safe scripts/test/*.test.mjs file.");
+        add("RULE_TEST_PATH_INVALID", `${referencePath}.path`, "Test reference must target one safe test/portable-skill/*.test.mjs file.");
         return;
       }
       paths.add(reference.path);
@@ -496,7 +504,7 @@ function validateInvalidationSet(value, rulePath, add, readSource) {
   value.forEach((relativePath, index) => {
     const findingPath = `${rulePath}.invalidationSet[${index}]`;
     if (!validPath(relativePath)) {
-      add("RULE_INVALIDATION_PATH_INVALID", findingPath, "Invalidation path must be safe and skill-relative.");
+    add("RULE_INVALIDATION_PATH_INVALID", findingPath, "Invalidation path must be safe and source-relative.");
       return;
     }
     if (paths.has(relativePath)) add("RULE_INVALIDATION_PATH_DUPLICATE", findingPath, `Invalidation path ${relativePath} is duplicated.`);
@@ -573,7 +581,7 @@ function validateManagedNamespaces(value, add, readSource) {
     requireExactKeys(entry, NAMESPACE_KEYS, entryPath, add);
     const ownerValid = validPath(entry.ownerFile)
       && entry.ownerFile.startsWith("scripts/")
-      && !entry.ownerFile.startsWith("scripts/test/")
+      && !entry.ownerFile.startsWith("test/portable-skill/")
       && entry.ownerFile.endsWith(".mjs");
     if (!ownerValid) add("MANAGED_NAMESPACE_OWNER_INVALID", `${entryPath}.ownerFile`, "Managed namespace owner must be one safe production script.");
     if (typeof entry.prefix !== "string" || !FINDING_PREFIX.test(entry.prefix)) add("MANAGED_NAMESPACE_PREFIX_INVALID", `${entryPath}.prefix`, "Managed finding prefix must be uppercase snake case ending in underscore.");
@@ -647,7 +655,13 @@ function namespaceIdentity({ ownerFile, prefix }) {
   return `${ownerFile}:${prefix}`;
 }
 
-function report(findings, ruleCount, namespaceInventory = [], categoryValidation = { claimed: false, complete: false, inventory: [] }) {
+function report(
+  findings,
+  ruleCount,
+  namespaceInventory = [],
+  categoryValidation = { claimed: false, complete: false, inventory: [] },
+  testEvidenceMode = "unknown"
+) {
   const sortedFindings = [...findings].sort((left, right) => (
     left.path.localeCompare(right.path) || left.code.localeCompare(right.code) || left.message.localeCompare(right.message)
   ));
@@ -662,6 +676,7 @@ function report(findings, ruleCount, namespaceInventory = [], categoryValidation
     canonicalRuleCategoryInventory: categoryValidation.inventory,
     managedNamespaceCompletenessClaimed: namespaceInventory.length > 0,
     managedNamespaceInventory: namespaceInventory,
+    testEvidenceMode,
     ruleCount,
     findings: sortedFindings
   };
@@ -682,7 +697,7 @@ function countOccurrences(source, literal) {
 }
 
 function resolveRegularFile(root, relativePath) {
-  if (!validPath(relativePath)) throw new Error("path must be safe and skill-relative");
+  if (!validPath(relativePath)) throw new Error("path must be safe and source-relative");
   const absoluteRoot = path.resolve(root);
   const absolute = path.resolve(absoluteRoot, relativePath);
   const relative = path.relative(absoluteRoot, absolute);

@@ -16,7 +16,7 @@
   <a href="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-F8F0E9?labelColor=010103"></a>
   <a href="https://agentskills.io/specification"><img alt="Agent Skills compatible" src="https://img.shields.io/badge/Agent%20Skills-compatible-F8F0E9?labelColor=010103"></a>
-  <a href="CHANGELOG.md"><img alt="Release package 0.9.1" src="https://img.shields.io/badge/release-v0.9.1-F8F0E9?labelColor=010103"></a>
+  <a href="CHANGELOG.md"><img alt="Release package 0.9.2" src="https://img.shields.io/badge/release-v0.9.2-F8F0E9?labelColor=010103"></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 > [!IMPORTANT]
 > **Release status**
 >
-> Release package `v0.9.1` supports Node.js 22+ for the portable Skill; source and release gates require Node.js 24+. Its bundled status retains
+> Release package `v0.9.2` supports Node.js 22+ for the portable Skill; source and release gates require Node.js 24+. Its bundled status retains
 > `publicationStateVerified: false`; verify the public tag, GitHub release, and installed bytes before treating it as
 > published or live. Package checks and public CI do not establish model behavior, an independent audit, project approval,
 > deployment, routing, registration, or launch authority.
@@ -44,11 +44,11 @@ authority, deployment, provider support, and public availability.
 
 ## Install the immutable release
 
-After confirming that GitHub exposes the immutable `v0.9.1` release, preview that exact Skill before installing it:
+After confirming that GitHub exposes the immutable `v0.9.2` release, preview that exact Skill before installing it:
 
 ```bash
 gh skill preview 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.9.1
+  programmable-v4-hook-builder@v0.9.2
 ```
 
 Install the same immutable release for Codex:
@@ -58,7 +58,7 @@ gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.9.1
+  --pin v0.9.2
 ```
 
 GitHub's `gh skill` commands are in preview. Clean package placement has been checked for Codex, Claude Code, and
@@ -119,6 +119,16 @@ node skills/programmable-v4-hook-builder/scripts/cli.mjs context --mode explore
 All new one-off applications go through the Builder to
 [`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch), immutable GitHub repository ID
 `1320171831`. Project source stays in the builder's own public repository.
+
+Complete custom `no-market` and `tradable` projects now have one generic deterministic `handoff preview`. It preserves
+the full source/test/evidence surface inventory, validates exact policy/schema preimages, derives active build rules,
+and binds the exact source revision, Submit a Launch base, and intended draft-PR identity. Preview is no-write and
+returns the complete LF-terminated artifact in `canonicalApplicationHandoffJson`; the portable local-write boundary
+also fails closed until a reviewed `O_NOFOLLOW | O_CREAT | O_EXCL` descriptor-bound writer exists. See the
+[generic handoff contract](skills/programmable-v4-hook-builder/references/application-handoff.md).
+
+That generic handoff is not yet a public GitHub submission adapter. A remote write remains unavailable until Submit a
+Launch exposes a protected accepted generic application schema. It never means reviewed, approved, deployed, or live.
 
 `prepare-pr` creates the exact six-file application without changing GitHub. `submit` and `update` first return a
 read-only action plan. Only the exact confirmed plan may create the builder's `submit-launch` fork, application branch,

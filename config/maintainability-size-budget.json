@@ -37,11 +37,11 @@
         },
         {
           "path": "scripts/quality/mutation-gate.mjs",
-          "observedLines": 248,
-          "observedBytes": 10336,
+          "observedLines": 254,
+          "observedBytes": 10789,
           "observedComplexityScore": 20,
           "observedMaxBlockDepth": 4,
-          "reviewRef": "v0.5.1 source-bound trade routing mutation evidence"
+          "reviewRef": "portable package repository-test relocation preserves source-bound mutation evidence"
         },
         {
           "path": "scripts/quality/size-budget.mjs",
@@ -121,7 +121,7 @@
           "observedBytes": 26310,
           "observedComplexityScore": 104,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.8.0 reviewed current build-policy command, frozen legacy labels, and workflow-canary dispatch"
+          "reviewRef": "v0.9.2 reviewed generic handoff dispatch and concise golden-path help"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/companion-manifest-contract.mjs",
@@ -357,11 +357,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
-          "observedLines": 688,
-          "observedBytes": 34255,
-          "observedComplexityScore": 85,
+          "observedLines": 713,
+          "observedBytes": 35696,
+          "observedComplexityScore": 90,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.9.0 reviewed activation, compact reasoning-kernel, and project-repair required-file inventory"
+          "reviewRef": "v0.9.2 reviewed lean-package manifest and installed semantic-evidence verification"
         }
       ]
     },
@@ -374,9 +374,9 @@
   },
   "portablePackage": {
     "path": "skills/programmable-v4-hook-builder",
-    "observedFiles": 640,
-    "observedBytes": 9619846,
-    "maxFiles": 686,
-    "maxBytes": 12000000
+    "observedFiles": 618,
+    "observedBytes": 8656209,
+    "maxFiles": 620,
+    "maxBytes": 8750000
   }
 }

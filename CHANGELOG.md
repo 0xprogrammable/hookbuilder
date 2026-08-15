@@ -2,6 +2,45 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.9.2 - 2026-08-15
+
+### Added
+
+- Added custom-tradable materialization that preserves a caller-supplied dependency lock, remappings, Foundry settings,
+  extra safe root configuration and contract tree alongside exactly one owner-declared web, service, or game source
+  tree while keeping supplied bytes inert and every candidate command `NOT_RUN`. Omitted new configuration flags retain
+  the v0.9.1 convenience default for command compatibility. Source, test, configuration, and application trees now
+  enforce incremental entry, directory, depth, file, and byte limits before recursion.
+- Added an exact no-write application handoff that validates supplied central-policy and schema preimages, derives
+  their active requirements, and binds source, project, surfaces, the recorded protected Submit base, and intended
+  draft pull-request identity without re-resolving remote state.
+- Added a versioned journey benchmark for activation, repository outcome, efficiency, external effects, and
+  independent-judge comparison without leaking expected outcomes or rubrics to the subject. Its append-only v3 corpus
+  distinguishes the design-only Mizu turn from the explicit implementation continuation. Workspace traversal,
+  adapter sidecars, metrics, effects, and aggregate evidence remain bounded before scorecard materialization.
+- Added a plan-only sandbox-host integration contract. Portable execution and completion remain fail-closed without a
+  separately trusted runner, environment, signer, and verified receipt-import path. Exact Git-tree blob archives ignore
+  export attributes, reject unsupported modes, bound combined tree entries and retained bytes, and finalize without
+  replacing a concurrent output.
+
+### Changed
+
+- Strengthened complete-project continuation coverage for the reported design-to-implementation failure and adjacent
+  non-trigger requests. Structural corpus validation remains distinct from real model behavior.
+- Defined the portable package through one manifest shared by installation, plugin generation, artifacts, size gates,
+  and verification. Repository-only development tests remain complete but no longer inflate ordinary installations.
+- Clarified contributor and maintainer identities: contributors author and push the candidate PR; a separate current
+  CODEOWNER reviews, approves, squash-merges, tags, and publishes the exact accepted revision.
+- Clarified pre-1.0 versioning: a patch may include optional backward-compatible capabilities when it adds no required
+  input to an existing workflow and changes no capability contract incompatibly.
+
+### Evidence boundary
+
+- Local deterministic tests do not establish universal model quality, real provider performance, trusted OS
+  isolation, security audit, project approval, external submission, deployment, or production launch readiness.
+- The package is not public until the exact v0.9.2 tag, immutable GitHub Release and assets, protected CI, and fresh
+  pinned and unpinned installed bytes are independently verified.
+
 ## 0.9.1 - 2026-08-15
 
 ### Fixed

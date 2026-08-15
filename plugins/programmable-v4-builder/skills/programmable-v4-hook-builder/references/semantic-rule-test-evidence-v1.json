@@ -1,0 +1,55 @@
+{
+  "$schema": "urn:programmable:semantic-rule-test-evidence-v1:1.0.0",
+  "schemaVersion": "1.0.0",
+  "kind": "programmable-semantic-rule-test-evidence",
+  "files": [
+    {
+      "repositoryPath": "test/portable-skill/builder-lifecycle.test.mjs",
+      "portablePath": "assets/semantic-rule-test-evidence-v1/builder-lifecycle.test.mjs",
+      "bytes": 51135,
+      "sha256": "efa1192b1db73b850b73c665ddf834db94e97be6017ad368d65536bc697c014f"
+    },
+    {
+      "repositoryPath": "test/portable-skill/cross-chain-policy.test.mjs",
+      "portablePath": "assets/semantic-rule-test-evidence-v1/cross-chain-policy.test.mjs",
+      "bytes": 31451,
+      "sha256": "8ef53e8f7048723b74b8c4d8457bbd683574278aad28ce7793ab6f12b3468b25"
+    },
+    {
+      "repositoryPath": "test/portable-skill/fee-policy-v2.test.mjs",
+      "portablePath": "assets/semantic-rule-test-evidence-v1/fee-policy-v2.test.mjs",
+      "bytes": 25169,
+      "sha256": "996995167812a6e66cd55db8d798b93aa4a0357a59498fac77a0a0a9d412f984"
+    },
+    {
+      "repositoryPath": "test/portable-skill/github-application.test.mjs",
+      "portablePath": "assets/semantic-rule-test-evidence-v1/github-application.test.mjs",
+      "bytes": 85417,
+      "sha256": "77a120066b225b4123d4f0f1fdc90f52680767fa08ac1631853c9b2286b41148"
+    },
+    {
+      "repositoryPath": "test/portable-skill/open-world-security.test.mjs",
+      "portablePath": "assets/semantic-rule-test-evidence-v1/open-world-security.test.mjs",
+      "bytes": 54904,
+      "sha256": "5951197a718c288238098cbf5309a780f938a8dd4aa2fd03e43cbdb309fbe809"
+    },
+    {
+      "repositoryPath": "test/portable-skill/schema-security.test.mjs",
+      "portablePath": "assets/semantic-rule-test-evidence-v1/schema-security.test.mjs",
+      "bytes": 13926,
+      "sha256": "73ff5384757eac0669795191e64f7b3d2ef0aa6b39ba2130338a33bbc4ce85e3"
+    },
+    {
+      "repositoryPath": "test/portable-skill/submission.test.mjs",
+      "portablePath": "assets/semantic-rule-test-evidence-v1/submission.test.mjs",
+      "bytes": 287188,
+      "sha256": "ee74d625dead76c8c86ce0e2f5d80ff5e761230ae6fc9fa44f7a95f22519d5ad"
+    },
+    {
+      "repositoryPath": "test/portable-skill/v4-hook-semantic-contract.test.mjs",
+      "portablePath": "assets/semantic-rule-test-evidence-v1/v4-hook-semantic-contract.test.mjs",
+      "bytes": 10149,
+      "sha256": "76aa579c09febc380d0528d72829165625c902950afc33afc836b2da449e5f47"
+    }
+  ]
+}

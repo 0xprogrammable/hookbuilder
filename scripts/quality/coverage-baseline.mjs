@@ -14,12 +14,12 @@ const minimumNodeVersion = Object.freeze({ major: 24, minor: 0, patch: 0 });
 const maximumOutputBytes = 64 * 1024 * 1024;
 const testTimeoutMs = 120_000;
 const REQUIRED_TESTS = Object.freeze([
-  "skills/programmable-v4-hook-builder/scripts/test/canonical-json-core.test.mjs",
-  "skills/programmable-v4-hook-builder/scripts/test/strict-json-core.test.mjs",
-  "skills/programmable-v4-hook-builder/scripts/test/public-claims.test.mjs",
-  "skills/programmable-v4-hook-builder/scripts/test/github-application.test.mjs",
-  "skills/programmable-v4-hook-builder/scripts/test/trade-capability-manifest.test.mjs",
-  "skills/programmable-v4-hook-builder/scripts/test/v4-hook-semantic-contract.test.mjs"
+  "test/portable-skill/canonical-json-core.test.mjs",
+  "test/portable-skill/strict-json-core.test.mjs",
+  "test/portable-skill/public-claims.test.mjs",
+  "test/portable-skill/github-application.test.mjs",
+  "test/portable-skill/trade-capability-manifest.test.mjs",
+  "test/portable-skill/v4-hook-semantic-contract.test.mjs"
 ]);
 const REQUIRED_COVERAGE_GROUPS = Object.freeze([
   coverageGroupContract({

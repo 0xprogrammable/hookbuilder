@@ -13,17 +13,17 @@ const sourceSkillRoot = path.join(repositoryRoot, "skills/programmable-v4-hook-b
 const maximumOutputBytes = 64 * 1024 * 1024;
 const testTimeoutMs = 120_000;
 const baselineTests = Object.freeze([
-  "scripts/test/canonical-json-core.test.mjs",
-  "scripts/test/strict-json-core.test.mjs",
-  "scripts/test/public-claims.test.mjs",
-  "scripts/test/github-application.test.mjs",
-  "scripts/test/trade-capability-manifest.test.mjs"
+  "test/portable-skill/canonical-json-core.test.mjs",
+  "test/portable-skill/strict-json-core.test.mjs",
+  "test/portable-skill/public-claims.test.mjs",
+  "test/portable-skill/github-application.test.mjs",
+  "test/portable-skill/trade-capability-manifest.test.mjs"
 ]);
 const mutations = Object.freeze([
   Object.freeze({
     id: "canonical-digest-algorithm",
     target: "scripts/canonical-json-core.mjs",
-    test: "scripts/test/canonical-json-core.test.mjs",
+    test: "test/portable-skill/canonical-json-core.test.mjs",
     operator: "replace-sha256-with-sha512",
     search: 'crypto.createHash("sha256").update(canonicalJsonBytesV2(value, options))',
     replacement: 'crypto.createHash("sha512").update(canonicalJsonBytesV2(value, options))',
@@ -32,7 +32,7 @@ const mutations = Object.freeze([
   Object.freeze({
     id: "strict-json-duplicate-key-bypass",
     target: "scripts/strict-json-core.mjs",
-    test: "scripts/test/strict-json-core.test.mjs",
+    test: "test/portable-skill/strict-json-core.test.mjs",
     operator: "disable-duplicate-key-branch",
     search: "if (keys.has(key)) {",
     replacement: "if (false && keys.has(key)) {",
@@ -41,7 +41,7 @@ const mutations = Object.freeze([
   Object.freeze({
     id: "application-prelaunch-bypass",
     target: "scripts/github-application-flow-core.mjs",
-    test: "scripts/test/github-application.test.mjs",
+    test: "test/portable-skill/github-application.test.mjs",
     operator: "disable-prelaunch-intake-stop",
     search: 'if (state === "prelaunch") fail("INTAKE_PRELAUNCH"',
     replacement: 'if (false && state === "prelaunch") fail("INTAKE_PRELAUNCH"',
@@ -50,7 +50,7 @@ const mutations = Object.freeze([
   Object.freeze({
     id: "unsupported-public-claims-bypass",
     target: "scripts/public-claims-rules.mjs",
-    test: "scripts/test/public-claims.test.mjs",
+    test: "test/portable-skill/public-claims.test.mjs",
     operator: "disable-forbidden-claim-match",
     search: "if (forbiddenPatterns.some((pattern) => pattern.test(remainder)) && !findings.includes(rule.label))",
     replacement: "if (false && forbiddenPatterns.some((pattern) => pattern.test(remainder)) && !findings.includes(rule.label))",
@@ -59,7 +59,7 @@ const mutations = Object.freeze([
   Object.freeze({
     id: "standard-erc20-permit2-bypass",
     target: "scripts/v4-hook-semantic-contract-core.mjs",
-    test: "scripts/test/trade-capability-manifest.test.mjs",
+    test: "test/portable-skill/trade-capability-manifest.test.mjs",
     operator: "allow-adapter-defined-funding-on-standard-erc20-route",
     search: '["permit2-allowance-transfer", "permit2-signature-transfer"].includes(funding.type) ? funding.type : "invalid"',
     replacement: '["permit2-allowance-transfer", "permit2-signature-transfer", "adapter-defined"].includes(funding.type) ? funding.type : "invalid"',
@@ -68,7 +68,7 @@ const mutations = Object.freeze([
   Object.freeze({
     id: "nested-adapter-permit2-spender-bypass",
     target: "scripts/v4-hook-semantic-contract-core.mjs",
-    test: "scripts/test/trade-capability-manifest.test.mjs",
+    test: "test/portable-skill/trade-capability-manifest.test.mjs",
     operator: "ignore-nested-universal-router-as-permit2-spender",
     search: 'return route.type === "standard-uniswap-v4" || route.transport !== null ? route.router.address : route.adapter.address;',
     replacement: 'return route.type === "standard-uniswap-v4" ? route.router.address : route.adapter.address;',
@@ -88,10 +88,10 @@ try {
 
 function runMutationGate() {
   const temporaryParent = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-mutation-gate-"));
-  const temporarySkillRoot = path.join(temporaryParent, "programmable-v4-hook-builder");
+  const temporarySkillRoot = path.join(temporaryParent, "skills", "programmable-v4-hook-builder");
   try {
-    copyMutationFixture(temporarySkillRoot);
-    const baseline = runTests(temporarySkillRoot, baselineTests);
+    copyMutationFixture(temporaryParent, temporarySkillRoot);
+    const baseline = runTests(temporaryParent, baselineTests);
     if (baseline.status !== 0 || baseline.error !== undefined || baseline.signal !== null) {
       throw new Error(`mutation baseline tests must pass before applying mutants:\n${diagnostic(baseline)}`);
     }
@@ -105,12 +105,12 @@ function runMutationGate() {
       const sourceSha256 = sha256Text(original);
       const mutantSha256 = sha256Text(mutant);
       const testSourceSha256 = sha256Text(readBoundedText(
-        path.join(sourceSkillRoot, mutation.test),
+        path.join(repositoryRoot, mutation.test),
         2 * 1024 * 1024,
         mutation.test
       ));
       fs.writeFileSync(targetPath, mutant, "utf8");
-      const result = runTests(temporarySkillRoot, [mutation.test]);
+      const result = runTests(temporaryParent, [mutation.test]);
       fs.writeFileSync(targetPath, original, "utf8");
 
       const output = diagnostic(result);
@@ -149,8 +149,8 @@ function runMutationGate() {
   }
 }
 
-function copyMutationFixture(targetRoot) {
-  fs.mkdirSync(targetRoot, { recursive: false });
+function copyMutationFixture(temporaryRepositoryRoot, targetRoot) {
+  fs.mkdirSync(targetRoot, { recursive: true });
   fs.cpSync(path.join(sourceSkillRoot, "scripts"), path.join(targetRoot, "scripts"), {
     recursive: true,
     errorOnExist: true,
@@ -169,6 +169,12 @@ function copyMutationFixture(targetRoot) {
     force: false,
     filter: portableCopyFilter
   });
+  fs.mkdirSync(path.join(temporaryRepositoryRoot, "test"), { recursive: true });
+  fs.cpSync(
+    path.join(repositoryRoot, "test", "portable-skill"),
+    path.join(temporaryRepositoryRoot, "test", "portable-skill"),
+    { recursive: true, errorOnExist: true, force: false, filter: portableCopyFilter }
+  );
 }
 
 function portableCopyFilter(source) {
@@ -176,9 +182,9 @@ function portableCopyFilter(source) {
   return !new Set([".git", "broadcast", "cache", "coverage", "node_modules", "out"]).has(segment);
 }
 
-function runTests(skillRoot, testPaths) {
+function runTests(repositoryFixtureRoot, testPaths) {
   return childProcess.spawnSync(process.execPath, ["--test", ...testPaths], {
-    cwd: skillRoot,
+    cwd: repositoryFixtureRoot,
     encoding: "utf8",
     env: testChildEnvironment(),
     maxBuffer: maximumOutputBytes,

@@ -11,6 +11,7 @@ const TRUSTED_ISOLATION = new Set(['container-separate-user', 'remote-vm', 'sepa
 const MAX_WRAPPER_OUTPUT_BYTES = 16 * 1024 * 1024;
 const INTERPRETER_NAMES = new Set(['bash', 'bun', 'deno', 'node', 'perl', 'python', 'python3', 'ruby', 'sh', 'zsh']);
 const INLINE_INTERPRETER_ARGUMENTS = new Set(['--eval', '--print', '-c', '-e', '-p']);
+const RESERVED_WRAPPER_ENVIRONMENT_NAMES = new Set(['HOME', 'LANG', 'LC_ALL', 'PATH', 'TMPDIR']);
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -19,6 +20,42 @@ function isObject(value) {
 function exactKeys(value, expected) {
   return isObject(value)
     && JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...expected].sort());
+}
+
+function normalizeSecretEnvironment(value) {
+  if (value === undefined || value === null) return Object.freeze({ names: Object.freeze([]), values: Object.freeze({}) });
+  if (!isObject(value) || Object.keys(value).length > 20) {
+    throw new E2ERunError('SUBJECT_SANDBOX_SECRET_ENV_INVALID', 'out-of-band secret environment must contain at most 20 named values');
+  }
+  const names = Object.keys(value).sort();
+  const values = {};
+  for (const name of names) {
+    const secret = value[name];
+    if (!/^[A-Z][A-Z0-9_]{1,79}$/u.test(name) || RESERVED_WRAPPER_ENVIRONMENT_NAMES.has(name)) {
+      throw new E2ERunError('SUBJECT_SANDBOX_SECRET_ENV_INVALID', `out-of-band secret environment name is forbidden: ${name}`);
+    }
+    if (typeof secret !== 'string' || secret.length < 1 || secret.length > 16_384 || secret.includes('\0')) {
+      throw new E2ERunError('SUBJECT_SANDBOX_SECRET_ENV_INVALID', `out-of-band secret environment value is invalid: ${name}`);
+    }
+    values[name] = secret;
+  }
+  return Object.freeze({ names: Object.freeze(names), values: Object.freeze(values) });
+}
+
+function normalizeToolPolicy(value) {
+  if (value === undefined || value === null) return null;
+  if (!exactKeys(value, ['deniedExecutables', 'mode']) || value.mode !== 'deny-exec') {
+    throw new E2ERunError('SUBJECT_SANDBOX_TOOL_POLICY_INVALID', 'tool policy must be an exact deny-exec policy');
+  }
+  if (
+    !Array.isArray(value.deniedExecutables)
+    || value.deniedExecutables.length < 1
+    || value.deniedExecutables.length > 20
+    || value.deniedExecutables.some((name) => typeof name !== 'string' || !/^[a-z0-9][a-z0-9._-]{0,79}$/u.test(name))
+    || new Set(value.deniedExecutables).size !== value.deniedExecutables.length
+  ) throw new E2ERunError('SUBJECT_SANDBOX_TOOL_POLICY_INVALID', 'tool policy deniedExecutables are invalid');
+  const normalized = Object.freeze({ mode: value.mode, deniedExecutables: Object.freeze([...value.deniedExecutables].sort()) });
+  return Object.freeze({ ...normalized, sha256: sha256(canonicalJson(normalized)) });
 }
 
 function regularFile(filePath, label) {
@@ -187,12 +224,14 @@ export function loadSubjectSandbox({ wrapperCommand, contractPath, repositoryRoo
   });
 }
 
-function validateRuntimeReceipt(value, { requestSha256, role, sandbox }) {
-  if (!exactKeys(value, [
+function validateRuntimeReceipt(value, { requestSha256, role, sandbox, toolPolicy }) {
+  const expectedKeys = [
     'allowedPathsEnforced', 'completedAt', 'deniedPathSha256', 'externalWritesDenied', 'invocationId', 'isolation', 'kind',
     'networkPolicyEnforced', 'processTreeReaped', 'requestSha256', 'role', 'schemaVersion', 'startedAt',
     'wrapperCommandSha256', 'wrapperFilesSha256', 'wrapperSha256',
-  ])) throw new E2ERunError('SUBJECT_SANDBOX_RECEIPT_INVALID', `${role}: runtime sandbox receipt keys drift`);
+    ...(toolPolicy ? ['toolPolicyEnforced', 'toolPolicySha256'] : []),
+  ];
+  if (!exactKeys(value, expectedKeys)) throw new E2ERunError('SUBJECT_SANDBOX_RECEIPT_INVALID', `${role}: runtime sandbox receipt keys drift`);
   const started = Date.parse(value.startedAt);
   const completed = Date.parse(value.completedAt);
   if (
@@ -209,6 +248,7 @@ function validateRuntimeReceipt(value, { requestSha256, role, sandbox }) {
     || value.allowedPathsEnforced !== true
     || value.externalWritesDenied !== true
     || value.networkPolicyEnforced !== true
+    || (toolPolicy && (value.toolPolicyEnforced !== true || value.toolPolicySha256 !== toolPolicy.sha256))
     || typeof value.invocationId !== 'string'
     || value.invocationId.length < 16
     || !Number.isFinite(started)
@@ -230,11 +270,21 @@ export function spawnIsolated({
   args,
   cwd,
   env,
+  secretEnvironment = null,
+  toolPolicy = null,
   controlDirectory,
   timeout,
   maxBuffer = MAX_WRAPPER_OUTPUT_BYTES,
 }) {
+  const secrets = normalizeSecretEnvironment(secretEnvironment);
+  const normalizedToolPolicy = normalizeToolPolicy(toolPolicy);
+  if (secrets.names.some((name) => Object.hasOwn(env ?? {}, name))) {
+    throw new E2ERunError('SUBJECT_SANDBOX_SECRET_ENV_INVALID', 'out-of-band secret names must not also appear in the serialized child environment');
+  }
   if (!sandbox) {
+    if (secrets.names.length > 0 || normalizedToolPolicy) {
+      throw new E2ERunError('SUBJECT_SANDBOX_REQUIRED', 'out-of-band secrets and tool policies require the external sandbox wrapper');
+    }
     const child = childProcess.spawnSync(command, args, {
       cwd,
       encoding: 'utf8',
@@ -266,6 +316,13 @@ export function spawnIsolated({
     command: [command, ...args],
     cwd,
     environment: env,
+    ...(secrets.names.length > 0 ? {
+      secretEnvironment: {
+        names: secrets.names,
+        namesSha256: sha256(canonicalJson(secrets.names)),
+        values: 'OUT_OF_BAND_REDACTED',
+      },
+    } : {}),
     receiptPath,
     sandboxWrapper: {
       commandSha256: sandbox.wrapperCommandSha256,
@@ -278,16 +335,21 @@ export function spawnIsolated({
       externalWrites: 'deny-outside-disposable-workspace',
       network: 'role-scoped-egress-allowlist-no-raw-rpc-secrets',
       processTree: 'all-descendants-reaped-before-return',
+      ...(normalizedToolPolicy ? { toolPolicy: normalizedToolPolicy } : {}),
     },
   };
   const requestBytes = Buffer.from(`${JSON.stringify(request, null, 2)}\n`, 'utf8');
+  const serializedSecret = secrets.names.find((name) => requestBytes.includes(Buffer.from(secrets.values[name], 'utf8')));
+  if (serializedSecret) {
+    throw new E2ERunError('SUBJECT_SANDBOX_SECRET_ENV_INVALID', `out-of-band secret value would be serialized through another request field: ${serializedSecret}`);
+  }
   const requestSha256 = sha256(requestBytes);
   fs.writeFileSync(requestPath, requestBytes, { flag: 'wx', mode: 0o600 });
   const [wrapper, ...wrapperArgs] = sandbox.wrapperCommand;
   const child = childProcess.spawnSync(wrapper, [...wrapperArgs, '--request', requestPath], {
     cwd: controlDirectory,
     encoding: 'utf8',
-    env: { PATH: process.env.PATH ?? '', LANG: process.env.LANG ?? 'C', LC_ALL: process.env.LC_ALL ?? 'C' },
+    env: { PATH: '/usr/bin:/bin', LANG: 'C', LC_ALL: 'C', ...secrets.values },
     maxBuffer,
     shell: false,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -299,7 +361,7 @@ export function spawnIsolated({
   }
   const sandboxReceipt = validateRuntimeReceipt(
     JSON.parse(fs.readFileSync(receiptPath, 'utf8')),
-    { requestSha256, role, sandbox },
+    { requestSha256, role, sandbox, toolPolicy: normalizedToolPolicy },
   );
   return { child, sandboxReceipt };
 }

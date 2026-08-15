@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 
-// Reviewed v0.9.0 growth: the repair-attempt contract/test/loop plus the hash-bound activation contract,
-// compact v4 reasoning kernel, and deterministic activation/brief implementation.
-export const MAX_PORTABLE_FILES = 686;
+// The portable package excludes repository-only development tests. Runtime,
+// installed verification and frozen compatibility assets remain in the Skill.
+export const MAX_PORTABLE_FILES = 620;
 
 export function createPortableFilesystem(skillRoot) {
   function relative(target) {
