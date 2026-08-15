@@ -408,6 +408,27 @@ test("every GitHub Action is pinned to an immutable commit", () => {
   }
 });
 
+test("release rehearsal is read-only, main-only, exact-revision bound, and preserves the complete output", () => {
+  const workflow = fs.readFileSync(path.join(repositoryRoot, ".github", "workflows", "release-rehearsal.yml"), "utf8");
+  assert.match(workflow, /^on:\n  workflow_dispatch:\n/mu);
+  assert.doesNotMatch(workflow, /^\s*(?:push|pull_request|pull_request_target|schedule):/mu);
+  assert.match(workflow, /^permissions:\n  contents: read$/mu);
+  assert.match(workflow, /^  group: release-rehearsal-\$\{\{ github\.ref \}\}$/mu);
+  assert.match(workflow, /^  cancel-in-progress: false$/mu);
+  assert.match(workflow, /^    if: github\.ref == 'refs\/heads\/main'$/mu);
+  assert.match(workflow, /^          ref: \$\{\{ github\.sha \}\}$/mu);
+  assert.match(workflow, /^          fetch-depth: 0$/mu);
+  assert.match(workflow, /^          persist-credentials: false$/mu);
+  assert.match(workflow, /test "\$\(git rev-parse HEAD\)" = "\$EXPECTED_REVISION"/u);
+  assert.match(workflow, /test "\$\(git rev-parse refs\/remotes\/origin\/main\)" = "\$EXPECTED_REVISION"/u);
+  assert.match(workflow, /npm run release:candidate -- --tag "\$RELEASE_TAG" --output-dir "\$RELEASE_OUTPUT"/u);
+  assert.match(workflow, /path: \$\{\{ steps\.release\.outputs\.output \}\}/u);
+  assert.match(workflow, /if-no-files-found: error/u);
+  assert.match(workflow, /compression-level: 0/u);
+  assert.doesNotMatch(workflow, /(?:contents|packages|actions|attestations): write/u);
+  assert.doesNotMatch(workflow, /\$\{\{ secrets\.|gh release|git push|git tag/u);
+});
+
 test("every CI analysis job checks out and verifies the exact pull-request head", () => {
   const workflow = fs.readFileSync(path.join(repositoryRoot, ".github", "workflows", "ci.yml"), "utf8");
   const exactRevisionExpression = "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}";

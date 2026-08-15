@@ -13,6 +13,9 @@ All notable Builder changes are recorded here. Historical releases remain immuta
   without linking or executing, while malformed syntax remains a reported failure.
 - Made the ambient temporary-directory regression deterministic under parallel repository tests by asserting its own
   added and removed probe instead of requiring unrelated system temporary entries to remain unchanged.
+- Added a manual, public-main-only release rehearsal on a clean GitHub runner. It checks out and verifies the exact
+  dispatched commit with read-only repository permissions, runs the unchanged complete candidate command, and retains
+  its bound output without tag, release, or repository write authority.
 - Regenerated the canonical Plugin payload and refreshed the source-bound package receipts for the exact candidate.
 
 ### Evidence boundary

@@ -103,6 +103,13 @@ policy is independently pinned today, so caller-supplied evidence reports `VALID
 `EXTERNAL_BLOCKED` and `releaseCandidate` remains false. A future trusted path requires a separately reviewed policy
 pin that is unavailable to the candidate bundle and adjacent command-line arguments.
 
+When a shared maintainer host cannot provide stable resources, dispatch `.github/workflows/release-rehearsal.yml` on
+protected public `main`. The workflow derives the tag from the checked-in version authority, verifies the exact
+dispatched commit and remote `main`, runs the same complete command, and uploads the whole output with compression
+disabled. Its repository token is read-only and checkout credentials are not persisted, so a successful run still has
+no tag or release publication authority. Download the run artifact, verify its receipts and file digests, and bind any
+later publication to that exact commit and output.
+
 The repository gate also verifies the generated Codex marketplace payload against the canonical Skill and MCP bytes and
 runs the MCP protocol suite. Those checks do not install the plugin into Codex's cache or prove host startup. Claude's
 marketplace entry is isolated to the canonical Skill subtree and cannot package the root Codex-only MCP companion; its
