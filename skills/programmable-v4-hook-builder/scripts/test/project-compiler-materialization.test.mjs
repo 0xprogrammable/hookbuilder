@@ -474,3 +474,192 @@ test("project preflight keeps a valid unresolved proposal noncanonical and block
     code === "PROJECT_PREFLIGHT_MACHINE_ARTIFACT_UNBOUND" && details.kind === "project-spec-v1"
   )));
 });
+
+const multiSurfaceProfiles = Object.freeze([
+  Object.freeze({ profile: "foundry-web", id: "web", kind: "web-app" }),
+  Object.freeze({ profile: "foundry-service", id: "service", kind: "api-service" }),
+  Object.freeze({ profile: "foundry-game", id: "game", kind: "game-client" })
+]);
+
+test("custom tradable multi-surface profiles bind complete Mizu contract and application trees without executing candidate bytes", (t) => {
+  for (const specification of multiSurfaceProfiles) {
+    const fixture = createMultiSurfaceFixture(t, specification);
+    const args = multiSurfaceMaterializeArgs(fixture, specification.profile);
+    const dry = childProcess.spawnSync(process.execPath, [...args, "--brief"], { encoding: "utf8", shell: false, timeout: 30_000 });
+    assert.equal(dry.status, 0, dry.stderr || dry.stdout);
+    const dryReport = JSON.parse(dry.stdout);
+    assert.equal(dryReport.status, "PROJECT_MATERIALIZATION_DRY_RUN_READY");
+    assert.equal(dryReport.projectProfile, specification.profile);
+    assert.equal(fs.existsSync(fixture.output), false);
+    assert.equal(fs.existsSync(fixture.marker), false);
+
+    const written = childProcess.spawnSync(process.execPath, [...args, "--write", "--brief"], { encoding: "utf8", shell: false, timeout: 60_000 });
+    assert.equal(written.status, 0, written.stderr || written.stdout);
+    const report = JSON.parse(written.stdout);
+    assert.equal(report.status, "PROJECT_MATERIALIZATION_PLAN_WRITTEN");
+    assert.equal(report.projectProfile, specification.profile);
+    assert.equal(report.executionStatus, "EXTERNAL_SANDBOX_REQUIRED");
+    assert.equal(report.evidenceBoundary.commandsExecuted, false);
+    assert.equal(report.evidenceBoundary.approvalCreated, false);
+    assert.equal(fs.existsSync(fixture.marker), false);
+
+    const surfaceOutput = path.join(fixture.output, "surfaces", specification.id);
+    for (const relativePath of fixture.surfacePaths) {
+      assert.deepEqual(fs.readFileSync(path.join(surfaceOutput, relativePath)), fs.readFileSync(path.join(fixture.surfaceRoot, relativePath)), `${specification.profile} changed ${relativePath}`);
+    }
+    assert.equal(fs.readFileSync(path.join(fixture.output, "src/MizuDynamicFeeHook.sol"), "utf8"), fixture.contractSource);
+    assert.equal(fs.readFileSync(path.join(fixture.output, "test/MizuDynamicFeeHook.t.sol"), "utf8"), fixture.contractTest);
+
+    const surfaceConfig = readMultiSurfaceJson(path.join(surfaceOutput, "programmable-surface.json"));
+    assert.equal(surfaceConfig.id, specification.id);
+    assert.equal(surfaceConfig.kind, "programmable-custom-tradable-surface");
+    assert.equal(surfaceConfig.surfaceKind, specification.kind);
+    assert.equal(surfaceConfig.status, "SOURCE_TEST_CONFIG_AND_LOCK_BOUND");
+    assert.ok(surfaceConfig.buildProfiles.some(({ id, status }) => id === "npm" && status === "recognized"));
+    assert.ok(surfaceConfig.source.some(({ path: filePath }) => filePath.endsWith("/src/index.mjs")));
+    assert.ok(surfaceConfig.tests.some(({ path: filePath }) => filePath.endsWith("/test/index.test.mjs")));
+    assert.ok(surfaceConfig.configuration.some(({ path: filePath }) => filePath.endsWith("/package-lock.json")));
+
+    const planPath = path.join(fixture.output, ".programmable/custom-tradable-build-plan.v1.json");
+    const plan = readMultiSurfaceJson(planPath);
+    assert.equal(plan.projectProfile, specification.profile);
+    assert.equal(plan.surfaces.length, 1);
+    assert.equal(plan.surfaces[0].id, specification.id);
+    assert.equal(plan.surfaces[0].inventorySha256, surfaceConfig.inputInventorySha256);
+    assert.ok(plan.commands.some(({ cwd, argv }) => cwd === `surfaces/${specification.id}` && argv[0] === "npm"));
+    assert.ok(plan.commands.every(({ status, externalActionsPerformed }) => status === "NOT_RUN" && externalActionsPerformed.length === 0));
+    assert.equal(plan.authorization.execution, false);
+    assert.equal(plan.launch.approval, false);
+
+    const receiptPath = path.join(fixture.output, ".programmable/custom-tradable-materialization-receipt.v1.json");
+    const receipt = readMultiSurfaceJson(receiptPath);
+    assert.equal(receipt.status, "SOURCE_TEST_CONFIG_AND_LOCK_BYTES_BOUND_NOT_EXECUTED");
+    assert.equal(receipt.projectProfile, specification.profile);
+    assert.equal(receipt.plan.sha256, sha256Bytes(fs.readFileSync(planPath)));
+    assert.equal(receipt.observations.commandsExecuted, false);
+    assert.equal(receipt.observations.networkAccessed, false);
+    assert.equal(receipt.authority.approval, false);
+    assert.equal(report.receiptSha256, canonicalJsonSha256V2(receipt));
+    assert.equal(git(fixture.output, ["status", "--porcelain=v1", "--untracked-files=all"]), "");
+  }
+});
+
+test("multi-surface materialization rejects missing, malformed, legacy-mixed, and generated-path-colliding roots before output", (t) => {
+  const fixture = createMultiSurfaceFixture(t, multiSurfaceProfiles[0]);
+  const withoutSurface = multiSurfaceMaterializeArgs(fixture, "foundry-web").filter((argument, index, values) => argument !== "--surface-root" && values[index - 1] !== "--surface-root");
+  const missing = runMultiSurface(withoutSurface);
+  assert.equal(missing.status, 2, missing.stderr || missing.stdout);
+  assert.match(missing.stderr, /foundry-web.*requires --surface-root/iu);
+  assert.equal(fs.existsSync(fixture.output), false);
+
+  const ordinaryWithSurface = runMultiSurface(multiSurfaceMaterializeArgs(fixture, "foundry"));
+  assert.equal(ordinaryWithSurface.status, 2, ordinaryWithSurface.stderr || ordinaryWithSurface.stdout);
+  assert.match(ordinaryWithSurface.stderr, /foundry.*does not accept --surface-root/iu);
+  assert.equal(fs.existsSync(fixture.output), false);
+
+  const unknown = runMultiSurface(multiSurfaceMaterializeArgs(fixture, "foundry-metaverse"));
+  assert.equal(unknown.status, 2, unknown.stderr || unknown.stdout);
+  assert.match(unknown.stderr, /project-profile.*foundry-web.*foundry-service.*foundry-game/iu);
+  assert.equal(fs.existsSync(fixture.output), false);
+
+  fs.writeFileSync(path.join(fixture.surfaceRoot, "programmable-surface.json"), "{}\n");
+  const collision = runMultiSurface(multiSurfaceMaterializeArgs(fixture, "foundry-web"));
+  assert.equal(collision.status, 2, collision.stderr || collision.stdout);
+  assert.match(collision.stderr, /PROJECT_SURFACE_TREE_COLLISION.*programmable-surface\.json/u);
+  assert.equal(fs.existsSync(fixture.output), false);
+  fs.rmSync(path.join(fixture.surfaceRoot, "programmable-surface.json"));
+
+  fs.writeFileSync(path.join(fixture.surfaceRoot, "Programmable-Surface.json"), "{}\n");
+  const portableCollision = runMultiSurface(multiSurfaceMaterializeArgs(fixture, "foundry-web"));
+  assert.equal(portableCollision.status, 2, portableCollision.stderr || portableCollision.stdout);
+  assert.match(portableCollision.stderr, /PROJECT_SURFACE_TREE_COLLISION.*programmable-surface\.json/iu);
+  assert.equal(fs.existsSync(fixture.output), false);
+  fs.rmSync(path.join(fixture.surfaceRoot, "Programmable-Surface.json"));
+
+  const outside = path.join(fixture.parent, "outside.mjs");
+  fs.writeFileSync(outside, "export const escaped = true;\n");
+  fs.symlinkSync(outside, path.join(fixture.surfaceRoot, "src/escape.mjs"));
+  const symlink = runMultiSurface(multiSurfaceMaterializeArgs(fixture, "foundry-web"));
+  assert.equal(symlink.status, 2, symlink.stderr || symlink.stdout);
+  assert.match(symlink.stderr, /PROJECT_SURFACE_TREE_INVALID.*symbolic link/u);
+  assert.equal(fs.existsSync(fixture.output), false);
+  fs.rmSync(path.join(fixture.surfaceRoot, "src/escape.mjs"));
+
+  fs.rmSync(path.join(fixture.surfaceRoot, "package-lock.json"));
+  const missingLock = runMultiSurface(multiSurfaceMaterializeArgs(fixture, "foundry-web"));
+  assert.equal(missingLock.status, 2, missingLock.stderr || missingLock.stdout);
+  assert.match(missingLock.stderr, /PROJECT_SURFACE_BUILD_PROFILE_UNRESOLVED.*deterministic lock/u);
+  assert.equal(fs.existsSync(fixture.output), false);
+
+  fs.writeFileSync(path.join(fixture.surfaceRoot, ".env"), "PRIVATE_KEY=must-not-enter-output\n");
+  const secretRisk = runMultiSurface(multiSurfaceMaterializeArgs(fixture, "foundry-web"));
+  assert.equal(secretRisk.status, 2, secretRisk.stderr || secretRisk.stdout);
+  assert.match(secretRisk.stderr, /PROJECT_SURFACE_TREE_INVALID.*secret-risk/u);
+  assert.equal(fs.existsSync(fixture.output), false);
+});
+
+test("multi-surface output collisions fail closed and portable execute cannot run its authored commands", (t) => {
+  const fixture = createMultiSurfaceFixture(t, multiSurfaceProfiles[2]);
+  fs.mkdirSync(fixture.output);
+  const collision = runMultiSurface(multiSurfaceMaterializeArgs(fixture, "foundry-game"));
+  assert.equal(collision.status, 2, collision.stderr || collision.stdout);
+  assert.match(collision.stderr, /PROJECT_OUTPUT_EXISTS.*new directory/u);
+  assert.equal(fs.existsSync(fixture.marker), false);
+  fs.rmSync(fixture.output, { recursive: true, force: true });
+
+  const written = runMultiSurface([...multiSurfaceMaterializeArgs(fixture, "foundry-game"), "--write"]);
+  assert.equal(written.status, 0, written.stderr || written.stdout);
+  const execute = childProcess.spawnSync(process.execPath, [
+    unifiedCli, "project", "execute", "--repository-root", fixture.output,
+    "--plan", ".programmable/custom-tradable-build-plan.v1.json",
+    "--output-plan", ".programmable/repository-plan.v1.json"
+  ], { encoding: "utf8", shell: false, timeout: 30_000 });
+  assert.equal(execute.status, 2, execute.stderr || execute.stdout);
+  assert.match(execute.stderr, /PROJECT_SOURCE_HEAD_MISMATCH|PROJECT_PLAN_NOT_MATERIALIZING|PROJECT_EXTERNAL_SANDBOX_REQUIRED/u);
+  assert.equal(fs.existsSync(fixture.marker), false);
+  assert.equal(fs.existsSync(path.join(fixture.output, ".programmable/repository-plan.v1.json")), false);
+});
+
+function createMultiSurfaceFixture(t, { id }) {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), `programmable-${id}-surface-`));
+  t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
+  const ideaPath = path.join(parent, "mizu-idea.txt"), sourceRoot = path.join(parent, "contract-src");
+  const testRoot = path.join(parent, "contract-test"), surfaceRoot = path.join(parent, `${id}-surface`);
+  const output = path.join(parent, "mizu-output"), marker = path.join(parent, "candidate-executed");
+  fs.mkdirSync(sourceRoot); fs.mkdirSync(testRoot);
+  fs.mkdirSync(path.join(surfaceRoot, "src"), { recursive: true });
+  fs.mkdirSync(path.join(surfaceRoot, "test"), { recursive: true });
+  fs.mkdirSync(path.join(surfaceRoot, "public", "nested"), { recursive: true });
+  fs.mkdirSync(path.join(surfaceRoot, "public", "a", "b", "c", "d", "e"), { recursive: true });
+  fs.writeFileSync(ideaPath, "Build Mizu as a canonical Uniswap v4 dynamic LP-fee hook with a complete application surface. Buys cost less than sells; fee pressure is size-sensitive and decays with recent volume.\n");
+  const contractSource = "// SPDX-License-Identifier: MIT\npragma solidity 0.8.26;\ncontract MizuDynamicFeeHook { function feePips(bool sell, uint128 size, uint128 volume) external pure returns (uint24) { uint256 p = uint256(size) / 1e15 + uint256(volume) / 1e16; return uint24((sell ? 3000 : 1000) + (p > 97000 ? 97000 : p)); } }\n";
+  const contractTest = "// SPDX-License-Identifier: MIT\npragma solidity 0.8.26;\ncontract MizuDynamicFeeHookTest { function testSimulationDirectionalFee() external {} function testFuzzFeeBound(uint128, uint128) external {} function invariantLiquidityChangesUntaxed() external pure returns (bool) { return true; } function testDeploymentPermissionBits() external {} }\n";
+  fs.writeFileSync(path.join(sourceRoot, "MizuDynamicFeeHook.sol"), contractSource);
+  fs.writeFileSync(path.join(testRoot, "MizuDynamicFeeHook.t.sol"), contractTest);
+  const packageDocument = { name: `mizu-${id}`, version: "0.0.0", private: true, type: "module", packageManager: "npm@11.16.0", scripts: { build: "node --check src/index.mjs", test: "node --test test/index.test.mjs" } };
+  const lockDocument = { name: `mizu-${id}`, version: "0.0.0", lockfileVersion: 3, requires: true, packages: { "": { name: `mizu-${id}`, version: "0.0.0" } } };
+  fs.writeFileSync(path.join(surfaceRoot, "package.json"), `${JSON.stringify(packageDocument, null, 2)}\n`);
+  fs.writeFileSync(path.join(surfaceRoot, "package-lock.json"), `${JSON.stringify(lockDocument, null, 2)}\n`);
+  fs.writeFileSync(path.join(surfaceRoot, "src/index.mjs"), `import fs from "node:fs"; fs.writeFileSync(${JSON.stringify(marker)}, "surface-ran"); export const surface = ${JSON.stringify(id)};\n`);
+  fs.writeFileSync(path.join(surfaceRoot, "test/index.test.mjs"), `import fs from "node:fs"; fs.writeFileSync(${JSON.stringify(marker)}, "test-ran"); throw new Error("candidate tests must remain inert");\n`);
+  fs.writeFileSync(path.join(surfaceRoot, "public/nested/state.json"), "{\"network\":\"ethereum\"}\n");
+  fs.writeFileSync(path.join(surfaceRoot, "public/a/b/c/d/e/empty.dat"), "");
+  return { parent, ideaPath, sourceRoot, testRoot, surfaceRoot, output, marker, contractSource, contractTest, surfacePaths: ["package-lock.json", "package.json", "public/a/b/c/d/e/empty.dat", "public/nested/state.json", "src/index.mjs", "test/index.test.mjs"] };
+}
+
+function multiSurfaceMaterializeArgs(fixture, projectProfile) {
+  return [
+    unifiedCli, "project", "materialize", "--idea-file", fixture.ideaPath,
+    "--application-id", "mizu", "--classification", "tradable", "--market-ref", "mizu-eth",
+    "--project-profile", projectProfile, "--source-root", fixture.sourceRoot, "--test-root", fixture.testRoot,
+    "--surface-root", fixture.surfaceRoot, "--output", fixture.output
+  ];
+}
+
+function runMultiSurface(args) {
+  return childProcess.spawnSync(process.execPath, args, { encoding: "utf8", shell: false, timeout: 60_000 });
+}
+
+function readMultiSurfaceJson(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, "utf8"));
+}

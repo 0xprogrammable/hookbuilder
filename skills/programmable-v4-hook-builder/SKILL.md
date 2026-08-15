@@ -61,6 +61,9 @@ launch, never source. Dry-run this custom-tradable command, then add `--write`:
 node "$BUILDER_CLI" project materialize --idea-file "$IDEA_FILE" --application-id "$APPLICATION_ID" --classification tradable --market-ref "$MARKET_REF" --project-profile foundry --source-root "$SOURCE_ROOT" --test-root "$TEST_ROOT" --output "$NEW_REPOSITORY"
 ```
 
+For a complete application use `foundry-web`, `foundry-service`, or `foundry-game`; add `--surface-root` for the
+complete source, tests, build configuration, deterministic lock and assets.
+
 No trusted sandbox? Materialize source/tests; mark tests unverified, never implementation blocked. In an active
 workspace run install and offline fmt/test once as `LOCAL_ONLY`, never completion. Fix input roots and
 rematerialize; never patch outputs or call `project execute` without a trusted sandbox.
