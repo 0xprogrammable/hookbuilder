@@ -459,9 +459,9 @@ test("portable verifier deletion-guards its exact required inventory in one boun
     .update(`${requiredPaths.join("\n")}\n`)
     .digest("hex");
 
-  assert.equal(requiredPaths.length, 325);
+  assert.equal(requiredPaths.length, 335);
   assert.equal(new Set(requiredPaths).size, requiredPaths.length);
-  assert.equal(inventorySha256, "341ef50bdf4ddfd868b242ee15fb85534d99b977c830d514c1e6b410bfee30e8");
+  assert.equal(inventorySha256, "375a32a6daf35a6d016a2beca814650b5b178130b3703d5484c77d5cc8059cbd");
   for (const requiredPath of requiredPaths) {
     const entry = fs.lstatSync(path.join(skillRoot, requiredPath));
     assert.ok(entry.isFile(), `${requiredPath} must be a regular file`);
@@ -751,7 +751,7 @@ test("trusted verifier rejects an oversized package before scanning its text", (
     const result = runUntrustedVerifier(candidateRoot);
 
     assert.notEqual(result.status, 0, result.stdout);
-    assert.match(result.stderr, /portable package is \d+ bytes; keep it at or below 8000000/);
+    assert.match(result.stderr, /portable package is \d+ bytes; keep it at or below 8750000/);
     assert.doesNotMatch(result.stderr, /local filesystem path/);
   } finally {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
@@ -772,7 +772,7 @@ test("trusted verifier rejects excessive file count before checking candidate sc
     const result = runUntrustedVerifier(candidateRoot);
 
     assert.notEqual(result.status, 0, result.stdout);
-    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 600/);
+    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 620/);
     assert.doesNotMatch(result.stderr, /invalid-syntax|SyntaxError/);
   } finally {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });

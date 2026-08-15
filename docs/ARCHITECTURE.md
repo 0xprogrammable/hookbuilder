@@ -92,7 +92,10 @@ approval cannot authorize its own new source revision.
 The complete JavaScript test suite is repository evidence, not installed runtime. Source verification resolves the
 digest-bound suite from root `test/portable-skill/`; installed verification runs the shipped
 `scripts/installed-runtime-smoke.mjs`. Frozen reference-kernel tests remain portable because they are executable
-compatibility assets, not repository harness duplication.
+compatibility assets, not repository harness duplication. The active semantic-rule validator ships only its minimal
+digest-backed source-evidence closure, and installed smoke proves both offline validation and evidence-tamper rejection.
+The package manifest also declares the exact executable paths; plugin generation and release packaging preserve and
+verify those modes alongside bytes.
 
 ## Multi-repository source closure
 

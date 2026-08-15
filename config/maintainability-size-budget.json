@@ -357,11 +357,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
-          "observedLines": 703,
-          "observedBytes": 35035,
+          "observedLines": 713,
+          "observedBytes": 35696,
           "observedComplexityScore": 90,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "canonical portable package manifest and repository-only test inventory review"
+          "reviewRef": "installed semantic evidence closure deletion-guard review"
         }
       ]
     },
@@ -374,9 +374,9 @@
   },
   "portablePackage": {
     "path": "skills/programmable-v4-hook-builder",
-    "observedFiles": 594,
-    "observedBytes": 7859250,
-    "maxFiles": 600,
-    "maxBytes": 8000000
+    "observedFiles": 604,
+    "observedBytes": 8434828,
+    "maxFiles": 620,
+    "maxBytes": 8750000
   }
 }

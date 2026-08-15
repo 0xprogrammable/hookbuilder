@@ -295,6 +295,7 @@ test("all canonical production modules and the portable package stay inside revi
     "scripts/quality/package-deprecation.mjs",
     "skills/programmable-v4-hook-builder/scripts/semantic-rule-registry-core.mjs",
     "skills/programmable-v4-hook-builder/scripts/semantic-rule-registry-evidence-core.mjs",
+    "skills/programmable-v4-hook-builder/scripts/semantic-rule-test-evidence-core.mjs",
     "skills/programmable-v4-hook-builder/scripts/v4-hook-semantic-contract-core.mjs",
     "skills/programmable-v4-hook-builder/scripts/validate-semantic-rule-registry.mjs"
   ]) assert.ok(report.modules.some(({ path: modulePath }) => modulePath === requiredModule));
@@ -307,8 +308,8 @@ test("all canonical production modules and the portable package stay inside revi
   assert.equal(report.machineDebt.importCycles.cycleCount, 0);
   assert.equal(report.machineDebt.importCycles.unresolvedRelativeImportCount, 0);
   assert.equal(report.portablePackage.inventoryProfile, "canonical-portable-package-inclusion-manifest-v1");
-  assert.equal(report.portablePackage.maxFiles, 600);
-  assert.equal(report.portablePackage.maxBytes, 8_000_000);
+  assert.equal(report.portablePackage.maxFiles, 620);
+  assert.equal(report.portablePackage.maxBytes, 8_750_000);
   assert.ok(report.portablePackage.files <= report.portablePackage.maxFiles);
   assert.ok(report.portablePackage.bytes <= report.portablePackage.maxBytes);
 

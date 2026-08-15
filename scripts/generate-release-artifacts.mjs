@@ -112,10 +112,13 @@ try {
 } catch (error) {
   fail(`portable package manifest rejected release source: ${error instanceof Error ? error.message : String(error)}`);
 }
-const trackedPortablePaths = trackedFiles.map(({ path: relativePath }) => relativePath);
-const declaredPortablePaths = portableInventory.packageFiles.map(({ path: relativePath }) => relativePath);
-if (JSON.stringify(trackedPortablePaths) !== JSON.stringify(declaredPortablePaths)) {
-  fail("committed release skill inventory differs from the canonical portable package manifest");
+const trackedPortableBoundary = trackedFiles.map(({ path: relativePath, mode }) => ({ path: relativePath, mode }));
+const declaredPortableBoundary = portableInventory.packageFiles.map(({ path: relativePath, mode }) => ({
+  path: relativePath,
+  mode: `100${mode.toString(8).padStart(3, "0")}`
+}));
+if (JSON.stringify(trackedPortableBoundary) !== JSON.stringify(declaredPortableBoundary)) {
+  fail("committed release skill inventory or file modes differ from the canonical portable package manifest");
 }
 
 fs.mkdirSync(options.outputDirectory, { recursive: true });

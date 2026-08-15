@@ -31,6 +31,29 @@ const commands = [
   "template-catalog.mjs"
 ];
 
+test("installed semantic registry is self-contained and fails on evidence-manifest tamper", (t) => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-installed-semantic-"));
+  t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
+  const copiedSkill = path.join(fixtureRoot, "programmable-v4-hook-builder");
+  fs.cpSync(skillRoot, copiedSkill, { recursive: true });
+  const validator = path.join(copiedSkill, "scripts", "validate-semantic-rule-registry.mjs");
+  const validate = () => childProcess.spawnSync(
+    process.execPath,
+    [validator, "--skill-root", copiedSkill],
+    { cwd: copiedSkill, encoding: "utf8", shell: false }
+  );
+
+  const accepted = validate();
+  assert.equal(accepted.status, 0, accepted.stderr || accepted.stdout);
+  assert.equal(JSON.parse(accepted.stdout).testEvidenceMode, "portable-digest-backed");
+
+  fs.appendFileSync(path.join(copiedSkill, "references", "semantic-rule-test-evidence-v1.json"), "\n");
+  const tampered = validate();
+  assert.equal(tampered.status, 1, tampered.stdout);
+  assert.match(tampered.stderr, /^SEMANTIC_RULE_TEST_EVIDENCE_DIGEST_MISMATCH:/u);
+  assert.equal(tampered.stdout, "");
+});
+
 test("host-neutral help leads with one golden path and keeps every command in opt-in JSON", () => {
   const result = run("cli.mjs", ["--help"]);
   assert.equal(result.status, 0, result.stderr);

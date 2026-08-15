@@ -19,6 +19,18 @@ test("canonical inclusion manifest owns the lean installed package boundary", ()
   const inventory = buildPortablePackageInventory({ manifest, repositoryRoot, skillRoot });
 
   assert.equal(manifest.sourceRoot, "skills/programmable-v4-hook-builder");
+  assert.deepEqual(manifest.executablePaths, [
+    "scripts/builder-lifecycle.mjs",
+    "scripts/project-compiler.mjs",
+    "scripts/template-catalog.mjs"
+  ]);
+  assert.deepEqual(
+    inventory.packageFiles.filter(({ mode }) => mode === 0o755).map(({ path: relativePath }) => relativePath),
+    manifest.executablePaths
+  );
+  assert.equal(inventory.packageFiles.every(({ path: relativePath, mode }) => (
+    mode === (manifest.executablePaths.includes(relativePath) ? 0o755 : 0o644)
+  )), true);
   assert.equal(manifest.exclusions.length, 1);
   const [repositoryTests] = manifest.exclusions;
   assert.deepEqual({
@@ -44,8 +56,26 @@ test("canonical inclusion manifest owns the lean installed package boundary", ()
   assert.equal(inventory.repositoryOnly.bytes, repositoryTests.repositoryBytes);
   assert.equal(inventory.repositoryOnly.sourcesVerified, true);
   assert.equal(inventory.repositoryOnly.sources[0].sha256, repositoryTests.repositorySha256);
-  assert.ok(inventory.packageFiles.length < 600);
-  assert.ok(inventory.packageBytes < 8_000_000);
+  assert.ok(inventory.packageFiles.length <= 620);
+  assert.ok(inventory.packageBytes <= 8_750_000);
+});
+
+test("manifest rejects executable-mode drift before publication", (t) => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-portable-package-mode-"));
+  t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
+  const fixtureSkill = path.join(fixtureRoot, "skills", "programmable-v4-hook-builder");
+  const fixtureTests = path.join(fixtureRoot, "test", "portable-skill");
+  fs.cpSync(skillRoot, fixtureSkill, { recursive: true });
+  fs.cpSync(path.join(repositoryRoot, "test", "portable-skill"), fixtureTests, { recursive: true });
+  fs.chmodSync(path.join(fixtureSkill, "scripts", "builder-lifecycle.mjs"), 0o644);
+
+  const manifest = loadPortablePackageManifest({ skillRoot: fixtureSkill });
+  assert.throws(
+    () => buildPortablePackageInventory({ manifest, repositoryRoot: fixtureRoot, skillRoot: fixtureSkill }),
+    (error) => error instanceof PortablePackageManifestError
+      && error.code === "PORTABLE_PACKAGE_MODE_MISMATCH"
+      && /scripts\/builder-lifecycle\.mjs/u.test(error.message)
+  );
 });
 
 test("manifest rejects a test-only file leaking back into the published skill", (t) => {

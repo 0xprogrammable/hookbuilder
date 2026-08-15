@@ -16,6 +16,7 @@ import {
   HOOKBUILDER_LEGACY_APPLICANT_BASE_BRANCH,
   HOOKBUILDER_LEGACY_APPLICANT_PULL_REQUESTS
 } from "../skills/programmable-v4-hook-builder/scripts/registry-intake-contract.mjs";
+import { assertMirroredFileMode } from "../scripts/plugin-payload-mode-core.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(testDirectory, "..");
@@ -289,13 +290,30 @@ test("plugin manifests are generated from canonical metadata and package version
   assert.ok(report.payload.files > 300);
   assert.match(report.payload.sha256, /^[0-9a-f]{64}$/u);
   assert.equal(report.payload.sourceByteVerified, true);
+  assert.equal(report.payload.sourceModeVerified, true);
   assert.deepEqual(report.payload.portableSkill, {
-    files: 594,
-    bytes: 7_859_250,
+    files: 604,
+    bytes: 8_434_828,
     repositoryOnlyFiles: 95,
-    repositoryOnlyBytes: 2_916_253,
+    repositoryOnlyBytes: 2_917_877,
     repositorySourcesVerified: true
   });
+});
+
+test("plugin mirror mode verification rejects an executable-bit downgrade", (t) => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-plugin-mode-"));
+  t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
+  const source = path.join(fixtureRoot, "source.mjs");
+  const target = path.join(fixtureRoot, "target.mjs");
+  fs.writeFileSync(source, "#!/usr/bin/env node\n", { mode: 0o755 });
+  fs.writeFileSync(target, "#!/usr/bin/env node\n", { mode: 0o644 });
+
+  assert.throws(
+    () => assertMirroredFileMode(source, target),
+    /mode differs from canonical source/u
+  );
+  fs.chmodSync(target, 0o755);
+  assert.equal(assertMirroredFileMode(source, target), 0o755);
 });
 
 test("generated Codex plugin payload starts its MCP server without package.json", () => {

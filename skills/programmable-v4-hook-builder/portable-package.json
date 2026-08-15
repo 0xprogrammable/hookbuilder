@@ -45,6 +45,11 @@
       "role": "runtime-and-installed-verification"
     }
   ],
+  "executablePaths": [
+    "scripts/builder-lifecycle.mjs",
+    "scripts/project-compiler.mjs",
+    "scripts/template-catalog.mjs"
+  ],
   "exclusions": [
     {
       "classification": "test-only",
@@ -53,8 +58,8 @@
       "repositoryPath": "test/portable-skill",
       "repositoryDigestAlgorithm": "sha256-path-nul-size-nul-content-nul-v1",
       "repositoryFiles": 95,
-      "repositoryBytes": 2916253,
-      "repositorySha256": "0fb61ef7474500646e493b7fa8352a453eed740640f96b3d1f68f9f966c26f49"
+      "repositoryBytes": 2917877,
+      "repositorySha256": "188e848e32bf458f6a9b971eb62d5d5d18bcef9f6ed4f4d2e82153f31a213198"
     }
   ]
 }

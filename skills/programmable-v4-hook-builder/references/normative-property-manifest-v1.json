@@ -22,6 +22,7 @@
     { "path": "assets/build-profiles", "role": "builder-catalog", "recursive": true },
     { "path": "assets/starter-catalog", "role": "builder-catalog", "recursive": true },
     { "path": "assets/reference-kernels", "role": "reference-kernel", "recursive": true },
+    { "path": "assets/semantic-rule-test-evidence-v1", "role": "repository-test-evidence", "recursive": true },
     { "path": "portable-package.json", "role": "repository-test-evidence", "recursive": false },
     { "path": "scripts", "role": "enforcement-implementation", "recursive": true }
   ]

@@ -23,7 +23,7 @@ if (!Number.isInteger(nodeMajor) || nodeMajor < 22) {
   console.error("verify-skill.mjs: NODE_22_OR_NEWER_REQUIRED");
   process.exit(1);
 }
-const MAX_PORTABLE_BYTES = 8_000_000;
+const MAX_PORTABLE_BYTES = 8_750_000;
 const MAX_PORTABLE_FILE_BYTES = 1_000_000;
 const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
 const errors = [];
@@ -176,6 +176,7 @@ const required = [
   "references/repair-loop.md",
   "references/semantic-rule-registry-v1.json",
   "references/semantic-rule-registry-v1.schema.json",
+  "references/semantic-rule-test-evidence-v1.json",
   "references/contract-registry-source-v1.json",
   "references/contract-registry-v1.json",
   "references/submission-schema-catalog.json",
@@ -206,6 +207,14 @@ const required = [
   "references/template-catalog.md",
   "references/template-catalog-history.json",
   "assets/build-profiles/catalog.json",
+  "assets/semantic-rule-test-evidence-v1/builder-lifecycle.test.mjs",
+  "assets/semantic-rule-test-evidence-v1/cross-chain-policy.test.mjs",
+  "assets/semantic-rule-test-evidence-v1/fee-policy-v2.test.mjs",
+  "assets/semantic-rule-test-evidence-v1/github-application.test.mjs",
+  "assets/semantic-rule-test-evidence-v1/open-world-security.test.mjs",
+  "assets/semantic-rule-test-evidence-v1/schema-security.test.mjs",
+  "assets/semantic-rule-test-evidence-v1/submission.test.mjs",
+  "assets/semantic-rule-test-evidence-v1/v4-hook-semantic-contract.test.mjs",
   "assets/examples/dynamic-lp-fee.json",
   "assets/examples/managed-usdc-quote.json",
   "assets/examples/transparent-pool-scoped-fee.json",
@@ -395,6 +404,7 @@ const required = [
   "scripts/scaffold-submission.mjs",
   "scripts/source-manifest.mjs",
   "scripts/semantic-rule-registry-core.mjs",
+  "scripts/semantic-rule-test-evidence-core.mjs",
   "scripts/settlement-policy-core.mjs",
   "scripts/strict-json-core.mjs",
   "scripts/workflow-canary-application-client.mjs",

@@ -7,7 +7,7 @@ import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
 export const PORTABLE_PACKAGE_MANIFEST_PATH = "portable-package.json";
 export const PORTABLE_PACKAGE_SCHEMA_ID = "urn:programmable:portable-skill-package-inclusion:1.0.0";
 
-const TOP_LEVEL_KEYS = ["$schema", "schemaVersion", "kind", "sourceRoot", "includes", "exclusions"];
+const TOP_LEVEL_KEYS = ["$schema", "schemaVersion", "kind", "sourceRoot", "includes", "executablePaths", "exclusions"];
 const INCLUDE_KEYS = ["path", "recursive", "role"];
 const EXCLUSION_KEYS = [
   "classification",
@@ -64,11 +64,15 @@ export function loadPortablePackageManifest({ skillRoot }) {
 export function buildPortablePackageInventory({ manifest, repositoryRoot = null, skillRoot }) {
   validateManifest(manifest);
   requireDirectory(skillRoot, "PORTABLE_PACKAGE_SKILL_ROOT_INVALID", "skill root");
-  const packageFiles = walkRegularFiles(skillRoot).map((absolutePath) => ({
-    absolutePath,
-    path: relativePortablePath(skillRoot, absolutePath),
-    bytes: fs.statSync(absolutePath).size
-  }));
+  const packageFiles = walkRegularFiles(skillRoot).map((absolutePath) => {
+    const stat = fs.statSync(absolutePath);
+    return {
+      absolutePath,
+      path: relativePortablePath(skillRoot, absolutePath),
+      bytes: stat.size,
+      mode: stat.mode & 0o777
+    };
+  });
 
   const exclusionLeaks = packageFiles
     .filter(({ path: relativePath }) => manifest.exclusions.some((rule) => matchesRule(relativePath, rule)))
@@ -95,6 +99,24 @@ export function buildPortablePackageInventory({ manifest, repositoryRoot = null,
       throw new PortablePackageManifestError(
         "PORTABLE_PACKAGE_INCLUDE_EMPTY",
         `portable include does not resolve to a regular file: ${include.path}`
+      );
+    }
+  }
+  const executablePaths = new Set(manifest.executablePaths);
+  for (const entry of packageFiles) {
+    const expectedMode = executablePaths.has(entry.path) ? 0o755 : 0o644;
+    if (entry.mode !== expectedMode) {
+      throw new PortablePackageManifestError(
+        "PORTABLE_PACKAGE_MODE_MISMATCH",
+        `portable package mode for ${entry.path} is ${octal(entry.mode)}; expected ${octal(expectedMode)}`
+      );
+    }
+  }
+  for (const executablePath of executablePaths) {
+    if (!packageFiles.some(({ path: relativePath }) => relativePath === executablePath)) {
+      throw new PortablePackageManifestError(
+        "PORTABLE_PACKAGE_EXECUTABLE_MISSING",
+        `declared portable executable is missing: ${executablePath}`
       );
     }
   }
@@ -220,6 +242,20 @@ function validateManifest(value) {
   if (value.kind !== "programmable-portable-skill-package-inclusion") invalid("manifest kind is invalid");
   if (value.sourceRoot !== SOURCE_ROOT) invalid(`manifest sourceRoot must be ${SOURCE_ROOT}`);
   validateRules(value.includes, INCLUDE_KEYS, "includes", true);
+  if (!Array.isArray(value.executablePaths) || value.executablePaths.length === 0) {
+    invalid("executablePaths must be a non-empty array");
+  }
+  for (const [index, executablePath] of value.executablePaths.entries()) {
+    requireSafeRelativePath(executablePath, `executablePaths[${index}]`);
+    if (!executablePath.startsWith("scripts/") || !executablePath.endsWith(".mjs")) {
+      invalid(`executablePaths[${index}] must name one portable script`);
+    }
+  }
+  requireUnique(value.executablePaths, "executable paths");
+  const sortedExecutablePaths = [...value.executablePaths].sort((left, right) => left.localeCompare(right));
+  if (JSON.stringify(value.executablePaths) !== JSON.stringify(sortedExecutablePaths)) {
+    invalid("executable paths must be sorted");
+  }
   validateRules(value.exclusions, EXCLUSION_KEYS, "exclusions", false);
   const includePaths = value.includes.map(({ path: rulePath }) => rulePath);
   const exclusionPaths = value.exclusions.map(({ path: rulePath }) => rulePath);
@@ -338,6 +374,10 @@ function requireUnique(values, label) {
 
 function relativePortablePath(root, target) {
   return path.relative(root, target).split(path.sep).join("/");
+}
+
+function octal(mode) {
+  return mode.toString(8).padStart(4, "0");
 }
 
 function compareDirectoryEntries(left, right) {

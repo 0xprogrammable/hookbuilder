@@ -152,7 +152,7 @@ test("same-file test substitution and broadened category triggers fail the immut
   assert.ok(broadenedValidation.findings.some(({ code }) => code === "RULE_CATEGORY_TRIGGER_MISMATCH"));
 });
 
-test("a canonical test anchor moved into a comment or dead string is not executable evidence", (t) => {
+test("a canonical test anchor moved into a comment or dead string invalidates its evidence receipt", (t) => {
   const registry = loadSemanticRuleRegistry(skillRoot);
   const fixture = materializeRegistryFixture(t, registry);
   const relativeTestPath = "test/portable-skill/github-application.test.mjs";
@@ -172,7 +172,10 @@ test("a canonical test anchor moved into a comment or dead string is not executa
     fs.writeFileSync(absoluteTestPath, mutatedSource);
     const validation = validateSemanticRuleRegistry(loadSemanticRuleRegistry(fixture.skillRoot), fixture);
     assert.equal(validation.status, "SEMANTIC_RULE_REGISTRY_INVALID");
-    assert.ok(validation.findings.some(({ code }) => code === "RULE_CATEGORY_TEST_EXECUTABLE_EVIDENCE_MISSING"));
+    assert.ok(validation.findings.some(({ code, message }) => (
+      code === "REFERENCED_FILE_INVALID"
+      && message.includes("semantic rule test evidence file does not match its digest receipt")
+    )));
     assert.equal(validation.findings.some(({ code }) => code === "RULE_PROJECTION_LITERAL_MISMATCH"), false);
   }
 });
@@ -315,11 +318,43 @@ test("semantic rule registry validator CLI emits a machine-readable narrow-scope
   assert.equal(report.managedNamespaceInventory.every(({ complete }) => complete), true);
 });
 
+test("installed semantic validation is self-contained and fails closed on evidence tamper", (t) => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "semantic-rule-registry-installed-"));
+  t.after(() => fs.rmSync(fixtureRoot, { force: true, recursive: true }));
+  const installedSkillRoot = path.join(fixtureRoot, "programmable-v4-hook-builder");
+  fs.cpSync(skillRoot, installedSkillRoot, { recursive: true });
+  const validator = path.join(installedSkillRoot, "scripts", "validate-semantic-rule-registry.mjs");
+  const run = () => childProcess.spawnSync(
+    process.execPath,
+    [validator, "--skill-root", installedSkillRoot],
+    { cwd: installedSkillRoot, encoding: "utf8", shell: false }
+  );
+
+  const accepted = run();
+  assert.equal(accepted.status, 0, accepted.stderr || accepted.stdout);
+  assert.equal(JSON.parse(accepted.stdout).testEvidenceMode, "portable-digest-backed");
+
+  const evidencePath = path.join(installedSkillRoot, "references", "semantic-rule-test-evidence-v1.json");
+  fs.appendFileSync(evidencePath, "\n");
+  const tampered = run();
+  assert.equal(tampered.status, 1, tampered.stdout);
+  assert.match(tampered.stderr, /^SEMANTIC_RULE_TEST_EVIDENCE_DIGEST_MISMATCH:/u);
+  assert.equal(tampered.stdout, "");
+});
+
 function materializeRegistryFixture(t, registry) {
   const fixtureRepositoryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "semantic-rule-registry-sources-"));
   const fixtureSkillRoot = path.join(fixtureRepositoryRoot, "skills", "programmable-v4-hook-builder");
   t.after(() => fs.rmSync(fixtureRepositoryRoot, { force: true, recursive: true }));
-  const referencedPaths = new Set(["references/semantic-rule-registry-v1.json"]);
+  const evidence = JSON.parse(fs.readFileSync(
+    path.join(skillRoot, "references", "semantic-rule-test-evidence-v1.json"),
+    "utf8"
+  ));
+  const referencedPaths = new Set([
+    "references/semantic-rule-registry-v1.json",
+    "references/semantic-rule-test-evidence-v1.json",
+    ...evidence.files.map(({ portablePath }) => portablePath)
+  ]);
   for (const namespace of registry.scope.managedFindingNamespaces) referencedPaths.add(namespace.ownerFile);
   for (const entry of [...registry.ruleCategories, ...registry.rules]) {
     referencedPaths.add(entry.canonicalOwnerFile);

@@ -10,6 +10,7 @@ import {
   buildPortablePackageInventory,
   loadPortablePackageManifest
 } from "../skills/programmable-v4-hook-builder/scripts/portable-package-manifest-core.mjs";
+import { assertMirroredFileMode, readRegularFileMode } from "./plugin-payload-mode-core.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
@@ -178,12 +179,14 @@ function buildPayload(metadata, manifests) {
     throw new Error("refusing to resolve plugin payload outside the repository plugins directory");
   }
   const files = new Map();
+  const fileModes = new Map();
   const mirrors = [];
   const addMirror = (source, target) => {
     const stat = fs.lstatSync(source);
     if (!stat.isFile() || stat.isSymbolicLink()) throw new Error(`plugin payload source must be a regular file: ${source}`);
     const contents = fs.readFileSync(source);
     files.set(target, contents);
+    fileModes.set(target, stat.mode & 0o777);
     mirrors.push({ source, target });
   };
   const addTree = (sourceRoot, targetRoot) => {
@@ -194,6 +197,7 @@ function buildPayload(metadata, manifests) {
 
   const payloadManifest = path.join(payloadRoot, ".codex-plugin", "plugin.json");
   files.set(payloadManifest, Buffer.from(manifests.get(payloadManifest), "utf8"));
+  fileModes.set(payloadManifest, 0o644);
   mirrors.push({ source: outputs.codex, target: payloadManifest });
   addMirror(path.join(repositoryRoot, ".mcp.json"), path.join(payloadRoot, ".mcp.json"));
   addTree(path.join(repositoryRoot, "mcp"), path.join(payloadRoot, "mcp"));
@@ -208,7 +212,7 @@ function buildPayload(metadata, manifests) {
   for (const entry of portableInventory.packageFiles) {
     addMirror(path.join(sourceSkillRoot, ...entry.path.split("/")), path.join(targetSkillRoot, ...entry.path.split("/")));
   }
-  return { files, mirrors, payloadRoot, portableInventory };
+  return { files, fileModes, mirrors, payloadRoot, portableInventory };
 }
 
 function sha256(contents) {
@@ -219,6 +223,8 @@ function payloadDigest(payload) {
   const hash = crypto.createHash("sha256");
   for (const [target, contents] of [...payload.files].sort(([left], [right]) => left.localeCompare(right))) {
     hash.update(path.relative(payload.payloadRoot, target).split(path.sep).join("/"));
+    hash.update("\0");
+    hash.update(payload.fileModes.get(target).toString(8).padStart(4, "0"));
     hash.update("\0");
     hash.update(contents);
   }
@@ -249,6 +255,11 @@ function verifyPayload(payload) {
   for (const [target, expected] of payload.files) {
     const actual = fs.readFileSync(target);
     if (!actual.equals(expected)) throw new Error(`generated plugin payload drift: ${target}`);
+    const expectedMode = payload.fileModes.get(target);
+    const actualMode = readRegularFileMode(target);
+    if (actualMode !== expectedMode) {
+      throw new Error(`generated plugin payload mode drift: ${target}`);
+    }
   }
   for (const { source, target } of payload.mirrors) {
     const sourceContents = fs.readFileSync(source);
@@ -256,15 +267,16 @@ function verifyPayload(payload) {
     if (sha256(sourceContents) !== sha256(targetContents) || !sourceContents.equals(targetContents)) {
       throw new Error(`generated plugin payload does not byte-match canonical source: ${target}`);
     }
+    assertMirroredFileMode(source, target);
   }
 }
 
-function writeAtomically(target, contents) {
+function writeAtomically(target, contents, mode = 0o644) {
   fs.mkdirSync(path.dirname(target), { recursive: true });
   const temporary = path.join(path.dirname(target), `.${path.basename(target)}.tmp-${process.pid}`);
   if (fs.existsSync(temporary)) throw new Error(`refusing to reuse temporary file ${temporary}`);
   try {
-    fs.writeFileSync(temporary, contents, { encoding: "utf8", flag: "wx", mode: 0o644 });
+    fs.writeFileSync(temporary, contents, { encoding: "utf8", flag: "wx", mode });
     fs.renameSync(temporary, target);
   } catch (error) {
     if (fs.existsSync(temporary)) fs.rmSync(temporary, { force: true });
@@ -284,7 +296,7 @@ function main(argv) {
     for (const [target, contents] of expected) writeAtomically(target, contents);
     for (const [target, contents] of payload.files) {
       if (expected.has(target)) continue;
-      writeAtomically(target, contents);
+      writeAtomically(target, contents, payload.fileModes.get(target));
     }
   }
   for (const [target, contents] of expected) {
@@ -302,6 +314,7 @@ function main(argv) {
       files: payload.files.size,
       sha256: payloadDigest(payload),
       sourceByteVerified: true,
+      sourceModeVerified: true,
       portableSkill: {
         files: payload.portableInventory.packageFiles.length,
         bytes: payload.portableInventory.packageBytes,

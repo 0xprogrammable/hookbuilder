@@ -7,6 +7,7 @@ import {
   containsExecutableTokenSequence,
   namedTestContainsExecutableEvidence
 } from "./semantic-rule-registry-evidence-core.mjs";
+import { createSemanticRuleTestEvidenceReader } from "./semantic-rule-test-evidence-core.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const defaultSkillRoot = path.resolve(scriptDirectory, "..");
@@ -156,14 +157,17 @@ export function validateSemanticRuleRegistry(
   registry,
   { skillRoot = defaultSkillRoot, repositoryRoot = path.resolve(skillRoot, "..", "..") } = {}
 ) {
+  const testEvidence = createSemanticRuleTestEvidenceReader({ repositoryRoot, skillRoot });
+  const testEvidenceMode = testEvidence.mode;
   const findings = [];
   const add = (code, findingPath, message) => findings.push({ code, path: findingPath, message });
   const sourceCache = new Map();
   const readSource = (relativePath, findingPath) => {
     if (sourceCache.has(relativePath)) return sourceCache.get(relativePath);
     try {
-      const sourceRoot = relativePath.startsWith("test/portable-skill/") ? repositoryRoot : skillRoot;
-      const source = fs.readFileSync(resolveRegularFile(sourceRoot, relativePath), "utf8");
+      const source = relativePath.startsWith("test/portable-skill/")
+        ? testEvidence.read(relativePath)
+        : fs.readFileSync(resolveRegularFile(skillRoot, relativePath), "utf8");
       sourceCache.set(relativePath, source);
       return source;
     } catch (error) {
@@ -175,7 +179,7 @@ export function validateSemanticRuleRegistry(
 
   if (!isPlainObject(registry)) {
     add("REGISTRY_TYPE_INVALID", "$", "Semantic rule registry must be one plain object.");
-    return report(findings, 0);
+    return report(findings, 0, [], undefined, testEvidenceMode);
   }
   requireExactKeys(registry, TOP_LEVEL_KEYS, "$", add);
   if (registry.$schema !== SEMANTIC_RULE_REGISTRY_V1_SCHEMA_ID) add("REGISTRY_SCHEMA_ID_INVALID", "$.$schema", "Unexpected semantic rule registry schema id.");
@@ -202,7 +206,7 @@ export function validateSemanticRuleRegistry(
   categoryValidation.claimed = registry.scope?.completeCanonicalRuleCategoryCoverageClaimed === true;
   if (!Array.isArray(registry.rules) || registry.rules.length === 0) {
     add("REGISTRY_RULES_INVALID", "$.rules", "Registry rules must be a non-empty array.");
-    return report(findings, 0, [], categoryValidation);
+    return report(findings, 0, [], categoryValidation, testEvidenceMode);
   }
 
   const findingOwners = new Map();
@@ -265,7 +269,7 @@ export function validateSemanticRuleRegistry(
     if (!sameArray(encounteredIds, sorted)) add("RULE_ORDER_INVALID", "$.rules", "Semantic rules must be sorted by stable id.");
   }
   const namespaceInventory = validateManagedNamespaceInventory(managedNamespaces, findingOwners, readSource, add);
-  return report(findings, registry.rules.length, namespaceInventory, categoryValidation);
+  return report(findings, registry.rules.length, namespaceInventory, categoryValidation, testEvidenceMode);
 }
 
 export function assertSemanticRuleRegistry(registry, options = undefined) {
@@ -651,7 +655,13 @@ function namespaceIdentity({ ownerFile, prefix }) {
   return `${ownerFile}:${prefix}`;
 }
 
-function report(findings, ruleCount, namespaceInventory = [], categoryValidation = { claimed: false, complete: false, inventory: [] }) {
+function report(
+  findings,
+  ruleCount,
+  namespaceInventory = [],
+  categoryValidation = { claimed: false, complete: false, inventory: [] },
+  testEvidenceMode = "unknown"
+) {
   const sortedFindings = [...findings].sort((left, right) => (
     left.path.localeCompare(right.path) || left.code.localeCompare(right.code) || left.message.localeCompare(right.message)
   ));
@@ -666,6 +676,7 @@ function report(findings, ruleCount, namespaceInventory = [], categoryValidation
     canonicalRuleCategoryInventory: categoryValidation.inventory,
     managedNamespaceCompletenessClaimed: namespaceInventory.length > 0,
     managedNamespaceInventory: namespaceInventory,
+    testEvidenceMode,
     ruleCount,
     findings: sortedFindings
   };
