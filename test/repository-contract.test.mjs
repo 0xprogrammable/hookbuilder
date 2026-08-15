@@ -243,8 +243,9 @@ test("global skill boundaries apply v4 mechanics conditionally and distinguish d
   );
   assert.match(
     skill,
-    /description: Use only to .*complete Programmable or Uniswap v4 project\. Never use for questions\/explanations, even about v4;/u
+    /description: Use only when the user asks to .*complete Programmable or Uniswap v4 project; this includes architecture or brainstorming that explicitly continues into implementation\. Do not use for explanation-only or brainstorming-only questions;/u
   );
+  assert.match(skill, /For design-first requests with explicit implementation intent,[\s\S]*continue through the Golden path in the same task/u);
   assert.match(skill, /For v4 start with all 14 permissions disabled\./u);
   assert.match(skill, /for canonical v4 cover all four direction\/exactness\s+quadrants and prove support or pre-effects rejection\./u);
   assert.match(skill, /Hidden mint, seizure, fee, pause, upgrade or payout redirection conflicts/u);

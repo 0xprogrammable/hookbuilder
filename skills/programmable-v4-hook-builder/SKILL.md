@@ -1,6 +1,6 @@
 ---
 name: programmable-v4-hook-builder
-description: Use only to design, build, repair, review, test, upgrade, or submit a complete Programmable or Uniswap v4 project. Never use for questions/explanations, even about v4; generic Solidity/ERC20/repo work; skill install/discovery; or non-blockchain uses.
+description: Use only when the user asks to build, implement, repair, review, test, upgrade, or submit a complete Programmable or Uniswap v4 project; this includes architecture or brainstorming that explicitly continues into implementation. Do not use for explanation-only or brainstorming-only questions; generic Solidity/ERC20/repository work; skill installation/discovery; or non-blockchain uses.
 license: MIT
 ---
 
@@ -10,6 +10,8 @@ license: MIT
 
 Build the smallest complete evidence-backed repository, not snippets. Use Autopilot;
 after isolated failure run `context --mode repair --brief`. Ask only for a material owner decision.
+For design-first requests with explicit implementation intent, brainstorm only enough to select the architecture, then
+continue through the Golden path in the same task; do not stop at a proposal.
 
 Separate eligibility, safety, review, Registry acceptance, deployment and availability; claim each from its own
 evidence and authority.

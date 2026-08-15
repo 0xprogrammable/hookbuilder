@@ -120,6 +120,7 @@ const DAILY_SENTINEL_TRIGGER_KEYS = Object.freeze([
   'language',
   'prompt',
 ]);
+const COMPLETE_PROJECT_DELIVERY_INTENT = /\b(?:build|implement|create|turn|repair|review|test|upgrade|submit|prepare|bau(?:e|en|t)?|implementier(?:e|en|t)?|erstell(?:e|en|t)?|reparier(?:e|en|t)?|prüf(?:e|en|t)?|test(?:e|en|t)?|verbesser(?:e|n|t)?|bereit(?:e|en|t)?|reich(?:e|en|t)?)\b/iu;
 
 export class EvalValidationError extends Error {
   constructor(issues) {
@@ -472,12 +473,18 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
     implicitV4Work.length === 4,
     'daily sentinel: positive prompts must contain exactly four implicit v4 build intents',
   );
+  for (const [index, { prompt }] of positivePrompts.entries()) {
+    addIssue(
+      issues,
+      COMPLETE_PROJECT_DELIVERY_INTENT.test(prompt ?? ''),
+      `daily sentinel: positive[${index}] must express complete-project delivery rather than explanation-only or brainstorming-only intent`,
+    );
+  }
   for (const [index, { prompt }] of implicitV4Work.entries()) {
     addIssue(
       issues,
-      /\bUniswap(?:[\s-]+)v4\b/iu.test(prompt ?? '')
-        && /\b(?:design|architect|build|create|turn|repair|review|test|upgrade|submit|prepare|entwirf|architekt|bau(?:e|en|t)?|erstell(?:e|en|t)?|reparier(?:e|en|t)?|prüf(?:e|en|t)?|test(?:e|en|t)?|verbesser(?:e|n|t)?|bereit(?:e|en|t)?|reich(?:e|en|t)?)\b/iu.test(prompt ?? ''),
-      `daily sentinel: implicit positive[${index}] must name Uniswap v4 and a build, repair, review, test, or submission action`,
+      /\bUniswap(?:[\s-]+)v4\b/iu.test(prompt ?? ''),
+      `daily sentinel: implicit positive[${index}] must name Uniswap v4`,
     );
   }
   for (const group of ['positive', 'negative']) {

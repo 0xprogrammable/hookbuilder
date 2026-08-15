@@ -125,7 +125,7 @@ test('canonical eval suite passes deterministic structure validation', () => {
     dailySentinelPositiveTriggerCount: 5,
     dailySentinelNegativeTriggerCount: 5,
     dailySentinelQualification: 'STRUCTURE_AND_COVERAGE_ONLY',
-    dailySentinelSha256: '4f677d0221b7b1a27eada449f1853b7b68c40f6b4c038025d5146786fe8dde02',
+    dailySentinelSha256: 'a48dde811854c004afa83bf37a02ee90715a6c328234f591d49d31a15e469844',
     e2ePublicResponseCaseCount: 47,
     e2eSealedRepositoryEnvelopeCount: 24,
     e2eComparablePublicRepositoryCaseCount: 0,
@@ -160,7 +160,7 @@ test('daily sentinel reuses public cases and keeps balanced trigger coverage', (
   );
   for (const { prompt } of sentinel.triggerPrompts.positive.filter(({ prompt }) => !/\bProgrammable\b/u.test(prompt))) {
     assert.match(prompt, /\bUniswap(?:[\s-]+)v4\b/iu);
-    assert.match(prompt, /\b(?:design|build|turn|repair|review|test|upgrade|prepare|bau(?:e|en|t)?|bereit(?:e|en|t)?)\b/iu);
+    assert.match(prompt, /\b(?:build|implement|repair|review|test|upgrade|prepare|bau(?:e|en|t)?|implementier(?:e|en|t)?|reparier(?:e|en|t)?|prüf(?:e|en|t)?|test(?:e|en|t)?|verbesser(?:e|n|t)?|bereit(?:e|en|t)?|reich(?:e|en|t)?)\b/iu);
   }
   assert.ok(
     sentinel.triggerPrompts.negative.every(({ prompt }) => !/\bProgrammable\b/u.test(prompt)),
@@ -185,6 +185,34 @@ test('daily sentinel reuses public cases and keeps balanced trigger coverage', (
     (temporaryRoot) => {
       const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
       const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
+      candidate.triggerPrompts.positive.find(({ id }) => id === 'implicit-design-then-build-de').prompt =
+        'Entwirf mir ein paar mögliche Architekturen für einen Uniswap-v4-Hook; wir wollen heute nur brainstormen.';
+      fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /positive\[\d+\] must express complete-project delivery rather than explanation-only or brainstorming-only intent/u,
+    ),
+  );
+
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
+      const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
+      candidate.triggerPrompts.positive.find(({ id }) => id === 'explicit-design-continuation-en').prompt =
+        'Use Programmable to explain the main Uniswap v4 hook architecture patterns.';
+      fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
+    },
+    (temporaryRoot) => expectInvalid(
+      temporaryRoot,
+      /positive\[\d+\] must express complete-project delivery rather than explanation-only or brainstorming-only intent/u,
+    ),
+  );
+
+  withTemporaryRepository(
+    (temporaryRoot) => {
+      const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
+      const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
       for (const record of candidate.triggerPrompts.positive) {
         if (!/\bProgrammable\b/u.test(record.prompt)) record.prompt = `Use Programmable. ${record.prompt}`;
       }
@@ -200,13 +228,13 @@ test('daily sentinel reuses public cases and keeps balanced trigger coverage', (
     (temporaryRoot) => {
       const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
       const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
-      candidate.triggerPrompts.positive.find(({ id }) => id === 'plain-language-game-en').prompt =
+      candidate.triggerPrompts.positive.find(({ id }) => id === 'game-theory-then-build-en').prompt =
         'Build a generic TypeScript utility with tests.';
       fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
     },
     (temporaryRoot) => expectInvalid(
       temporaryRoot,
-      /implicit positive\[\d+\] must name Uniswap v4 and a build, repair, review, test, or submission action/u,
+      /implicit positive\[\d+\] must name Uniswap v4/u,
     ),
   );
 });
