@@ -561,8 +561,30 @@ test("custom tradable multi-surface profiles bind complete Mizu contract and app
     assert.equal(git(fixture.output, ["check-ignore", ".programmable/custom-tradable-materialization-receipt.v1.json"]), ".programmable/custom-tradable-materialization-receipt.v1.json");
     assert.equal(git(fixture.output, ["ls-files", ".programmable/custom-tradable-materialization-receipt.v1.json"]), "");
     assert.equal(validateCustomTradableMaterializationReceipt(receipt, { repositoryRoot: fixture.output }), true);
-    assert.throws(() => validateCustomTradableMaterializationReceipt({ ...receipt, source: { ...receipt.source, tree: "0".repeat(40) } }, { repositoryRoot: fixture.output }), /PROJECT_MATERIALIZATION_RECEIPT_INVALID.*tree/iu);
     const receiptBytes = fs.readFileSync(receiptPath);
+    const assertSemanticTamperRejected = (mutate) => {
+      const tampered = structuredClone(receipt);
+      mutate(tampered);
+      fs.writeFileSync(receiptPath, `${canonicalJsonV2(tampered)}\n`);
+      try {
+        assert.throws(() => validateCustomTradableMaterializationReceipt(tampered, { repositoryRoot: fixture.output }), /PROJECT_MATERIALIZATION_RECEIPT_INVALID.*closed semantic schema/iu);
+      } finally { fs.writeFileSync(receiptPath, receiptBytes); }
+    };
+    if (specification.id === "web") {
+      assertSemanticTamperRejected((value) => { value.source.tree = "0".repeat(40); });
+      assertSemanticTamperRejected((value) => { value.applicationId = "other-application"; });
+      assertSemanticTamperRejected((value) => { value.classification = "no-market"; });
+      assertSemanticTamperRejected((value) => { value.projectProfile = "foundry"; });
+      assertSemanticTamperRejected((value) => { value.marketRef = "other-market"; });
+      assertSemanticTamperRejected((value) => { value.intent.sha256 = `sha256:${"0".repeat(64)}`; });
+      assertSemanticTamperRejected((value) => { value.surfaces[0].semanticValidationPerformed = true; });
+      for (const key of ["commandsExecuted", "networkAccessed", "externalWritesPerformed"]) assertSemanticTamperRejected((value) => { value.observations[key] = true; });
+      assertSemanticTamperRejected((value) => { value.observations.externalActionsPerformed = ["forged-action"]; });
+      for (const key of ["approval", "audit", "deployment", "publication", "execution", "registryWrite", "launch"]) assertSemanticTamperRejected((value) => { value.authority[key] = true; });
+      assertSemanticTamperRejected((value) => { value.validation.profile = "forged-profile"; });
+      assertSemanticTamperRejected((value) => { value.unexpected = true; });
+      assertSemanticTamperRejected((value) => { value.observations.unexpected = false; });
+    }
     fs.appendFileSync(receiptPath, " ");
     assert.throws(() => validateCustomTradableMaterializationReceipt(receipt, { repositoryRoot: fixture.output }), /PROJECT_MATERIALIZATION_RECEIPT_INVALID.*exact ignored local artifact/iu);
     fs.writeFileSync(receiptPath, receiptBytes);
@@ -626,6 +648,10 @@ test("multi-surface materialization rejects missing, malformed, legacy-mixed, an
 
 test("multi-surface input rejects Git controls, component-level secret risks, and non-portable names", (t) => {
   const fixture = createMultiSurfaceFixture(t, multiSurfaceProfiles[0]);
+  const accepted = readCustomTradableSurface({ projectProfile: "foundry-web", surfaceRoot: fixture.surfaceRoot });
+  for (const allowedPath of ["src/CredentialsProvider.ts", "test/credential-validator.test.ts", "src/credentials-form.tsx"]) {
+    assert.ok(accepted.files.some(({ inputPath }) => inputPath === allowedPath), `${allowedPath} must remain an accepted ordinary source path`);
+  }
   const rejectFile = (relativePath, expected) => {
     const target = path.join(fixture.surfaceRoot, relativePath);
     fs.mkdirSync(path.dirname(target), { recursive: true });
@@ -641,7 +667,10 @@ test("multi-surface input rejects Git controls, component-level secret risks, an
   rejectFile("src/.git", /PROJECT_SURFACE_TREE_INVALID.*Git control/iu);
   rejectFile(".aws/credentials", /PROJECT_SURFACE_TREE_INVALID.*secret-risk/iu);
   fs.rmSync(path.join(fixture.surfaceRoot, ".aws"), { recursive: true });
-  rejectFile("config/clientCredentials.json", /PROJECT_SURFACE_TREE_INVALID.*secret-risk/iu);
+  rejectFile(".ssh/id_ed25519", /PROJECT_SURFACE_TREE_INVALID.*secret-risk/iu);
+  fs.rmSync(path.join(fixture.surfaceRoot, ".ssh"), { recursive: true });
+  rejectFile("config/credentials", /PROJECT_SURFACE_TREE_INVALID.*secret-risk/iu);
+  rejectFile("nested/.env.local", /PROJECT_SURFACE_TREE_INVALID.*secret-risk/iu);
   rejectFile("public/CON.txt", /PROJECT_SURFACE_TREE_INVALID.*portable ASCII/iu);
 });
 
@@ -699,14 +728,17 @@ function createMultiSurfaceFixture(t, { id }) {
   fs.writeFileSync(path.join(surfaceRoot, "package.json"), `${JSON.stringify(packageDocument, null, 2)}\n`);
   fs.writeFileSync(path.join(surfaceRoot, "package-lock.json"), `${JSON.stringify(lockDocument, null, 2)}\n`);
   fs.writeFileSync(path.join(surfaceRoot, "src/index.mjs"), `import fs from "node:fs"; fs.writeFileSync(${JSON.stringify(marker)}, "surface-ran"); export const surface = ${JSON.stringify(id)};\n`);
+  fs.writeFileSync(path.join(surfaceRoot, "src/CredentialsProvider.ts"), "export class CredentialsProvider {}\n");
+  fs.writeFileSync(path.join(surfaceRoot, "src/credentials-form.tsx"), "export const CredentialsForm = () => null;\n");
   fs.writeFileSync(path.join(surfaceRoot, "test/index.test.mjs"), `import fs from "node:fs"; fs.writeFileSync(${JSON.stringify(marker)}, "test-ran"); throw new Error("candidate tests must remain inert");\n`);
+  fs.writeFileSync(path.join(surfaceRoot, "test/credential-validator.test.ts"), "export const credentialValidatorTestFixture = true;\n");
   fs.writeFileSync(path.join(surfaceRoot, "bin/tool.sh"), "#!/bin/sh\nexit 99\n", { mode: 0o755 });
   fs.chmodSync(path.join(surfaceRoot, "bin/tool.sh"), 0o755);
   fs.writeFileSync(path.join(surfaceRoot, "public/nested/state.json"), "{\"network\":\"ethereum\"}\n");
   fs.writeFileSync(path.join(surfaceRoot, "public/[literal].txt"), Buffer.from("literal\r\nbytes\r\n", "utf8"));
   fs.writeFileSync(path.join(surfaceRoot, "--literal.txt"), "leading dash remains literal\n");
   fs.writeFileSync(path.join(surfaceRoot, "public/a/b/c/d/e/empty.dat"), "");
-  return { parent, ideaPath, sourceRoot, testRoot, surfaceRoot, output, marker, contractSource, contractTest, surfacePaths: ["--literal.txt", "bin/tool.sh", "package-lock.json", "package.json", "public/[literal].txt", "public/a/b/c/d/e/empty.dat", "public/nested/state.json", "src/index.mjs", "test/index.test.mjs"] };
+  return { parent, ideaPath, sourceRoot, testRoot, surfaceRoot, output, marker, contractSource, contractTest, surfacePaths: ["--literal.txt", "bin/tool.sh", "package-lock.json", "package.json", "public/[literal].txt", "public/a/b/c/d/e/empty.dat", "public/nested/state.json", "src/CredentialsProvider.ts", "src/credentials-form.tsx", "src/index.mjs", "test/credential-validator.test.ts", "test/index.test.mjs"] };
 }
 
 function multiSurfaceMaterializeArgs(fixture, projectProfile) {

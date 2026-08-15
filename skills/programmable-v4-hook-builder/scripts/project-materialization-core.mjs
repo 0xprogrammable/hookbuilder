@@ -19,12 +19,14 @@ import {
 import { createNoMarketProjectAuthoring } from "./project-state-core.mjs";
 import { bindTradableReferenceIntent, TRADABLE_REFERENCE_PROFILE_ID } from "./project-tradable-authoring-core.mjs";
 import { validateRepositoryPlan } from "./repository-completion-core.mjs";
+import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
 
 const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const referenceKernelRoot = path.join(skillRoot, "assets/reference-kernels/programmable-volume-fee-v2");
 const planPath = ".programmable/custom-tradable-build-plan.v1.json";
 const receiptPath = ".programmable/custom-tradable-materialization-receipt.v1.json";
 const BRIEF_MAX_OUTPUT_BYTES = 2_499;
+const receiptSurfaceLabels = Object.freeze({ foundry: null, "foundry-web": "web", "foundry-service": "service", "foundry-game": "game" });
 
 export const CUSTOM_TRADABLE_BUILD_PLAN_PATH = planPath;
 
@@ -448,6 +450,12 @@ function stageExactInventory(root, inventory) {
 }
 
 function verifyGitInventory(root, treeish, expected) {
+  const observed = readGitInventory(root, treeish);
+  assertExactInventory(observed, expected, "Git tree");
+  return observed;
+}
+
+function readGitInventory(root, treeish) {
   const records = git(root, ["ls-tree", "-r", "-z", treeish], { trim: false }).split("\0").filter(Boolean);
   const observed = records.map((record) => {
     const match = /^(100644|100755) blob ([0-9a-f]{40,64})\t([\x20-\x7e]+)$/u.exec(record);
@@ -455,7 +463,6 @@ function verifyGitInventory(root, treeish, expected) {
     const bytes = git(root, ["cat-file", "blob", match[2]], { encoding: null, trim: false });
     return { path: match[3], sha256: sha256Bytes(bytes), byteLength: bytes.length, mode: match[1] };
   }).sort((left, right) => comparePaths(left.path, right.path));
-  assertExactInventory(observed, expected, "Git tree");
   return observed;
 }
 
@@ -579,16 +586,23 @@ function customTradableMaterializationReceipt({ authored, applicationId, project
 
 export function validateCustomTradableMaterializationReceipt(receipt, { repositoryRoot } = {}) {
   const fail = (message) => { throw Object.assign(new Error(`PROJECT_MATERIALIZATION_RECEIPT_INVALID: ${message}`), { code: "PROJECT_MATERIALIZATION_RECEIPT_INVALID" }); };
-  if (receipt?.kind !== "custom-tradable-materialization-receipt" || receipt?.status !== "LOCAL_SOURCE_BINDING_VERIFIED_NOT_EXECUTED" || receipt?.validation?.status !== "VERIFIED") fail("identity or validation status is invalid");
-  const commit = git(repositoryRoot, ["rev-parse", "HEAD"]), tree = git(repositoryRoot, ["rev-parse", "HEAD^{tree}"]);
-  if (receipt?.source?.commit !== commit || receipt?.source?.tree !== tree) fail("source commit or tree does not match the emitted repository");
-  if (!Array.isArray(receipt?.repository?.files) || receipt.repository.inventorySha256 !== canonicalJsonSha256V2(receipt.repository.files)) fail("repository inventory binding is invalid");
-  try { verifyGitInventory(repositoryRoot, tree, receipt.repository.files); } catch (error) { fail(error.message); }
-  const plan = receipt.repository.files.find(({ path: filePath }) => filePath === planPath);
-  if (canonicalJsonV2(plan) !== canonicalJsonV2(receipt.plan)) fail("plan binding is invalid");
-  if (canonicalJsonV2(receipt.artifact) !== canonicalJsonV2({ path: receiptPath, tracked: false, ignored: true })) fail("receipt artifact boundary is invalid");
-  const expectedAuthority = { approval: false, audit: false, deployment: false, publication: false, execution: false, registryWrite: false, launch: false };
-  if (canonicalJsonV2(receipt.authority) !== canonicalJsonV2(expectedAuthority)) fail("authority boundary is invalid");
+  if (typeof repositoryRoot !== "string" || repositoryRoot === "") fail("repository root is required");
+  let commit, tree, repositoryFiles, trackedPlan;
+  try {
+    commit = git(repositoryRoot, ["rev-parse", "HEAD"]);
+    tree = git(repositoryRoot, ["rev-parse", "HEAD^{tree}"]);
+    repositoryFiles = readGitInventory(repositoryRoot, tree);
+    const planBytes = git(repositoryRoot, ["cat-file", "blob", `${tree}:${planPath}`], { encoding: null, trim: false });
+    trackedPlan = parseBoundedStrictJsonBytes(planBytes, { maxSourceBytes: 2_000_000, maxDepth: 128, maxNodes: 100_000 });
+    if (!planBytes.equals(jsonBytes(trackedPlan))) fail("tracked plan is not canonical JSON");
+  } catch (error) {
+    if (error?.code === "PROJECT_MATERIALIZATION_RECEIPT_INVALID") throw error;
+    fail(`tracked repository evidence is invalid: ${error.message}`);
+  }
+  const plan = repositoryFiles.find(({ path: filePath }) => filePath === planPath);
+  if (plan === undefined) fail("tracked plan inventory record is missing");
+  const expected = deriveCustomTradableReceipt({ trackedPlan, commit, tree, repositoryFiles, plan, fail });
+  if (!closedJsonEqual(receipt, expected)) fail("receipt does not match the closed semantic schema derived from its tracked plan, inventory, and profile");
   const receiptBytes = jsonBytes(receipt), receiptFile = path.join(repositoryRoot, receiptPath);
   let observedReceipt;
   try { observedReceipt = fs.readFileSync(receiptFile); } catch { fail("receipt file is missing"); }
@@ -597,6 +611,79 @@ export function validateCustomTradableMaterializationReceipt(receipt, { reposito
   try { verifyWorkingInventory(repositoryRoot, workingInventory); } catch (error) { fail(error.message); }
   return true;
 }
+
+function deriveCustomTradableReceipt({ trackedPlan, commit, tree, repositoryFiles, plan, fail }) {
+  if (trackedPlan?.schemaVersion !== "1.0.0" || trackedPlan?.kind !== "custom-tradable-local-build-plan"
+    || trackedPlan?.status !== "SOURCE_AND_TESTS_MATERIALIZED" || trackedPlan?.classification !== "tradable"
+    || trackedPlan?.architecture !== "custom" || !Object.hasOwn(receiptSurfaceLabels, trackedPlan?.projectProfile)) fail("tracked plan identity is invalid");
+  if (!validReceiptSlug(trackedPlan.applicationId) || !validReceiptSlug(trackedPlan.marketRef)) fail("tracked application or market identity is invalid");
+  const intent = { encoding: trackedPlan?.intent?.encoding, byteLength: trackedPlan?.intent?.byteLength, sha256: trackedPlan?.intent?.sha256 };
+  if (!closedJsonEqual(trackedPlan.intent, intent) || intent.encoding !== "utf-8" || !Number.isSafeInteger(intent.byteLength) || intent.byteLength < 1 || !/^sha256:[0-9a-f]{64}$/u.test(intent.sha256 ?? "")) fail("tracked intent binding is invalid");
+  const planAuthorization = { approval: false, signature: false, deployment: false, publication: false, execution: false, registryWrite: false };
+  const planLaunch = { status: "NOT_SUBMITTED", tradeManifest: "UNRESOLVED_UNTIL_SUBMISSION", policyEvaluationStage: "submission", policyIsSourceAllowlist: false, approval: false, audit: false, deployment: false, publication: false, externalActionsPerformed: [] };
+  if (!closedJsonEqual(trackedPlan.authorization, planAuthorization) || !closedJsonEqual(trackedPlan.launch, planLaunch)
+    || !closedJsonEqual(trackedPlan.materializationReceipt, { path: receiptPath, status: "LOCAL_TRANSIENT_GENERATED_AFTER_COMMIT" })) fail("tracked authority or receipt boundary is invalid");
+  if (!Array.isArray(trackedPlan.commands) || trackedPlan.commands.length === 0
+    || trackedPlan.commands.some((commandValue) => commandValue?.status !== "NOT_RUN" || !closedJsonEqual(commandValue?.externalActionsPerformed, []))) fail("tracked commands do not support a not-executed observation");
+  const surfaces = deriveReceiptSurfaces(trackedPlan, repositoryFiles, fail);
+  return {
+    schemaVersion: "1.0.0",
+    kind: "custom-tradable-materialization-receipt",
+    status: "LOCAL_SOURCE_BINDING_VERIFIED_NOT_EXECUTED",
+    applicationId: trackedPlan.applicationId,
+    classification: "tradable",
+    projectProfile: trackedPlan.projectProfile,
+    marketRef: trackedPlan.marketRef,
+    intent,
+    source: { commit, tree },
+    plan,
+    repository: { inventoryProfile: "exact-regular-files-git-modes-v1", emptyDirectories: "OMITTED", files: repositoryFiles, inventorySha256: canonicalJsonSha256V2(repositoryFiles) },
+    surfaces,
+    artifact: { path: receiptPath, tracked: false, ignored: true },
+    observations: { commandsExecuted: false, networkAccessed: false, externalWritesPerformed: false, externalActionsPerformed: [] },
+    authority: { approval: false, audit: false, deployment: false, publication: false, execution: false, registryWrite: false, launch: false },
+    validation: { status: "VERIFIED", profile: "exact-commit-tree-clone-working-files-v1" }
+  };
+}
+
+function deriveReceiptSurfaces(trackedPlan, repositoryFiles, fail) {
+  const label = receiptSurfaceLabels[trackedPlan.projectProfile];
+  if (label === null) {
+    if (!closedJsonEqual(trackedPlan.surfaces, [])) fail("foundry profile must not declare an application surface");
+    return [];
+  }
+  if (!Array.isArray(trackedPlan.surfaces) || trackedPlan.surfaces.length !== 1) fail("multi-surface profile requires exactly one tracked surface");
+  const surface = trackedPlan.surfaces[0], root = `surfaces/${label}`, generatedConfig = `${root}/programmable-surface.json`;
+  if (surface?.id !== label || surface?.kind !== "application-surface" || surface?.layoutLabel !== label || surface?.root !== root
+    || surface?.generatedConfig !== generatedConfig || !Array.isArray(surface?.buildProfiles) || surface.buildProfiles.length === 0) fail("tracked surface identity does not match its owner-declared profile");
+  if (![surface.source, surface.tests, surface.configuration].every((group) => Array.isArray(group) && group.length > 0)) fail("tracked surface bindings are incomplete");
+  const bindings = [...surface.source, ...surface.tests, ...surface.configuration].sort((left, right) => comparePaths(left?.path ?? "", right?.path ?? ""));
+  const seen = new Set();
+  for (const binding of bindings) {
+    const normalized = { path: binding?.path, sha256: binding?.sha256, byteLength: binding?.byteLength, mode: binding?.mode };
+    if (!closedJsonEqual(binding, normalized) || typeof normalized.path !== "string" || !normalized.path.startsWith(`${root}/`)
+      || !/^sha256:[0-9a-f]{64}$/u.test(normalized.sha256 ?? "") || !Number.isSafeInteger(normalized.byteLength) || normalized.byteLength < 0
+      || !["100644", "100755"].includes(normalized.mode) || seen.has(normalized.path)) fail("tracked surface file binding is invalid");
+    seen.add(normalized.path);
+  }
+  const inventorySha256 = canonicalJsonSha256V2(bindings);
+  const trackedSurfaceFiles = repositoryFiles.filter(({ path: filePath }) => filePath.startsWith(`${root}/`) && filePath !== generatedConfig);
+  if (surface.inventorySha256 !== inventorySha256 || !closedJsonEqual(trackedSurfaceFiles, bindings)
+    || !repositoryFiles.some(({ path: filePath }) => filePath === generatedConfig)) fail("tracked surface inventory does not match the committed repository");
+  return [{ id: label, kind: "application-surface", layoutLabel: label, root, inventorySha256, semanticValidationPerformed: false, lockEvidence: "CALLER_SUPPLIED_LOCK_BYTES_ONLY" }];
+}
+
+function closedJsonEqual(actual, expected) {
+  if (Array.isArray(expected)) return Array.isArray(actual) && actual.length === expected.length && expected.every((value, index) => closedJsonEqual(actual[index], value));
+  if (expected !== null && typeof expected === "object") {
+    if (actual === null || typeof actual !== "object" || Array.isArray(actual)) return false;
+    const actualKeys = Object.keys(actual).sort(comparePaths), expectedKeys = Object.keys(expected).sort(comparePaths);
+    return closedJsonEqual(actualKeys, expectedKeys) && expectedKeys.every((key) => closedJsonEqual(actual[key], expected[key]));
+  }
+  return Object.is(actual, expected);
+}
+
+function validReceiptSlug(value) { return typeof value === "string" && value.length <= 120 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value); }
 
 function addAuthoredFile(files, filePath, bytes) {
   if (files.has(filePath)) throw Object.assign(new Error(`authored output path collision: ${filePath}`), { code: "PROJECT_SURFACE_TREE_COLLISION" });

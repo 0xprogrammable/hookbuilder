@@ -79,7 +79,8 @@ plan boundary, then exits 2 with `PROJECT_EXTERNAL_SANDBOX_REQUIRED`:
 Custom tradable materialization commits `.programmable/custom-tradable-build-plan.v1.json`. It then emits the ignored,
 local-only `.programmable/custom-tradable-materialization-receipt.v1.json` outside the commit so the receipt can bind the
 actual emitted commit/tree without a self-reference. Validation checks that receipt against every committed path, byte,
-Git mode and cloned working file. Commands remain `NOT_RUN`; absence of execution evidence does not erase the
+Git mode and cloned working file, and reconstructs its closed semantic schema from the tracked plan and declared profile.
+Commands remain `NOT_RUN`; absence of execution evidence does not erase the
 implemented repository or turn its source status into `EXTERNAL_BLOCKED`.
 
 For iterative developer feedback only, an already active workspace sandbox may run the generated plan's explicit

@@ -426,8 +426,7 @@ function surfaceSecretRiskPath(filePath) {
   const basename = segments.at(-1);
   return segments.some((segment) => rejectedSurfaceSecretComponents.has(segment)
     || segment === ".env"
-    || segment.startsWith(".env.")
-    || segment.includes("credential"))
+    || segment.startsWith(".env."))
     || rejectedSurfaceSecretNames.has(basename)
     || /\.(?:key|p12|pfx|pem)$/u.test(basename);
 }
