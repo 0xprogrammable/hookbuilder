@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 
-// Reviewed v0.9.0 growth: the repair-attempt contract/test/loop plus the hash-bound activation contract,
-// compact v4 reasoning kernel, and deterministic activation/brief implementation.
-export const MAX_PORTABLE_FILES = 686;
+// Reviewed generic-handoff growth: one contract/schema, routed reference, deterministic preview CLI/core and
+// direct regression suite. Keep future additions explicit instead of turning this into an unbounded allowance.
+export const MAX_PORTABLE_FILES = 691;
 
 export function createPortableFilesystem(skillRoot) {
   function relative(target) {
