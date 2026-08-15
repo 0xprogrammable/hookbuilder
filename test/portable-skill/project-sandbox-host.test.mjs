@@ -31,10 +31,16 @@ test("portable host module exposes no completion verifier or signing helper", ()
   assert.equal(Object.hasOwn(sandboxHostCore, "verifyProjectSandboxHostCompletionV1"), false);
   assert.equal(Object.hasOwn(sandboxHostCore, "signProjectSandboxHostAttestationV1"), false);
   assert.equal(Object.hasOwn(sandboxHostCore, "projectSandboxHostAttestationPayloadV1"), false);
-  const source = fs.readFileSync(new URL("../../skills/programmable-v4-hook-builder/scripts/project-sandbox-host-core.mjs", import.meta.url), "utf8");
+  const sources = [
+    "../../skills/programmable-v4-hook-builder/scripts/project-sandbox-host-contract.mjs",
+    "../../skills/programmable-v4-hook-builder/scripts/project-sandbox-host-core.mjs",
+    "../../skills/programmable-v4-hook-builder/scripts/project-sandbox-host-invocation.mjs"
+  ].map((relativePath) => fs.readFileSync(new URL(relativePath, import.meta.url), "utf8"));
   const cliSource = fs.readFileSync(new URL("../../skills/programmable-v4-hook-builder/scripts/project-sandbox-host.mjs", import.meta.url), "utf8");
-  assert.doesNotMatch(source, /PROJECT_SANDBOX_HOST_COMPLETION_VERIFIED/u);
-  assert.doesNotMatch(source, /executionCompleted:\s*true/u);
+  for (const source of sources) {
+    assert.doesNotMatch(source, /PROJECT_SANDBOX_HOST_COMPLETION_VERIFIED/u);
+    assert.doesNotMatch(source, /executionCompleted:\s*true/u);
+  }
   assert.doesNotMatch(cliSource, /operation === "verify"/u);
   assert.match(cliSource, /operation === "inspect-evidence"/u);
 });
