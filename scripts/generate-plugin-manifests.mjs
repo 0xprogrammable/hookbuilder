@@ -277,6 +277,7 @@ function writeAtomically(target, contents, mode = 0o644) {
   if (fs.existsSync(temporary)) throw new Error(`refusing to reuse temporary file ${temporary}`);
   try {
     fs.writeFileSync(temporary, contents, { encoding: "utf8", flag: "wx", mode });
+    fs.chmodSync(temporary, mode);
     fs.renameSync(temporary, target);
   } catch (error) {
     if (fs.existsSync(temporary)) fs.rmSync(temporary, { force: true });
