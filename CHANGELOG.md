@@ -11,6 +11,8 @@ All notable Builder changes are recorded here. Historical releases remain immuta
   time, memory and output bounds.
 - Added a regression proving that a syntactically valid module with a missing import and a side effect is inspected
   without linking or executing, while malformed syntax remains a reported failure.
+- Made the ambient temporary-directory regression deterministic under parallel repository tests by asserting its own
+  added and removed probe instead of requiring unrelated system temporary entries to remain unchanged.
 - Regenerated the canonical Plugin payload and refreshed the source-bound package receipts for the exact candidate.
 
 ### Evidence boundary
