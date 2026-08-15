@@ -10,7 +10,7 @@ import { validateReviewedDriftReceipt } from "./reviewed-drift-receipt-core.mjs"
 import { validateAgainstSchema } from "./submission-core.mjs";
 import { validateStarterCatalogClosure, validateTemplateCatalogHistory } from "./verify-skill-catalog-core.mjs";
 import { scanPins, validateKnowledgeRoutingClosure, validateLocalModuleClosure } from "./verify-skill-closure-core.mjs";
-import { INSTALLED_RUNTIME_SMOKE, REQUIRED_REPOSITORY_TESTS, validateScriptsAndTests } from "./verify-skill-execution-core.mjs";
+import { INSTALLED_RUNTIME_SMOKE, validateRepositoryTestInventory, validateScriptsAndTests } from "./verify-skill-execution-core.mjs";
 import { MAX_PORTABLE_FILES, createPortableFilesystem, isForbiddenPortableDirectory, isInside, resolveSkillRootWithoutSymlinks, writeDiagnostics } from "./verify-skill-filesystem-core.mjs";
 import { validateInstalledProvenance } from "./verify-skill-provenance-core.mjs";
 import { markdownHeadingAnchors, parseCanonicalYamlMapping, redactInstalledLocalPathForPortableScan } from "./verify-skill-yaml-core.mjs";
@@ -444,28 +444,7 @@ for (const relativePath of required) {
   if (!entry?.stat.isFile()) errors.push(`missing ${relativePath}`);
 }
 
-if (repositoryRoot !== null) {
-  const repositoryTestDirectory = path.join(repositoryRoot, "test", "portable-skill");
-  const discoveredRepositoryTestPaths = fs.readdirSync(repositoryTestDirectory)
-    .filter((name) => name.endsWith(".test.mjs"))
-    .sort()
-    .map((name) => `test/portable-skill/${name}`);
-  const declaredRepositoryTestSet = new Set(REQUIRED_REPOSITORY_TESTS);
-  const discoveredRepositoryTestSet = new Set(discoveredRepositoryTestPaths);
-  const missingRepositoryTestPaths = REQUIRED_REPOSITORY_TESTS
-    .filter((relativePath) => !discoveredRepositoryTestSet.has(relativePath))
-    .sort();
-  const undeclaredRepositoryTestPaths = discoveredRepositoryTestPaths
-    .filter((relativePath) => !declaredRepositoryTestSet.has(relativePath));
-  const duplicateRepositoryTestDeclarations = REQUIRED_REPOSITORY_TESTS
-    .filter((relativePath, index) => REQUIRED_REPOSITORY_TESTS.indexOf(relativePath) !== index);
-  errors.push(...[[
-      "repository test inventory must exactly match declared required tests",
-      `missing files: ${missingRepositoryTestPaths.join(", ") || "none"}`,
-      `undeclared tests: ${undeclaredRepositoryTestPaths.join(", ") || "none"}`,
-      `duplicate declarations: ${[...new Set(duplicateRepositoryTestDeclarations)].sort().join(", ") || "none"}`
-    ].join("; ")].filter(() => missingRepositoryTestPaths.length + undeclaredRepositoryTestPaths.length + duplicateRepositoryTestDeclarations.length > 0));
-}
+if (repositoryRoot !== null) validateRepositoryTestInventory({ errors, repositoryRoot });
 
 const packageBytes = packageEntries.reduce((total, entry) => total + entry.stat.size, 0);
 if (packageFiles.length > MAX_PORTABLE_FILES) errors.push(`portable package has ${packageFiles.length} files; keep it at or below ${MAX_PORTABLE_FILES}`);

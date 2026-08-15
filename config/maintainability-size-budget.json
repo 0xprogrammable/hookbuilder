@@ -117,8 +117,8 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/cli.mjs",
-          "observedLines": 541,
-          "observedBytes": 26420,
+          "observedLines": 539,
+          "observedBytes": 26310,
           "observedComplexityScore": 104,
           "observedMaxBlockDepth": 5,
           "reviewRef": "v0.10.0 reviewed generic handoff dispatch and concise golden-path help"
@@ -357,8 +357,8 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
-          "observedLines": 723,
-          "observedBytes": 36174,
+          "observedLines": 713,
+          "observedBytes": 35696,
           "observedComplexityScore": 90,
           "observedMaxBlockDepth": 5,
           "reviewRef": "v0.10.0 reviewed lean-package manifest and installed semantic-evidence verification"

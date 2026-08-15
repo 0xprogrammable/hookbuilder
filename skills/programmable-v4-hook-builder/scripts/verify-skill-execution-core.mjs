@@ -1,4 +1,5 @@
 import childProcess from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 import process from "node:process";
@@ -34,6 +35,27 @@ v4-hook-semantic-contract verify-package-build-info verify-skill-static
 `.trim().split(/\s+/u).map((stem) => `test/portable-skill/${stem}.test.mjs`));
 
 export const INSTALLED_RUNTIME_SMOKE = "scripts/installed-runtime-smoke.mjs";
+
+export function validateRepositoryTestInventory({ errors, repositoryRoot }) {
+  const discovered = fs.readdirSync(path.join(repositoryRoot, "test", "portable-skill"))
+    .filter((name) => name.endsWith(".test.mjs"))
+    .sort()
+    .map((name) => `test/portable-skill/${name}`);
+  const declaredSet = new Set(REQUIRED_REPOSITORY_TESTS);
+  const discoveredSet = new Set(discovered);
+  const missing = REQUIRED_REPOSITORY_TESTS.filter((relativePath) => !discoveredSet.has(relativePath)).sort();
+  const undeclared = discovered.filter((relativePath) => !declaredSet.has(relativePath));
+  const duplicates = REQUIRED_REPOSITORY_TESTS
+    .filter((relativePath, index) => REQUIRED_REPOSITORY_TESTS.indexOf(relativePath) !== index);
+  if (missing.length + undeclared.length + duplicates.length > 0) {
+    errors.push([
+      "repository test inventory must exactly match declared required tests",
+      `missing files: ${missing.join(", ") || "none"}`,
+      `undeclared tests: ${undeclared.join(", ") || "none"}`,
+      `duplicate declarations: ${[...new Set(duplicates)].sort().join(", ") || "none"}`
+    ].join("; "));
+  }
+}
 
 export function createDeterministicTestBatches(testFiles) {
   return Array.from({ length: TEST_BATCH_COUNT }, (_, batchIndex) =>

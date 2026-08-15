@@ -454,11 +454,9 @@ function globalHelp() {
     "  policy        Read current launch requirements.",
     "  context       Route the confirmed task.",
     "  project       Materialize and verify output.",
-    "  handoff       Preview bound submission identity; never writes.",
-    "Legacy commands remain available through --help --json.",
-    "",
-    "Start: cli.mjs doctor -> cli.mjs policy -> cli.mjs context --mode autopilot -> cli.mjs project --help",
-    "Optional templates: cli.mjs templates list",
+    "  handoff       Preview bound handoff; no writes",
+    "Start: doctor -> policy -> context --mode autopilot -> project --help -> handoff --help",
+    "Templates: cli.mjs templates list",
     "All commands: cli.mjs --help --json"
   ].join("\n");
 }
