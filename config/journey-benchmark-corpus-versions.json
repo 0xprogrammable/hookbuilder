@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "programmable-journey-corpus-version-authority",
+  "policy": "APPEND_ONLY_NEW_VERSION_REQUIRED_FOR_BYTE_CHANGES",
+  "versions": [
+    {
+      "version": "v1",
+      "corpusId": "programmable-community-journeys-v1",
+      "path": "evals/journey-benchmark/v1/corpus.json",
+      "sha256": "81f27c3ad1acd1ea676ba982fe1e08a361e3d05f941a71c5a0e526db6fd7fe3f",
+      "status": "IMMUTABLE"
+    }
+  ]
+}

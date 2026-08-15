@@ -6,24 +6,30 @@ malformed input, missing Foundry, denied deployment/GitHub authority, and untrus
 deliberately public and must never be described as a blind holdout.
 
 The existing encrypted `evals/holdout/` population remains a separate evidence lane. This directory contains no
-holdout plaintext, key, decrypted metadata, membership oracle, or derived case list. `v1/corpus.sha256` freezes the
-public bytes independently.
+holdout plaintext, key, decrypted metadata, membership oracle, or derived case list. `v1/corpus.sha256` is a
+co-versioned tamper-detection checksum, not an independent freeze. The independent in-repository version authority is
+`config/journey-benchmark-corpus-versions.json`, backed by a hard-coded loader/test pin. The pinned v1 bytes are
+immutable: changing them requires a new corpus version instead of regenerating the adjacent checksum.
 
 ## What the harness measures
 
 Every subject runs the same case and repetition matrix. The scorecard records:
 
 - exact skill `SKILL.md` and full-directory inventory hashes before and after the run;
-- per-turn activation decisions, activation-evidence class, activated references and their verified installed bytes;
+- separately invoked per-turn activation decisions, activation-evidence class, activated references and their verified
+  installed bytes;
+- intermediate response and workspace-state hashes carried into the next turn;
 - response, result inventory and optional Git commit/tree hashes;
 - input/output/total tokens when available, tool calls, tool errors, retries, elapsed time and time to useful output;
 - reported local writes, network calls, external writes and authority requests;
 - an independent judge verdict with four bounded human-readable score dimensions;
 - candidate or competitor deltas against the frozen baseline for correctness and efficiency metrics.
 
-The subject sees only the public messages, run identity, frozen skill identity and an empty workspace. It does
-not receive the expected activation decision, outcome, behaviors or rubric. The judge receives those fields only after
-the subject has finished.
+The subject sees only the current public user turn, prior response/state receipts, run identity, frozen skill identity,
+and a case-specific deterministic workspace. Existing-repository repair, upgrade, review and submission cases receive
+the pinned non-empty v1 fixture; all other cases start empty. The subject does not receive the expected activation
+decision, outcome, behaviors or rubric. The judge receives those fields only after the final subject turn and cannot
+change a subject request, result receipt or workspace without failing the run.
 
 Adapter reports are not a trusted host trace. Even a successful provider-backed scorecard remains
 `PROVIDER_BACKED_ADAPTER_REPORTED_UNVERIFIED` until an external trust root authenticates model identity, activation,
@@ -54,6 +60,11 @@ environment variables in `environmentAllowlist` are forwarded.
   "repetitions": 3,
   "timeoutMs": 900000,
   "environmentAllowlist": ["CODEX_HOME"],
+  "sandbox": {
+    "wrapperArgv": ["/absolute/external/sandbox-wrapper"],
+    "contractPath": "/absolute/external/sandbox-contract.json",
+    "deniedSentinelPath": "/absolute/external/denied-sentinel"
+  },
   "subjects": [
     {
       "id": "v0-9-1-baseline",
@@ -95,9 +106,19 @@ node scripts/evals/run-journey-benchmark.mjs \
 ```
 
 The output directory must not exist and must resolve outside the repository. It contains raw subject requests/results,
-judge requests/results, generated workspaces and `scorecard.json`. The harness invokes adapters without a shell, caps
-concurrency at four, limits captures and result inventories, rejects symlinked evidence, and verifies that every skill
-inventory is unchanged after execution.
+judge requests/results, generated workspaces and `scorecard.json`. Provider mode refuses to execute until the existing
+external subject-sandbox contract validates the wrapper, denied repository/sentinel paths, separate UID/container/VM
+boundary, path restrictions, role-scoped network policy and descendant teardown. Each runtime receipt must bind those
+claims to its exact invocation. Adapters receive a fixed `/usr/bin:/bin` PATH and never inherit the caller's HOME, PATH
+or TMPDIR; only named non-forbidden variables are forwarded inside the wrapper request.
+
+Fake mode invokes only the deterministic fixture adapters directly, without a shell, but it runs under the caller's UID
+and provides no filesystem, network or process isolation. It is therefore only a local harness regression. The external
+wrapper and its runtime receipts are operator-authored rather than cryptographically verified, so even provider mode
+remains `PROVIDER_BACKED_ADAPTER_REPORTED_UNVERIFIED` and cannot satisfy the release gate. Both modes cap concurrency at
+four, limit captures and result inventories, reject symlinked evidence, and verify that every skill inventory remains
+unchanged. The parent harness never runs Git commands against a subject-created repository; it inventories `.git` bytes
+and reads only a bounded regular `HEAD`/loose-ref value passively, leaving tree and dirty-state fields unmeasured.
 
 ## Adapter result contracts
 

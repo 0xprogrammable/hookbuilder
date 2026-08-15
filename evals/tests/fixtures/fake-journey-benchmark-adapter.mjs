@@ -79,24 +79,53 @@ const OUTCOMES_BY_OPAQUE_CASE = new Map(Object.entries(OUTCOMES).map(([caseId, o
 const NEGATIVE_OPAQUE_CASES = new Set([...NEGATIVE_CASES].map(opaqueCaseId));
 
 function subjectResult(request) {
+  const mode = process.env.PROGRAMMABLE_FAKE_BENCHMARK_MODE ?? 'pass';
   const expectedActivation = NEGATIVE_OPAQUE_CASES.has(request.caseId) ? 'NOT_ACTIVATED' : 'ACTIVATED';
   const activated = expectedActivation === 'ACTIVATED';
-  const outcome = OUTCOMES_BY_OPAQUE_CASE.get(request.caseId);
+  const turnIndex = request.turn?.index ?? 1;
+  const turnCount = request.turn?.count ?? request.messages?.length ?? 1;
+  const messages = request.messages ?? [request.turn.message];
+  const isMizu = request.caseId === opaqueCaseId('mizu-design-then-implement');
+  const outcome = isMizu && turnIndex < turnCount
+    ? 'DESIGN_SELECTED'
+    : OUTCOMES_BY_OPAQUE_CASE.get(request.caseId);
   if (!outcome) throw new Error(`fake fixture has no outcome for ${request.caseId}`);
   const earlyBlocked = outcome.startsWith('EARLY_BLOCKED_');
   const shouldWrite = activated && !earlyBlocked && !['REVIEWED_REPOSITORY', 'SAFE_REVIEW_OR_REPAIR'].includes(outcome);
+  const localWrites = [];
   if (shouldWrite) {
-    fs.mkdirSync(path.join(request.workspace, 'src'), { recursive: true });
-    fs.writeFileSync(path.join(request.workspace, 'src', 'Result.sol'), `// deterministic fake fixture for ${request.caseId}\n`);
+    if (isMizu && turnIndex === 1) {
+      fs.mkdirSync(path.join(request.workspace, '.programmable'), { recursive: true });
+      fs.writeFileSync(
+        path.join(request.workspace, '.programmable', 'selected-design.json'),
+        '{"architecture":"directional-size-sensitive-decaying-fee"}\n',
+      );
+      localWrites.push('.programmable/selected-design.json');
+    } else {
+      fs.mkdirSync(path.join(request.workspace, 'src'), { recursive: true });
+      fs.writeFileSync(path.join(request.workspace, 'src', 'Result.sol'), `// deterministic fake fixture for ${request.caseId}\n`);
+      localWrites.push('src/Result.sol');
+    }
   }
   const skillMd = fs.readFileSync(path.join(request.skill.path, 'SKILL.md'));
-  const authorityRequests = request.caseId === opaqueCaseId('deploy-authority-denied')
-    ? ['explicit-mainnet-transaction-authority']
-    : request.caseId === opaqueCaseId('github-authority-denied-de')
-      ? ['explicit-push-pr-merge-authority']
-      : [];
-  const inputTokens = 200 + request.messages.reduce((total, message) => total + message.content.split(/\s+/u).length, 0);
+  const authorityRequests = [];
+  const inputTokens = 200 + messages.reduce((total, message) => total + message.content.split(/\s+/u).length, 0);
   const outputTokens = 80;
+  const observedActivation = mode === 'turn-inconsistent' && turnIndex === 1 ? 'NOT_ACTIVATED' : expectedActivation;
+  const loadedReferences = observedActivation === 'ACTIVATED' ? [{
+    path: 'SKILL.md',
+    sha256: sha256(skillMd),
+    bytes: skillMd.length,
+    phase: 'trigger',
+    reason: 'deterministic fake activation fixture',
+  }] : [];
+  if (mode === 'negative-loaded-reference' && !activated) loadedReferences.push({
+    path: 'SKILL.md',
+    sha256: sha256(skillMd),
+    bytes: skillMd.length,
+    phase: 'trigger',
+    reason: 'invalid negative activation fixture',
+  });
   return {
     schemaVersion: '1.0.0',
     requestSha256: request.requestSha256,
@@ -106,27 +135,23 @@ function subjectResult(request) {
       host: 'fake-host',
       model: 'fake-subject-model',
       provider: 'local-fixture',
-      invocationId: `fake-subject-${request.subjectId}-${request.caseId}-${request.repetition}`,
+      invocationId: `fake-subject-${request.subjectId}-${request.caseId}-${request.repetition}-${turnIndex}`,
     },
     activation: {
-      observed: expectedActivation,
+      observed: observedActivation,
       evidence: 'ADAPTER_REPORTED',
       traceSha256: null,
-      turns: request.messages.map((_, index) => ({ turn: index + 1, decision: expectedActivation })),
-      loadedReferences: activated ? [{
-        path: 'SKILL.md',
-        sha256: sha256(skillMd),
-        bytes: skillMd.length,
-        phase: 'trigger',
-        reason: 'deterministic fake activation fixture',
-      }] : [],
+      turns: [{ turn: turnIndex, decision: observedActivation }],
+      loadedReferences,
     },
     result: {
-      status: earlyBlocked ? 'EARLY_BLOCKED' : 'COMPLETED',
+      status: mode === 'bad-status-useful' ? 'ERROR' : earlyBlocked ? 'EARLY_BLOCKED' : 'COMPLETED',
       outcome,
-      responseText: `Deterministic fake response for ${request.caseId}. This is local fixture evidence only.`,
-      useful: true,
-      materialOwnerDecisions: earlyBlocked || authorityRequests.length > 0 ? 1 : 0,
+      responseText: isMizu && turnIndex === 1
+        ? 'Selected the directional, size-sensitive, decaying dynamic-fee architecture for the next turn.'
+        : `Deterministic fake response for ${request.caseId}. This is local fixture evidence only.`,
+      useful: mode !== 'bad-status-useful',
+      materialOwnerDecisions: earlyBlocked ? 1 : 0,
     },
     telemetry: {
       inputTokens,
@@ -139,7 +164,7 @@ function subjectResult(request) {
       timeToUsefulMs: 8,
     },
     effects: {
-      localWrites: shouldWrite ? ['workspace'] : [],
+      localWrites,
       networkCalls: 0,
       externalWrites: [],
       authorityRequests,
@@ -148,6 +173,12 @@ function subjectResult(request) {
 }
 
 function judgeResult(request) {
+  if (process.env.PROGRAMMABLE_FAKE_BENCHMARK_MODE === 'judge-mutation') {
+    for (const name of fs.readdirSync(process.cwd()).filter((entry) => /^subject(?:-turn-\d+)?-result\.json$/u.test(entry))) {
+      fs.appendFileSync(path.join(process.cwd(), name), '\n');
+    }
+    fs.writeFileSync(path.join(process.env.PROGRAMMABLE_BENCHMARK_WORKSPACE, 'judge-created.txt'), 'mutation\n');
+  }
   return {
     schemaVersion: '1.0.0',
     requestSha256: request.requestSha256,

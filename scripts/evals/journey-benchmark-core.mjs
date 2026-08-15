@@ -2,19 +2,26 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+
+import { loadSubjectSandbox, spawnIsolated } from './e2e-sandbox-core.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_REPOSITORY_ROOT = path.resolve(SCRIPT_DIRECTORY, '../..');
 export const CORPUS_RELATIVE_PATH = 'evals/journey-benchmark/v1/corpus.json';
 export const CORPUS_DIGEST_RELATIVE_PATH = 'evals/journey-benchmark/v1/corpus.sha256';
+export const CORPUS_VERSION_AUTHORITY_RELATIVE_PATH = 'config/journey-benchmark-corpus-versions.json';
+// v1 is immutable. Any corpus-byte change requires a new corpus version and a
+// new loader route; do not update this authority for an in-place v1 edit.
+export const PINNED_V1_CORPUS_SHA256 = '81f27c3ad1acd1ea676ba982fe1e08a361e3d05f941a71c5a0e526db6fd7fe3f';
 export const BENCHMARK_SCHEMA_VERSION = '1.0.0';
 
 const MAX_CAPTURE_BYTES = 4 * 1024 * 1024;
 const MAX_RESULT_FILES = 10_000;
 const MAX_RESULT_BYTES = 128 * 1024 * 1024;
-const DEFAULT_ENVIRONMENT_NAMES = Object.freeze(['LANG', 'LC_ALL', 'PATH', 'TMPDIR', 'TZ']);
+const DEFAULT_ENVIRONMENT = Object.freeze({ LANG: 'C', LC_ALL: 'C', PATH: '/usr/bin:/bin', TZ: 'UTC' });
+const FORBIDDEN_ENVIRONMENT_ALLOWLIST_NAMES = new Set(['HOME', 'PATH', 'TMPDIR']);
 const CASE_GROUPS = Object.freeze([
   'community-regression',
   'natural-positive',
@@ -125,6 +132,7 @@ export function validateCorpusDocument(corpus, raw = JSON.stringify(corpus)) {
     'qualification',
     'schemaVersion',
     'sealedCorpusRelationship',
+    'workspaceFixtures',
   ], 'corpus');
   if (corpus.schemaVersion !== BENCHMARK_SCHEMA_VERSION) fail('SCHEMA_INVALID', 'corpus schemaVersion must be 1.0.0');
   if (corpus.corpusId !== 'programmable-community-journeys-v1') fail('SCHEMA_INVALID', 'unexpected corpusId');
@@ -151,6 +159,18 @@ export function validateCorpusDocument(corpus, raw = JSON.stringify(corpus)) {
     'naturalPositives',
   ], 'corpus.counts');
   if (!Array.isArray(corpus.cases)) fail('SCHEMA_INVALID', 'corpus.cases must be an array');
+  if (!Array.isArray(corpus.workspaceFixtures) || corpus.workspaceFixtures.length !== 1) {
+    fail('SCHEMA_INVALID', 'corpus.workspaceFixtures must contain the single v1 existing-repository fixture');
+  }
+  const [workspaceFixture] = corpus.workspaceFixtures;
+  assertExactKeys(workspaceFixture, ['caseIds', 'id', 'inventorySha256', 'source'], 'corpus.workspaceFixtures[0]');
+  if (workspaceFixture.id !== 'existing-hook-repository-v1') fail('SCHEMA_INVALID', 'workspace fixture id drifted');
+  if (workspaceFixture.source !== 'fixtures/existing-hook-repository-v1') fail('SCHEMA_INVALID', 'workspace fixture source drifted');
+  if (!/^[0-9a-f]{64}$/u.test(workspaceFixture.inventorySha256)) fail('SCHEMA_INVALID', 'workspace fixture inventorySha256 is invalid');
+  const requiredFixtureCases = ['repair-existing-hook-en', 'review-only-de', 'submission-preflight-de', 'upgrade-existing-hook-de'];
+  if (canonicalJson(workspaceFixture.caseIds) !== canonicalJson(requiredFixtureCases)) {
+    fail('SCHEMA_INVALID', 'workspace fixture caseIds must exactly bind the four existing-repository journeys');
+  }
 
   const ids = new Set();
   const derivedGroups = Object.fromEntries(CASE_GROUPS.map((group) => [group, 0]));
@@ -230,14 +250,54 @@ export function validateCorpusDocument(corpus, raw = JSON.stringify(corpus)) {
   for (const requiredText of ['directional', 'size-sensitive', 'decaying', 'Use the skill to implement']) {
     if (!mizuText.includes(requiredText)) fail('SCHEMA_INVALID', `Mizu regression is missing ${requiredText}`);
   }
+  for (const caseId of requiredFixtureCases) {
+    if (!ids.has(caseId)) fail('SCHEMA_INVALID', `workspace fixture references missing case ${caseId}`);
+  }
+  const deployAuthority = corpus.cases.find(({ id }) => id === 'deploy-authority-denied');
+  const githubAuthority = corpus.cases.find(({ id }) => id === 'github-authority-denied-de');
+  if (!deployAuthority.messages[0].content.includes('no signing wallet') || !deployAuthority.messages[0].content.includes('transaction authority')) {
+    fail('SCHEMA_INVALID', 'deployment authority case must state that signing authority is unavailable');
+  }
+  if (!/fehlen.*Credentials.*Schreibrechte.*Review.*Maintainer-Freigabe/iu.test(githubAuthority.messages[0].content)) {
+    fail('SCHEMA_INVALID', 'GitHub authority case must state that credentials and maintainer authority are unavailable');
+  }
+  if (/deploy it|pushe danach|öffne direkt|merge ihn/iu.test(`${deployAuthority.messages[0].content}\n${githubAuthority.messages[0].content}`)) {
+    fail('SCHEMA_INVALID', 'authority-denied fixtures must not themselves authorize an external write');
+  }
   return { caseCount: corpus.cases.length, counts: derived };
 }
 
 export function loadFrozenCorpus({ repositoryRoot = DEFAULT_REPOSITORY_ROOT } = {}) {
   const corpusPath = path.join(repositoryRoot, CORPUS_RELATIVE_PATH);
   const digestPath = path.join(repositoryRoot, CORPUS_DIGEST_RELATIVE_PATH);
+  const versionAuthorityPath = path.join(repositoryRoot, CORPUS_VERSION_AUTHORITY_RELATIVE_PATH);
   const { raw, value } = readJson(corpusPath, 'journey benchmark corpus');
   const validation = validateCorpusDocument(value, raw);
+  const actualDigest = sha256(Buffer.from(raw, 'utf8'));
+  const versionAuthority = readJson(versionAuthorityPath, 'journey benchmark corpus version authority');
+  assertExactKeys(versionAuthority.value, ['kind', 'policy', 'schemaVersion', 'versions'], 'corpus version authority');
+  if (
+    versionAuthority.value.schemaVersion !== BENCHMARK_SCHEMA_VERSION
+    || versionAuthority.value.kind !== 'programmable-journey-corpus-version-authority'
+    || versionAuthority.value.policy !== 'APPEND_ONLY_NEW_VERSION_REQUIRED_FOR_BYTE_CHANGES'
+    || !Array.isArray(versionAuthority.value.versions)
+    || versionAuthority.value.versions.length !== 1
+  ) fail('CORPUS_VERSION_AUTHORITY_INVALID', 'corpus version authority identity or policy drifted');
+  const [v1Authority] = versionAuthority.value.versions;
+  assertExactKeys(v1Authority, ['corpusId', 'path', 'sha256', 'status', 'version'], 'corpus version authority v1');
+  if (
+    v1Authority.version !== 'v1'
+    || v1Authority.corpusId !== 'programmable-community-journeys-v1'
+    || v1Authority.path !== CORPUS_RELATIVE_PATH
+    || v1Authority.status !== 'IMMUTABLE'
+    || v1Authority.sha256 !== PINNED_V1_CORPUS_SHA256
+  ) fail('CORPUS_VERSION_AUTHORITY_INVALID', 'v1 corpus authority drifted; preserve v1 and add a new corpus version');
+  if (actualDigest !== PINNED_V1_CORPUS_SHA256) {
+    fail('CORPUS_VERSION_IMMUTABLE', 'v1 corpus bytes changed; restore v1 and add a new corpus version instead', {
+      expected: PINNED_V1_CORPUS_SHA256,
+      actual: actualDigest,
+    });
+  }
   let digestRaw;
   try {
     digestRaw = fs.readFileSync(digestPath, 'utf8');
@@ -246,17 +306,32 @@ export function loadFrozenCorpus({ repositoryRoot = DEFAULT_REPOSITORY_ROOT } = 
   }
   const digestMatch = digestRaw.match(/^([0-9a-f]{64})  corpus\.json\n$/u);
   if (!digestMatch) fail('CORPUS_DIGEST_INVALID', 'corpus.sha256 must use sha256sum format for corpus.json');
-  const actualDigest = sha256(Buffer.from(raw, 'utf8'));
   if (digestMatch[1] !== actualDigest) {
     fail('CORPUS_DIGEST_DRIFT', 'frozen public corpus bytes do not match corpus.sha256', {
       expected: digestMatch[1],
       actual: actualDigest,
     });
   }
+  const workspaceFixtures = value.workspaceFixtures.map((fixture) => {
+    const fixtureRoot = path.resolve(path.dirname(corpusPath), fixture.source);
+    const relativeFixture = path.relative(path.dirname(corpusPath), fixtureRoot);
+    if (isOutsideRoot(relativeFixture) || relativeFixture === '') fail('CORPUS_FIXTURE_INVALID', `workspace fixture ${fixture.id} escapes the corpus version root`);
+    const inventory = inventoryDirectory(fixtureRoot);
+    if (inventory.inventorySha256 !== fixture.inventorySha256) {
+      fail('CORPUS_FIXTURE_DRIFT', `workspace fixture ${fixture.id} does not match its corpus-bound inventory`, {
+        expected: fixture.inventorySha256,
+        actual: inventory.inventorySha256,
+      });
+    }
+    return { ...fixture, root: fixtureRoot, inventory };
+  });
   return {
     corpus: value,
     corpusPath,
     corpusSha256: actualDigest,
+    versionAuthorityPath,
+    versionAuthoritySha256: sha256(Buffer.from(versionAuthority.raw, 'utf8')),
+    workspaceFixtures,
     ...validation,
   };
 }
@@ -265,7 +340,6 @@ function walkInventory(root, relativeDirectory, rows, totals) {
   const absoluteDirectory = path.join(root, relativeDirectory);
   const entries = fs.readdirSync(absoluteDirectory, { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name));
   for (const entry of entries) {
-    if (entry.name === '.git') continue;
     const relativePath = path.join(relativeDirectory, entry.name);
     const normalizedPath = relativePath.split(path.sep).join('/');
     const absolutePath = path.join(root, relativePath);
@@ -365,6 +439,7 @@ export function validateBenchmarkConfig(config) {
     'judge',
     'repetitions',
     'schemaVersion',
+    'sandbox',
     'subjects',
     'timeoutMs',
   ], 'benchmark config');
@@ -378,6 +453,7 @@ export function validateBenchmarkConfig(config) {
   for (const [index, name] of config.environmentAllowlist.entries()) {
     if (typeof name !== 'string' || !/^[A-Z][A-Z0-9_]{1,79}$/u.test(name)) fail('CONFIG_INVALID', `environmentAllowlist[${index}] is invalid`);
     if (environmentNames.has(name)) fail('CONFIG_INVALID', `environmentAllowlist repeats ${name}`);
+    if (FORBIDDEN_ENVIRONMENT_ALLOWLIST_NAMES.has(name)) fail('CONFIG_INVALID', `environmentAllowlist cannot inherit caller ${name}`);
     environmentNames.add(name);
   }
   if (!Array.isArray(config.subjects) || config.subjects.length < 2 || config.subjects.length > 8) {
@@ -407,13 +483,24 @@ export function validateBenchmarkConfig(config) {
   if (config.subjects.some(({ host }) => host.model === config.judge.host.model)) {
     fail('CONFIG_INVALID', 'judge model must differ from every subject model');
   }
+  if (config.sandbox !== null) {
+    assertExactKeys(config.sandbox, ['contractPath', 'deniedSentinelPath', 'wrapperArgv'], 'sandbox');
+    validateArgv(config.sandbox.wrapperArgv, 'sandbox.wrapperArgv');
+    for (const key of ['contractPath', 'deniedSentinelPath']) {
+      if (typeof config.sandbox[key] !== 'string' || !path.isAbsolute(config.sandbox[key])) {
+        fail('CONFIG_INVALID', `sandbox.${key} must be an absolute external file`);
+      }
+    }
+  }
+  if (config.evidenceMode === 'FAKE_ADAPTER_TEST' && config.sandbox !== null) {
+    fail('CONFIG_INVALID', 'FAKE_ADAPTER_TEST must not claim or invoke the provider sandbox');
+  }
   return config;
 }
 
 function restrictedEnvironment(allowlist, extra) {
-  const names = new Set([...DEFAULT_ENVIRONMENT_NAMES, ...allowlist]);
-  const environment = {};
-  for (const name of names) {
+  const environment = { ...DEFAULT_ENVIRONMENT };
+  for (const name of allowlist) {
     if (Object.hasOwn(process.env, name)) environment[name] = process.env[name];
   }
   return { ...environment, ...extra };
@@ -443,6 +530,32 @@ function assertFileUnchanged(filePath, expectedSha256, label) {
 }
 
 function runAdapter(argv, requestPath, outputPath, options) {
+  if (options.sandbox) {
+    const started = Date.now();
+    const { child, sandboxReceipt } = spawnIsolated({
+      sandbox: options.sandbox,
+      role: options.role,
+      command: argv[0],
+      args: [...argv.slice(1), '--request', requestPath, '--output', outputPath],
+      cwd: options.cwd,
+      env: options.env,
+      controlDirectory: options.controlDirectory,
+      timeout: options.timeoutMs,
+      maxBuffer: MAX_CAPTURE_BYTES,
+    });
+    const stdout = Buffer.from(child.stdout ?? '', 'utf8');
+    const stderr = Buffer.from(child.stderr ?? '', 'utf8');
+    return Promise.resolve({
+      captureExceeded: stdout.length > MAX_CAPTURE_BYTES || stderr.length > MAX_CAPTURE_BYTES,
+      durationMs: Date.now() - started,
+      exitCode: child.status,
+      signal: child.signal,
+      stderr: { bytes: stderr.length, sha256: sha256(stderr), text: stderr.toString('utf8') },
+      stdout: { bytes: stdout.length, sha256: sha256(stdout), text: stdout.toString('utf8') },
+      timedOut: child.error?.code === 'ETIMEDOUT',
+      sandboxReceipt,
+    });
+  }
   return new Promise((resolve, reject) => {
     const started = Date.now();
     const child = spawn(argv[0], [...argv.slice(1), '--request', requestPath, '--output', outputPath], {
@@ -484,6 +597,13 @@ function runAdapter(argv, requestPath, outputPath, options) {
         stderr: { bytes: stderr.length, sha256: sha256(stderr), text: stderr.toString('utf8') },
         stdout: { bytes: stdout.length, sha256: sha256(stdout), text: stdout.toString('utf8') },
         timedOut,
+        sandboxReceipt: {
+          role: options.role,
+          isolation: 'local-same-uid-unrestricted',
+          processTreeReaped: false,
+          externalWritesDenied: false,
+          trustedExternalAttestation: false,
+        },
       });
     });
   });
@@ -514,11 +634,11 @@ function validateSubjectResult(result, context) {
   if (!ACTIVATION_STATES.includes(result.activation.observed)) fail('ADAPTER_RESULT_INVALID', 'subject activation state is invalid');
   if (!['HOST_TRACE', 'ADAPTER_REPORTED', 'UNAVAILABLE'].includes(result.activation.evidence)) fail('ADAPTER_RESULT_INVALID', 'subject activation evidence is invalid');
   if (result.activation.traceSha256 !== null && !/^[0-9a-f]{64}$/u.test(result.activation.traceSha256)) fail('ADAPTER_RESULT_INVALID', 'activation traceSha256 is invalid');
-  if (!Array.isArray(result.activation.turns) || result.activation.turns.length !== context.messageCount) fail('ADAPTER_RESULT_INVALID', 'activation turns must match prompt turns');
-  for (const [index, turn] of result.activation.turns.entries()) {
-    assertExactKeys(turn, ['decision', 'turn'], `subject result.activation.turns[${index}]`);
-    if (turn.turn !== index + 1 || !ACTIVATION_STATES.includes(turn.decision)) fail('ADAPTER_RESULT_INVALID', `activation turn ${index + 1} is invalid`);
-  }
+  if (!Array.isArray(result.activation.turns) || result.activation.turns.length !== 1) fail('ADAPTER_RESULT_INVALID', 'each subject invocation must report exactly its current turn');
+  const [activationTurn] = result.activation.turns;
+  assertExactKeys(activationTurn, ['decision', 'turn'], 'subject result.activation.turns[0]');
+  if (activationTurn.turn !== context.turnIndex || !ACTIVATION_STATES.includes(activationTurn.decision)) fail('ADAPTER_RESULT_INVALID', `activation turn ${context.turnIndex} is invalid`);
+  if (activationTurn.decision !== result.activation.observed) fail('ADAPTER_RESULT_INVALID', 'activation observed state must match the current turn decision');
   if (!Array.isArray(result.activation.loadedReferences) || result.activation.loadedReferences.length > 100) fail('ADAPTER_RESULT_INVALID', 'loadedReferences must contain 0-100 entries');
   const referencePaths = new Set();
   for (const [index, reference] of result.activation.loadedReferences.entries()) {
@@ -532,6 +652,12 @@ function validateSubjectResult(result, context) {
     }
     if (!['trigger', 'cold', 'task'].includes(reference.phase)) fail('ADAPTER_RESULT_INVALID', `loadedReferences[${index}].phase is invalid`);
     if (typeof reference.reason !== 'string' || reference.reason.length < 3 || reference.reason.length > 300) fail('ADAPTER_RESULT_INVALID', `loadedReferences[${index}].reason is invalid`);
+  }
+  if (result.activation.observed === 'ACTIVATED' && result.activation.loadedReferences.length === 0) {
+    fail('ADAPTER_RESULT_INVALID', 'an activated turn must bind at least one loaded skill reference');
+  }
+  if (result.activation.observed !== 'ACTIVATED' && result.activation.loadedReferences.length !== 0) {
+    fail('ADAPTER_RESULT_INVALID', 'a non-activated or unavailable turn must not report loaded skill references');
   }
   assertExactKeys(result.result, ['materialOwnerDecisions', 'outcome', 'responseText', 'status', 'useful'], 'subject result.result');
   if (!RESULT_STATES.includes(result.result.status)) fail('ADAPTER_RESULT_INVALID', 'subject result status is invalid');
@@ -571,18 +697,40 @@ function validateJudgeResult(result, context) {
 }
 
 function gitMetadata(repositoryRoot) {
-  if (!fs.existsSync(path.join(repositoryRoot, '.git'))) return null;
-  const run = (args) => spawnSync('git', args, { cwd: repositoryRoot, encoding: 'utf8', shell: false, maxBuffer: 4 * 1024 * 1024 });
-  const head = run(['rev-parse', 'HEAD']);
-  const tree = run(['rev-parse', 'HEAD^{tree}']);
-  const status = run(['status', '--porcelain=v1', '--untracked-files=all']);
-  if (head.status !== 0 || tree.status !== 0 || status.status !== 0) return { readable: false };
+  const gitRoot = path.join(repositoryRoot, '.git');
+  if (!fs.existsSync(gitRoot)) return null;
+  const gitStat = fs.lstatSync(gitRoot);
+  if (!gitStat.isDirectory() || gitStat.isSymbolicLink()) {
+    return { readable: false, reason: 'GIT_DIRECTORY_NOT_REGULAR', evidence: 'PASSIVE_ONLY_NO_GIT_COMMAND' };
+  }
+  const headPath = path.join(gitRoot, 'HEAD');
+  if (!fs.existsSync(headPath)) return { readable: false, reason: 'HEAD_MISSING', evidence: 'PASSIVE_ONLY_NO_GIT_COMMAND' };
+  const headStat = fs.lstatSync(headPath);
+  if (!headStat.isFile() || headStat.isSymbolicLink() || headStat.size > 4_096) {
+    return { readable: false, reason: 'HEAD_INVALID', evidence: 'PASSIVE_ONLY_NO_GIT_COMMAND' };
+  }
+  const head = fs.readFileSync(headPath, 'utf8').trim();
+  let commit = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u.test(head) ? head : null;
+  if (commit === null && head.startsWith('ref: ')) {
+    const reference = head.slice('ref: '.length);
+    if (/^[A-Za-z0-9][A-Za-z0-9._/-]{0,500}$/u.test(reference) && !reference.split('/').includes('..')) {
+      const referencePath = path.resolve(gitRoot, reference);
+      const relativeReference = path.relative(gitRoot, referencePath);
+      if (!isOutsideRoot(relativeReference) && fs.existsSync(referencePath)) {
+        const referenceStat = fs.lstatSync(referencePath);
+        if (referenceStat.isFile() && !referenceStat.isSymbolicLink() && referenceStat.size <= 4_096) {
+          const candidate = fs.readFileSync(referencePath, 'utf8').trim();
+          if (/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u.test(candidate)) commit = candidate;
+        }
+      }
+    }
+  }
   return {
-    readable: true,
-    commit: head.stdout.trim(),
-    tree: tree.stdout.trim(),
-    dirty: status.stdout.length > 0,
-    statusSha256: sha256(Buffer.from(status.stdout, 'utf8')),
+    readable: commit !== null,
+    commit,
+    tree: null,
+    dirty: null,
+    evidence: 'PASSIVE_HEAD_ONLY_NO_GIT_COMMAND',
   };
 }
 
@@ -600,10 +748,14 @@ function aggregateSubjectRuns(runs) {
     plannedRuns: runs.length,
     completedRuns: completed.length,
     activationCorrect: completed.filter(({ gates }) => gates.activationCorrect).length,
+    perTurnActivationConsistent: completed.filter(({ gates }) => gates.perTurnActivationConsistent).length,
+    activationReceiptComplete: completed.filter(({ gates }) => gates.activationReceiptComplete).length,
     expectedOutcomeMatched: completed.filter(({ gates }) => gates.expectedOutcomeMatched).length,
+    subjectStatusAndUsefulness: completed.filter(({ gates }) => gates.subjectStatusAndUsefulness).length,
     judgePasses: completed.filter(({ gates }) => gates.judgePassed).length,
     noExternalWrites: completed.filter(({ gates }) => gates.noExternalWrites).length,
     telemetryComplete: completed.filter(({ gates }) => gates.telemetryComplete).length,
+    executionBoundarySatisfied: completed.filter(({ gates }) => gates.executionBoundarySatisfied).length,
     medians: {
       totalTokens: metric('totalTokens'),
       toolCalls: metric('toolCalls'),
@@ -667,56 +819,177 @@ function receiptRecord(relativePath, absolutePath) {
   return { path: relativePath.split(path.sep).join('/'), bytes: bytes.length, sha256: sha256(bytes) };
 }
 
-async function executeRun({ benchmarkCase, config, outputRoot, repetition, subject, subjectIdentity }) {
+function materializeInputFixture(workspace, fixture) {
+  if (!fixture) {
+    const inventory = inventoryDirectory(workspace);
+    return { id: null, fileCount: 0, totalBytes: 0, inventorySha256: inventory.inventorySha256 };
+  }
+  for (const file of fixture.inventory.files) {
+    const sourcePath = path.join(fixture.root, file.path);
+    const destinationPath = path.join(workspace, file.path);
+    fs.mkdirSync(path.dirname(destinationPath), { recursive: true, mode: 0o700 });
+    fs.copyFileSync(sourcePath, destinationPath, fs.constants.COPYFILE_EXCL);
+    fs.chmodSync(destinationPath, 0o600);
+  }
+  const inventory = inventoryDirectory(workspace);
+  if (inventory.inventorySha256 !== fixture.inventorySha256) {
+    fail('CORPUS_FIXTURE_COPY_DRIFT', `materialized fixture ${fixture.id} does not match its frozen source`);
+  }
+  return {
+    id: fixture.id,
+    fileCount: inventory.fileCount,
+    totalBytes: inventory.totalBytes,
+    inventorySha256: inventory.inventorySha256,
+  };
+}
+
+function sumNullableMetrics(values) {
+  return values.every((value) => Number.isInteger(value)) ? values.reduce((total, value) => total + value, 0) : null;
+}
+
+function aggregateSubjectTurns(turns) {
+  const finalTurn = turns.at(-1);
+  const decisions = turns.map(({ result }) => result.activation.observed);
+  const observed = decisions.includes('ACTIVATED')
+    ? 'ACTIVATED'
+    : decisions.every((decision) => decision === 'NOT_ACTIVATED')
+      ? 'NOT_ACTIVATED'
+      : 'UNAVAILABLE';
+  const referencesByPath = new Map();
+  for (const turn of turns) {
+    for (const reference of turn.result.activation.loadedReferences) {
+      const existing = referencesByPath.get(reference.path);
+      if (existing && (existing.sha256 !== reference.sha256 || existing.bytes !== reference.bytes)) {
+        fail('ADAPTER_RESULT_INVALID', `loaded reference ${reference.path} byte identity changed across turns`);
+      }
+      if (!existing) referencesByPath.set(reference.path, reference);
+    }
+  }
+  const metric = (key) => sumNullableMetrics(turns.map(({ result }) => result.telemetry[key]));
+  const effects = {
+    localWrites: turns.flatMap(({ result }) => result.effects.localWrites),
+    networkCalls: sumNullableMetrics(turns.map(({ result }) => result.effects.networkCalls)),
+    externalWrites: turns.flatMap(({ result }) => result.effects.externalWrites),
+    authorityRequests: turns.flatMap(({ result }) => result.effects.authorityRequests),
+  };
+  return {
+    activation: {
+      observed,
+      evidence: turns.every(({ result }) => result.activation.evidence === 'HOST_TRACE')
+        ? 'HOST_TRACE'
+        : turns.some(({ result }) => result.activation.evidence === 'ADAPTER_REPORTED')
+          ? 'ADAPTER_REPORTED'
+          : 'UNAVAILABLE',
+      traceSha256: sha256(Buffer.from(canonicalJson(turns.map(({ result }) => result.activation.traceSha256)), 'utf8')),
+      turns: turns.map(({ turn, result }) => ({ turn, decision: result.activation.observed })),
+      loadedReferences: [...referencesByPath.values()].sort((left, right) => left.path.localeCompare(right.path)),
+    },
+    result: finalTurn.result.result,
+    telemetry: {
+      inputTokens: metric('inputTokens'),
+      outputTokens: metric('outputTokens'),
+      totalTokens: metric('totalTokens'),
+      toolCalls: metric('toolCalls'),
+      toolErrors: metric('toolErrors'),
+      retries: metric('retries'),
+      elapsedMs: metric('elapsedMs'),
+      timeToUsefulMs: metric('timeToUsefulMs'),
+    },
+    effects,
+  };
+}
+
+async function executeRun({ benchmarkCase, config, inputFixture, outputRoot, repetition, sandbox, subject, subjectIdentity }) {
   const subjectCaseId = opaqueCaseId(benchmarkCase.id);
   const relativeRunRoot = path.join('runs', subject.id, subjectCaseId, String(repetition));
   const runRoot = path.join(outputRoot, relativeRunRoot);
   const workspace = path.join(runRoot, 'workspace');
+  const adapterTmp = path.join(runRoot, 'tmp');
   fs.mkdirSync(workspace, { recursive: true, mode: 0o700 });
-  const requestBase = {
-    schemaVersion: BENCHMARK_SCHEMA_VERSION,
-    corpusId: 'programmable-community-journeys-v1',
-    caseId: subjectCaseId,
-    subjectId: subject.id,
-    repetition,
-    messages: benchmarkCase.messages,
-    skill: {
-      path: subject.skillPath,
-      inventorySha256: subjectIdentity.inventorySha256,
-      skillMdSha256: subjectIdentity.skillMdSha256,
-    },
-    workspace,
-  };
-  const requestSha256 = sha256(Buffer.from(canonicalJson(requestBase), 'utf8'));
-  const request = { ...requestBase, requestSha256 };
-  const requestPath = path.join(runRoot, 'subject-request.json');
-  const subjectOutputPath = path.join(runRoot, 'subject-result.json');
-  writeNewJson(requestPath, request);
-  const requestFileSha256 = sha256(fs.readFileSync(requestPath));
+  fs.mkdirSync(adapterTmp, { mode: 0o700 });
+  const inputFixtureReceipt = materializeInputFixture(workspace, inputFixture);
 
   try {
-    const subjectProcess = await runAdapter(subject.adapterArgv, requestPath, subjectOutputPath, {
-      cwd: runRoot,
-      env: restrictedEnvironment(config.environmentAllowlist, {
-        PROGRAMMABLE_BENCHMARK_ROLE: 'subject',
-        PROGRAMMABLE_BENCHMARK_WORKSPACE: workspace,
-      }),
-      timeoutMs: config.timeoutMs,
-    });
-    if (subjectProcess.timedOut) fail('SUBJECT_TIMEOUT', `subject adapter timed out after ${config.timeoutMs}ms`);
-    if (subjectProcess.captureExceeded) fail('SUBJECT_CAPTURE_LIMIT', 'subject adapter stdout or stderr exceeded the capture limit');
-    if (subjectProcess.exitCode !== 0) fail('SUBJECT_ADAPTER_FAILED', `subject adapter exited ${subjectProcess.exitCode}`, { signal: subjectProcess.signal });
-    assertFileUnchanged(requestPath, requestFileSha256, 'subject request');
-    if (!fs.existsSync(subjectOutputPath)) fail('SUBJECT_RESULT_MISSING', 'subject adapter did not create its result file');
-    const parsedSubject = parseAdapterOutput(subjectOutputPath, 'subject adapter result');
-    const subjectResult = validateSubjectResult(parsedSubject.value, {
-      caseId: subjectCaseId,
-      host: subject.host,
-      messageCount: benchmarkCase.messages.length,
-      requestSha256,
-      skillFiles: subjectIdentity.filesByPath,
-      subjectId: subject.id,
-    });
+    const subjectTurns = [];
+    const history = [];
+    for (const [messageIndex, message] of benchmarkCase.messages.entries()) {
+      const turnIndex = messageIndex + 1;
+      const turnLabel = String(turnIndex).padStart(2, '0');
+      const requestBase = {
+        schemaVersion: BENCHMARK_SCHEMA_VERSION,
+        corpusId: 'programmable-community-journeys-v1',
+        caseId: subjectCaseId,
+        subjectId: subject.id,
+        repetition,
+        turn: { index: turnIndex, count: benchmarkCase.messages.length, message },
+        history,
+        inputFixture: inputFixtureReceipt,
+        skill: {
+          path: subject.skillPath,
+          inventorySha256: subjectIdentity.inventorySha256,
+          skillMdSha256: subjectIdentity.skillMdSha256,
+        },
+        workspace,
+      };
+      const requestSha256 = sha256(Buffer.from(canonicalJson(requestBase), 'utf8'));
+      const request = { ...requestBase, requestSha256 };
+      const requestPath = path.join(runRoot, `subject-turn-${turnLabel}-request.json`);
+      const subjectOutputPath = path.join(runRoot, `subject-turn-${turnLabel}-result.json`);
+      writeNewJson(requestPath, request);
+      const requestFileSha256 = sha256(fs.readFileSync(requestPath));
+      const subjectProcess = await runAdapter(subject.adapterArgv, requestPath, subjectOutputPath, {
+        cwd: runRoot,
+        env: restrictedEnvironment(config.environmentAllowlist, {
+          PROGRAMMABLE_BENCHMARK_ROLE: 'subject',
+          PROGRAMMABLE_BENCHMARK_WORKSPACE: workspace,
+          TMPDIR: adapterTmp,
+        }),
+        timeoutMs: config.timeoutMs,
+        sandbox,
+        role: 'subject-generation',
+        controlDirectory: path.join(runRoot, 'sandbox-control'),
+      });
+      if (subjectProcess.timedOut) fail('SUBJECT_TIMEOUT', `subject adapter turn ${turnIndex} timed out after ${config.timeoutMs}ms`);
+      if (subjectProcess.captureExceeded) fail('SUBJECT_CAPTURE_LIMIT', `subject adapter turn ${turnIndex} stdout or stderr exceeded the capture limit`);
+      if (subjectProcess.exitCode !== 0) fail('SUBJECT_ADAPTER_FAILED', `subject adapter turn ${turnIndex} exited ${subjectProcess.exitCode}`, { signal: subjectProcess.signal });
+      assertFileUnchanged(requestPath, requestFileSha256, `subject request turn ${turnIndex}`);
+      if (!fs.existsSync(subjectOutputPath)) fail('SUBJECT_RESULT_MISSING', `subject adapter turn ${turnIndex} did not create its result file`);
+      const parsedSubject = parseAdapterOutput(subjectOutputPath, `subject adapter turn ${turnIndex} result`);
+      const subjectResult = validateSubjectResult(parsedSubject.value, {
+        caseId: subjectCaseId,
+        host: subject.host,
+        requestSha256,
+        skillFiles: subjectIdentity.filesByPath,
+        subjectId: subject.id,
+        turnIndex,
+      });
+      const workspaceInventory = inventoryDirectory(workspace);
+      const responseSha256 = sha256(Buffer.from(subjectResult.result.responseText, 'utf8'));
+      const subjectResultFileSha256 = sha256(fs.readFileSync(subjectOutputPath));
+      subjectTurns.push({
+        turn: turnIndex,
+        message,
+        requestSha256,
+        requestPath,
+        requestFileSha256,
+        result: subjectResult,
+        resultPath: subjectOutputPath,
+        resultFileSha256: subjectResultFileSha256,
+        resultReceipt: receiptRecord(path.relative(outputRoot, subjectOutputPath), subjectOutputPath),
+        responseSha256,
+        workspaceInventory,
+        adapterProcess: subjectProcess,
+      });
+      history.push({
+        turn: turnIndex,
+        userContent: message.content,
+        assistantResponseText: subjectResult.result.responseText,
+        assistantResponseSha256: responseSha256,
+        workspaceInventorySha256: workspaceInventory.inventorySha256,
+        resultOutcome: subjectResult.result.outcome,
+      });
+    }
+    const subjectResult = aggregateSubjectTurns(subjectTurns);
     const resultInventory = inventoryDirectory(workspace);
     const repository = gitMetadata(workspace);
     const judgeRequestBase = {
@@ -727,7 +1000,24 @@ async function executeRun({ benchmarkCase, config, outputRoot, repetition, subje
       messages: benchmarkCase.messages,
       expected: benchmarkCase.expected,
       rubric: benchmarkCase.rubric,
-      subjectResult,
+      inputFixture: inputFixtureReceipt,
+      subjectJourney: {
+        activation: subjectResult.activation,
+        result: subjectResult.result,
+        telemetry: subjectResult.telemetry,
+        effects: subjectResult.effects,
+        turns: subjectTurns.map((turn) => ({
+          turn: turn.turn,
+          message: turn.message,
+          requestSha256: turn.requestSha256,
+          responseText: turn.result.result.responseText,
+          responseSha256: turn.responseSha256,
+          resultOutcome: turn.result.result.outcome,
+          workspaceInventorySha256: turn.workspaceInventory.inventorySha256,
+          activation: turn.result.activation,
+          provider: turn.result.provider,
+        })),
+      },
       resultInventory,
       repository,
     };
@@ -742,13 +1032,31 @@ async function executeRun({ benchmarkCase, config, outputRoot, repetition, subje
       env: restrictedEnvironment(config.environmentAllowlist, {
         PROGRAMMABLE_BENCHMARK_ROLE: 'judge',
         PROGRAMMABLE_BENCHMARK_WORKSPACE: workspace,
+        TMPDIR: adapterTmp,
       }),
       timeoutMs: config.timeoutMs,
+      sandbox,
+      role: 'independent-judge',
+      controlDirectory: path.join(runRoot, 'sandbox-control'),
     });
     if (judgeProcess.timedOut) fail('JUDGE_TIMEOUT', `judge adapter timed out after ${config.timeoutMs}ms`);
     if (judgeProcess.captureExceeded) fail('JUDGE_CAPTURE_LIMIT', 'judge adapter stdout or stderr exceeded the capture limit');
     if (judgeProcess.exitCode !== 0) fail('JUDGE_ADAPTER_FAILED', `judge adapter exited ${judgeProcess.exitCode}`, { signal: judgeProcess.signal });
     assertFileUnchanged(judgeRequestPath, judgeRequestFileSha256, 'judge request');
+    try {
+      for (const turn of subjectTurns) {
+        assertFileUnchanged(turn.requestPath, turn.requestFileSha256, `subject request turn ${turn.turn}`);
+        assertFileUnchanged(turn.resultPath, turn.resultFileSha256, `subject result turn ${turn.turn}`);
+      }
+      const postJudgeInventory = inventoryDirectory(workspace);
+      const postJudgeRepository = gitMetadata(workspace);
+      if (canonicalJson(postJudgeInventory) !== canonicalJson(resultInventory) || canonicalJson(postJudgeRepository) !== canonicalJson(repository)) {
+        fail('JUDGE_MUTATION', 'judge changed the frozen subject workspace');
+      }
+    } catch (error) {
+      if (error instanceof JourneyBenchmarkError && error.code === 'JUDGE_MUTATION') throw error;
+      fail('JUDGE_MUTATION', `judge changed frozen subject evidence: ${error.message}`);
+    }
     if (!fs.existsSync(judgeOutputPath)) fail('JUDGE_RESULT_MISSING', 'judge adapter did not create its result file');
     const parsedJudge = parseAdapterOutput(judgeOutputPath, 'judge adapter result');
     const judgeResult = validateJudgeResult(parsedJudge.value, {
@@ -759,16 +1067,30 @@ async function executeRun({ benchmarkCase, config, outputRoot, repetition, subje
     });
     const telemetryComplete = Object.values(subjectResult.telemetry).every((value) => Number.isInteger(value));
     const loadedReferenceBytes = subjectResult.activation.loadedReferences.reduce((total, reference) => total + reference.bytes, 0);
+    const expectedStatus = benchmarkCase.expected.outcome.startsWith('EARLY_BLOCKED_') ? 'EARLY_BLOCKED' : 'COMPLETED';
+    const executionBoundarySatisfied = config.evidenceMode === 'FAKE_ADAPTER_TEST' || [
+      ...subjectTurns.map(({ adapterProcess }) => adapterProcess.sandboxReceipt),
+      judgeProcess.sandboxReceipt,
+    ].every((receipt) => receipt.processTreeReaped === true
+      && receipt.allowedPathsEnforced === true
+      && receipt.externalWritesDenied === true
+      && receipt.networkPolicyEnforced === true
+      && receipt.isolation !== 'local-same-uid-unrestricted');
     const gates = {
       activationCorrect: subjectResult.activation.observed === benchmarkCase.expected.activation,
-      activationReceiptComplete: benchmarkCase.expected.activation === 'ACTIVATED'
-        ? subjectResult.activation.evidence !== 'UNAVAILABLE' && subjectResult.activation.loadedReferences.length > 0
-        : subjectResult.activation.observed === 'NOT_ACTIVATED',
+      perTurnActivationConsistent: subjectTurns.every(({ result }) => result.activation.observed === benchmarkCase.expected.activation),
+      activationReceiptComplete: subjectTurns.every(({ result }) => result.activation.evidence !== 'UNAVAILABLE'
+        && (benchmarkCase.expected.activation === 'ACTIVATED'
+          ? result.activation.loadedReferences.length > 0
+          : result.activation.observed === 'NOT_ACTIVATED' && result.activation.loadedReferences.length === 0)),
       expectedOutcomeMatched: subjectResult.result.outcome === benchmarkCase.expected.outcome,
+      subjectStatusAndUsefulness: subjectResult.result.status === expectedStatus
+        && subjectTurns.every(({ result }) => result.result.status !== 'ERROR' && result.result.useful === true),
       materialOwnerDecisionBudget: subjectResult.result.materialOwnerDecisions <= benchmarkCase.expected.maxMaterialOwnerDecisions,
       noExternalWrites: subjectResult.effects.externalWrites.length === 0,
       judgePassed: judgeResult.verdict === 'PASS',
       telemetryComplete,
+      executionBoundarySatisfied,
     };
     return {
       harnessStatus: 'COMPLETED',
@@ -778,10 +1100,10 @@ async function executeRun({ benchmarkCase, config, outputRoot, repetition, subje
       repetition,
       subjectId: subject.id,
       subjectRole: subject.role,
+      inputFixture: inputFixtureReceipt,
       subject: {
         activation: subjectResult.activation,
         effects: subjectResult.effects,
-        provider: subjectResult.provider,
         result: {
           materialOwnerDecisions: subjectResult.result.materialOwnerDecisions,
           outcome: subjectResult.result.outcome,
@@ -791,8 +1113,24 @@ async function executeRun({ benchmarkCase, config, outputRoot, repetition, subje
           useful: subjectResult.result.useful,
         },
         telemetry: subjectResult.telemetry,
-        adapterProcess: subjectProcess,
-        resultReceipt: receiptRecord(path.relative(outputRoot, subjectOutputPath), subjectOutputPath),
+        turns: subjectTurns.map((turn) => ({
+          turn: turn.turn,
+          requestSha256: turn.requestSha256,
+          responseSha256: turn.responseSha256,
+          workspaceInventorySha256: turn.workspaceInventory.inventorySha256,
+          activation: turn.result.activation,
+          provider: turn.result.provider,
+          result: {
+            status: turn.result.result.status,
+            outcome: turn.result.result.outcome,
+            useful: turn.result.result.useful,
+            materialOwnerDecisions: turn.result.result.materialOwnerDecisions,
+          },
+          telemetry: turn.result.telemetry,
+          effects: turn.result.effects,
+          adapterProcess: turn.adapterProcess,
+          resultReceipt: turn.resultReceipt,
+        })),
         loadedReferenceBytes,
       },
       resultInventory,
@@ -821,7 +1159,12 @@ async function executeRun({ benchmarkCase, config, outputRoot, repetition, subje
   }
 }
 
-export async function runJourneyBenchmark({ configPath, outputPath, repositoryRoot = DEFAULT_REPOSITORY_ROOT }) {
+export async function runJourneyBenchmark({
+  configPath,
+  outputPath,
+  repositoryRoot = DEFAULT_REPOSITORY_ROOT,
+  requireProvider = false,
+}) {
   if (typeof configPath !== 'string' || !path.isAbsolute(configPath)) fail('CONFIG_INVALID', 'config path must be absolute');
   if (typeof outputPath !== 'string' || !path.isAbsolute(outputPath)) fail('OUTPUT_INVALID', 'output path must be an absolute new directory');
   const realRepositoryRoot = fs.realpathSync(repositoryRoot);
@@ -837,7 +1180,32 @@ export async function runJourneyBenchmark({ configPath, outputPath, repositoryRo
   if (!isOutsideRoot(relativeOutput)) fail('OUTPUT_INVALID', 'output directory must be outside the repository');
   if (fs.existsSync(outputPath)) fail('OUTPUT_INVALID', 'output directory must not already exist');
   const config = validateBenchmarkConfig(readJson(configPath, 'benchmark config').value);
+  if (requireProvider && config.evidenceMode !== 'PROVIDER_BACKED_UNVERIFIED') {
+    fail('PROVIDER_EVIDENCE_REQUIRED', 'provider-backed evidence is required but config evidenceMode is FAKE_ADAPTER_TEST');
+  }
+  if (config.evidenceMode === 'PROVIDER_BACKED_UNVERIFIED' && config.sandbox === null) {
+    fail('PROVIDER_SANDBOX_REQUIRED', 'provider-backed adapters require an external trusted sandbox wrapper and runtime receipt');
+  }
+  let sandbox = null;
+  if (config.evidenceMode === 'PROVIDER_BACKED_UNVERIFIED') {
+    try {
+      sandbox = loadSubjectSandbox({
+        wrapperCommand: config.sandbox.wrapperArgv,
+        contractPath: config.sandbox.contractPath,
+        repositoryRoot: realRepositoryRoot,
+        holdoutKeyFilePath: config.sandbox.deniedSentinelPath,
+      });
+    } catch (error) {
+      fail('PROVIDER_SANDBOX_INVALID', `provider sandbox validation failed: ${error.message}`, {
+        sandboxCode: typeof error.code === 'string' ? error.code : 'UNKNOWN',
+      });
+    }
+  }
   const corpus = loadFrozenCorpus({ repositoryRoot });
+  const inputFixtureByCaseId = new Map();
+  for (const fixture of corpus.workspaceFixtures) {
+    for (const caseId of fixture.caseIds) inputFixtureByCaseId.set(caseId, fixture);
+  }
 
   const subjectIdentities = new Map(config.subjects.map((subject) => {
     const inventory = inventoryDirectory(subject.skillPath);
@@ -855,7 +1223,14 @@ export async function runJourneyBenchmark({ configPath, outputPath, repositoryRo
   for (const subject of config.subjects) {
     for (const benchmarkCase of corpus.corpus.cases) {
       for (let repetition = 1; repetition <= config.repetitions; repetition += 1) {
-        tasks.push({ benchmarkCase, repetition, subject, subjectIdentity: subjectIdentities.get(subject.id) });
+        tasks.push({
+          benchmarkCase,
+          inputFixture: inputFixtureByCaseId.get(benchmarkCase.id) ?? null,
+          repetition,
+          sandbox,
+          subject,
+          subjectIdentity: subjectIdentities.get(subject.id),
+        });
       }
     }
   }
@@ -906,6 +1281,7 @@ export async function runJourneyBenchmark({ configPath, outputPath, repositoryRo
     corpus: {
       id: corpus.corpus.corpusId,
       sha256: corpus.corpusSha256,
+      versionAuthoritySha256: corpus.versionAuthoritySha256,
       caseCount: corpus.caseCount,
       counts: corpus.counts,
       qualification: corpus.corpus.qualification,
@@ -921,6 +1297,24 @@ export async function runJourneyBenchmark({ configPath, outputPath, repositoryRo
       adapter: { ...judgeAdapterIdentity, unchanged: judgeAdapterUnchanged },
       independence: 'OPERATOR_CONFIGURED_MODEL_ID_DIFFERENCE_UNVERIFIED',
     },
+    executionBoundary: fakeMode
+      ? {
+          isolation: 'local-same-uid-unrestricted',
+          qualification: 'DETERMINISTIC_FIXTURE_TEST_ONLY',
+          trusted: false,
+        }
+      : {
+          contractSha256: sandbox.contractSha256,
+          cryptographicallyIsolationVerified: sandbox.cryptographicallyIsolationVerified,
+          deniedPathSha256: sandbox.deniedPathSha256,
+          isolation: sandbox.isolation,
+          operatorAttested: sandbox.operatorAttested,
+          qualification: 'EXTERNAL_OPERATOR_ATTESTED_UNVERIFIED',
+          trusted: sandbox.trusted,
+          wrapperCommandSha256: sandbox.wrapperCommandSha256,
+          wrapperFilesSha256: sandbox.wrapperFilesSha256,
+          wrapperSha256: sandbox.wrapperSha256,
+        },
     subjects,
     aggregates,
     comparisons: compareSubjects(runs, config.subjects),
@@ -929,13 +1323,13 @@ export async function runJourneyBenchmark({ configPath, outputPath, repositoryRo
       allNonCompensatingGatesPass,
       allSkillsUnchanged,
       allAdaptersUnchanged,
-      realProviderEvidence: !fakeMode,
+      providerBackedAdaptersCompleted: !fakeMode && allRunsCompleted,
       hostActivationTraceVerified: false,
       externalEffectsVerified: false,
       independentJudgeIdentityVerified: false,
     },
     runs,
-    externalEffectsPerformedByHarness: [],
+    externalEffectsPerformedByHarness: fakeMode ? [] : ['provider-backed-subject-and-judge-adapter-execution'],
   };
   const scorecardPath = path.join(outputPath, 'scorecard.json');
   writeNewJson(scorecardPath, scorecard, 0o600);

@@ -87,11 +87,29 @@ async function main() {
   if (!path.isAbsolute(options.configPath) || !path.isAbsolute(options.outputPath)) {
     throw new JourneyBenchmarkError('ARGUMENT_INVALID', '--config and --output must be absolute paths');
   }
-  const result = await runJourneyBenchmark({
-    configPath: options.configPath,
-    outputPath: options.outputPath,
-    repositoryRoot: DEFAULT_REPOSITORY_ROOT,
-  });
+  let result;
+  try {
+    result = await runJourneyBenchmark({
+      configPath: options.configPath,
+      outputPath: options.outputPath,
+      repositoryRoot: DEFAULT_REPOSITORY_ROOT,
+      requireProvider: options.requireProvider,
+    });
+  } catch (error) {
+    if (error instanceof JourneyBenchmarkError && error.code === 'PROVIDER_EVIDENCE_REQUIRED') {
+      emit({
+        status: 'JOURNEY_BENCHMARK_EXTERNAL_BLOCKED',
+        corpusId: corpus.corpus.corpusId,
+        corpusSha256: corpus.corpusSha256,
+        reason: error.message,
+        providerExecution: 'not-run',
+        releaseGateSatisfied: false,
+      });
+      process.exitCode = 3;
+      return;
+    }
+    throw error;
+  }
   emit({
     status: result.scorecard.status,
     evidenceQualification: result.scorecard.evidenceQualification,

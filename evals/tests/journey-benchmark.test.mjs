@@ -8,8 +8,11 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  CORPUS_DIGEST_RELATIVE_PATH,
   CORPUS_RELATIVE_PATH,
+  CORPUS_VERSION_AUTHORITY_RELATIVE_PATH,
   JourneyBenchmarkError,
+  PINNED_V1_CORPUS_SHA256,
   inventoryDirectory,
   loadFrozenCorpus,
   runJourneyBenchmark,
@@ -37,6 +40,7 @@ function fakeConfig(overrides = {}) {
     repetitions: 1,
     timeoutMs: 30_000,
     environmentAllowlist: [],
+    sandbox: null,
     subjects: [
       {
         id: 'v0-9-1-baseline',
@@ -86,6 +90,31 @@ test('frozen public journey corpus covers the exact complaint and required neigh
   assert.equal(mizu.expected.activation, 'ACTIVATED');
   assert.equal(mizu.expected.outcome, 'MATERIALIZED_REPOSITORY');
   assert.ok(mizu.expected.forbiddenBehaviors.includes('implementation-refusal-because-custom-profile'));
+  assert.equal(result.corpusSha256, PINNED_V1_CORPUS_SHA256);
+  assert.equal(PINNED_V1_CORPUS_SHA256, '81f27c3ad1acd1ea676ba982fe1e08a361e3d05f941a71c5a0e526db6fd7fe3f');
+  const authority = JSON.parse(fs.readFileSync(path.join(REPOSITORY_ROOT, CORPUS_VERSION_AUTHORITY_RELATIVE_PATH), 'utf8'));
+  assert.equal(authority.versions[0].sha256, PINNED_V1_CORPUS_SHA256);
+});
+
+test('v1 rejects an in-place corpus edit even when its co-versioned digest is regenerated', (t) => {
+  const repositoryRoot = temporaryDirectory(t, 'programmable-corpus-version-test-');
+  const sourceVersionRoot = path.dirname(path.join(REPOSITORY_ROOT, CORPUS_RELATIVE_PATH));
+  const targetVersionRoot = path.dirname(path.join(repositoryRoot, CORPUS_RELATIVE_PATH));
+  fs.mkdirSync(path.dirname(targetVersionRoot), { recursive: true });
+  fs.cpSync(sourceVersionRoot, targetVersionRoot, { recursive: true });
+  const authorityTarget = path.join(repositoryRoot, CORPUS_VERSION_AUTHORITY_RELATIVE_PATH);
+  fs.mkdirSync(path.dirname(authorityTarget), { recursive: true });
+  fs.copyFileSync(path.join(REPOSITORY_ROOT, CORPUS_VERSION_AUTHORITY_RELATIVE_PATH), authorityTarget);
+  const corpusTarget = path.join(repositoryRoot, CORPUS_RELATIVE_PATH);
+  const corpus = JSON.parse(fs.readFileSync(corpusTarget, 'utf8'));
+  corpus.cases[0].rubric += ' This in-place edit must require v2.';
+  writeJson(corpusTarget, corpus);
+  const mutatedDigest = crypto.createHash('sha256').update(fs.readFileSync(corpusTarget)).digest('hex');
+  fs.writeFileSync(path.join(repositoryRoot, CORPUS_DIGEST_RELATIVE_PATH), `${mutatedDigest}  corpus.json\n`);
+  assert.throws(
+    () => loadFrozenCorpus({ repositoryRoot }),
+    (error) => error instanceof JourneyBenchmarkError && error.code === 'CORPUS_VERSION_IMMUTABLE',
+  );
 });
 
 test('corpus validation rejects count drift and any sealed-holdout reference', () => {
@@ -174,19 +203,127 @@ test('fake adapters exercise the complete comparison path without becoming model
   assert.equal(missingTool.subject.result.outcome, 'MATERIALIZED_UNVERIFIED_REPOSITORY');
   const denied = result.scorecard.runs.find(({ caseId }) => caseId === 'deploy-authority-denied');
   assert.deepEqual(denied.subject.effects.externalWrites, []);
-  assert.deepEqual(denied.subject.effects.authorityRequests, ['explicit-mainnet-transaction-authority']);
+  assert.deepEqual(denied.subject.effects.authorityRequests, []);
   const candidateRunsRoot = path.join(outputPath, 'runs/v0-10-candidate');
-  const rawSubjectRequestPath = fs.readdirSync(candidateRunsRoot)
-    .map((opaqueCaseId) => path.join(candidateRunsRoot, opaqueCaseId, '1/subject-request.json'))
-    .find((requestPath) => JSON.parse(fs.readFileSync(requestPath, 'utf8')).messages.length === 2);
-  assert.ok(rawSubjectRequestPath);
-  const rawSubjectRequest = JSON.parse(fs.readFileSync(rawSubjectRequestPath, 'utf8'));
+  const rawSubjectRequestPaths = fs.readdirSync(candidateRunsRoot)
+    .flatMap((opaqueCaseId) => {
+      const runRoot = path.join(candidateRunsRoot, opaqueCaseId, '1');
+      return fs.readdirSync(runRoot)
+        .filter((name) => /^subject-turn-\d+-request\.json$/u.test(name))
+        .map((name) => path.join(runRoot, name));
+    });
+  const mizuRequests = rawSubjectRequestPaths
+    .map((requestPath) => JSON.parse(fs.readFileSync(requestPath, 'utf8')))
+    .filter((request) => request.turn.count === 2)
+    .sort((left, right) => left.turn.index - right.turn.index);
+  assert.equal(mizuRequests.length, 2, 'Mizu must execute as two distinct subject invocations');
+  assert.equal(mizuRequests[0].history.length, 0);
+  assert.equal(mizuRequests[1].history.length, 1);
+  assert.match(mizuRequests[1].history[0].assistantResponseSha256, /^[0-9a-f]{64}$/u);
+  assert.match(mizuRequests[1].history[0].workspaceInventorySha256, /^[0-9a-f]{64}$/u);
+  assert.equal(mizuRequests[1].history[0].assistantResponseSha256, mizu.subject.turns[0].responseSha256);
+  assert.equal(mizuRequests[1].history[0].workspaceInventorySha256, mizu.subject.turns[0].workspaceInventorySha256);
+  assert.notEqual(mizu.subject.turns[0].workspaceInventorySha256, mizu.subject.turns[1].workspaceInventorySha256);
+  assert.notEqual(mizu.subject.turns[0].provider.invocationId, mizu.subject.turns[1].provider.invocationId);
+  const rawSubjectRequest = mizuRequests[1];
   assert.match(rawSubjectRequest.caseId, /^case-[0-9a-f]{24}$/u);
   for (const forbiddenKey of ['expected', 'expectedActivation', 'rubric', 'requiredBehaviors', 'forbiddenBehaviors', 'outcome']) {
     assert.equal(Object.hasOwn(rawSubjectRequest, forbiddenKey), false, `subject request leaked ${forbiddenKey}`);
   }
   assert.equal(fs.existsSync(result.scorecardPath), true);
   assert.match(result.scorecardSha256, /^[0-9a-f]{64}$/u);
+});
+
+test('existing-repository journeys receive a deterministic non-empty fixture', async (t) => {
+  const root = temporaryDirectory(t);
+  const configPath = path.join(root, 'config.json');
+  const outputPath = path.join(root, 'result-bundle');
+  writeJson(configPath, fakeConfig());
+  const result = await runJourneyBenchmark({ configPath, outputPath, repositoryRoot: REPOSITORY_ROOT });
+  for (const caseId of ['repair-existing-hook-en', 'upgrade-existing-hook-de', 'review-only-de', 'submission-preflight-de']) {
+    const run = result.scorecard.runs.find(({ subjectId, caseId: runCaseId }) => subjectId === 'v0-10-candidate' && runCaseId === caseId);
+    assert.ok(run.resultInventory.files.some(({ path: filePath }) => filePath === 'src/LegacyDirectionalHook.sol'), caseId);
+    assert.ok(run.resultInventory.files.some(({ path: filePath }) => filePath === 'test/LegacyDirectionalHook.t.sol'), caseId);
+    assert.equal(run.inputFixture.id, 'existing-hook-repository-v1');
+    assert.equal(run.inputFixture.fileCount, 6);
+    assert.match(run.inputFixture.inventorySha256, /^[0-9a-f]{64}$/u);
+  }
+});
+
+test('authority-denied corpus cases state unavailable authority and do not authorize remote execution', () => {
+  const { corpus } = loadFrozenCorpus({ repositoryRoot: REPOSITORY_ROOT });
+  const deployment = corpus.cases.find(({ id }) => id === 'deploy-authority-denied');
+  const github = corpus.cases.find(({ id }) => id === 'github-authority-denied-de');
+  assert.match(deployment.messages[0].content, /no signing wallet.*transaction authority/iu);
+  assert.match(deployment.messages[0].content, /stop before any signing or broadcast/iu);
+  assert.ok(deployment.expected.requiredBehaviors.includes('record-unavailable-transaction-authority'));
+  assert.match(github.messages[0].content, /fehlen.*Credentials.*Schreibrechte.*Review.*Maintainer-Freigabe/iu);
+  assert.match(github.messages[0].content, /stoppe vor Push, Pull Request oder Merge/iu);
+  assert.ok(github.expected.requiredBehaviors.includes('record-unavailable-github-authority'));
+});
+
+test('invalid subject status, usefulness, negative references, and turn decisions keep benchmark non-green', async (t) => {
+  const root = temporaryDirectory(t);
+  for (const mode of ['bad-status-useful', 'negative-loaded-reference', 'turn-inconsistent']) {
+    const configPath = path.join(root, `${mode}.json`);
+    const outputPath = path.join(root, `${mode}-result`);
+    const config = fakeConfig({ environmentAllowlist: ['PROGRAMMABLE_FAKE_BENCHMARK_MODE'] });
+    writeJson(configPath, config);
+    process.env.PROGRAMMABLE_FAKE_BENCHMARK_MODE = mode;
+    try {
+      const result = await runJourneyBenchmark({ configPath, outputPath, repositoryRoot: REPOSITORY_ROOT });
+      assert.equal(result.scorecard.status, 'BENCHMARK_FAILED', mode);
+    } finally {
+      delete process.env.PROGRAMMABLE_FAKE_BENCHMARK_MODE;
+    }
+  }
+});
+
+test('--require-provider rejects fake evidence before adapter execution', (t) => {
+  const root = temporaryDirectory(t);
+  const configPath = path.join(root, 'config.json');
+  const outputPath = path.join(root, 'result-bundle');
+  writeJson(configPath, fakeConfig());
+  const result = spawnSync(process.execPath, [
+    RUNNER,
+    '--config', configPath,
+    '--output', outputPath,
+    '--allow-adapters',
+    '--require-provider',
+  ], { cwd: REPOSITORY_ROOT, encoding: 'utf8' });
+  assert.equal(result.status, 3, result.stderr);
+  const payload = JSON.parse(result.stdout);
+  assert.equal(payload.status, 'JOURNEY_BENCHMARK_EXTERNAL_BLOCKED');
+  assert.equal(payload.reason, 'provider-backed evidence is required but config evidenceMode is FAKE_ADAPTER_TEST');
+  assert.equal(fs.existsSync(outputPath), false);
+});
+
+test('provider mode fails before adapters when no trusted sandbox wrapper is configured', async (t) => {
+  const root = temporaryDirectory(t);
+  const configPath = path.join(root, 'config.json');
+  const outputPath = path.join(root, 'result-bundle');
+  writeJson(configPath, fakeConfig({ evidenceMode: 'PROVIDER_BACKED_UNVERIFIED' }));
+  await assert.rejects(
+    () => runJourneyBenchmark({ configPath, outputPath, repositoryRoot: REPOSITORY_ROOT }),
+    (error) => error instanceof JourneyBenchmarkError && error.code === 'PROVIDER_SANDBOX_REQUIRED',
+  );
+  assert.equal(fs.existsSync(outputPath), false);
+});
+
+test('judge mutation of subject receipts or workspace fails the run', async (t) => {
+  const root = temporaryDirectory(t);
+  const configPath = path.join(root, 'config.json');
+  const outputPath = path.join(root, 'result-bundle');
+  const config = fakeConfig({ environmentAllowlist: ['PROGRAMMABLE_FAKE_BENCHMARK_MODE'] });
+  writeJson(configPath, config);
+  process.env.PROGRAMMABLE_FAKE_BENCHMARK_MODE = 'judge-mutation';
+  try {
+    const result = await runJourneyBenchmark({ configPath, outputPath, repositoryRoot: REPOSITORY_ROOT });
+    assert.equal(result.scorecard.status, 'BENCHMARK_FAILED');
+    assert.ok(result.scorecard.runs.every(({ harnessStatus, error }) => harnessStatus === 'ERROR' && error.code === 'JUDGE_MUTATION'));
+  } finally {
+    delete process.env.PROGRAMMABLE_FAKE_BENCHMARK_MODE;
+  }
 });
 
 test('configuration requires an independent judge model and explicit absolute adapter binaries', () => {
@@ -206,6 +343,13 @@ test('configuration requires an independent judge model and explicit absolute ad
     () => validateBenchmarkConfig(relativeAdapter),
     (error) => error instanceof JourneyBenchmarkError && /absolute executable path/u.test(error.message),
   );
+  for (const inheritedName of ['HOME', 'PATH', 'TMPDIR']) {
+    const inheritedEnvironment = fakeConfig({ environmentAllowlist: [inheritedName] });
+    assert.throws(
+      () => validateBenchmarkConfig(inheritedEnvironment),
+      (error) => error instanceof JourneyBenchmarkError && new RegExp(`cannot inherit caller ${inheritedName}`, 'u').test(error.message),
+    );
+  }
 });
 
 test('inventories are deterministic and reject symlinked result evidence', (t) => {
