@@ -120,102 +120,53 @@ const DAILY_SENTINEL_TRIGGER_KEYS = Object.freeze([
   'language',
   'prompt',
 ]);
-const EXPLANATION_MARKER = /\b(?:explain|explanation|erklär(?:e|en|t|ung|ungen)?)\b/iu;
-const BRAINSTORM_MARKER = /\b(?:brainstorm(?:ing)?|ideen?)\b/iu;
-const DELIVERY_ACTION_TOKEN = /^(?:build|builds|building|built|implement(?:s|ed|ing)?|creat(?:e|es|ed|ing)|turn(?:s|ed|ing)?|repair(?:s|ed|ing)?|review(?:s|ed|ing)?|test(?:s|ed|ing)?|upgrad(?:e|es|ed|ing)|submit(?:s|ted|ting)?|prepar(?:e|es|ed|ing)|bau(?:e|st|t|en)|implementier(?:e|st|t|en)|erstell(?:e|st|t|en)|reparier(?:e|st|t|en)|prüf(?:e|st|t|en)|test(?:e|st|t|en)|verbesser(?:e|st|t|en)|bereit(?:e|est|et|en)|einreich(?:e|st|t|en))$/iu;
-const TRIGGER_TOKEN = /[\p{L}\p{N}]+(?:'[\p{L}\p{N}]+)*|[.!?;,:]/gu;
-const STRONG_CLAUSE_BOUNDARIES = new Set([
-  '.', '!', '?', ';', ':',
-  'aber', 'afterward', 'afterwards', 'anschließend', 'but', 'danach', 'dann', 'however', 'instead', 'jedoch', 'sondern', 'stattdessen', 'then', 'yet',
+const DAILY_SENTINEL_SCHEMA_VERSION = '1.1.0';
+const EXPECTED_DAILY_SENTINEL_SHA256 = '1a2f20dae53f5b85b478ec16fba6be0836fc6a8d9935bdfda275423363ccd50a';
+const REQUIRED_DAILY_SENTINEL_PUBLIC_CASE_IDS = Object.freeze([
+  'ordinary-coin-official-launchpad',
+  'german-plain-language-sell-burn-intent',
+  'novel-game-external-service',
+  'unrestricted-drain-hard-fail',
+  'autopilot-complete-measurement-market',
 ]);
-const EMBEDDING_BOUNDARIES = new Set(['and', 'und']);
-const NEGATION_TOKENS = new Set([
-  "don't", 'dont', 'never', 'nicht', 'nichts', 'nie', 'not', "shouldn't", 'shouldnt', "won't", 'wont',
-]);
-const SCOPED_NEGATION_PREPOSITIONS = new Set(['kein', 'keine', 'keinen', 'keiner', 'keines', 'no', 'ohne', 'without']);
-const SCOPED_NEGATION_FILLERS = new Set(['any', 'ever', 'jemals', 'zu']);
-const REVERSE_NEGATION_TOKENS = new Set(['nichts', 'nothing']);
-const COMPLETE_PROJECT_SCOPE_MARKER = /(?:\b(?:complete|end-to-end|full-stack|project|repo|repository)\b|\b(?:fertig|projekt|vollständig)(?:e|em|en|er|es)?\b)/iu;
-const DELIVERY_CONTEXT_TOKEN_LIMIT = 12;
-
-function normalizeTriggerPrompt(prompt) {
-  return typeof prompt === 'string'
-    ? prompt
-      .normalize('NFKC')
-      .replace(/[‘’‛ʼ`´]/gu, "'")
-      .replace(/[‐‑‒–—―]/gu, '-')
-    : '';
-}
-
-function tokenizeTriggerPrompt(prompt) {
-  return [...normalizeTriggerPrompt(prompt).matchAll(TRIGGER_TOKEN)]
-    .map(([surface]) => surface.toLocaleLowerCase('und'));
-}
-
-function boundedContextStart(tokens, actionIndex, extraBoundaries = new Set()) {
-  const minimum = Math.max(0, actionIndex - DELIVERY_CONTEXT_TOKEN_LIMIT);
-  for (let index = actionIndex - 1; index >= minimum; index -= 1) {
-    if (STRONG_CLAUSE_BOUNDARIES.has(tokens[index]) || extraBoundaries.has(tokens[index])) return index + 1;
-  }
-  return minimum;
-}
-
-function includesMarker(tokens, pattern) {
-  return tokens.some((token) => pattern.test(token));
-}
-
-function hasScopedNegation(tokens) {
-  if (tokens.some((token) => NEGATION_TOKENS.has(token))) return true;
-  const previous = tokens.at(-1);
-  if (SCOPED_NEGATION_PREPOSITIONS.has(previous)) return true;
-  const beforePrevious = tokens.at(-2);
-  return SCOPED_NEGATION_PREPOSITIONS.has(beforePrevious)
-    && SCOPED_NEGATION_FILLERS.has(previous);
-}
-
-function hasImmediateReverseNegation(tokens, actionIndex) {
-  for (let index = actionIndex + 1; index < tokens.length; index += 1) {
-    const token = tokens[index];
-    if (STRONG_CLAUSE_BOUNDARIES.has(token) || token === ',') return false;
-    return REVERSE_NEGATION_TOKENS.has(token);
-  }
-  return false;
-}
-
-export function classifyCompleteProjectDeliveryActions(prompt) {
-  // This guards the frozen structural corpus; it is not a model-level natural-language trigger judge.
-  const tokens = tokenizeTriggerPrompt(prompt);
-  const actions = [];
-  for (const [index, action] of tokens.entries()) {
-    if (!DELIVERY_ACTION_TOKEN.test(action)) continue;
-    const clauseStart = boundedContextStart(tokens, index);
-    const clauseContext = tokens.slice(clauseStart, index).filter((token) => !/^[.!?;,:]$/u.test(token));
-    const embeddingStart = tokens[index - 1] === ','
-      ? index
-      : boundedContextStart(tokens, index, EMBEDDING_BOUNDARIES);
-    const embeddingContext = tokens.slice(embeddingStart, index).filter((token) => !/^[.!?;,:]$/u.test(token));
-    let classification = 'AFFIRMED';
-    if (hasScopedNegation(clauseContext) || hasImmediateReverseNegation(tokens, index)) classification = 'NEGATED';
-    else if (includesMarker(embeddingContext, EXPLANATION_MARKER)) classification = 'EXPLANATION_EMBEDDED';
-    else if (includesMarker(embeddingContext, BRAINSTORM_MARKER)) classification = 'BRAINSTORM_EMBEDDED';
-    actions.push({ action, classification });
-  }
-  return {
-    actions,
-    hasAffirmative: actions.some(({ classification }) => classification === 'AFFIRMED'),
-  };
-}
-
-function hasInScopeProjectSubject(prompt) {
-  return /\bProgrammable\b/u.test(prompt)
-    || /\bUniswap(?:[\s-]+)v4\b/iu.test(prompt);
-}
-
-function hasAffirmativeInScopeProjectDeliveryIntent(prompt) {
-  return hasInScopeProjectSubject(prompt)
-    && COMPLETE_PROJECT_SCOPE_MARKER.test(prompt)
-    && classifyCompleteProjectDeliveryActions(prompt).hasAffirmative;
-}
+const REQUIRED_DAILY_SENTINEL_TRIGGER_CASES = Object.freeze({
+  positive: Object.freeze([
+    Object.freeze({ id: 'community-mizu-design-continuation-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'implicit-design-then-build-de', language: 'de', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'game-theory-then-build-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'security-review-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'submit-existing-de', language: 'de', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'local-build-no-submit-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'scoped-submit-negation-build-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'explain-then-build-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'explain-then-build-de', language: 'de', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'brainstorm-then-implement-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'instead-build-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'sondern-build-de', language: 'de', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'comma-explain-build-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'without-delay-build-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'ohne-verzoegerung-build-de', language: 'de', expectedActivation: 'ACTIVATED' }),
+    Object.freeze({ id: 'build-without-submit-en', language: 'en', expectedActivation: 'ACTIVATED' }),
+  ]),
+  negative: Object.freeze([
+    Object.freeze({ id: 'branded-explanation-only-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'brainstorm-only-de', language: 'de', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'single-v4-bit-review-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'generic-contract-build', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'find-install-codex-skill', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'game-skill-tree', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'emphatic-do-not-build-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'curly-dont-build-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'explain-how-to-build-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'bitte-nicht-bauen-de', language: 'de', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'erklaere-wie-man-baut-de', language: 'de', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'build-nothing-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'baue-nichts-de', language: 'de', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'wont-build-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'shouldnt-implement-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+    Object.freeze({ id: 'negated-brainstorm-only-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' }),
+  ]),
+});
 
 export class EvalValidationError extends Error {
   constructor(issues) {
@@ -490,9 +441,19 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
   const sentinelPath = path.join(repositoryRoot, 'evals/daily-sentinel.json');
   const { raw, value } = readJson(sentinelPath, issues, 'daily sentinel');
   if (!value) return null;
+  const sentinelSha256 = crypto.createHash('sha256').update(raw).digest('hex');
   addIssue(issues, raw === `${JSON.stringify(value, null, 2)}\n`, 'daily sentinel: must use canonical duplicate-key-free JSON');
+  addIssue(
+    issues,
+    sentinelSha256 === EXPECTED_DAILY_SENTINEL_SHA256,
+    `daily sentinel: reviewed corpus digest drift; expected ${EXPECTED_DAILY_SENTINEL_SHA256}`,
+  );
   addIssue(issues, exactKeys(value, DAILY_SENTINEL_ROOT_KEYS), 'daily sentinel: root keys drift');
-  addIssue(issues, value.schemaVersion === '1.0.0', 'daily sentinel: schemaVersion must be 1.0.0');
+  addIssue(
+    issues,
+    value.schemaVersion === DAILY_SENTINEL_SCHEMA_VERSION,
+    `daily sentinel: schemaVersion must be ${DAILY_SENTINEL_SCHEMA_VERSION}`,
+  );
   addIssue(issues, value.kind === 'programmable-daily-sentinel', 'daily sentinel: kind drift');
   addIssue(
     issues,
@@ -506,11 +467,10 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
   );
   addIssue(
     issues,
-    Array.isArray(value.publicCaseIds) && value.publicCaseIds.length === 5,
-    'daily sentinel: exactly five public case ids are required',
+    JSON.stringify(value.publicCaseIds) === JSON.stringify(REQUIRED_DAILY_SENTINEL_PUBLIC_CASE_IDS),
+    'daily sentinel: reviewed public case id order drift',
   );
   const publicCaseIds = value.publicCaseIds ?? [];
-  addIssue(issues, new Set(publicCaseIds).size === publicCaseIds.length, 'daily sentinel: public case ids must be unique');
   for (const [index, caseId] of publicCaseIds.entries()) {
     addIssue(
       issues,
@@ -525,12 +485,17 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
   );
   const seenIds = new Set();
   const seenPrompts = new Set();
-  for (const [group, expectedActivation] of [['positive', 'ACTIVATED'], ['negative', 'NOT_ACTIVATED']]) {
+  for (const group of ['positive', 'negative']) {
     const prompts = value.triggerPrompts?.[group];
-    const expectedCount = group === 'positive' ? 5 : 6;
-    addIssue(issues, Array.isArray(prompts) && prompts.length === expectedCount, `daily sentinel: ${group} must contain exactly ${expectedCount} prompts`);
+    const requiredCases = REQUIRED_DAILY_SENTINEL_TRIGGER_CASES[group];
+    addIssue(
+      issues,
+      Array.isArray(prompts) && prompts.length === requiredCases.length,
+      `daily sentinel: ${group} must contain exactly ${requiredCases.length} reviewed prompts`,
+    );
     for (const [index, record] of (prompts ?? []).entries()) {
       const label = `daily sentinel: ${group}[${index}]`;
+      const requiredCase = requiredCases[index];
       addIssue(issues, exactKeys(record, DAILY_SENTINEL_TRIGGER_KEYS), `${label} keys drift`);
       addIssue(issues, /^[a-z0-9-]{3,80}$/u.test(record?.id ?? ''), `${label} id is invalid`);
       addIssue(issues, !seenIds.has(record?.id), `${label} id is duplicated`);
@@ -546,73 +511,22 @@ function validateDailySentinel(repositoryRoot, manifestCases, issues) {
       );
       addIssue(issues, !seenPrompts.has(record?.prompt), `${label} prompt is duplicated`);
       seenPrompts.add(record?.prompt);
-      addIssue(issues, record?.expectedActivation === expectedActivation, `${label} activation decision drift`);
+      addIssue(
+        issues,
+        requiredCase
+          && record?.id === requiredCase.id
+          && record?.language === requiredCase.language
+          && record?.expectedActivation === requiredCase.expectedActivation,
+        `${label} reviewed id, group, language, or expected label drift`,
+      );
     }
-  }
-  const positivePrompts = value.triggerPrompts?.positive ?? [];
-  const negativePrompts = value.triggerPrompts?.negative ?? [];
-  const brandedPrompts = positivePrompts.filter(({ prompt }) => /\bProgrammable\b/u.test(prompt ?? ''));
-  const implicitV4Work = positivePrompts.filter(({ prompt }) => !/\bProgrammable\b/u.test(prompt ?? ''));
-  addIssue(
-    issues,
-    brandedPrompts.length === 1,
-    'daily sentinel: positive prompts must contain exactly one explicit Programmable trigger',
-  );
-  addIssue(
-    issues,
-    implicitV4Work.length === 4,
-    'daily sentinel: positive prompts must contain exactly four implicit v4 build intents',
-  );
-  for (const [index, { prompt }] of positivePrompts.entries()) {
-    addIssue(
-      issues,
-      hasAffirmativeInScopeProjectDeliveryIntent(prompt ?? ''),
-      `daily sentinel: positive[${index}] must express affirmative complete-project delivery intent`,
-    );
-  }
-  for (const [index, { prompt }] of implicitV4Work.entries()) {
-    addIssue(
-      issues,
-      /\bUniswap(?:[\s-]+)v4\b/iu.test(prompt ?? ''),
-      `daily sentinel: implicit positive[${index}] must name Uniswap v4`,
-    );
-  }
-  for (const [index, { prompt }] of negativePrompts.entries()) {
-    addIssue(
-      issues,
-      !hasAffirmativeInScopeProjectDeliveryIntent(prompt ?? ''),
-      `daily sentinel: negative[${index}] mislabels affirmative complete-project delivery as not activated`,
-    );
-  }
-  addIssue(
-    issues,
-    negativePrompts.some(({ prompt }) => (
-      /\bProgrammable\b/u.test(prompt ?? '')
-      && EXPLANATION_MARKER.test(prompt ?? '')
-      && !hasAffirmativeInScopeProjectDeliveryIntent(prompt ?? '')
-    )),
-    'daily sentinel: negative prompts must cover a branded explanation-only request',
-  );
-  addIssue(
-    issues,
-    negativePrompts.some(({ prompt }) => (
-      !/\bProgrammable\b/u.test(prompt ?? '')
-      && /\bUniswap(?:[\s-]+)v4\b/iu.test(prompt ?? '')
-      && BRAINSTORM_MARKER.test(prompt ?? '')
-      && !hasAffirmativeInScopeProjectDeliveryIntent(prompt ?? '')
-    )),
-    'daily sentinel: negative prompts must cover an unbranded v4 brainstorming-only request',
-  );
-  for (const group of ['positive', 'negative']) {
-    const languages = new Set((value.triggerPrompts?.[group] ?? []).map(({ language }) => language));
-    addIssue(issues, languages.has('de') && languages.has('en'), `daily sentinel: ${group} prompts must cover de and en`);
   }
   return {
     publicCaseCount: publicCaseIds.length,
     positiveTriggerCount: value.triggerPrompts?.positive?.length ?? 0,
     negativeTriggerCount: value.triggerPrompts?.negative?.length ?? 0,
     qualification: value.qualification,
-    sha256: crypto.createHash('sha256').update(raw).digest('hex'),
+    sha256: sentinelSha256,
   };
 }
 

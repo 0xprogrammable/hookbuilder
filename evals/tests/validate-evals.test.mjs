@@ -8,7 +8,6 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
-  classifyCompleteProjectDeliveryActions,
   EvalValidationError,
   isOutsideRootRelative,
   validateSuite,
@@ -123,10 +122,10 @@ test('canonical eval suite passes deterministic structure validation', () => {
     forwardTestCaseCount: 6,
     forwardTestDecisionCaseCount: 3,
     dailySentinelPublicCaseCount: 5,
-    dailySentinelPositiveTriggerCount: 5,
-    dailySentinelNegativeTriggerCount: 6,
+    dailySentinelPositiveTriggerCount: 16,
+    dailySentinelNegativeTriggerCount: 16,
     dailySentinelQualification: 'STRUCTURE_AND_COVERAGE_ONLY',
-    dailySentinelSha256: '0b6a97b2ec1a938a6ff5fe2b30c92664b89e53d62de5b14bb6047b3916cace53',
+    dailySentinelSha256: '1a2f20dae53f5b85b478ec16fba6be0836fc6a8d9935bdfda275423363ccd50a',
     e2ePublicResponseCaseCount: 47,
     e2eSealedRepositoryEnvelopeCount: 24,
     e2eComparablePublicRepositoryCaseCount: 0,
@@ -142,51 +141,105 @@ test('canonical eval suite passes deterministic structure validation', () => {
   });
 });
 
-test('daily sentinel reuses public cases and keeps balanced trigger coverage', () => {
+test('daily sentinel binds the exact reviewed trigger corpus without lexical inference', () => {
   const sentinel = JSON.parse(fs.readFileSync(path.join(REPOSITORY_ROOT, 'evals/daily-sentinel.json'), 'utf8'));
+  assert.equal(sentinel.schemaVersion, '1.1.0');
   assert.equal(sentinel.qualification, 'STRUCTURE_AND_COVERAGE_ONLY');
   assert.equal(sentinel.runner, 'reuse-public-response-suite');
-  assert.equal(sentinel.publicCaseIds.length, 5);
-  assert.equal(sentinel.triggerPrompts.positive.length, 5);
-  assert.equal(sentinel.triggerPrompts.negative.length, 6);
+  assert.deepEqual(sentinel.publicCaseIds, [
+    'ordinary-coin-official-launchpad',
+    'german-plain-language-sell-burn-intent',
+    'novel-game-external-service',
+    'unrestricted-drain-hard-fail',
+    'autopilot-complete-measurement-market',
+  ]);
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(sentinel.triggerPrompts).map(([group, records]) => [
+      group,
+      records.map(({ id, language, expectedActivation }) => ({ id, language, expectedActivation })),
+    ])),
+    {
+      positive: [
+        { id: 'community-mizu-design-continuation-en', language: 'en', expectedActivation: 'ACTIVATED' },
+        { id: 'implicit-design-then-build-de', language: 'de', expectedActivation: 'ACTIVATED' },
+        { id: 'game-theory-then-build-en', language: 'en', expectedActivation: 'ACTIVATED' },
+        { id: 'security-review-en', language: 'en', expectedActivation: 'ACTIVATED' },
+        { id: 'submit-existing-de', language: 'de', expectedActivation: 'ACTIVATED' },
+        { id: 'local-build-no-submit-en', language: 'en', expectedActivation: 'ACTIVATED' },
+        { id: 'scoped-submit-negation-build-en', language: 'en', expectedActivation: 'ACTIVATED' },
+        { id: 'explain-then-build-en', language: 'en', expectedActivation: 'ACTIVATED' },
+        { id: 'explain-then-build-de', language: 'de', expectedActivation: 'ACTIVATED' },
+        { id: 'brainstorm-then-implement-en', language: 'en', expectedActivation: 'ACTIVATED' },
+        { id: 'instead-build-en', language: 'en', expectedActivation: 'ACTIVATED' },
+        { id: 'sondern-build-de', language: 'de', expectedActivation: 'ACTIVATED' },
+        { id: 'comma-explain-build-en', language: 'en', expectedActivation: 'ACTIVATED' },
+        { id: 'without-delay-build-en', language: 'en', expectedActivation: 'ACTIVATED' },
+        { id: 'ohne-verzoegerung-build-de', language: 'de', expectedActivation: 'ACTIVATED' },
+        { id: 'build-without-submit-en', language: 'en', expectedActivation: 'ACTIVATED' },
+      ],
+      negative: [
+        { id: 'branded-explanation-only-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' },
+        { id: 'brainstorm-only-de', language: 'de', expectedActivation: 'NOT_ACTIVATED' },
+        { id: 'single-v4-bit-review-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' },
+        { id: 'generic-contract-build', language: 'en', expectedActivation: 'NOT_ACTIVATED' },
+        { id: 'find-install-codex-skill', language: 'en', expectedActivation: 'NOT_ACTIVATED' },
+        { id: 'game-skill-tree', language: 'en', expectedActivation: 'NOT_ACTIVATED' },
+        { id: 'emphatic-do-not-build-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' },
+        { id: 'curly-dont-build-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' },
+        { id: 'explain-how-to-build-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' },
+        { id: 'bitte-nicht-bauen-de', language: 'de', expectedActivation: 'NOT_ACTIVATED' },
+        { id: 'erklaere-wie-man-baut-de', language: 'de', expectedActivation: 'NOT_ACTIVATED' },
+        { id: 'build-nothing-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' },
+        { id: 'baue-nichts-de', language: 'de', expectedActivation: 'NOT_ACTIVATED' },
+        { id: 'wont-build-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' },
+        { id: 'shouldnt-implement-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' },
+        { id: 'negated-brainstorm-only-en', language: 'en', expectedActivation: 'NOT_ACTIVATED' },
+      ],
+    },
+  );
+
+  const promptsById = Object.fromEntries(
+    [...sentinel.triggerPrompts.positive, ...sentinel.triggerPrompts.negative]
+      .map(({ id, prompt }) => [id, prompt]),
+  );
   assert.equal(
-    sentinel.triggerPrompts.positive.filter(({ prompt }) => /\bProgrammable\b/u.test(prompt)).length,
-    1,
-    'exactly one explicit branded trigger must remain covered',
+    promptsById['community-mizu-design-continuation-en'],
+    'We already brainstormed and chose the optimal design for Mizu, my Programmable launch. Use the skill now to implement the complete project with source and tests.',
+    'the reviewed community design-then-implement continuation must remain exact',
   );
   assert.equal(
-    sentinel.triggerPrompts.positive.filter(({ prompt }) => !/\bProgrammable\b/u.test(prompt)).length,
-    4,
-    'the trigger corpus must contain exactly four natural v4 build intents without the brand name',
+    promptsById['brainstorm-only-de'],
+    'Sammle nur ein paar Ideen für dynamische Gebühren in Uniswap v4; ich möchte ausdrücklich noch nichts implementieren.',
   );
-  for (const { prompt } of sentinel.triggerPrompts.positive.filter(({ prompt }) => !/\bProgrammable\b/u.test(prompt))) {
-    assert.match(prompt, /\bUniswap(?:[\s-]+)v4\b/iu);
-    assert.match(prompt, /\b(?:build|implement|repair|review|test|upgrade|prepare|bau(?:e|en|t)?|implementier(?:e|en|t)?|reparier(?:e|en|t)?|prüf(?:e|en|t)?|test(?:e|en|t)?|verbesser(?:e|n|t)?|bereit(?:e|en|t)?|reich(?:e|en|t)?)\b/iu);
-  }
-  assert.ok(
-    sentinel.triggerPrompts.negative.some(({ prompt }) => /\bProgrammable\b/u.test(prompt) && /\bexplanation\b/iu.test(prompt)),
-    'a branded explanation-only request must stay outside the skill',
+  assert.equal(
+    promptsById['single-v4-bit-review-en'],
+    'Review this single Uniswap v4 permission bit and tell me whether it is enabled.',
   );
-  assert.ok(
-    sentinel.triggerPrompts.negative.some(({ prompt }) => /\bUniswap(?:[\s-]+)v4\b/iu.test(prompt) && /\b(?:brainstorm|ideen)\b/iu.test(prompt)),
-    'an unbranded v4 brainstorming-only request must stay outside the skill',
+  assert.equal(
+    promptsById['branded-explanation-only-en'],
+    'Explain how Programmable handles Uniswap v4 hook permissions; I only need an explanation, not an implementation.',
   );
-  assert.ok(
-    sentinel.triggerPrompts.negative.some(({ id }) => id === 'single-v4-bit-review-en'),
-    'a single v4 permission-bit review must stay outside complete-project delivery',
+
+  const validatorSource = fs.readFileSync(
+    path.join(REPOSITORY_ROOT, 'scripts/evals/validate-evals.mjs'),
+    'utf8',
+  );
+  assert.doesNotMatch(
+    validatorSource,
+    /classifyCompleteProjectDeliveryActions|hasAffirmativeInScopeProjectDeliveryIntent|DELIVERY_ACTION_TOKEN/u,
+    'the deterministic validator must not claim general natural-language classification',
   );
 
   withTemporaryRepository(
     (temporaryRoot) => {
       const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
       const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
-      candidate.publicCaseIds[0] = 'invented-daily-case';
-      candidate.triggerPrompts.negative[0].expectedActivation = 'ACTIVATED';
+      candidate.triggerPrompts.positive[0].prompt += ' Today.';
       fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
     },
     (temporaryRoot) => expectInvalid(
       temporaryRoot,
-      /daily sentinel: publicCaseIds\[0\].*existing public case id|daily sentinel: negative\[0\] activation decision drift/u,
+      /daily sentinel: reviewed corpus digest drift/u,
     ),
   );
 
@@ -194,13 +247,12 @@ test('daily sentinel reuses public cases and keeps balanced trigger coverage', (
     (temporaryRoot) => {
       const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
       const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
-      candidate.triggerPrompts.positive.find(({ id }) => id === 'game-theory-then-build-en').prompt =
-        'Do not build or implement anything; only brainstorm possible Uniswap v4 game architectures.';
+      candidate.triggerPrompts.negative[0].language = 'de';
       fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
     },
     (temporaryRoot) => expectInvalid(
       temporaryRoot,
-      /positive\[\d+\] must express affirmative complete-project delivery intent/u,
+      /daily sentinel: negative\[0\] reviewed id, group, language, or expected label drift/u,
     ),
   );
 
@@ -208,185 +260,14 @@ test('daily sentinel reuses public cases and keeps balanced trigger coverage', (
     (temporaryRoot) => {
       const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
       const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
-      candidate.triggerPrompts.negative.find(({ id }) => id === 'brainstorm-only-de').prompt =
-        'Build a complete Uniswap v4 hook project with source and tests for this fee idea.';
+      candidate.publicCaseIds.reverse();
       fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
     },
     (temporaryRoot) => expectInvalid(
       temporaryRoot,
-      /negative\[\d+\] mislabels affirmative complete-project delivery as not activated/u,
+      /daily sentinel: reviewed public case id order drift/u,
     ),
   );
-
-  withTemporaryRepository(
-    (temporaryRoot) => {
-      const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
-      const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
-      candidate.triggerPrompts.negative.find(({ id }) => id === 'single-v4-bit-review-en').prompt =
-        'Review this complete Uniswap v4 hook repository and report every concrete problem.';
-      fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
-    },
-    (temporaryRoot) => expectInvalid(
-      temporaryRoot,
-      /negative\[\d+\] mislabels affirmative complete-project delivery as not activated/u,
-    ),
-  );
-
-  withTemporaryRepository(
-    (temporaryRoot) => {
-      const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
-      const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
-      candidate.triggerPrompts.positive.find(({ id }) => id === 'implicit-design-then-build-de').prompt =
-        'Entwirf mir ein paar mögliche Architekturen für einen Uniswap-v4-Hook; wir wollen heute nur brainstormen.';
-      fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
-    },
-    (temporaryRoot) => expectInvalid(
-      temporaryRoot,
-      /positive\[\d+\] must express affirmative complete-project delivery intent/u,
-    ),
-  );
-
-  withTemporaryRepository(
-    (temporaryRoot) => {
-      const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
-      const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
-      candidate.triggerPrompts.positive.find(({ id }) => id === 'explicit-design-continuation-en').prompt =
-        'Use Programmable to explain the main Uniswap v4 hook architecture patterns.';
-      fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
-    },
-    (temporaryRoot) => expectInvalid(
-      temporaryRoot,
-      /positive\[\d+\] must express affirmative complete-project delivery intent/u,
-    ),
-  );
-
-  withTemporaryRepository(
-    (temporaryRoot) => {
-      const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
-      const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
-      for (const record of candidate.triggerPrompts.positive) {
-        if (!/\bProgrammable\b/u.test(record.prompt)) record.prompt = `Use Programmable. ${record.prompt}`;
-      }
-      fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
-    },
-    (temporaryRoot) => expectInvalid(
-      temporaryRoot,
-      /positive prompts must contain exactly one explicit Programmable trigger|positive prompts must contain exactly four implicit v4 build intents/u,
-    ),
-  );
-
-  withTemporaryRepository(
-    (temporaryRoot) => {
-      const sentinelPath = path.join(temporaryRoot, 'evals/daily-sentinel.json');
-      const candidate = JSON.parse(fs.readFileSync(sentinelPath, 'utf8'));
-      candidate.triggerPrompts.positive.find(({ id }) => id === 'game-theory-then-build-en').prompt =
-        'Build a generic TypeScript utility with tests.';
-      fs.writeFileSync(sentinelPath, `${JSON.stringify(candidate, null, 2)}\n`);
-    },
-    (temporaryRoot) => expectInvalid(
-      temporaryRoot,
-      /implicit positive\[\d+\] must name Uniswap v4/u,
-    ),
-  );
-});
-
-test('delivery intent classification is bounded to each action clause', () => {
-  const cases = [
-    {
-      prompt: 'Do not, under any circumstances, build a complete Uniswap v4 project.',
-      expected: ['build:NEGATED'],
-    },
-    {
-      prompt: 'Don’t build this Uniswap v4 project.',
-      expected: ['build:NEGATED'],
-    },
-    {
-      prompt: 'Only explain how to build a Uniswap v4 hook.',
-      expected: ['build:EXPLANATION_EMBEDDED'],
-    },
-    {
-      prompt: 'Bitte nicht bauen; ich will nur die Idee für einen Uniswap-v4-Hook besprechen.',
-      expected: ['bauen:NEGATED'],
-    },
-    {
-      prompt: 'Erkläre mir nur, wie man einen Uniswap-v4-Hook baut.',
-      expected: ['baut:EXPLANATION_EMBEDDED'],
-    },
-    {
-      prompt: 'Build the complete Uniswap v4 project locally, but do not submit it.',
-      expected: ['build:AFFIRMED', 'submit:NEGATED'],
-    },
-    {
-      prompt: 'Do not submit anything; build and test the complete Uniswap v4 project locally.',
-      expected: ['submit:NEGATED', 'build:AFFIRMED', 'test:AFFIRMED'],
-    },
-    {
-      prompt: 'Explain the Uniswap v4 architecture, then build the complete project.',
-      expected: ['build:AFFIRMED'],
-    },
-    {
-      prompt: 'Erkläre kurz die Architektur und baue danach das vollständige Uniswap-v4-Projekt.',
-      expected: ['baue:AFFIRMED'],
-    },
-    {
-      prompt: 'Brainstorm how to build the hook, then implement the complete Uniswap v4 project.',
-      expected: ['build:BRAINSTORM_EMBEDDED', 'implement:AFFIRMED'],
-    },
-    {
-      prompt: 'Do not submit anything, instead build the complete Uniswap v4 project locally.',
-      expected: ['submit:NEGATED', 'build:AFFIRMED'],
-    },
-    {
-      prompt: 'Nicht einreichen, sondern baue das vollständige Uniswap-v4-Projekt lokal.',
-      expected: ['einreichen:NEGATED', 'baue:AFFIRMED'],
-    },
-    {
-      prompt: 'Explain the architecture, build the complete Uniswap v4 project locally.',
-      expected: ['build:AFFIRMED'],
-    },
-    {
-      prompt: 'Build nothing for this Uniswap v4 project.',
-      expected: ['build:NEGATED'],
-    },
-    {
-      prompt: 'Baue nichts für dieses Uniswap-v4-Projekt.',
-      expected: ['baue:NEGATED'],
-    },
-    {
-      prompt: 'I won’t build this Uniswap v4 project.',
-      expected: ['build:NEGATED'],
-    },
-    {
-      prompt: "I shouldn't implement this Uniswap v4 project.",
-      expected: ['implement:NEGATED'],
-    },
-    {
-      prompt: 'Without delay, build the complete Uniswap v4 project locally.',
-      expected: ['build:AFFIRMED'],
-    },
-    {
-      prompt: 'Ohne Verzögerung baue das vollständige Uniswap-v4-Projekt lokal.',
-      expected: ['baue:AFFIRMED'],
-    },
-    {
-      prompt: 'Build the complete Uniswap v4 project locally without submitting it.',
-      expected: ['build:AFFIRMED', 'submitting:NEGATED'],
-    },
-  ];
-
-  for (const { prompt, expected } of cases) {
-    const result = classifyCompleteProjectDeliveryActions(prompt);
-    assert.deepEqual(
-      result.actions.map(({ action, classification }) => `${action}:${classification}`),
-      expected,
-      prompt,
-    );
-    assert.equal(
-      result.hasAffirmative,
-      expected.some((entry) => entry.endsWith(':AFFIRMED')),
-      prompt,
-    );
-  }
 });
 
 test('prompt wrapper rejects every supported Nunjucks raw-block terminator shape', () => {

@@ -22,9 +22,11 @@ Mizu design-to-implementation regression. Its raw activation, artifact, telemetr
 receipts remain adapter-reported until an external trust root verifies them; see
 [`journey-benchmark/README.md`](journey-benchmark/README.md).
 
-`daily-sentinel.json` is a lean selection manifest, not a fourth evaluation system. It reuses five existing public
-response case IDs and freezes five positive plus six adjacent negative trigger prompts. Local validation checks only
-its shape, registration, language coverage, and activation labels; it does not run a model or establish trigger quality.
+`daily-sentinel.json` is a versioned selection manifest, not a fourth evaluation system. It reuses five existing public
+response case IDs and freezes 16 positive plus 16 adjacent negative trigger prompts. Local validation binds the
+exact schema version, byte digest, ordered case IDs, groups, languages, counts, and reviewed expected labels. Its status
+remains `STRUCTURE_AND_COVERAGE_ONLY`: it does not infer prompt meaning, run a model, or establish activation quality.
+Only a recorded provider/model activation run can establish semantic trigger behavior.
 
 Missing model credentials produce an explicit `MODEL_EVALS_SKIPPED` result and no result artifact. Release automation
 must add `--require-provider`; with that flag a skipped model run fails instead of appearing green. An offline structure
