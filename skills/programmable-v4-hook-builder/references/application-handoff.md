@@ -17,8 +17,9 @@ source repository. Bind:
   test, and evidence surface;
 - the clean public source repository's immutable numeric GitHub ID, canonical URL, branch, commit, and root tree;
 - the authenticated builder's immutable GitHub user ID, current login, profile URL, and current source push authority;
-- every active `build` requirement returned by the exact current central policy read, plus the policy and schema Git
-  bindings from that same protected Submit a Launch base commit and tree; and
+- the exact canonical policy and policy-schema bytes as canonical base64 preimages, plus their Git bindings from the
+  same protected Submit a Launch base commit and tree; the handoff validates both preimages, requires their SHA-256
+  and Git blob identities to match, and derives every active `build` requirement directly from that policy; and
 - the fixed draft target under `submissions/<application-id>`, plus an exact existing draft identity only when one was
   separately observed.
 
@@ -37,12 +38,14 @@ node "$SKILL_ROOT/scripts/cli.mjs" handoff preview \
 ```
 
 The command safely rechecks the local source root, clean worktree, branch, commit, tree, and canonical `origin` without
-network access. It returns canonical preview bytes, `previewDigest`, the exact local output plan, and a separate
-`confirmationDigest`. It does not write the output during preview.
+network access. `canonicalApplicationHandoffJson` contains the complete canonical preview artifact, including its final
+LF, while `handoffBytes` binds its exact byte length and SHA-256. The response also returns `previewDigest`, the exact
+local output plan, and a separate `confirmationDigest`. It does not write the output during preview.
 
-The preview binds but does not independently revalidate the supplied public GitHub, policy, preflight, source-authority,
-or existing-PR observations. Those limitations are explicit in `evidenceBoundary`; the receiving reviewer must repeat
-them against the bound identities.
+The preview validates the supplied policy and schema preimages and derives the active build requirements from them. It
+does not independently prove their remote Git-tree membership or currentness, evaluate project compliance with those
+requirements, or revalidate the supplied public GitHub, preflight, source-authority, or existing-PR observations. Those
+limitations are explicit in `evidenceBoundary`; the receiving reviewer must repeat them against the bound identities.
 
 ## Guarded local-write boundary
 
@@ -57,10 +60,11 @@ node "$SKILL_ROOT/scripts/cli.mjs" handoff preview \
   --confirm-local-write "sha256:<exact-confirmation-digest>"
 ```
 
-The command rechecks the input, source, output parent, output existence, and confirmation, then returns
+The command rechecks the input, source, output parent, output leaf with `lstat`, and confirmation, then returns
 `LOCAL_WRITE_UNAVAILABLE` without mutation. The portable package does not yet include a reviewed descriptor-bound
-writer that can preserve the acknowledged parent identity through the final create. Use the canonical bytes returned
-by preview as the handoff; do not claim that the CLI materialized them. No GitHub or other network request occurs.
+writer that can preserve the acknowledged parent identity through an `O_NOFOLLOW | O_CREAT | O_EXCL` descriptor open.
+Any future writer must retain that boundary. Use `canonicalApplicationHandoffJson` as the exact handoff artifact; do not
+claim that the CLI materialized it. No GitHub or other network request occurs.
 
 ## Authority ledger
 

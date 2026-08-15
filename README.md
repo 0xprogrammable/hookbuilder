@@ -121,9 +121,10 @@ All new one-off applications go through the Builder to
 `1320171831`. Project source stays in the builder's own public repository.
 
 Complete custom `no-market` and `tradable` projects now have one generic deterministic `handoff preview`. It preserves
-the full source/test/evidence surface inventory and binds the exact source revision, current build-policy bytes, Submit
-a Launch base, and intended draft-PR identity. Preview is no-write, and the portable local-write boundary also fails
-closed without mutation until a reviewed descriptor-bound writer exists. See the
+the full source/test/evidence surface inventory, validates exact policy/schema preimages, derives active build rules,
+and binds the exact source revision, Submit a Launch base, and intended draft-PR identity. Preview is no-write and
+returns the complete LF-terminated artifact in `canonicalApplicationHandoffJson`; the portable local-write boundary
+also fails closed until a reviewed `O_NOFOLLOW | O_CREAT | O_EXCL` descriptor-bound writer exists. See the
 [generic handoff contract](skills/programmable-v4-hook-builder/references/application-handoff.md).
 
 That generic handoff is not yet a public GitHub submission adapter. A remote write remains unavailable until Submit a

@@ -3,8 +3,12 @@ import {
   canonicalJsonV2
 } from "./canonical-json-core.mjs";
 import {
+  currentSubmitLaunchBuildRequirements,
+  MAX_SUBMIT_LAUNCH_POLICY_BYTES,
+  MAX_SUBMIT_LAUNCH_POLICY_SCHEMA_BYTES,
   normalizeSubmitLaunchBuildPolicyBinding,
-  normalizeSubmitLaunchPolicySchemaBinding
+  normalizeSubmitLaunchPolicySchemaBinding,
+  parseAndBindSubmitLaunchPolicyContract
 } from "./submit-launch-policy-contract.mjs";
 import {
   SUBMIT_LAUNCH_BASE_BRANCH,
@@ -21,6 +25,7 @@ const DECIMAL_ID = /^[1-9][0-9]{0,63}$/u;
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const BRANCH = /^(?![./])(?!.*(?:\.\.|\/\/|@\{|\\|[\x00-\x20~^:?*\[]))(?!.*[/.]$)[A-Za-z0-9._/-]{1,255}$/u;
 const SAFE_PATH = /^(?!\/)(?!.*(?:^|\/)\.\.?(?:\/|$))(?!.*(?:^|\/)\.git(?:\/|$))[A-Za-z0-9._@+ -]+(?:\/[A-Za-z0-9._@+ -]+)*$/u;
+const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/u;
 const CLASSIFICATIONS = new Set(["no-market", "tradable"]);
 const INTAKE_STATES = new Set(SUBMIT_LAUNCH_INTAKE_STATES);
 const MAXIMUM_SURFACES = 32;
@@ -46,6 +51,7 @@ export function buildApplicationHandoffPreviewV1(input) {
   const policyProjection = {
     binding: policy.binding,
     schemaBinding: policy.schemaBinding,
+    content: policy.content,
     requirements: policy.requirements,
     requirementsSha256: canonicalJsonSha256V2(policy.requirements)
   };
@@ -99,7 +105,10 @@ export function buildApplicationHandoffPreviewV1(input) {
     evidenceBoundary: {
       sourceCompletionRevalidatedByThisPreview: false,
       sourceAuthorityRevalidatedByThisPreview: false,
-      policyEvaluatedByThisPreview: false,
+      policyContentValidatedByThisPreview: true,
+      policyRequirementsDerivedByThisPreview: true,
+      policyRemoteMembershipRevalidatedByThisPreview: false,
+      projectPolicyComplianceEvaluatedByThisPreview: false,
       policyAndTargetRevalidatedByThisPreview: false,
       pullRequestRevalidatedByThisPreview: false,
       applicationPackageMaterialized: false,
@@ -248,26 +257,80 @@ function normalizeBuilder(value) {
 }
 
 function normalizePolicy(value) {
-  exactObject(value, ["binding", "schemaBinding", "requirements"], "POLICY_HANDOFF_INVALID");
+  exactObject(value, ["binding", "schemaBinding", "policyBytesBase64", "schemaBytesBase64"], "POLICY_HANDOFF_INVALID");
   let binding;
   let schemaBinding;
+  let contract;
+  let policyBytes;
+  let schemaBytes;
   try {
     binding = normalizeSubmitLaunchBuildPolicyBinding(value.binding);
     schemaBinding = normalizeSubmitLaunchPolicySchemaBinding(value.schemaBinding);
+    policyBytes = decodeCanonicalBase64(value.policyBytesBase64, MAX_SUBMIT_LAUNCH_POLICY_BYTES);
+    schemaBytes = decodeCanonicalBase64(value.schemaBytesBase64, MAX_SUBMIT_LAUNCH_POLICY_SCHEMA_BYTES);
+    contract = parseAndBindSubmitLaunchPolicyContract({
+      baseCommit: binding.baseCommit,
+      baseTree: binding.baseTree,
+      policyBytes,
+      policyGitBlobOid: binding.gitBlobOid,
+      schemaBytes,
+      schemaGitBlobOid: schemaBinding.gitBlobOid
+    });
   } catch (error) {
-    fail("POLICY_HANDOFF_INVALID", "handoff requires the exact validated current build-policy and schema bindings", error);
+    fail("POLICY_HANDOFF_INVALID", "handoff requires exact validated policy and schema preimages matching their Git bindings", error);
   }
-  if (!Array.isArray(value.requirements) || value.requirements.length < 1 || value.requirements.length > 256) {
+  if (
+    canonicalJsonV2(binding) !== canonicalJsonV2(contract.buildPolicyBinding)
+    || canonicalJsonV2(schemaBinding) !== canonicalJsonV2(contract.policySchemaBinding)
+  ) {
+    fail("POLICY_HANDOFF_INVALID", "policy and schema bindings must be derived from the supplied exact preimages");
+  }
+  const requirements = clone(currentSubmitLaunchBuildRequirements(contract));
+  requirements.sort((left, right) => compareUtf8(left.id, right.id));
+  if (requirements.length < 1 || requirements.length > 256) {
     fail("POLICY_HANDOFF_INVALID", "handoff requires the bounded current build-rule list");
   }
-  const requirements = clone(value.requirements);
   for (const requirement of requirements) {
     if (!isPlainObject(requirement) || !/^[A-Z][A-Z0-9_]*(?:\.[A-Z][A-Z0-9_]*)+$/u.test(requirement.id ?? "") || requirement.status !== "active") {
-      fail("POLICY_HANDOFF_INVALID", "each handoff policy requirement must be one active identified rule");
+      fail("POLICY_HANDOFF_INVALID", "each derived handoff policy requirement must be one active identified build rule");
     }
   }
   assertSortedUnique(requirements.map(({ id }) => id), "POLICY_HANDOFF_INVALID", "policy requirement ids");
-  return { binding, schemaBinding, requirements };
+  return {
+    binding,
+    schemaBinding,
+    content: {
+      policy: {
+        byteLength: policyBytes.length,
+        gitBlobOid: binding.gitBlobOid,
+        sha256: binding.sha256
+      },
+      schema: {
+        byteLength: schemaBytes.length,
+        gitBlobOid: schemaBinding.gitBlobOid,
+        sha256: schemaBinding.sha256
+      }
+    },
+    requirements
+  };
+}
+
+function decodeCanonicalBase64(value, maximumBytes) {
+  const maximumCharacters = Math.ceil(maximumBytes / 3) * 4;
+  if (
+    typeof value !== "string"
+    || value.length < 4
+    || value.length > maximumCharacters
+    || value.length % 4 !== 0
+    || !BASE64.test(value)
+  ) {
+    fail("POLICY_HANDOFF_INVALID", "policy preimages must use bounded canonical base64");
+  }
+  const bytes = Buffer.from(value, "base64");
+  if (bytes.length < 2 || bytes.length > maximumBytes || bytes.toString("base64") !== value) {
+    fail("POLICY_HANDOFF_INVALID", "policy preimages must decode losslessly within their byte bounds");
+  }
+  return bytes;
 }
 
 function normalizePullRequest(value, applicationId, builderUserId) {

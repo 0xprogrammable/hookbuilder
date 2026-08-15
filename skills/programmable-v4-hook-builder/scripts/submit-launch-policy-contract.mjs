@@ -22,8 +22,8 @@ export const SUBMIT_LAUNCH_POLICY_SCHEMA_BINDING_VERSION =
 export const MAX_SUBMIT_LAUNCH_POLICY_BYTES = 512 * 1024;
 export const MAX_SUBMIT_LAUNCH_POLICY_SCHEMA_BYTES = 256 * 1024;
 
-const OBJECT_ID = /^[0-9a-f]{40}$/u;
-const SHA256 = /^sha256:[0-9a-f]{64}$/u;
+const OBJECT_ID = /^(?!0{40}$)[0-9a-f]{40}$/u;
+const SHA256 = /^sha256:(?!0{64}$)[0-9a-f]{64}$/u;
 const POLICY_ID = /^[a-z0-9][a-z0-9.-]{2,79}$/u;
 const SEMVER = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/u;
 const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import childProcess from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -22,12 +23,18 @@ const tree = "2".repeat(40);
 const baseCommit = "3".repeat(40);
 const baseTree = "4".repeat(40);
 const digest = (digit) => `sha256:${digit.repeat(64)}`;
+const policyFixtureRoot = path.join(testDirectory, "fixtures", "submit-launch-policy");
+const policyBytes = fs.readFileSync(path.join(policyFixtureRoot, "launch-policy.v1.json"));
+const policySchemaBytes = fs.readFileSync(path.join(policyFixtureRoot, "launch-policy.v1.schema.json"));
+const policyDocument = JSON.parse(policyBytes.toString("utf8"));
 
 test("application handoff previews exact no-market and tradable projects without changing authority state", () => {
   for (const classification of ["no-market", "tradable"]) {
     const input = fixture({ classification });
     assert.deepEqual(validateAgainstSchema(input, inputSchema), []);
-    assert.deepEqual(normalizeApplicationHandoffInputV1(input), input);
+    const normalized = normalizeApplicationHandoffInputV1(input);
+    assert.equal(normalized.policy.content.policy.byteLength, policyBytes.length);
+    assert.equal(normalized.policy.content.schema.byteLength, policySchemaBytes.length);
     const result = buildApplicationHandoffPreviewV1(input);
     assert.equal(result.status, "APPLICATION_HANDOFF_PREVIEW_READY");
     assert.equal(result.application.classification, classification);
@@ -35,6 +42,11 @@ test("application handoff previews exact no-market and tradable projects without
     assert.equal(result.source.revisionObjectId, commit);
     assert.equal(result.source.treeObjectId, tree);
     assert.equal(result.policy.binding.baseCommit, baseCommit);
+    assert.equal(result.policy.binding.sha256, bytesDigest(policyBytes));
+    assert.equal(result.policy.schemaBinding.sha256, bytesDigest(policySchemaBytes));
+    assert.deepEqual(result.policy.requirements, policyDocument.rules.filter(
+      (rule) => rule.status === "active" && rule.profiles.includes("build")
+    ));
     assert.equal(result.pullRequest.target.numericRepositoryId, "1320171831");
     assert.equal(result.pullRequest.target.baseCommit, baseCommit);
     assert.equal(result.pullRequest.target.headOwnerGitHubUserId, "123456789");
@@ -43,6 +55,10 @@ test("application handoff previews exact no-market and tradable projects without
     assert.equal(result.transport.status, "HANDOFF_ONLY_EXTERNAL_WRITE_NOT_AUTHORIZED");
     assert.equal(result.transport.existingDraftAdapterEligible, false);
     assert.deepEqual(result.externalActionsPerformed, []);
+    assert.equal(result.evidenceBoundary.policyContentValidatedByThisPreview, true);
+    assert.equal(result.evidenceBoundary.policyRequirementsDerivedByThisPreview, true);
+    assert.equal(result.evidenceBoundary.policyRemoteMembershipRevalidatedByThisPreview, false);
+    assert.equal(result.evidenceBoundary.projectPolicyComplianceEvaluatedByThisPreview, false);
     assert.deepEqual(result.authority, {
       sourceCompletion: "PROJECT_PREFLIGHT_VALID_BOUND_NOT_REVALIDATED",
       submission: "NOT_SUBMITTED",
@@ -53,6 +69,40 @@ test("application handoff previews exact no-market and tradable projects without
     });
     assert.match(result.previewDigest, /^sha256:[0-9a-f]{64}$/u);
     assert.equal(buildApplicationHandoffPreviewV1(input).previewDigest, result.previewDigest);
+  }
+});
+
+test("application handoff derives requirements from exact policy preimages and rejects substituted or placeholder bindings", () => {
+  const selected = fixture();
+  selected.policy.requirements = [{ id: "CALLER.SELECTED_RULE", status: "active" }];
+  assert.notDeepEqual(validateAgainstSchema(selected, inputSchema), []);
+  assert.throws(
+    () => buildApplicationHandoffPreviewV1(selected),
+    (error) => error instanceof ApplicationHandoffError && error.code === "POLICY_HANDOFF_INVALID"
+  );
+
+  const alteredPolicy = structuredClone(policyDocument);
+  alteredPolicy.rules[0].parameters.chainId = 8453;
+  const substituted = fixture();
+  substituted.policy.policyBytesBase64 = Buffer.from(`${JSON.stringify(alteredPolicy)}\n`, "utf8").toString("base64");
+  assert.throws(
+    () => buildApplicationHandoffPreviewV1(substituted),
+    (error) => error instanceof ApplicationHandoffError && error.code === "POLICY_HANDOFF_INVALID"
+  );
+
+  for (const mutate of [
+    (input) => { input.policy.binding.gitBlobOid = "0".repeat(40); },
+    (input) => { input.policy.binding.sha256 = `sha256:${"0".repeat(64)}`; },
+    (input) => { input.policy.schemaBinding.gitBlobOid = "0".repeat(40); },
+    (input) => { input.policy.schemaBinding.sha256 = `sha256:${"0".repeat(64)}`; }
+  ]) {
+    const placeholder = fixture();
+    mutate(placeholder);
+    assert.notDeepEqual(validateAgainstSchema(placeholder, inputSchema), []);
+    assert.throws(
+      () => buildApplicationHandoffPreviewV1(placeholder),
+      (error) => error instanceof ApplicationHandoffError && error.code === "POLICY_HANDOFF_INVALID"
+    );
   }
 });
 
@@ -136,6 +186,27 @@ test("CLI dry-run emits a deterministic preview and performs no local or externa
   assert.equal(report.result.localSourceValidation.revisionObjectId, localCommit);
   assert.equal(fs.existsSync(outputPath), false);
   assert.match(report.result.localWritePlan.confirmationDigest, /^sha256:[0-9a-f]{64}$/u);
+  assert.deepEqual(report.result.localWritePlan.futureWriterBoundary, {
+    createExclusive: true,
+    descriptorBound: true,
+    noFollow: true
+  });
+  const canonicalArtifact = report.result.canonicalApplicationHandoffJson;
+  assert.equal(typeof canonicalArtifact, "string");
+  assert.equal(canonicalArtifact.endsWith("\n"), true);
+  assert.equal(Buffer.byteLength(canonicalArtifact, "utf8"), report.result.handoffBytes.byteLength);
+  assert.equal(bytesDigest(Buffer.from(canonicalArtifact, "utf8")), report.result.handoffBytes.sha256);
+  assert.deepEqual(JSON.parse(canonicalArtifact), report.result.preview);
+
+  const danglingOutputPath = path.join(inputRoot, "dangling-handoff.json");
+  fs.symlinkSync(path.join(inputRoot, "missing-handoff-target.json"), danglingOutputPath);
+  const dangling = childProcess.spawnSync(process.execPath, [
+    cli, "handoff", "preview", "--input", inputPath, "--output", danglingOutputPath,
+    "--repository-root", root
+  ], { cwd: root, encoding: "utf8", shell: false });
+  assert.equal(dangling.status, 1, dangling.stdout || dangling.stderr);
+  assert.equal(JSON.parse(dangling.stdout).error.code, "HANDOFF_OUTPUT_EXISTS");
+  assert.equal(fs.lstatSync(danglingOutputPath).isSymbolicLink(), true);
 
   const denied = childProcess.spawnSync(process.execPath, [
     cli, "handoff", "preview", "--input", inputPath, "--output", outputPath,
@@ -216,11 +287,11 @@ function fixture({ classification = "no-market", sourceCommit = commit, sourceTr
         baseCommit,
         baseTree,
         path: "policy/launch-policy.v1.json",
-        gitBlobOid: "5".repeat(40),
+        gitBlobOid: gitBlobOid(policyBytes),
         policyId: "programmable-central-launch-policy",
         policyVersion: "1.2.0",
         profileId: "build",
-        sha256: digest("c")
+        sha256: bytesDigest(policyBytes)
       },
       schemaBinding: {
         schemaVersion: "programmable.submit-launch-policy-schema-binding.v1",
@@ -229,11 +300,12 @@ function fixture({ classification = "no-market", sourceCommit = commit, sourceTr
         baseCommit,
         baseTree,
         path: "policy/schemas/launch-policy.v1.schema.json",
-        gitBlobOid: "6".repeat(40),
+        gitBlobOid: gitBlobOid(policySchemaBytes),
         schemaId: "https://programmable.money/schemas/launch-policy.v1.schema.json",
-        sha256: digest("d")
+        sha256: bytesDigest(policySchemaBytes)
       },
-      requirements: [{ id: "LAUNCH.ETHEREUM_AND_TREASURY_10_BPS", status: "active" }]
+      policyBytesBase64: policyBytes.toString("base64"),
+      schemaBytesBase64: policySchemaBytes.toString("base64")
     },
     pullRequest: {
       target: {
@@ -252,6 +324,14 @@ function fixture({ classification = "no-market", sourceCommit = commit, sourceTr
       observed: null
     }
   };
+}
+
+function bytesDigest(bytes) {
+  return `sha256:${crypto.createHash("sha256").update(bytes).digest("hex")}`;
+}
+
+function gitBlobOid(bytes) {
+  return crypto.createHash("sha1").update(`blob ${bytes.length}\0`, "utf8").update(bytes).digest("hex");
 }
 
 function surface(id, kind, sourcePaths, testPaths) {

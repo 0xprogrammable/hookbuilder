@@ -51,6 +51,7 @@ if (process.argv.slice(2).some((value) => value === "--help" || value === "-h"))
     const localSourceValidation = validateLocalSource(repositoryRoot, preview.source);
     const bytes = Buffer.from(`${canonicalJsonV2(preview)}\n`, "utf8");
     if (bytes.length > MAXIMUM_OUTPUT_BYTES) throw new CliFailure("HANDOFF_OUTPUT_TOO_LARGE", "application handoff preview exceeds its bounded output", { exitCode: 1 });
+    const canonicalApplicationHandoffJson = bytes.toString("utf8");
     const outputPlan = options.output === null ? null : planOutput(repositoryRoot, options.output, preview, bytes);
     const writePerformed = false;
     if (options.write) {
@@ -60,16 +61,18 @@ if (process.argv.slice(2).some((value) => value === "--help" || value === "-h"))
       assertInputUnchanged(input);
       assertOutputParentUnchanged(outputPlan);
       validateLocalSource(repositoryRoot, preview.source);
-      throw new CliFailure("LOCAL_WRITE_UNAVAILABLE", "the portable handoff client has no reviewed descriptor-bound local writer; use the canonical preview bytes without claiming a materialized file", { exitCode: 1 });
+      throw new CliFailure("LOCAL_WRITE_UNAVAILABLE", "the portable handoff client has no reviewed O_NOFOLLOW exclusive descriptor-bound local writer; use canonicalApplicationHandoffJson without claiming a materialized file", { exitCode: 1 });
     }
     emitSuccess("handoff", {
       preview,
+      canonicalApplicationHandoffJson,
       localSourceValidation,
       handoffBytes: { byteLength: bytes.length, sha256: sha256(bytes) },
       localWritePlan: outputPlan === null ? null : {
         outputPath: outputPlan.outputPath,
         confirmationDigest: outputPlan.confirmationDigest,
-        outputMustRemainNew: true
+        outputMustRemainNew: true,
+        futureWriterBoundary: outputPlan.futureWriterBoundary
       },
       writeRequested: options.write,
       writePerformed,
@@ -174,14 +177,20 @@ function planOutput(repositoryRoot, outputPath, preview, bytes) {
   if (!isOutsideRoot(relative)) {
     throw new CliFailure("HANDOFF_OUTPUT_PATH_INVALID", "handoff output must remain completely outside the source repository", { exitCode: 1 });
   }
-  if (fs.existsSync(target)) throw new CliFailure("HANDOFF_OUTPUT_EXISTS", "handoff output must name one new file", { exitCode: 1 });
+  assertOutputLeafAbsent(target);
   const parentStat = fs.statSync(parent, { bigint: true });
+  const futureWriterBoundary = {
+    createExclusive: true,
+    descriptorBound: true,
+    noFollow: true
+  };
   const payload = {
     schemaVersion: "programmable.application-handoff-local-write-plan.v1",
     previewDigest: preview.previewDigest,
     handoffSha256: sha256(bytes),
     outputPath: target,
     outputParent: { dev: parentStat.dev.toString(), ino: parentStat.ino.toString() },
+    futureWriterBoundary,
     externalActionsPerformed: []
   };
   return {
@@ -206,12 +215,22 @@ function isOutsideRoot(relative) {
 }
 
 function assertOutputParentUnchanged(plan) {
-  if (fs.existsSync(plan.outputPath)) throw new CliFailure("HANDOFF_OUTPUT_EXISTS", "handoff output no longer names a new file", { exitCode: 1 });
+  assertOutputLeafAbsent(plan.outputPath);
   const parent = fs.realpathSync(path.dirname(plan.outputPath));
   const stat = fs.statSync(parent, { bigint: true });
   if (stat.dev.toString() !== plan.outputParent.dev || stat.ino.toString() !== plan.outputParent.ino) {
     throw new CliFailure("HANDOFF_OUTPUT_PARENT_DRIFT", "handoff output parent changed after preview", { exitCode: 1 });
   }
+}
+
+function assertOutputLeafAbsent(outputPath) {
+  try {
+    fs.lstatSync(outputPath);
+  } catch (error) {
+    if (error?.code === "ENOENT") return;
+    throw new CliFailure("HANDOFF_OUTPUT_PATH_INVALID", "handoff output leaf could not be inspected safely", { exitCode: 1 });
+  }
+  throw new CliFailure("HANDOFF_OUTPUT_EXISTS", "handoff output must remain one absent filesystem leaf, including no dangling symlink", { exitCode: 1 });
 }
 
 function realDirectory(value, code) {

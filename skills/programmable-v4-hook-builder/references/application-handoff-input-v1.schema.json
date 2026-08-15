@@ -123,22 +123,19 @@
     "policy": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["binding", "schemaBinding", "requirements"],
+      "required": ["binding", "schemaBinding", "policyBytesBase64", "schemaBytesBase64"],
       "properties": {
         "binding": { "$ref": "#/$defs/policyBinding" },
         "schemaBinding": { "$ref": "#/$defs/policySchemaBinding" },
-        "requirements": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 256,
-          "items": {
-            "type": "object",
-            "required": ["id", "status"],
-            "properties": {
-              "id": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*(\\.[A-Z][A-Z0-9_]*)+$" },
-              "status": { "const": "active" }
-            }
-          }
+        "policyBytesBase64": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 699052
+        },
+        "schemaBytesBase64": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 349528
         }
       }
     },

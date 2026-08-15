@@ -82,9 +82,11 @@ Only exact-byte `PROJECT_PREFLIGHT_VALID` completes Autopilot. `CLEAR` is source
 noncanonical. Local pass remains `NOT_APPROVED` and `NOT_SUBMITTED`.
 
 For a complete custom project, read [application-handoff.md](references/application-handoff.md). Build the closed input
-outside source and run `handoff preview`; it binds the exact source, policy, complete surface inventory and intended
-draft-PR identity while performing no external write. The portable `--write` boundary rechecks the exact confirmation,
-then fails closed without mutation until a reviewed descriptor-bound writer exists.
+outside source with exact policy/schema preimages and run `handoff preview`; it derives active build requirements and
+binds the exact source, policy, complete surface inventory and intended draft-PR identity while performing no external
+write. Consume the exact LF-terminated `canonicalApplicationHandoffJson` artifact. The portable `--write` boundary
+rechecks the exact confirmation, then fails closed until a reviewed `O_NOFOLLOW | O_CREAT | O_EXCL` descriptor-bound
+writer exists.
 
 ## Specialist invariants
 
