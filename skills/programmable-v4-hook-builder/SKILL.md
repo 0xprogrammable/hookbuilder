@@ -81,6 +81,11 @@ node "$SKILL_ROOT/scripts/cli.mjs" project require-output --brief --repository-r
 Only exact-byte `PROJECT_PREFLIGHT_VALID` completes Autopilot. `CLEAR` is source-only; `DRAFT_UNRESOLVED` is
 noncanonical. Local pass remains `NOT_APPROVED` and `NOT_SUBMITTED`.
 
+For a complete custom project, read [application-handoff.md](references/application-handoff.md). Build the closed input
+outside source and run `handoff preview`; it binds the exact source, policy, complete surface inventory and intended
+draft-PR identity while performing no external write. The portable `--write` boundary rechecks the exact confirmation,
+then fails closed without mutation until a reviewed descriptor-bound writer exists.
+
 ## Specialist invariants
 
 - Never skip semantic preflight. Modes other than Autopilot narrow the result boundary; they do not weaken gates.
@@ -95,7 +100,9 @@ noncanonical. Local pass remains `NOT_APPROVED` and `NOT_SUBMITTED`.
   hookData, limits, generic fees and tests. Bundled V1 is frozen Fee V2 compatibility for the exact intent-bound legacy
   profile only. Custom implementation stays eligible; only later launch-manifest/approval evidence may be unresolved.
 - Escalate novel, value-bearing or ambiguous slices. Mark unavailable provider gates `EXTERNAL_BLOCKED`.
-- Six-file `prepare-pr` is frozen legacy replay; no general application transport exists. For canary tests, read
+- Generic custom projects use the deterministic `handoff preview`; current public generic GitHub mutation remains
+  unavailable until an accepted protected intake contract exists. Six-file `prepare-pr` is frozen legacy replay and
+  cannot consume a generic handoff. For canary tests, read
   `references/workflow-canary-application.md` and run `prepare-canary`: bound-byte/digest preview only; writes fail closed.
   Neither grants submission, acceptance, deployment, external, live, or launch authority.
 

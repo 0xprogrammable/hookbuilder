@@ -53,8 +53,10 @@ The Builder helps an agent:
 - route missing Three.js, maps, backend, database or other agent/domain capability to an exact
   `INTEGRATION_PENDING` handoff without replacing the idea or claiming the missing component complete;
 - bind one exact public GitHub revision and its complete source closure; and
-- prepare the exact GitHub application, follow its authenticated status, and hand an unchanged approved revision to the
-  separate Website launch flow without self-approval or wallet authority.
+- prepare a deterministic generic no-write handoff for complete custom projects, with source, policy, surface and draft
+  target identity kept separate from submission, review, approval, deployment and launch; and
+- prepare an accepted exact GitHub application when its released transport applies, follow its authenticated status,
+  and hand an unchanged approved revision to the separate Website launch flow without self-approval or wallet authority.
 
 The deterministic `context` router loads only the relevant Uniswap, SDK, Programmable, security and workflow chapters.
 Ordinary ideas should not pay the context cost of unrelated advanced material; unfamiliar ideas receive the open-world

@@ -2,6 +2,11 @@
 
 Submit a Launch is the canonical public review path for new one-off Programmable projects.
 
+The Builder's generic `handoff preview` covers complete custom projects without forcing a frozen profile. It is a
+deterministic local handoff only: current public generic package acceptance and GitHub mutation are not proven active.
+The six-file workflow below remains the exact released transport for its accepted legacy package and must not be used
+to bypass that boundary. See the [generic handoff contract](../skills/programmable-v4-hook-builder/references/application-handoff.md).
+
 The project stays in the builder's own public GitHub repository. Hookbuilder builds and checks it, then prepares an
 exact six-file application for
 [`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch), immutable GitHub repository ID

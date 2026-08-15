@@ -10,7 +10,7 @@ const TEST_TIMEOUT_MS = 15 * 60 * 1000;
 const TEST_OUTPUT_BYTES = 128 * 1024 * 1024;
 const monotonicNow = () => performance.now();
 export const REQUIRED_PORTABLE_TESTS = Object.freeze(`
-application-api-schema application-dependency-core application-v3-prepare-revision-core build-info
+application-api-schema application-dependency-core application-handoff application-v3-prepare-revision-core build-info
 build-profile builder-lifecycle canonical-json-core central-policy-authority-boundary cli
 cli-central-base cli-central-package cli-entry cli-open-world
 cli-open-world-github cli-output-dir cli-prepare-pr companion-manifest-v2

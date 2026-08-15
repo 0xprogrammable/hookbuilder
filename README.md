@@ -120,6 +120,15 @@ All new one-off applications go through the Builder to
 [`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch), immutable GitHub repository ID
 `1320171831`. Project source stays in the builder's own public repository.
 
+Complete custom `no-market` and `tradable` projects now have one generic deterministic `handoff preview`. It preserves
+the full source/test/evidence surface inventory and binds the exact source revision, current build-policy bytes, Submit
+a Launch base, and intended draft-PR identity. Preview is no-write, and the portable local-write boundary also fails
+closed without mutation until a reviewed descriptor-bound writer exists. See the
+[generic handoff contract](skills/programmable-v4-hook-builder/references/application-handoff.md).
+
+That generic handoff is not yet a public GitHub submission adapter. A remote write remains unavailable until Submit a
+Launch exposes a protected accepted generic application schema. It never means reviewed, approved, deployed, or live.
+
 `prepare-pr` creates the exact six-file application without changing GitHub. `submit` and `update` first return a
 read-only action plan. Only the exact confirmed plan may create the builder's `submit-launch` fork, application branch,
 and one draft pull request. The client reads `docs/builder/intake-status.json` as the released schema-v2 contract and

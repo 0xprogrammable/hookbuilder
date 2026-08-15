@@ -31,6 +31,7 @@ const delegatedCommands = new Map([
   ["fee", { script: "fee-conformance.mjs", prefix: [] }],
   ["launch-bundle", { script: "launch-bundle.mjs", prefix: [] }],
   ["launch-plan-graph", { script: "launch-plan-graph.mjs", prefix: [] }],
+  ["handoff", { script: "application-handoff.mjs", prefix: [] }],
   ["submit", { script: "github-application.mjs", prefix: ["submit"] }],
   ["status", { script: "github-application.mjs", prefix: ["status"] }],
   ["update", { script: "github-application.mjs", prefix: ["update"] }],
@@ -453,6 +454,7 @@ function globalHelp() {
     "  policy        Read current launch requirements.",
     "  context       Route the confirmed task.",
     "  project       Materialize and verify output.",
+    "  handoff       Preview exact policy/source/draft-PR identity without an external write.",
     "Frozen legacy only: fee, launch-bundle, package, prepare-pr, scaffold, submit, status, update.",
     "",
     "Start: cli.mjs doctor -> cli.mjs policy -> cli.mjs context --mode autopilot -> cli.mjs project --help",
@@ -463,7 +465,7 @@ function globalHelp() {
 function globalHelpJson() {
   const commands = [...new Set(["launch-bundle-v2", ...delegatedCommands.keys(), ...commandSpecs.keys()])]
     .sort().map((id) => ({ id, help: `cli.mjs ${id} --help` }));
-  return canonicalJson({ schemaVersion: "1.0.0", ok: true, command: "help", result: { goldenPath: ["doctor", "policy", "context", "project"], frozenLegacyCommands: ["application-recheck", "fee", "launch-bundle", "launch-bundle-v2", "package", "prepare-pr", "scaffold", "submit", "status", "update"], commands } });
+  return canonicalJson({ schemaVersion: "1.0.0", ok: true, command: "help", result: { goldenPath: ["doctor", "policy", "context", "project", "handoff"], frozenLegacyCommands: ["application-recheck", "fee", "launch-bundle", "launch-bundle-v2", "package", "prepare-pr", "scaffold", "submit", "status", "update"], commands } });
 }
 function startHelp() {
   return [

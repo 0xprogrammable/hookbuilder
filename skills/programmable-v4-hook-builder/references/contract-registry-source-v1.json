@@ -15,6 +15,18 @@
       }
     },
     {
+      "contractId": "application-handoff-input-v1",
+      "schemaPath": "references/application-handoff-input-v1.schema.json",
+      "schemaId": "urn:programmable:application-handoff-input:1.0.0",
+      "lifecycle": "active",
+      "payloadDigestProfile": "contract-defined",
+      "validator": {
+        "modulePath": "scripts/application-handoff-core.mjs",
+        "exportName": "normalizeApplicationHandoffInputV1",
+        "mode": "direct"
+      }
+    },
+    {
       "contractId": "architecture-candidates-v1",
       "schemaPath": "references/architecture-candidates-v1.schema.json",
       "schemaId": "urn:programmable:architecture-candidates:1.0.0",
