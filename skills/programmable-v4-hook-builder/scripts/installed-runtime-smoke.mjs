@@ -143,7 +143,7 @@ test("host-neutral version reports the bundled standalone release without state"
   const result = run("cli.mjs", ["version"]);
   assert.equal(result.status, 0, result.stdout || result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(output.result.installed.releaseVersion, "0.9.2");
+  assert.equal(output.result.installed.releaseVersion, "0.9.3");
   assert.equal(output.result.installed.publicationState, "release-package");
   assert.equal(output.result.versionSource, "bundled-code-constants");
   assert.equal(output.result.installedStateOverrideUsed, false);

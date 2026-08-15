@@ -2,6 +2,27 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.9.3 - 2026-08-15
+
+### Changed
+
+- Replaced one child process per portable `.mjs` syntax check with a single bounded `SourceTextModule` worker. The
+  worker parses source only, never links or executes imports, and returns deterministic diagnostics under explicit
+  time, memory and output bounds.
+- Added a regression proving that a syntactically valid module with a missing import and a side effect is inspected
+  without linking or executing, while malformed syntax remains a reported failure.
+- Made the ambient temporary-directory regression deterministic under parallel repository tests by asserting its own
+  added and removed probe instead of requiring unrelated system temporary entries to remain unchanged.
+- Regenerated the canonical Plugin payload and refreshed the source-bound package receipts for the exact candidate.
+
+### Evidence boundary
+
+- In a local three-run benchmark over 334 scripts, the syntax phase median moved from 10,148 ms for the prior
+  sequential `node --check` path to 92 ms for the bounded worker. This measures only syntax inspection, not total
+  repository or model performance.
+- The change does not establish public CI, an independent audit, host behavior, approval, deployment, or launch
+  authority. The exact `v0.9.3` tag, release assets and fresh installation still require their own verification.
+
 ## 0.9.2 - 2026-08-15
 
 ### Added

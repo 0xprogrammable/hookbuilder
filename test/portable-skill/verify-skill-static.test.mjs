@@ -8,6 +8,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   createDeterministicTestBatches,
+  parseModuleSyntax,
   runDeterministicTestBatches
 } from "../../skills/programmable-v4-hook-builder/scripts/verify-skill-execution-core.mjs";
 import { writeDiagnostics } from "../../skills/programmable-v4-hook-builder/scripts/verify-skill-filesystem-core.mjs";
@@ -101,6 +102,28 @@ test("source verification partitions every repository test exactly once with bou
   assert.match(source, /const TEST_TIMEOUT_MS = 15 \* 60 \* 1000;/u);
   assert.match(source, /const TEST_OUTPUT_BYTES = 128 \* 1024 \* 1024;/u);
   assert.doesNotMatch(source, /--test-concurrency=[3-9]/u);
+});
+
+test("module syntax parsing uses one bounded SourceTextModule worker without linking or executing", async () => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-module-syntax-"));
+  const validModule = path.join(fixtureRoot, "valid.mjs");
+  const invalidModule = path.join(fixtureRoot, "invalid.mjs");
+  const sideEffect = path.join(fixtureRoot, "executed.txt");
+
+  try {
+    fs.writeFileSync(validModule, `import "./missing.mjs";\nawait Promise.resolve();\nprocess.getBuiltinModule("node:fs").writeFileSync(${JSON.stringify(sideEffect)}, "executed");\n`);
+    fs.writeFileSync(invalidModule, "export const = ;\n");
+
+    const result = await parseModuleSyntax({ scripts: [validModule, invalidModule] });
+
+    assert.equal(result.failure, null);
+    assert.equal(result.diagnostics.length, 1);
+    assert.equal(result.diagnostics[0].script, invalidModule);
+    assert.match(result.diagnostics[0].message, /^SyntaxError:/u);
+    assert.equal(fs.existsSync(sideEffect), false);
+  } finally {
+    fs.rmSync(fixtureRoot, { recursive: true, force: true });
+  }
 });
 
 test("deterministic test shards run in isolated processes with one shared deadline and output budget", async () => {

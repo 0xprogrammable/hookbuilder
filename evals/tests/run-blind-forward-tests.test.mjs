@@ -199,8 +199,19 @@ test("ambient tmp inventory is bounded and transcript inspection records out-of-
   assert.equal(inspection.valid, false);
   assert.deepEqual(inspection.attempts.map(({ operation, path: attemptedPath }) => ({ operation, path: attemptedPath })), [{ operation: "mv", path: "/private/tmp/object-courtroom-pre-newline-fix" }]);
   const before = inventoryAmbientTmpRoots({ excludedRoots: [laneRoot] });
+  const ambientRoot = fs.realpathSync(fs.existsSync("/tmp") ? "/tmp" : "/private/tmp");
+  const probeRoot = fs.realpathSync(fs.mkdtempSync(path.join(ambientRoot, "programmable-ambient-diff-test-")));
+  t.after(() => fs.rmSync(probeRoot, { recursive: true, force: true }));
   const after = inventoryAmbientTmpRoots({ excludedRoots: [laneRoot] });
-  assert.deepEqual(compareAmbientTmpInventories(before, after), { added: [], removed: [] });
+  const added = compareAmbientTmpInventories(before, after).added.filter(({ path: entryPath }) => entryPath === probeRoot);
+  assert.deepEqual(added, [after.entries.find(({ path: entryPath }) => entryPath === probeRoot)]);
+  assert.equal(before.entries.some(({ path: entryPath }) => entryPath === laneRoot), false);
+  assert.equal(after.entries.some(({ path: entryPath }) => entryPath === laneRoot), false);
+
+  fs.rmSync(probeRoot, { recursive: true, force: true });
+  const restored = inventoryAmbientTmpRoots({ excludedRoots: [laneRoot] });
+  const removed = compareAmbientTmpInventories(after, restored).removed.filter(({ path: entryPath }) => entryPath === probeRoot);
+  assert.deepEqual(removed, added);
 });
 
 test("ambient tmp inventory skips only entries removed between readdir and lstat", (t) => {
