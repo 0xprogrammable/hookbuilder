@@ -363,6 +363,30 @@
       }
     },
     {
+      "contractId": "project-sandbox-host-attestation-v1",
+      "schemaPath": "references/project-sandbox-host-attestation-v1.schema.json",
+      "schemaId": "urn:programmable:project-sandbox-host-attestation:1.0.0",
+      "lifecycle": "active",
+      "payloadDigestProfile": "contract-defined",
+      "validator": {
+        "modulePath": "scripts/project-sandbox-host-core.mjs",
+        "exportName": "validateProjectSandboxHostAttestationV1",
+        "mode": "direct"
+      }
+    },
+    {
+      "contractId": "project-sandbox-host-profile-v1",
+      "schemaPath": "references/project-sandbox-host-profile-v1.schema.json",
+      "schemaId": "urn:programmable:project-sandbox-host-profile:1.0.0",
+      "lifecycle": "active",
+      "payloadDigestProfile": "contract-defined",
+      "validator": {
+        "modulePath": "scripts/project-sandbox-host-core.mjs",
+        "exportName": "validateProjectSandboxHostProfileV1",
+        "mode": "direct"
+      }
+    },
+    {
       "contractId": "project-sandbox-receipt-v1",
       "schemaPath": "references/project-sandbox-receipt-v1.schema.json",
       "schemaId": "urn:programmable:project-external-sandbox-receipt:1.0.0",
@@ -371,6 +395,18 @@
       "validator": {
         "modulePath": "scripts/project-sandbox-receipt-core.mjs",
         "exportName": "validateProjectSandboxReceiptV1",
+        "mode": "direct"
+      }
+    },
+    {
+      "contractId": "project-sandbox-trust-root-v1",
+      "schemaPath": "references/project-sandbox-trust-root-v1.schema.json",
+      "schemaId": "urn:programmable:project-sandbox-trust-root:1.0.0",
+      "lifecycle": "active",
+      "payloadDigestProfile": "contract-defined",
+      "validator": {
+        "modulePath": "scripts/project-sandbox-host-core.mjs",
+        "exportName": "validateProjectSandboxTrustRootV1",
         "mode": "direct"
       }
     },

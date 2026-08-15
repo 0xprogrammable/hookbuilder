@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:programmable:project-sandbox-host-attestation:1.0.0",
+  "title": "Programmable project sandbox host attestation",
+  "description": "An Ed25519-signed host observation binding one external sandbox receipt to an exact Docker invocation, policy enforcement, output inventory, and completed process teardown. It grants no approval, audit, deployment, or production authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "payload", "payloadSha256", "signature"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "kind": { "const": "programmable-project-sandbox-host-attestation" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "authoritySubject", "requestSha256", "receiptSha256", "hostProfileSha256", "invocation", "enforcement", "outputArtifactsSha256", "evidenceBoundary"],
+      "properties": {
+        "status": { "const": "completed" },
+        "authoritySubject": { "$ref": "#/$defs/subject" },
+        "requestSha256": { "$ref": "#/$defs/sha256" },
+        "receiptSha256": { "$ref": "#/$defs/sha256" },
+        "hostProfileSha256": { "$ref": "#/$defs/sha256" },
+        "invocation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["adapter", "dockerBinarySha256", "argvSha256", "invocationSha256", "imageSha256", "sourceArchiveSha256", "planSha256", "environmentKeysSha256", "mountSetSha256"],
+          "properties": {
+            "adapter": { "const": "docker-cli" },
+            "dockerBinarySha256": { "$ref": "#/$defs/sha256" },
+            "argvSha256": { "$ref": "#/$defs/sha256" },
+            "invocationSha256": { "$ref": "#/$defs/sha256" },
+            "imageSha256": { "$ref": "#/$defs/sha256" },
+            "sourceArchiveSha256": { "$ref": "#/$defs/sha256" },
+            "planSha256": { "$ref": "#/$defs/sha256" },
+            "environmentKeysSha256": { "$ref": "#/$defs/sha256" },
+            "mountSetSha256": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        "enforcement": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["filesystem", "network", "secrets", "externalWrites", "process"],
+          "properties": {
+            "filesystem": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["sourceReadOnly", "disposableWorkspace", "allowedPathsSha256", "deniedPathsSha256", "writesObservedSha256"],
+              "properties": {
+                "sourceReadOnly": { "const": true },
+                "disposableWorkspace": { "const": true },
+                "allowedPathsSha256": { "$ref": "#/$defs/sha256" },
+                "deniedPathsSha256": { "$ref": "#/$defs/sha256" },
+                "writesObservedSha256": { "$ref": "#/$defs/sha256" }
+              }
+            },
+            "network": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mode", "allowlistSha256", "accessObserved"],
+              "properties": {
+                "mode": { "const": "forbidden" },
+                "allowlistSha256": { "type": "null" },
+                "accessObserved": { "const": false }
+              }
+            },
+            "secrets": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["inherited", "mounted", "environmentKeysSha256"],
+              "properties": {
+                "inherited": { "const": false },
+                "mounted": { "const": false },
+                "environmentKeysSha256": { "$ref": "#/$defs/sha256" }
+              }
+            },
+            "externalWrites": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["allowed", "performed"],
+              "properties": { "allowed": { "const": false }, "performed": { "const": false } }
+            },
+            "process": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["init", "pidsLimit", "containerIdSha256", "runnerExitCode", "containerExitCode", "containerRemoved", "postRemovalState", "descendantsRemaining", "teardownObservationSha256"],
+              "properties": {
+                "init": { "const": true },
+                "pidsLimit": { "type": "integer", "minimum": 16, "maximum": 4096 },
+                "containerIdSha256": { "$ref": "#/$defs/sha256" },
+                "runnerExitCode": { "const": 0 },
+                "containerExitCode": { "const": 0 },
+                "containerRemoved": { "const": true },
+                "postRemovalState": { "const": "absent" },
+                "descendantsRemaining": { "const": 0 },
+                "teardownObservationSha256": { "$ref": "#/$defs/sha256" }
+              }
+            }
+          }
+        },
+        "outputArtifactsSha256": { "$ref": "#/$defs/sha256" },
+        "evidenceBoundary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["approvalCreated", "auditClaimed", "deploymentClaimed", "productionClaimed", "externalActionsPerformed"],
+          "properties": {
+            "approvalCreated": { "const": false },
+            "auditClaimed": { "const": false },
+            "deploymentClaimed": { "const": false },
+            "productionClaimed": { "const": false },
+            "externalActionsPerformed": { "type": "array", "maxItems": 0 }
+          }
+        }
+      }
+    },
+    "payloadSha256": { "$ref": "#/$defs/sha256" },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "keyId", "value"],
+      "properties": {
+        "algorithm": { "const": "ed25519" },
+        "keyId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,160}$" },
+        "value": { "type": "string", "minLength": 80, "maxLength": 128, "contentEncoding": "base64" }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "subject": { "type": "string", "pattern": "^urn:programmable:sandbox:[a-z0-9]+(?:[.:_-][a-z0-9]+)*$", "maxLength": 240 }
+  }
+}

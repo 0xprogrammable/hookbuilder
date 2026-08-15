@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:programmable:project-sandbox-host-profile:1.0.0",
+  "title": "Programmable project sandbox host profile",
+  "description": "An operator-owned, hash-bound Docker host profile. It is configuration, not proof that Docker ran or that isolation was enforced.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "profileId", "authoritySubject", "adapter", "launcher", "runtime", "policy", "limits"],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0" },
+    "kind": { "const": "programmable-project-sandbox-host-profile" },
+    "profileId": { "$ref": "#/$defs/slug" },
+    "authoritySubject": { "$ref": "#/$defs/subject" },
+    "adapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "binarySha256"],
+      "properties": {
+        "kind": { "const": "docker-cli" },
+        "binarySha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "launcher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "binarySha256", "entrypoint"],
+      "properties": {
+        "id": { "$ref": "#/$defs/slug" },
+        "version": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "binarySha256": { "$ref": "#/$defs/sha256" },
+        "entrypoint": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "items": { "type": "string", "minLength": 1, "maxLength": 1000 }
+        }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "imageReference", "imageSha256", "isolation", "user"],
+      "properties": {
+        "id": { "$ref": "#/$defs/slug" },
+        "version": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "imageReference": { "type": "string", "pattern": "^(?!.*\\s)[^@]+@sha256:[0-9a-f]{64}$", "maxLength": 500 },
+        "imageSha256": { "$ref": "#/$defs/sha256" },
+        "isolation": { "const": "container-separate-user" },
+        "user": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["uid", "gid"],
+          "properties": {
+            "uid": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+            "gid": { "type": "integer", "minimum": 1, "maximum": 2147483647 }
+          }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filesystem", "network", "secrets", "externalWrites", "process"],
+      "properties": {
+        "filesystem": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sourceMount", "requestMount", "planMount", "outputMount", "workspaceMount", "temporaryMount"],
+          "properties": {
+            "sourceMount": { "const": "/input/source.tar" },
+            "requestMount": { "const": "/request/request.v1.json" },
+            "planMount": { "const": "/request/repository-plan.v1.json" },
+            "outputMount": { "const": "/output" },
+            "workspaceMount": { "const": "/workspace" },
+            "temporaryMount": { "const": "/tmp" }
+          }
+        },
+        "network": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "allowlist"],
+          "properties": {
+            "mode": { "const": "forbidden" },
+            "allowlist": { "type": "array", "maxItems": 0 }
+          }
+        },
+        "secrets": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["inherit", "mounts"],
+          "properties": {
+            "inherit": { "const": false },
+            "mounts": { "type": "array", "maxItems": 0 }
+          }
+        },
+        "externalWrites": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["allowed"],
+          "properties": { "allowed": { "const": false } }
+        },
+        "process": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["init", "pidsLimit"],
+          "properties": {
+            "init": { "const": true },
+            "pidsLimit": { "type": "integer", "minimum": 16, "maximum": 4096 }
+          }
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["memoryBytes", "cpus", "workspaceBytes", "temporaryBytes", "maximumOutputBytes"],
+      "properties": {
+        "memoryBytes": { "type": "integer", "minimum": 268435456, "maximum": 68719476736 },
+        "cpus": { "type": "number", "minimum": 0.25, "maximum": 64 },
+        "workspaceBytes": { "type": "integer", "minimum": 67108864, "maximum": 68719476736 },
+        "temporaryBytes": { "type": "integer", "minimum": 16777216, "maximum": 17179869184 },
+        "maximumOutputBytes": { "type": "integer", "minimum": 1024, "maximum": 536870912 }
+      }
+    }
+  },
+  "$defs": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 120 },
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "subject": { "type": "string", "pattern": "^urn:programmable:sandbox:[a-z0-9]+(?:[.:_-][a-z0-9]+)*$", "maxLength": 240 }
+  }
+}

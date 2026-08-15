@@ -98,6 +98,10 @@ root. This release configures no production key, so a local unsigned or self-sig
 Only after trusted evidence exists may a host integration author a completed plan and immutable states; the portable CLI
 does not provide that integration.
 
+For the opt-in Docker invocation, independently supplied trust root, output-byte verification, and exact process
+teardown attestation, use `project-sandbox-host.md`. Its plan output reports no observed isolation and never executes
+candidate bytes.
+
 Before showing or handing off ProjectSpec, ProductGraph, RepositoryPlan, ProjectState, Submission, or trade manifests,
 require them as one byte-bound output. `--submission-root` is repository-relative and must contain only files declared
 by the Open World package:

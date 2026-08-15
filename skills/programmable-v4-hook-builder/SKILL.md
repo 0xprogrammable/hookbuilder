@@ -106,3 +106,5 @@ validation and evidence offline. `doctor` proves local capability only.
 `project execute` always stops with `PROJECT_EXTERNAL_SANDBOX_REQUIRED`. Sandbox receipts bind the exact subject,
 launcher/runtime, enforced filesystem/network/secret/write policy and command/output hashes to an independently
 configured Ed25519 trust root. The portable release ships no production trust root, so local JSON cannot unlock completion.
+Host operators may read [project-sandbox-host.md](references/project-sandbox-host.md) for the opt-in networkless Docker
+profile, exact teardown attestation, and verifier; its plan command never executes candidate bytes or claims isolation.
