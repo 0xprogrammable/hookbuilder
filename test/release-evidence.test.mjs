@@ -437,7 +437,7 @@ test("candidate quantitative docs match generator-backed source inventories", ()
   assert.equal(evalTestCount, 10);
   assert.deepEqual(priorPortableSkill, { files: 686, bytes: 10_722_006 });
   assert.equal(sizeReport.portablePackage.files, 616);
-  assert.equal(sizeReport.portablePackage.bytes, 8_611_699);
+  assert.equal(sizeReport.portablePackage.bytes, 8_611_732);
 
   for (const document of [maturity]) {
     assert.match(document, new RegExp(`${productionModuleCount} production`, "u"));
@@ -447,7 +447,7 @@ test("candidate quantitative docs match generator-backed source inventories", ()
     assert.match(document, new RegExp(`${registry.inventory.validatorClosureDistinctModuleCount} distinct modules`, "u"));
   }
   assert.match(candidateNotes, /340 production/u);
-  assert.match(candidateNotes, /686 files \/ 10,722,006 bytes[\s\S]{0,100}616 files \/\s+8,611,699 bytes/u);
+  assert.match(candidateNotes, /686 files \/ 10,722,006 bytes[\s\S]{0,100}616 files \/\s+8,611,732 bytes/u);
   for (const document of [maturity, readiness, candidateNotes]) {
     assert.match(document, /54 unit, one fuzz and three invariant/u);
     assert.match(document, new RegExp(
