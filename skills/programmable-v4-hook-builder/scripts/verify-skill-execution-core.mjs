@@ -1,5 +1,4 @@
 import childProcess from "node:child_process";
-import fs from "node:fs";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 import process from "node:process";
@@ -9,7 +8,7 @@ const TEST_BATCH_COUNT = 2;
 const TEST_TIMEOUT_MS = 15 * 60 * 1000;
 const TEST_OUTPUT_BYTES = 128 * 1024 * 1024;
 const monotonicNow = () => performance.now();
-export const REQUIRED_PORTABLE_TESTS = Object.freeze(`
+export const REQUIRED_REPOSITORY_TESTS = Object.freeze(`
 application-api-schema application-dependency-core application-handoff application-v3-prepare-revision-core build-info
 build-profile builder-lifecycle canonical-json-core central-policy-authority-boundary cli
 cli-central-base cli-central-package cli-entry cli-open-world
@@ -32,7 +31,9 @@ runtime-assets-core schema-security semantic-rule-registry source-closure-verifi
 source-evidence-workflow source-manifest strict-json-core submission submit-launch-policy-client
 template-catalog trade-capability-manifest typed-launch-contracts-v1 upstream-drift
 v4-hook-semantic-contract verify-package-build-info verify-skill-static
-`.trim().split(/\s+/u).map((stem) => `scripts/test/${stem}.test.mjs`));
+`.trim().split(/\s+/u).map((stem) => `test/portable-skill/${stem}.test.mjs`));
+
+export const INSTALLED_RUNTIME_SMOKE = "scripts/installed-runtime-smoke.mjs";
 
 export function createDeterministicTestBatches(testFiles) {
   return Array.from({ length: TEST_BATCH_COUNT }, (_, batchIndex) =>
@@ -96,6 +97,7 @@ export async function validateScriptsAndTests({
   errors,
   installedMode,
   relative,
+  repositoryRoot,
   skillRoot,
   untrustedDataMode,
   walk
@@ -105,12 +107,10 @@ export async function validateScriptsAndTests({
     if (result.status !== 0) errors.push(`${relative(script)}: ${result.stderr.trim()}`);
   }
 
-  const testDirectory = path.join(skillRoot, "scripts", "test");
   if (!untrustedDataMode) {
-    const testFiles = fs.readdirSync(testDirectory)
-      .filter((name) => name.endsWith(".test.mjs") && (!installedMode || name === "cli.test.mjs"))
-      .sort()
-      .map((name) => path.join(testDirectory, name));
+    const testFiles = installedMode
+      ? [path.join(skillRoot, INSTALLED_RUNTIME_SMOKE)]
+      : REQUIRED_REPOSITORY_TESTS.map((relativePath) => path.join(repositoryRoot, ...relativePath.split("/")));
     const tests = await runDeterministicTestBatches({
       command: process.execPath,
       cwd: skillRoot,

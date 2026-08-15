@@ -32,7 +32,7 @@ import {
   createCompleteRepository,
   createNoMarketOpenWorldV2PrototypeFixture,
   unifiedCli
-} from "../skills/programmable-v4-hook-builder/scripts/test/project-compiler-fixture.mjs";
+} from "./portable-skill/project-compiler-fixture.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(testDirectory, "..");

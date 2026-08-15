@@ -1,0 +1,60 @@
+{
+  "$schema": "urn:programmable:portable-skill-package-inclusion:1.0.0",
+  "schemaVersion": "1.0.0",
+  "kind": "programmable-portable-skill-package-inclusion",
+  "sourceRoot": "skills/programmable-v4-hook-builder",
+  "includes": [
+    {
+      "path": "LICENSE.txt",
+      "recursive": false,
+      "role": "license"
+    },
+    {
+      "path": "SKILL.md",
+      "recursive": false,
+      "role": "instructions"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "recursive": false,
+      "role": "notices"
+    },
+    {
+      "path": "agents",
+      "recursive": true,
+      "role": "host-interface"
+    },
+    {
+      "path": "assets",
+      "recursive": true,
+      "role": "runtime-assets-and-frozen-replay"
+    },
+    {
+      "path": "portable-package.json",
+      "recursive": false,
+      "role": "package-boundary"
+    },
+    {
+      "path": "references",
+      "recursive": true,
+      "role": "routed-knowledge-and-contracts"
+    },
+    {
+      "path": "scripts",
+      "recursive": true,
+      "role": "runtime-and-installed-verification"
+    }
+  ],
+  "exclusions": [
+    {
+      "classification": "test-only",
+      "path": "scripts/test",
+      "recursive": true,
+      "repositoryPath": "test/portable-skill",
+      "repositoryDigestAlgorithm": "sha256-path-nul-size-nul-content-nul-v1",
+      "repositoryFiles": 95,
+      "repositoryBytes": 2916253,
+      "repositorySha256": "0fb61ef7474500646e493b7fa8352a453eed740640f96b3d1f68f9f966c26f49"
+    }
+  ]
+}

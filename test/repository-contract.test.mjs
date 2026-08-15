@@ -289,6 +289,13 @@ test("plugin manifests are generated from canonical metadata and package version
   assert.ok(report.payload.files > 300);
   assert.match(report.payload.sha256, /^[0-9a-f]{64}$/u);
   assert.equal(report.payload.sourceByteVerified, true);
+  assert.deepEqual(report.payload.portableSkill, {
+    files: 594,
+    bytes: 7_859_250,
+    repositoryOnlyFiles: 95,
+    repositoryOnlyBytes: 2_916_253,
+    repositorySourcesVerified: true
+  });
 });
 
 test("generated Codex plugin payload starts its MCP server without package.json", () => {
@@ -336,11 +343,20 @@ test("generated Codex plugin payload starts its MCP server without package.json"
 test("plugin manifest generation fails closed on package version skew", (t) => {
   const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-plugin-version-skew-"));
   t.after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }));
-  for (const directory of ["scripts", "config", ".codex-plugin", ".agents/plugins", ".claude-plugin"]) {
+  for (const directory of [
+    "scripts",
+    "config",
+    ".codex-plugin",
+    ".agents/plugins",
+    ".claude-plugin",
+    "skills/programmable-v4-hook-builder/scripts"
+  ]) {
     fs.mkdirSync(path.join(fixtureRoot, directory), { recursive: true });
   }
   for (const relativePath of [
     "scripts/generate-plugin-manifests.mjs",
+    "skills/programmable-v4-hook-builder/scripts/portable-package-manifest-core.mjs",
+    "skills/programmable-v4-hook-builder/scripts/strict-json-core.mjs",
     "config/plugin.json",
     ".codex-plugin/plugin.json",
     ".agents/plugins/marketplace.json",

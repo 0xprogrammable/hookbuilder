@@ -69,16 +69,18 @@ const SUBMIT_LAUNCH_CANDIDATE_SHARED_SKILL_PATHS = Object.freeze([
   "scripts/registry-discovery-definitions.mjs",
   "scripts/registry-discovery-git.mjs",
   "scripts/registry-discovery-validation.mjs",
-  "scripts/registry-intake-contract.mjs",
-  "scripts/test/cli-central-base.test.mjs",
-  "scripts/test/cli-open-world-github.test.mjs",
-  "scripts/test/cli-prepare-pr.test.mjs",
-  "scripts/test/cli.test.mjs",
-  "scripts/test/github-application.test.mjs",
-  "scripts/test/launch-bundle-v2.test.mjs",
-  "scripts/test/registry-acceptance-v3-github.test.mjs",
-  "scripts/test/registry-discovery.test.mjs",
-  "scripts/test/submission.test.mjs"
+  "scripts/registry-intake-contract.mjs"
+]);
+const SUBMIT_LAUNCH_CANDIDATE_REPOSITORY_TEST_PATHS = Object.freeze([
+  "test/portable-skill/cli-central-base.test.mjs",
+  "test/portable-skill/cli-open-world-github.test.mjs",
+  "test/portable-skill/cli-prepare-pr.test.mjs",
+  "test/portable-skill/cli.test.mjs",
+  "test/portable-skill/github-application.test.mjs",
+  "test/portable-skill/launch-bundle-v2.test.mjs",
+  "test/portable-skill/registry-acceptance-v3-github.test.mjs",
+  "test/portable-skill/registry-discovery.test.mjs",
+  "test/portable-skill/submission.test.mjs"
 ]);
 const FULL_SUBMIT_LAUNCH_CANDIDATE_DIFF = Object.freeze([
   ...[
@@ -106,6 +108,9 @@ const FULL_SUBMIT_LAUNCH_CANDIDATE_DIFF = Object.freeze([
     }),
     Object.freeze({ status: "M", path: `skills/programmable-v4-hook-builder/${repositoryPath}` })
   ]),
+  ...SUBMIT_LAUNCH_CANDIDATE_REPOSITORY_TEST_PATHS.map((repositoryPath) => (
+    Object.freeze({ status: "M", path: repositoryPath })
+  )),
   ...[
     "scripts/ci/plan-applicant-fast-lane.mjs",
     "submissions/README.md",
@@ -183,7 +188,7 @@ test("only a modification of the exact Applicant README is a platform path", () 
 });
 
 test("the complete Submit Launch candidate is one platform change", () => {
-  assert.equal(FULL_SUBMIT_LAUNCH_CANDIDATE_DIFF.length, 111);
+  assert.equal(FULL_SUBMIT_LAUNCH_CANDIDATE_DIFF.length, 102);
   const plan = classifyChangedPaths(FULL_SUBMIT_LAUNCH_CANDIDATE_DIFF);
   assert.equal(plan.mode, "platform");
   assert.equal(plan.reason, "platform-profile-or-code-change");

@@ -22,10 +22,7 @@
     { "path": "assets/build-profiles", "role": "builder-catalog", "recursive": true },
     { "path": "assets/starter-catalog", "role": "builder-catalog", "recursive": true },
     { "path": "assets/reference-kernels", "role": "reference-kernel", "recursive": true },
-    { "path": "scripts", "role": "enforcement-implementation", "recursive": true, "excludePrefixes": ["scripts/test/"] },
-    { "path": "scripts/test/typed-launch-contracts-v1.test.mjs", "role": "enforcement-test", "recursive": false },
-    { "path": "scripts/test/resolve-contract-core.test.mjs", "role": "enforcement-test", "recursive": false },
-    { "path": "scripts/test/cli.test.mjs", "role": "enforcement-test", "recursive": false },
-    { "path": "scripts/test/launch-plan-graph.test.mjs", "role": "enforcement-test", "recursive": false }
+    { "path": "portable-package.json", "role": "repository-test-evidence", "recursive": false },
+    { "path": "scripts", "role": "enforcement-implementation", "recursive": true }
   ]
 }

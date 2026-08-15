@@ -520,14 +520,14 @@
           <h3>See how context is selected</h3>
           <p>Run the offline router. Compare <code>loadNow</code> and <code>loadLater</code>. Then read the focused test.</p>
           <div class="command"><code>node skills/programmable-v4-hook-builder/scripts/cli.mjs context --mode explore</code><button class="copy-button" type="button" aria-label="Copy context command">Copy command</button></div>
-          <a href="../skills/programmable-v4-hook-builder/scripts/test/knowledge-router.test.mjs">Read the knowledge router test</a>
+          <a href="../test/portable-skill/knowledge-router.test.mjs">Read the knowledge router test</a>
         </article>
         <article class="first-hour-card">
           <p class="time">35 to 60 minutes</p>
           <h3>Follow one example through the system</h3>
           <p>Run the golden scenarios test. Then read the project compiler test. Follow the path from input to validation, findings and gates.</p>
-          <div class="command"><code>node --test skills/programmable-v4-hook-builder/scripts/test/golden-scenarios.test.mjs</code><button class="copy-button" type="button" aria-label="Copy golden scenarios test command">Copy command</button></div>
-          <a href="../skills/programmable-v4-hook-builder/scripts/test/project-compiler-materialization.test.mjs">Read the materialization tests</a>
+          <div class="command"><code>node --test test/portable-skill/golden-scenarios.test.mjs</code><button class="copy-button" type="button" aria-label="Copy golden scenarios test command">Copy command</button></div>
+          <a href="../test/portable-skill/project-compiler-materialization.test.mjs">Read the materialization tests</a>
         </article>
       </div>
     </section>
@@ -762,10 +762,10 @@
 
     const changes = [
       { id: "behavior", label: "Agent behaviour", why: "Keep agent behaviour in the small entry contract. Keep detailed knowledge in routed references.", owner: "skills/programmable-v4-hook-builder/SKILL.md", invalidates: "Update routing expectations, agent behaviour evaluations, documentation and the publish shape if the contract changes.", focused: "node skills/programmable-v4-hook-builder/scripts/verify-skill.mjs" },
-      { id: "knowledge", label: "Protocol or platform facts", why: "Keep each detailed fact in one focused reference. Routing decides when the reference is loaded.", owner: "skills/programmable-v4-hook-builder/references/<focused-topic>.md", invalidates: "Update source receipts, routes, deterministic tests and the relevant evaluation rubric.", focused: "node --test skills/programmable-v4-hook-builder/scripts/test/knowledge-router.test.mjs" },
-      { id: "routing", label: "Initial context loading", why: "Context selection is a measured repository contract.", owner: "skills/programmable-v4-hook-builder/references/knowledge-routing.json", invalidates: "Update router tests, closure checks, profile digests and documented context budgets.", focused: "node --test skills/programmable-v4-hook-builder/scripts/test/knowledge-router.test.mjs" },
+      { id: "knowledge", label: "Protocol or platform facts", why: "Keep each detailed fact in one focused reference. Routing decides when the reference is loaded.", owner: "skills/programmable-v4-hook-builder/references/<focused-topic>.md", invalidates: "Update source receipts, routes, deterministic tests and the relevant evaluation rubric.", focused: "node --test test/portable-skill/knowledge-router.test.mjs" },
+      { id: "routing", label: "Initial context loading", why: "Context selection is a measured repository contract.", owner: "skills/programmable-v4-hook-builder/references/knowledge-routing.json", invalidates: "Update router tests, closure checks, profile digests and documented context budgets.", focused: "node --test test/portable-skill/knowledge-router.test.mjs" },
       { id: "pattern", label: "Reusable project pattern", why: "Known patterns speed up composition. Custom ideas must remain eligible.", owner: "skills/programmable-v4-hook-builder/assets/starter-catalog/", invalidates: "Update the pack hash, catalog digest, release receipts, catalog tests and scenarios.", focused: "node skills/programmable-v4-hook-builder/scripts/verify-skill.mjs" },
-      { id: "schema", label: "Submission or intent field", why: "The schema defines the data shape. The matching validator defines its meaning.", owner: "skills/programmable-v4-hook-builder/references/<artifact>.schema.json", invalidates: "Update the catalog, materializer, validator, application projection, migrations, negative tests, examples and hashes.", focused: "node --test skills/programmable-v4-hook-builder/scripts/test/project-compiler-*.test.mjs" },
+      { id: "schema", label: "Submission or intent field", why: "The schema defines the data shape. The matching validator defines its meaning.", owner: "skills/programmable-v4-hook-builder/references/<artifact>.schema.json", invalidates: "Update the catalog, materializer, validator, application projection, migrations, negative tests, examples and hashes.", focused: "node --test test/portable-skill/project-compiler-*.test.mjs" },
       { id: "safety", label: "Safety or semantic rule", why: "Put each concrete unsafe behaviour in its owning validator and give the result stable finding semantics.", owner: "skills/programmable-v4-hook-builder/scripts/<domain>-core.mjs", invalidates: "Update negative tests, the semantic-rule registry, evaluation rubric, public wording and migration notes.", focused: "npm run quality:semantic-rules" },
       { id: "metadata", label: "Host or plugin metadata", why: "Keep neutral metadata as the source of truth. Generate host manifests and plugin payloads from it.", owner: "config/plugin.json", invalidates: "Regenerate every host manifest and the byte-verified plugin payload.", focused: "npm run plugin:write && npm run plugin:check" }
     ];

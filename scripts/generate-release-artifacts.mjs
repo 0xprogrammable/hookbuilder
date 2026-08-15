@@ -15,6 +15,10 @@ import {
   validateReleaseKernelEvidence
 } from "./release-evidence-core.mjs";
 import { parseBoundedStrictJsonBytes } from "../skills/programmable-v4-hook-builder/scripts/strict-json-core.mjs";
+import {
+  buildPortablePackageInventory,
+  loadPortablePackageManifest
+} from "../skills/programmable-v4-hook-builder/scripts/portable-package-manifest-core.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
@@ -96,6 +100,23 @@ const trackedFiles = git(["ls-tree", "-r", "-z", "--full-tree", commit, "--", `$
   .sort((left, right) => compareCodeUnits(left.path, right.path));
 
 if (trackedFiles.length === 0) fail("portable skill contains no tracked files");
+const absoluteSkillRoot = path.join(repositoryRoot, skillRoot);
+let portableInventory;
+try {
+  const portableManifest = loadPortablePackageManifest({ skillRoot: absoluteSkillRoot });
+  portableInventory = buildPortablePackageInventory({
+    manifest: portableManifest,
+    repositoryRoot,
+    skillRoot: absoluteSkillRoot
+  });
+} catch (error) {
+  fail(`portable package manifest rejected release source: ${error instanceof Error ? error.message : String(error)}`);
+}
+const trackedPortablePaths = trackedFiles.map(({ path: relativePath }) => relativePath);
+const declaredPortablePaths = portableInventory.packageFiles.map(({ path: relativePath }) => relativePath);
+if (JSON.stringify(trackedPortablePaths) !== JSON.stringify(declaredPortablePaths)) {
+  fail("committed release skill inventory differs from the canonical portable package manifest");
+}
 
 fs.mkdirSync(options.outputDirectory, { recursive: true });
 if (fs.readdirSync(options.outputDirectory).length !== 0) fail("--output-dir must be empty");
@@ -132,6 +153,8 @@ const manifest = {
   archiveRoot,
   createdFromCommitTime: created,
   fileCount: trackedFiles.length,
+  packageBytes: portableInventory.packageBytes,
+  repositoryOnlyEvidence: portableInventory.repositoryOnly,
   files: trackedFiles
 };
 writeJson(manifestName, manifest);
@@ -152,6 +175,12 @@ const receipt = {
   createdFromCommitTime: created,
   sourcePath: skillRoot,
   archiveRoot,
+  packageBoundary: {
+    manifest: "portable-package.json",
+    files: portableInventory.packageFiles.length,
+    bytes: portableInventory.packageBytes,
+    repositoryOnlyEvidence: portableInventory.repositoryOnly
+  },
   archive: archiveName,
   manifest: manifestName,
   sbom: sbomName,

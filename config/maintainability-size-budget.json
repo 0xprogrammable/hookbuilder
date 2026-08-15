@@ -37,11 +37,11 @@
         },
         {
           "path": "scripts/quality/mutation-gate.mjs",
-          "observedLines": 248,
-          "observedBytes": 10336,
+          "observedLines": 254,
+          "observedBytes": 10789,
           "observedComplexityScore": 20,
           "observedMaxBlockDepth": 4,
-          "reviewRef": "v0.5.1 source-bound trade routing mutation evidence"
+          "reviewRef": "portable package repository-test relocation preserves source-bound mutation evidence"
         },
         {
           "path": "scripts/quality/size-budget.mjs",
@@ -357,11 +357,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/verify-skill.mjs",
-          "observedLines": 688,
-          "observedBytes": 34255,
-          "observedComplexityScore": 85,
+          "observedLines": 703,
+          "observedBytes": 35035,
+          "observedComplexityScore": 90,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.9.0 reviewed activation, compact reasoning-kernel, and project-repair required-file inventory"
+          "reviewRef": "canonical portable package manifest and repository-only test inventory review"
         }
       ]
     },
@@ -374,9 +374,9 @@
   },
   "portablePackage": {
     "path": "skills/programmable-v4-hook-builder",
-    "observedFiles": 640,
-    "observedBytes": 9619846,
-    "maxFiles": 686,
-    "maxBytes": 12000000
+    "observedFiles": 594,
+    "observedBytes": 7859250,
+    "maxFiles": 600,
+    "maxBytes": 8000000
   }
 }

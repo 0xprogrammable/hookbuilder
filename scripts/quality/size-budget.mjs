@@ -3,11 +3,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
-import childProcess from "node:child_process";
 import crypto from "node:crypto";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { buildStaticModuleGraph, lexicalComplexity } from "./module-maintainability-core.mjs";
+import {
+  buildPortablePackageInventory,
+  loadPortablePackageManifest
+} from "../../skills/programmable-v4-hook-builder/scripts/portable-package-manifest-core.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const defaultRepositoryRoot = path.resolve(scriptDirectory, "../..");
@@ -117,7 +120,7 @@ export function evaluateSizeBudget({ repositoryRoot, budget }) {
   const portable = packageInventory(repositoryRoot, budget.portablePackage.path);
   const portablePackage = {
     path: budget.portablePackage.path,
-    inventoryProfile: "git-cached-and-nonignored-untracked-files-v1",
+    inventoryProfile: "canonical-portable-package-inclusion-manifest-v1",
     files: portable.files,
     bytes: portable.bytes,
     observedFiles: budget.portablePackage.observedFiles,
@@ -337,33 +340,10 @@ function readRegularFile(repositoryRoot, relativePath) {
 }
 
 function packageInventory(repositoryRoot, relativeRoot) {
-  safeAbsolute(repositoryRoot, relativeRoot);
-  const inventory = childProcess.spawnSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", relativeRoot], {
-    cwd: repositoryRoot,
-    encoding: "buffer",
-    shell: false,
-    maxBuffer: 16 * 1024 * 1024
-  });
-  if (inventory.error) throw inventory.error;
-  if (inventory.status !== 0) throw new Error(`git ls-files failed: ${String(inventory.stderr).trim()}`);
-  const deletedResult = childProcess.spawnSync("git", ["ls-files", "--deleted", "-z", "--", relativeRoot], {
-    cwd: repositoryRoot,
-    encoding: "buffer",
-    shell: false,
-    maxBuffer: 16 * 1024 * 1024
-  });
-  if (deletedResult.error) throw deletedResult.error;
-  if (deletedResult.status !== 0) throw new Error(`git deleted-file inventory failed: ${String(deletedResult.stderr).trim()}`);
-  const deleted = new Set(deletedResult.stdout.toString("utf8").split("\u0000").filter(Boolean));
-  const files = inventory.stdout.toString("utf8").split("\u0000").filter((filePath) => filePath.length > 0 && !deleted.has(filePath)).sort((left, right) => left.localeCompare(right));
-  let bytes = 0;
-  for (const relativePath of files) {
-    const absolute = safeAbsolute(repositoryRoot, relativePath);
-    const stat = fs.lstatSync(absolute);
-    if (!stat.isFile() || stat.isSymbolicLink()) throw new Error(`portable package inventory contains non-regular file ${relativePath}`);
-    bytes += stat.size;
-  }
-  return { files: files.length, bytes };
+  const skillRoot = safeAbsolute(repositoryRoot, relativeRoot);
+  const manifest = loadPortablePackageManifest({ skillRoot });
+  const inventory = buildPortablePackageInventory({ manifest, repositoryRoot, skillRoot });
+  return { files: inventory.packageFiles.length, bytes: inventory.packageBytes };
 }
 
 function countLines(bytes) {

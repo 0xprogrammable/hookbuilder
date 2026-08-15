@@ -19,6 +19,7 @@ const allowedNormativePropertyRoles = new Set([
   "legal-or-provenance",
   "normative-reference",
   "reference-kernel",
+  "repository-test-evidence",
   "test-vector"
 ]);
 let policyBundlePaths = null;

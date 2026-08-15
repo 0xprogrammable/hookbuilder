@@ -6,6 +6,11 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import {
+  buildPortablePackageInventory,
+  loadPortablePackageManifest
+} from "../skills/programmable-v4-hook-builder/scripts/portable-package-manifest-core.mjs";
+
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "..");
 const metadataPath = path.join(repositoryRoot, "config", "plugin.json");
@@ -192,8 +197,18 @@ function buildPayload(metadata, manifests) {
   mirrors.push({ source: outputs.codex, target: payloadManifest });
   addMirror(path.join(repositoryRoot, ".mcp.json"), path.join(payloadRoot, ".mcp.json"));
   addTree(path.join(repositoryRoot, "mcp"), path.join(payloadRoot, "mcp"));
-  addTree(path.join(repositoryRoot, "skills"), path.join(payloadRoot, "skills"));
-  return { files, mirrors, payloadRoot };
+  const sourceSkillRoot = path.join(repositoryRoot, "skills", "programmable-v4-hook-builder");
+  const portableManifest = loadPortablePackageManifest({ skillRoot: sourceSkillRoot });
+  const portableInventory = buildPortablePackageInventory({
+    manifest: portableManifest,
+    repositoryRoot,
+    skillRoot: sourceSkillRoot
+  });
+  const targetSkillRoot = path.join(payloadRoot, "skills", "programmable-v4-hook-builder");
+  for (const entry of portableInventory.packageFiles) {
+    addMirror(path.join(sourceSkillRoot, ...entry.path.split("/")), path.join(targetSkillRoot, ...entry.path.split("/")));
+  }
+  return { files, mirrors, payloadRoot, portableInventory };
 }
 
 function sha256(contents) {
@@ -286,7 +301,14 @@ function main(argv) {
       root: path.relative(repositoryRoot, payload.payloadRoot),
       files: payload.files.size,
       sha256: payloadDigest(payload),
-      sourceByteVerified: true
+      sourceByteVerified: true,
+      portableSkill: {
+        files: payload.portableInventory.packageFiles.length,
+        bytes: payload.portableInventory.packageBytes,
+        repositoryOnlyFiles: payload.portableInventory.repositoryOnly.files,
+        repositoryOnlyBytes: payload.portableInventory.repositoryOnly.bytes,
+        repositorySourcesVerified: payload.portableInventory.repositoryOnly.sourcesVerified
+      }
     }
   })}\n`);
 }

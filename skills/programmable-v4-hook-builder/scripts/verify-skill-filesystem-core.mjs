@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 
-// Reviewed generic-handoff growth: one contract/schema, routed reference, deterministic preview CLI/core and
-// direct regression suite. Keep future additions explicit instead of turning this into an unbounded allowance.
-export const MAX_PORTABLE_FILES = 691;
+// The portable package excludes repository-only development tests. Runtime,
+// installed verification and frozen compatibility assets remain in the Skill.
+export const MAX_PORTABLE_FILES = 600;
 
 export function createPortableFilesystem(skillRoot) {
   function relative(target) {
