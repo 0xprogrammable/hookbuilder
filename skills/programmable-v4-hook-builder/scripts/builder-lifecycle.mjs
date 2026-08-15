@@ -56,7 +56,7 @@ const specs = new Map([
   }],
   ["plan-release", {
     usage: "builder-lifecycle.mjs plan-release --candidate <candidate.json> --history <release-history.json> --now <RFC3339> [--human]",
-    summary: "Calculate one caller-declared local candidate with closed release identity and critical-hotfix rules; never claim verified privacy, cadence, owner authority, or readiness.",
+    summary: "Calculate one caller-declared local candidate with closed release identity and no minimum release interval; never claim verified privacy, owner authority, or readiness.",
     options: [
       fileOption("--candidate", "candidate", "candidate.json", "Read one caller-declared candidate including planned source, artifact, manifest, change kinds, and any critical-hotfix identity; none is externally verified."),
       fileOption("--history", "history", "release-history.json", "Read caller-supplied history; the command does not authenticate completeness or origin."),

@@ -44,8 +44,8 @@ repository evidence to exact GitHub numeric id, commit and tree.
 Trade output follows the same fail-closed rule. Current tradable designs preserve policy-neutral route, PoolKey,
 directions/exactness, router, quoter, Permit2/native funding, hookData, slippage/deadline, generic fee, and
 quote/execution evidence, but 7A emits no current machine-manifest successor. Only the exact intent-bound frozen Fee V2
-profile emits `trade-capability.v1.json`; every other tradable materialization stays unresolved until a policy-neutral
-successor exists. A no-market project emits no manifest or trade commands. Always report `NOT_APPROVED`; local route
+profile emits `trade-capability.v1.json`; custom tradable source/tests still materialize while their canonical launch
+manifest stays unresolved until a policy-neutral successor exists. A no-market project emits no manifest or trade commands. Always report `NOT_APPROVED`; local route
 compatibility is not allowlisting, reachability, deployment, discovery, or live trading.
 
 Never make a committed blob predict the Git commit/tree that contains it. Keep source-owned proposal security null,

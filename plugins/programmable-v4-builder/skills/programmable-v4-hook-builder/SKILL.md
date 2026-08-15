@@ -22,7 +22,7 @@ evidence and authority.
 - Never self-approve, sign receipts, fake review, weaken failed gates or call a local pass an audit.
 - Hidden mint, seizure, fee, pause, upgrade or payout redirection conflicts; disclosed powers require review.
 - Templates are hash-bound Legos, not assurance. Missing tools are `INTEGRATION_PENDING`, not completion.
-- Choose the smallest intent-preserving composition or a custom architecture.
+- Choose the smallest intent-preserving Lego or custom architecture.
 - Use hooks only for PoolManager-atomic behavior. Use none when correct; never add placeholders.
 
 ## Golden path
@@ -36,8 +36,9 @@ node "$BUILDER_CLI" policy
 node "$BUILDER_CLI" context --mode autopilot --brief
 ```
 
-Complete Programmable rule set: `0xprogrammable/submit-launch`. Use every `build` Rule ID, add none, and stop if unavailable. Read
-`loadNow`; save `profileDigest`.
+Complete Programmable rule set: `0xprogrammable/submit-launch`; use every available `build` Rule ID, add none. If
+unavailable, continue source as `POLICY_UNRESOLVED`; block only submit, approval and launch. Read `loadNow`; save
+`profileDigest`.
 After an exact selector is confirmed, activate before architecture or code:
 
 ```bash
@@ -47,32 +48,33 @@ node "$BUILDER_CLI" context --mode autopilot --capability "$CONFIRMED_CAPABILITY
 Activation needs exact selector/current digest; unknowns stay eligible. Load up to two route-selected references, one
 per capability. Keep cold/cumulative context below 4,000/8,000 tokens; defer the rest.
 
-Save the exact public prompt bytes unchanged as `$IDEA_FILE`; never rewrite/extract them. Bind them exactly as ProjectSpec and Submission IdeaSource. Compare `minimum-correct`, `v4-native` and `hybrid`, then select the
-least capital, trust and operational surface that preserves intent.
+Save the exact prompt bytes as `$IDEA_FILE`; never rewrite them. Bind as ProjectSpec and Submission IdeaSource.
+Compare `minimum-correct`, `v4-native` and `hybrid`; select the smallest surface preserving intent.
 
-For no-market, `project --help` is complete. Before materializing read no other reference/full context. Format
-inputs; dry-run then `--write`. In an active workspace sandbox run offline fmt/test once as `LOCAL_ONLY`, never
-completion. Fix inputs and rematerialize on failure. Never edit output, inspect internals, wrap Solidity in JS, or call
-`project execute` without a trusted sandbox.
-
-`programmable-volume-fee-v2` is frozen legacy compatibility. Use it only when exact natural intent names the v4 hook,
-gross-quote-volume fees, immutable registered rates, policy `programmable-volume-fee-v2@2.0.0`, its inclusive 10 bps
-Programmable share, and claimant `0x4957f49620AFf3Adbbe8195a4f633E49cc93376c`. Never infer or add them. Dry-run only;
-tradable `--write` fails before candidate execution.
+Before materializing read no other reference; `project --help` is complete. For every viable architecture author whole
+source plus behavioral/fuzz/invariant/deployment tests. Missing catalog/profile never justifies refusal; policy gates
+launch, never source. Dry-run this custom-tradable command, then add `--write`:
 
 ```bash
-node "$SKILL_ROOT/scripts/cli.mjs" project materialize --idea-file "$IDEA_FILE" --application-id "$APPLICATION_ID" --classification tradable --market-ref "$MARKET_REF" --reference-profile programmable-volume-fee-v2 --output "$NEW_REPOSITORY"
+node "$BUILDER_CLI" project materialize --idea-file "$IDEA_FILE" --application-id "$APPLICATION_ID" --classification tradable --market-ref "$MARKET_REF" --project-profile foundry --source-root "$SOURCE_ROOT" --test-root "$TEST_ROOT" --output "$NEW_REPOSITORY"
 ```
 
-Do not claim complete output from a plan-only repository. Require output only after an independently trusted external
-sandbox has produced authenticated, hash-bound command/output evidence and the immutable state chain:
+No trusted sandbox? Materialize source/tests; mark tests unverified, never implementation blocked. In an active
+workspace run install and offline fmt/test once as `LOCAL_ONLY`, never completion. Fix input roots and
+rematerialize; never patch outputs or call `project execute` without a trusted sandbox.
+
+`programmable-volume-fee-v2` is optional frozen legacy compatibility; never infer it. Only exact intent-bound legacy
+replay adds `--reference-profile programmable-volume-fee-v2`; custom source never does.
+
+A plan is not complete. Require output only after a trusted sandbox produces authenticated command/output evidence
+and state chain:
 
 ```bash
 node "$SKILL_ROOT/scripts/cli.mjs" project require-output --brief --repository-root "$NEW_REPOSITORY" --state .programmable/project-states/000006-submission-evidence.v1.json --previous-state .programmable/project-states/000005-verification.v1.json --submission-root submission
 ```
 
-Only `PROJECT_PREFLIGHT_VALID` for those exact bytes completes Autopilot. `CLEAR` is source-only;
-`DRAFT_UNRESOLVED` is noncanonical. A local pass remains `NOT_APPROVED` and `NOT_SUBMITTED`.
+Only exact-byte `PROJECT_PREFLIGHT_VALID` completes Autopilot. `CLEAR` is source-only; `DRAFT_UNRESOLVED` is
+noncanonical. Local pass remains `NOT_APPROVED` and `NOT_SUBMITTED`.
 
 ## Specialist invariants
 
@@ -86,7 +88,7 @@ Only `PROJECT_PREFLIGHT_VALID` for those exact bytes completes Autopilot. `CLEAR
 - Classify trade as `tradable`, `no-market`, or `unresolved`; for canonical v4 cover all four direction/exactness
   quadrants and prove support or pre-effects rejection. No-market emits no route. Bind PoolKey, router/quoter, Permit2,
   hookData, limits, generic fees and tests. Bundled V1 is frozen Fee V2 compatibility for the exact intent-bound legacy
-  profile only; all other tradable materialization stays unresolved until a policy-neutral successor exists.
+  profile only. Custom implementation stays eligible; only later launch-manifest/approval evidence may be unresolved.
 - Escalate novel, value-bearing or ambiguous slices. Mark unavailable provider gates `EXTERNAL_BLOCKED`.
 - Six-file `prepare-pr` is frozen legacy replay; no general application transport exists. For canary tests, read
   `references/workflow-canary-application.md` and run `prepare-canary`: bound-byte/digest preview only; writes fail closed.

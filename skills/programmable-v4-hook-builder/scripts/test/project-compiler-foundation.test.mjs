@@ -79,8 +79,10 @@ test("tradable local handoff replaces the stale README boundary with exact NOT_A
   for (const binding of [tradeEvidence.manifest, { path: tradeEvidence.feeConformance.receiptPath, sha256: tradeEvidence.feeConformance.receiptSha256 }, { path: tradeEvidence.feeConformance.vectorSetPath, sha256: tradeEvidence.feeConformance.vectorSetSha256 }, tradeEvidence.forkEvidence, ...evidenceFiles]) { assert.match(readme, new RegExp(binding.path.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u")); assert.match(readme, new RegExp(binding.sha256, "u")); }
   assert.match(readme, /no audit, approval, production deployment, transaction broadcast, GitHub publication or launch is claimed/u);
   const compilerSource = fs.readFileSync(compilerCli, "utf8");
-  assert.match(compilerSource, /tradable source generation requires candidate dependency and test execution/u);
-  assert.doesNotMatch(compilerSource, /createTradableProjectAuthoring|installProjectDependencies/u);
+  const materializationSource = fs.readFileSync(path.join(skillRoot, "scripts/project-materialization-core.mjs"), "utf8");
+  assert.match(materializationSource, /frozen legacy tradable source generation requires candidate dependency and test execution in an external sandbox/u);
+  assert.match(materializationSource, /createCustomTradableProjectAuthoring/u);
+  assert.doesNotMatch(compilerSource, /installProjectDependencies/u);
   assert.throws(() => bindLocalReleaseHandoffV1({ authored, applicationId: "tradable-handoff", classification: "tradable", marketRef: "primary-market", ideaSha256: digest("different-idea"), repositoryRoot: root, tradeEvidence }), /identity mismatch/u);
 });
 

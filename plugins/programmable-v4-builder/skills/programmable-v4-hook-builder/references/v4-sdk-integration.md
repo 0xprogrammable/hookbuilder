@@ -147,8 +147,8 @@ agree byte-for-byte with quote and execution paths. The bundled `trade-capabilit
 `programmable-trade-execution-v1` contracts are frozen Fee V2 compatibility artifacts, so use them only through the
 explicit legacy reference profile whose preserved intent binds that exact policy, rate, and claimant. Current generic
 fee behavior remains valid product intent, but it cannot be projected into those branded V1 fields. Until a
-policy-neutral successor is centrally published, keep other tradable materialization unresolved rather than emitting
-a V1 compatibility claim.
+policy-neutral successor is centrally published, keep other canonical launch manifests unresolved rather than emitting
+a V1 compatibility claim. Continue to materialize their complete custom source and tests.
 
 The source manifest declares tests but cannot contain its own Git identity or future run receipts. The bounded executor
 must author separate typed result artifacts for the declared commands, and completion must bind those results back to

@@ -171,7 +171,7 @@ test("canonical config version and generated package identities agree", () => {
   assert.equal(packageDocument.homepage, "https://github.com/0xprogrammable/hookbuilder#readme");
   assert.equal(Object.hasOwn(packageDocument, "dependencies"), false);
   assert.equal(Object.hasOwn(packageDocument, "devDependencies"), false);
-  assert.equal(metadata.version, "0.9.0");
+  assert.equal(metadata.version, "0.9.1");
   assert.equal(packageLock.name, packageDocument.name);
   assert.equal(packageLock.version, packageDocument.version);
   assert.equal(packageLock.packages[""].name, packageDocument.name);
@@ -251,11 +251,14 @@ test("global skill boundaries apply v4 mechanics conditionally and distinguish d
   assert.match(skill, /disclosed powers require review/iu);
   assert.match(skill, /node "\$BUILDER_CLI" policy/u);
   assert.match(skill, /complete Programmable rule set/iu);
-  assert.match(skill, /Use every\s+`build` Rule ID, add none, and stop if unavailable/u);
-  assert.match(skill, /Before materializing read no other reference\/full context/u);
-  assert.match(skill, /active workspace sandbox run offline fmt\/test once/u);
+  assert.match(skill, /use every available `build` Rule ID, add none/u);
+  assert.match(skill, /If\s+unavailable, continue source as `POLICY_UNRESOLVED`; block only submit, approval and launch/u);
+  assert.match(skill, /Before materializing read no other reference/u);
+  assert.match(skill, /active\s+workspace run install and offline fmt\/test once/u);
   assert.match(skill, /`LOCAL_ONLY`, never\s+completion/u);
-  assert.match(skill, /Fix inputs and rematerialize on failure\. Never edit output/u);
+  assert.match(skill, /Fix input roots and\s+rematerialize; never patch output/u);
+  assert.match(skill, /Missing catalog\/profile never justifies refusal/u);
+  assert.match(skill, /policy gates\s+launch, never source/iu);
   assert.doesNotMatch(skill, /hidden mint,\s*confiscation, blacklist, fee, pause, upgrade or payout-redirection power/u);
 });
 
@@ -273,7 +276,7 @@ test("plugin manifests are generated from canonical metadata and package version
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(result.stdout);
   assert.equal(report.status, "PLUGIN_MANIFESTS_VALID");
-  assert.equal(report.version, "0.9.0");
+  assert.equal(report.version, "0.9.1");
   assert.deepEqual(report.outputs, [
     ".codex-plugin/plugin.json",
     ".agents/plugins/marketplace.json",
@@ -674,7 +677,7 @@ test("release output containment rejects an in-repository ..x directory and perm
     process.execPath,
     [
       script,
-      "--tag", "v0.9.0",
+      "--tag", "v0.9.1",
       "--output-dir", path.join(repositoryRoot, "..x-release-output"),
       "--kernel-evidence", evidence
     ],
@@ -688,7 +691,7 @@ test("release output containment rejects an in-repository ..x directory and perm
   fs.writeFileSync(path.join(outside, "sentinel"), "keep non-empty\n");
   const escaped = childProcess.spawnSync(
     process.execPath,
-    [script, "--tag", "v0.9.0", "--output-dir", outside, "--kernel-evidence", evidence],
+    [script, "--tag", "v0.9.1", "--output-dir", outside, "--kernel-evidence", evidence],
     { cwd: repositoryRoot, encoding: "utf8", shell: false, stdio: ["ignore", "pipe", "pipe"] }
   );
   assert.notEqual(escaped.status, 0);

@@ -524,7 +524,7 @@ test("portable verifier drain-preserves a complete diagnostic payload larger tha
     assert.ok(Buffer.byteLength(result.stderr, "utf8") > 64 * 1024);
     assert.deepEqual(lines.slice(0, -1).sort(), lines.slice(0, -1));
     assert.equal(lines.length, 3);
-    assert.equal(lines[0], `- portable package has ${685 + extraTests.length} files; keep it at or below 685`);
+    assert.equal(lines[0], `- portable package has ${686 + extraTests.length} files; keep it at or below 686`);
     assert.ok(lines[1].startsWith(inventoryPrefix));
     assert.ok(lines[1].endsWith(inventorySuffix));
     assert.deepEqual(
@@ -798,7 +798,7 @@ test("trusted verifier rejects excessive file count before checking candidate sc
     const result = runUntrustedVerifier(candidateRoot);
 
     assert.notEqual(result.status, 0, result.stdout);
-    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 685/);
+    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 686/);
     assert.doesNotMatch(result.stderr, /invalid-syntax|SyntaxError/);
   } finally {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });

@@ -2,6 +2,37 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.9.1 - 2026-08-15
+
+### Fixed
+
+- Removed the artificial requirement that every tradable custom project select the frozen
+  `programmable-volume-fee-v2` reference profile. Technically viable custom Uniswap v4 architectures can now be
+  materialized from complete Foundry source and behavioral, fuzz, invariant, and deployment tests.
+- Added an exact Mizu regression for the reported directional, size-sensitive, decaying dynamic LP-fee design. The
+  Builder now preserves and materializes that custom architecture instead of returning `INTEGRATION_PENDING` or
+  `EXTERNAL_BLOCKED` merely because no bundled profile matches it.
+
+### Changed
+
+- Made bundled templates and reference profiles optional Legos rather than a source-code allowlist. The frozen Fee V2
+  profile remains available only for exact intent-bound legacy replay.
+- Kept current central launch policy at the submission boundary. An unavailable policy records `POLICY_UNRESOLVED` and
+  blocks submission, approval, and launch, but no longer blocks local source authoring.
+- Removed the minimum interval between Builder releases. Release history still binds monotonic versions, provenance,
+  and public identity, while review, required CI, owner authority, immutable artifacts, and publication verification
+  remain mandatory.
+
+### Evidence boundary
+
+- The portable materializer copies caller-supplied source and tests into a clean local repository without executing
+  candidate code or using network, deployment, approval, Registry, funds, signing, or launch authority.
+- Deterministic local tests prove the exact materialization regression and that prior release timing cannot block a new
+  candidate. They do not prove audit quality, provider/model behavior, project approval, deployment, or production
+  launch readiness.
+- The package is not public until the exact v0.9.1 tag, GitHub Release, assets, protected CI, and installed bytes are
+  independently verified.
+
 ## 0.9.0 - 2026-08-15
 
 ### Added
