@@ -72,7 +72,7 @@ const NEGATIVE_CASES = new Set([
 ]);
 
 function opaqueCaseId(caseId) {
-  return `case-${sha256(Buffer.from(`programmable-community-journeys-v1:${caseId}`, 'utf8')).slice(0, 24)}`;
+  return `case-${sha256(Buffer.from(`programmable-community-journeys-v2:${caseId}`, 'utf8')).slice(0, 24)}`;
 }
 
 const OUTCOMES_BY_OPAQUE_CASE = new Map(Object.entries(OUTCOMES).map(([caseId, outcome]) => [opaqueCaseId(caseId), outcome]));
@@ -87,7 +87,7 @@ function subjectResult(request) {
   const messages = request.messages ?? [request.turn.message];
   const isMizu = request.caseId === opaqueCaseId('mizu-design-then-implement');
   const outcome = isMizu && turnIndex < turnCount
-    ? 'DESIGN_SELECTED'
+    ? mode === 'mizu-first-early-blocked' ? 'EARLY_BLOCKED_MISSING_INTENT' : 'DESIGN_SELECTED'
     : OUTCOMES_BY_OPAQUE_CASE.get(request.caseId);
   if (!outcome) throw new Error(`fake fixture has no outcome for ${request.caseId}`);
   const earlyBlocked = outcome.startsWith('EARLY_BLOCKED_');
@@ -151,7 +151,7 @@ function subjectResult(request) {
         ? 'Selected the directional, size-sensitive, decaying dynamic-fee architecture for the next turn.'
         : `Deterministic fake response for ${request.caseId}. This is local fixture evidence only.`,
       useful: mode !== 'bad-status-useful',
-      materialOwnerDecisions: earlyBlocked ? 1 : 0,
+      materialOwnerDecisions: mode === 'decision-each-turn' && isMizu ? 1 : earlyBlocked ? 1 : 0,
     },
     telemetry: {
       inputTokens,

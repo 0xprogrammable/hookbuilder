@@ -9,6 +9,13 @@
       "path": "evals/journey-benchmark/v1/corpus.json",
       "sha256": "81f27c3ad1acd1ea676ba982fe1e08a361e3d05f941a71c5a0e526db6fd7fe3f",
       "status": "IMMUTABLE"
+    },
+    {
+      "version": "v2",
+      "corpusId": "programmable-community-journeys-v2",
+      "path": "evals/journey-benchmark/v2/corpus.json",
+      "sha256": "f95f4b7cc154814e7f47deae9d96b0145022cbc1742033c17566ec2bc1eda042",
+      "status": "IMMUTABLE"
     }
   ]
 }

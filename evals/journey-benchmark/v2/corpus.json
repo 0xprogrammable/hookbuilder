@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0.0",
+  "kind": "programmable-community-journey-corpus-overlay",
+  "corpusId": "programmable-community-journeys-v2",
+  "frozenOn": "2026-08-15",
+  "freezeStatus": "FROZEN_PUBLIC_AFTER_DESIGN",
+  "qualification": "PUBLIC_REGRESSION_AND_COMPARISON_CORPUS_NOT_BLIND_HOLDOUT",
+  "sealedCorpusRelationship": "SEPARATE_NO_PLAINTEXT_OR_MEMBERSHIP_DERIVED",
+  "baseCorpus": {
+    "corpusId": "programmable-community-journeys-v1",
+    "path": "evals/journey-benchmark/v1/corpus.json",
+    "sha256": "81f27c3ad1acd1ea676ba982fe1e08a361e3d05f941a71c5a0e526db6fd7fe3f"
+  },
+  "messageOverrides": [
+    {
+      "caseId": "missing-foundry-tool",
+      "turn": 1,
+      "content": "Use Programmable to build the custom Uniswap v4 fee hook and its Foundry tests. For this benchmark run, the case-bound sandbox policy disables Forge execution. Create everything else and label every unexecuted check precisely."
+    }
+  ],
+  "executionPolicies": [
+    {
+      "id": "forge-unavailable-v1",
+      "caseIds": [
+        "missing-foundry-tool"
+      ],
+      "mode": "deny-exec",
+      "deniedExecutables": [
+        "forge"
+      ],
+      "providerReceipt": "REQUIRED",
+      "fakeQualification": "SIMULATED_NOT_ENFORCED"
+    }
+  ]
+}

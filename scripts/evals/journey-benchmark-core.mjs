@@ -9,19 +9,25 @@ import { loadSubjectSandbox, spawnIsolated } from './e2e-sandbox-core.mjs';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_REPOSITORY_ROOT = path.resolve(SCRIPT_DIRECTORY, '../..');
-export const CORPUS_RELATIVE_PATH = 'evals/journey-benchmark/v1/corpus.json';
-export const CORPUS_DIGEST_RELATIVE_PATH = 'evals/journey-benchmark/v1/corpus.sha256';
+export const BASE_CORPUS_V1_RELATIVE_PATH = 'evals/journey-benchmark/v1/corpus.json';
+export const BASE_CORPUS_V1_DIGEST_RELATIVE_PATH = 'evals/journey-benchmark/v1/corpus.sha256';
+export const CORPUS_RELATIVE_PATH = 'evals/journey-benchmark/v2/corpus.json';
+export const CORPUS_DIGEST_RELATIVE_PATH = 'evals/journey-benchmark/v2/corpus.sha256';
 export const CORPUS_VERSION_AUTHORITY_RELATIVE_PATH = 'config/journey-benchmark-corpus-versions.json';
-// v1 is immutable. Any corpus-byte change requires a new corpus version and a
-// new loader route; do not update this authority for an in-place v1 edit.
+export const ACTIVE_CORPUS_ID = 'programmable-community-journeys-v2';
+// Published corpus versions are immutable. Any byte change requires a new
+// overlay version; do not update these authorities for in-place edits.
 export const PINNED_V1_CORPUS_SHA256 = '81f27c3ad1acd1ea676ba982fe1e08a361e3d05f941a71c5a0e526db6fd7fe3f';
+export const PINNED_V2_CORPUS_SHA256 = 'f95f4b7cc154814e7f47deae9d96b0145022cbc1742033c17566ec2bc1eda042';
+export const CANONICAL_FAKE_ADAPTER_RELATIVE_PATH = 'evals/tests/fixtures/fake-journey-benchmark-adapter.mjs';
+export const PINNED_FAKE_ADAPTER_SHA256 = '00ef7c0febf46f404e591cf4d9d47e40e113ca70651e2688183756d27bcb254e';
 export const BENCHMARK_SCHEMA_VERSION = '1.0.0';
 
 const MAX_CAPTURE_BYTES = 4 * 1024 * 1024;
 const MAX_RESULT_FILES = 10_000;
 const MAX_RESULT_BYTES = 128 * 1024 * 1024;
 const DEFAULT_ENVIRONMENT = Object.freeze({ LANG: 'C', LC_ALL: 'C', PATH: '/usr/bin:/bin', TZ: 'UTC' });
-const FORBIDDEN_ENVIRONMENT_ALLOWLIST_NAMES = new Set(['HOME', 'PATH', 'TMPDIR']);
+const FORBIDDEN_ENVIRONMENT_ALLOWLIST_NAMES = new Set(['HOME', 'LANG', 'LC_ALL', 'PATH', 'TMPDIR', 'TZ']);
 const CASE_GROUPS = Object.freeze([
   'community-regression',
   'natural-positive',
@@ -85,7 +91,7 @@ export function canonicalJson(value) {
 }
 
 function opaqueCaseId(caseId) {
-  return `case-${sha256(Buffer.from(`programmable-community-journeys-v1:${caseId}`, 'utf8')).slice(0, 24)}`;
+  return `case-${sha256(Buffer.from(`${ACTIVE_CORPUS_ID}:${caseId}`, 'utf8')).slice(0, 24)}`;
 }
 
 function readJson(filePath, label) {
@@ -267,13 +273,116 @@ export function validateCorpusDocument(corpus, raw = JSON.stringify(corpus)) {
   return { caseCount: corpus.cases.length, counts: derived };
 }
 
+function validateCorpusOverlayDocument(overlay, raw, baseCorpus) {
+  assertExactKeys(overlay, [
+    'baseCorpus',
+    'corpusId',
+    'executionPolicies',
+    'freezeStatus',
+    'frozenOn',
+    'kind',
+    'messageOverrides',
+    'qualification',
+    'schemaVersion',
+    'sealedCorpusRelationship',
+  ], 'corpus overlay');
+  if (
+    overlay.schemaVersion !== BENCHMARK_SCHEMA_VERSION
+    || overlay.kind !== 'programmable-community-journey-corpus-overlay'
+    || overlay.corpusId !== ACTIVE_CORPUS_ID
+    || overlay.freezeStatus !== 'FROZEN_PUBLIC_AFTER_DESIGN'
+    || overlay.frozenOn !== '2026-08-15'
+    || overlay.qualification !== 'PUBLIC_REGRESSION_AND_COMPARISON_CORPUS_NOT_BLIND_HOLDOUT'
+    || overlay.sealedCorpusRelationship !== 'SEPARATE_NO_PLAINTEXT_OR_MEMBERSHIP_DERIVED'
+  ) fail('SCHEMA_INVALID', 'active corpus overlay identity drifted');
+  if (/evals\/holdout|PROGRAMMABLE_E2E_HOLDOUT_KEY|ciphertext|authTag/iu.test(raw)) {
+    fail('SEALED_CORPUS_BOUNDARY', 'public benchmark overlay must not reference sealed paths, keys, or envelope fields');
+  }
+  assertExactKeys(overlay.baseCorpus, ['corpusId', 'path', 'sha256'], 'corpus overlay.baseCorpus');
+  if (
+    overlay.baseCorpus.corpusId !== 'programmable-community-journeys-v1'
+    || overlay.baseCorpus.path !== BASE_CORPUS_V1_RELATIVE_PATH
+    || overlay.baseCorpus.sha256 !== PINNED_V1_CORPUS_SHA256
+  ) fail('SCHEMA_INVALID', 'active corpus overlay must bind the immutable v1 base');
+  if (!Array.isArray(overlay.executionPolicies) || overlay.executionPolicies.length !== 1) {
+    fail('SCHEMA_INVALID', 'active corpus overlay must contain exactly one case execution policy');
+  }
+  const [policy] = overlay.executionPolicies;
+  assertExactKeys(policy, [
+    'caseIds',
+    'deniedExecutables',
+    'fakeQualification',
+    'id',
+    'mode',
+    'providerReceipt',
+  ], 'corpus overlay.executionPolicies[0]');
+  if (
+    policy.id !== 'forge-unavailable-v1'
+    || canonicalJson(policy.caseIds) !== canonicalJson(['missing-foundry-tool'])
+    || policy.mode !== 'deny-exec'
+    || canonicalJson(policy.deniedExecutables) !== canonicalJson(['forge'])
+    || policy.providerReceipt !== 'REQUIRED'
+    || policy.fakeQualification !== 'SIMULATED_NOT_ENFORCED'
+    || !baseCorpus.cases.some(({ id }) => id === 'missing-foundry-tool')
+  ) fail('SCHEMA_INVALID', 'Forge-unavailable execution policy drifted or lost its case binding');
+  if (!Array.isArray(overlay.messageOverrides) || overlay.messageOverrides.length !== 1) {
+    fail('SCHEMA_INVALID', 'active corpus overlay must contain exactly one message override');
+  }
+  const [messageOverride] = overlay.messageOverrides;
+  assertExactKeys(messageOverride, ['caseId', 'content', 'turn'], 'corpus overlay.messageOverrides[0]');
+  if (
+    messageOverride.caseId !== 'missing-foundry-tool'
+    || messageOverride.turn !== 1
+    || typeof messageOverride.content !== 'string'
+    || messageOverride.content.length < 12
+    || messageOverride.content.length > 1_500
+    || !messageOverride.content.includes('case-bound sandbox policy disables Forge execution')
+    || /unavailable on this machine/iu.test(messageOverride.content)
+  ) fail('SCHEMA_INVALID', 'Forge-unavailable message override drifted');
+  return overlay;
+}
+
+function validateCompanionDigest(digestPath, actualDigest, label) {
+  let digestRaw;
+  try {
+    digestRaw = fs.readFileSync(digestPath, 'utf8');
+  } catch (error) {
+    fail('CORPUS_DIGEST_MISSING', `${label} digest cannot be read: ${error.message}`, { digestPath });
+  }
+  const digestMatch = digestRaw.match(/^([0-9a-f]{64})  corpus\.json\n$/u);
+  if (!digestMatch) fail('CORPUS_DIGEST_INVALID', `${label} corpus.sha256 must use sha256sum format for corpus.json`);
+  if (digestMatch[1] !== actualDigest) {
+    fail('CORPUS_DIGEST_DRIFT', `${label} bytes do not match corpus.sha256`, {
+      expected: digestMatch[1],
+      actual: actualDigest,
+    });
+  }
+}
+
 export function loadFrozenCorpus({ repositoryRoot = DEFAULT_REPOSITORY_ROOT } = {}) {
   const corpusPath = path.join(repositoryRoot, CORPUS_RELATIVE_PATH);
   const digestPath = path.join(repositoryRoot, CORPUS_DIGEST_RELATIVE_PATH);
+  const baseCorpusPath = path.join(repositoryRoot, BASE_CORPUS_V1_RELATIVE_PATH);
+  const baseDigestPath = path.join(repositoryRoot, BASE_CORPUS_V1_DIGEST_RELATIVE_PATH);
   const versionAuthorityPath = path.join(repositoryRoot, CORPUS_VERSION_AUTHORITY_RELATIVE_PATH);
-  const { raw, value } = readJson(corpusPath, 'journey benchmark corpus');
-  const validation = validateCorpusDocument(value, raw);
+  const baseDocument = readJson(baseCorpusPath, 'journey benchmark v1 base corpus');
+  const baseDigest = sha256(Buffer.from(baseDocument.raw, 'utf8'));
+  if (baseDigest !== PINNED_V1_CORPUS_SHA256) {
+    fail('CORPUS_VERSION_IMMUTABLE', 'v1 corpus bytes changed; restore v1 and add a new overlay version instead', {
+      expected: PINNED_V1_CORPUS_SHA256,
+      actual: baseDigest,
+    });
+  }
+  const validation = validateCorpusDocument(baseDocument.value, baseDocument.raw);
+  const { raw, value } = readJson(corpusPath, 'journey benchmark active corpus overlay');
   const actualDigest = sha256(Buffer.from(raw, 'utf8'));
+  if (actualDigest !== PINNED_V2_CORPUS_SHA256) {
+    fail('CORPUS_VERSION_IMMUTABLE', 'v2 corpus overlay bytes changed; restore v2 and add a new overlay version instead', {
+      expected: PINNED_V2_CORPUS_SHA256,
+      actual: actualDigest,
+    });
+  }
+  validateCorpusOverlayDocument(value, raw, baseDocument.value);
   const versionAuthority = readJson(versionAuthorityPath, 'journey benchmark corpus version authority');
   assertExactKeys(versionAuthority.value, ['kind', 'policy', 'schemaVersion', 'versions'], 'corpus version authority');
   if (
@@ -281,40 +390,28 @@ export function loadFrozenCorpus({ repositoryRoot = DEFAULT_REPOSITORY_ROOT } = 
     || versionAuthority.value.kind !== 'programmable-journey-corpus-version-authority'
     || versionAuthority.value.policy !== 'APPEND_ONLY_NEW_VERSION_REQUIRED_FOR_BYTE_CHANGES'
     || !Array.isArray(versionAuthority.value.versions)
-    || versionAuthority.value.versions.length !== 1
+    || versionAuthority.value.versions.length !== 2
   ) fail('CORPUS_VERSION_AUTHORITY_INVALID', 'corpus version authority identity or policy drifted');
-  const [v1Authority] = versionAuthority.value.versions;
+  const [v1Authority, v2Authority] = versionAuthority.value.versions;
   assertExactKeys(v1Authority, ['corpusId', 'path', 'sha256', 'status', 'version'], 'corpus version authority v1');
+  assertExactKeys(v2Authority, ['corpusId', 'path', 'sha256', 'status', 'version'], 'corpus version authority v2');
   if (
     v1Authority.version !== 'v1'
     || v1Authority.corpusId !== 'programmable-community-journeys-v1'
-    || v1Authority.path !== CORPUS_RELATIVE_PATH
+    || v1Authority.path !== BASE_CORPUS_V1_RELATIVE_PATH
     || v1Authority.status !== 'IMMUTABLE'
     || v1Authority.sha256 !== PINNED_V1_CORPUS_SHA256
-  ) fail('CORPUS_VERSION_AUTHORITY_INVALID', 'v1 corpus authority drifted; preserve v1 and add a new corpus version');
-  if (actualDigest !== PINNED_V1_CORPUS_SHA256) {
-    fail('CORPUS_VERSION_IMMUTABLE', 'v1 corpus bytes changed; restore v1 and add a new corpus version instead', {
-      expected: PINNED_V1_CORPUS_SHA256,
-      actual: actualDigest,
-    });
-  }
-  let digestRaw;
-  try {
-    digestRaw = fs.readFileSync(digestPath, 'utf8');
-  } catch (error) {
-    fail('CORPUS_DIGEST_MISSING', `journey benchmark digest cannot be read: ${error.message}`, { digestPath });
-  }
-  const digestMatch = digestRaw.match(/^([0-9a-f]{64})  corpus\.json\n$/u);
-  if (!digestMatch) fail('CORPUS_DIGEST_INVALID', 'corpus.sha256 must use sha256sum format for corpus.json');
-  if (digestMatch[1] !== actualDigest) {
-    fail('CORPUS_DIGEST_DRIFT', 'frozen public corpus bytes do not match corpus.sha256', {
-      expected: digestMatch[1],
-      actual: actualDigest,
-    });
-  }
-  const workspaceFixtures = value.workspaceFixtures.map((fixture) => {
-    const fixtureRoot = path.resolve(path.dirname(corpusPath), fixture.source);
-    const relativeFixture = path.relative(path.dirname(corpusPath), fixtureRoot);
+    || v2Authority.version !== 'v2'
+    || v2Authority.corpusId !== ACTIVE_CORPUS_ID
+    || v2Authority.path !== CORPUS_RELATIVE_PATH
+    || v2Authority.status !== 'IMMUTABLE'
+    || v2Authority.sha256 !== PINNED_V2_CORPUS_SHA256
+  ) fail('CORPUS_VERSION_AUTHORITY_INVALID', 'corpus version authority drifted; preserve published versions and append a new one');
+  validateCompanionDigest(baseDigestPath, baseDigest, 'v1 base corpus');
+  validateCompanionDigest(digestPath, actualDigest, 'v2 corpus overlay');
+  const workspaceFixtures = baseDocument.value.workspaceFixtures.map((fixture) => {
+    const fixtureRoot = path.resolve(path.dirname(baseCorpusPath), fixture.source);
+    const relativeFixture = path.relative(path.dirname(baseCorpusPath), fixtureRoot);
     if (isOutsideRoot(relativeFixture) || relativeFixture === '') fail('CORPUS_FIXTURE_INVALID', `workspace fixture ${fixture.id} escapes the corpus version root`);
     const inventory = inventoryDirectory(fixtureRoot);
     if (inventory.inventorySha256 !== fixture.inventorySha256) {
@@ -325,10 +422,38 @@ export function loadFrozenCorpus({ repositoryRoot = DEFAULT_REPOSITORY_ROOT } = 
     }
     return { ...fixture, root: fixtureRoot, inventory };
   });
+  const executionPolicies = value.executionPolicies.map((policy) => ({
+    ...policy,
+    policySha256: sha256(canonicalJson({ mode: policy.mode, deniedExecutables: policy.deniedExecutables })),
+  }));
+  const cases = baseDocument.value.cases.map((benchmarkCase) => {
+    const override = value.messageOverrides.find(({ caseId }) => caseId === benchmarkCase.id);
+    if (!override) return benchmarkCase;
+    return {
+      ...benchmarkCase,
+      messages: benchmarkCase.messages.map((message, index) => (
+        index + 1 === override.turn ? { ...message, content: override.content } : message
+      )),
+    };
+  });
+  const corpus = {
+    ...baseDocument.value,
+    baseCorpus: value.baseCorpus,
+    cases,
+    corpusId: value.corpusId,
+    executionPolicies: value.executionPolicies,
+    frozenOn: value.frozenOn,
+    freezeStatus: value.freezeStatus,
+    qualification: value.qualification,
+    sealedCorpusRelationship: value.sealedCorpusRelationship,
+  };
   return {
-    corpus: value,
+    corpus,
     corpusPath,
     corpusSha256: actualDigest,
+    baseCorpusPath,
+    baseCorpusSha256: baseDigest,
+    executionPolicies,
     versionAuthorityPath,
     versionAuthoritySha256: sha256(Buffer.from(versionAuthority.raw, 'utf8')),
     workspaceFixtures,
@@ -422,6 +547,31 @@ function commandIdentity(argv) {
   };
 }
 
+function validateCanonicalFakeAdapterMatrix(config, repositoryRoot) {
+  if (config.evidenceMode !== 'FAKE_ADAPTER_TEST') return null;
+  const adapterPath = path.join(repositoryRoot, CANONICAL_FAKE_ADAPTER_RELATIVE_PATH);
+  const expectedArgv = [process.execPath, adapterPath];
+  const configuredCommands = [
+    ...config.subjects.map(({ adapterArgv }) => adapterArgv),
+    config.judge.adapterArgv,
+  ];
+  if (configuredCommands.some((argv) => canonicalJson(argv) !== canonicalJson(expectedArgv))) {
+    fail('FAKE_ADAPTER_PIN_MISMATCH', 'FAKE_ADAPTER_TEST accepts only the exact canonical fixture adapter and interpreter with no options');
+  }
+  const adapterBytes = fs.readFileSync(adapterPath);
+  if (sha256(adapterBytes) !== PINNED_FAKE_ADAPTER_SHA256) {
+    fail('FAKE_ADAPTER_PIN_MISMATCH', 'canonical fake adapter bytes drifted from the independent pin');
+  }
+  const interpreterBytes = fs.readFileSync(process.execPath);
+  return {
+    argvSha256: sha256(canonicalJson(expectedArgv)),
+    adapterPath: CANONICAL_FAKE_ADAPTER_RELATIVE_PATH,
+    adapterSha256: PINNED_FAKE_ADAPTER_SHA256,
+    interpreterPath: process.execPath,
+    interpreterSha256: sha256(interpreterBytes),
+  };
+}
+
 function validateHost(host, label) {
   assertExactKeys(host, ['model', 'name', 'provider', 'version'], label);
   for (const key of ['model', 'name', 'provider', 'version']) {
@@ -506,6 +656,42 @@ function restrictedEnvironment(allowlist, extra) {
   return { ...environment, ...extra };
 }
 
+function providerSecretEnvironment(allowlist) {
+  const secrets = {};
+  for (const name of allowlist) {
+    if (!Object.hasOwn(process.env, name)) fail('PROVIDER_SECRET_ENV_MISSING', `configured provider secret environment is unavailable: ${name}`);
+    const value = process.env[name];
+    if (typeof value !== 'string' || value.length < 1 || value.length > 16_384 || value.includes('\0')) {
+      fail('PROVIDER_SECRET_ENV_INVALID', `configured provider secret environment is invalid: ${name}`);
+    }
+    secrets[name] = value;
+  }
+  return secrets;
+}
+
+function assertSecretValuesAbsent(root, secretEnvironment) {
+  const secrets = Object.entries(secretEnvironment).map(([name, value]) => ({ name, bytes: Buffer.from(value, 'utf8') }));
+  if (secrets.length === 0 || !fs.existsSync(root)) return;
+  const visit = (directory) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const filePath = path.join(directory, entry.name);
+      const relativePath = path.relative(root, filePath);
+      const pathMatch = secrets.find(({ bytes: secret }) => Buffer.from(relativePath, 'utf8').includes(secret));
+      if (pathMatch) fail('SECRET_PERSISTENCE_DETECTED', `provider secret value was used in a result-bundle path`, { name: pathMatch.name });
+      const stat = fs.lstatSync(filePath);
+      if (stat.isSymbolicLink()) continue;
+      if (stat.isDirectory()) {
+        visit(filePath);
+      } else if (stat.isFile()) {
+        const bytes = fs.readFileSync(filePath);
+        const match = secrets.find(({ bytes: secret }) => bytes.includes(secret));
+        if (match) fail('SECRET_PERSISTENCE_DETECTED', `provider secret value was written to the result bundle by ${relativePath}`, { name: match.name });
+      }
+    }
+  };
+  visit(root);
+}
+
 function writeNewJson(filePath, value, mode = 0o600) {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx', mode });
 }
@@ -539,6 +725,8 @@ function runAdapter(argv, requestPath, outputPath, options) {
       args: [...argv.slice(1), '--request', requestPath, '--output', outputPath],
       cwd: options.cwd,
       env: options.env,
+      secretEnvironment: options.secretEnvironment,
+      toolPolicy: options.toolPolicy,
       controlDirectory: options.controlDirectory,
       timeout: options.timeoutMs,
       maxBuffer: MAX_CAPTURE_BYTES,
@@ -550,8 +738,8 @@ function runAdapter(argv, requestPath, outputPath, options) {
       durationMs: Date.now() - started,
       exitCode: child.status,
       signal: child.signal,
-      stderr: { bytes: stderr.length, sha256: sha256(stderr), text: stderr.toString('utf8') },
-      stdout: { bytes: stdout.length, sha256: sha256(stdout), text: stdout.toString('utf8') },
+      stderr: { bytes: stderr.length, sha256: sha256(stderr) },
+      stdout: { bytes: stdout.length, sha256: sha256(stdout) },
       timedOut: child.error?.code === 'ETIMEDOUT',
       sandboxReceipt,
     });
@@ -594,8 +782,8 @@ function runAdapter(argv, requestPath, outputPath, options) {
         durationMs: Date.now() - started,
         exitCode,
         signal,
-        stderr: { bytes: stderr.length, sha256: sha256(stderr), text: stderr.toString('utf8') },
-        stdout: { bytes: stdout.length, sha256: sha256(stdout), text: stdout.toString('utf8') },
+        stderr: { bytes: stderr.length, sha256: sha256(stderr) },
+        stdout: { bytes: stdout.length, sha256: sha256(stdout) },
         timedOut,
         sandboxReceipt: {
           role: options.role,
@@ -752,10 +940,12 @@ function aggregateSubjectRuns(runs) {
     activationReceiptComplete: completed.filter(({ gates }) => gates.activationReceiptComplete).length,
     expectedOutcomeMatched: completed.filter(({ gates }) => gates.expectedOutcomeMatched).length,
     subjectStatusAndUsefulness: completed.filter(({ gates }) => gates.subjectStatusAndUsefulness).length,
+    intermediateTurnsProgressed: completed.filter(({ gates }) => gates.intermediateTurnsProgressed).length,
     judgePasses: completed.filter(({ gates }) => gates.judgePassed).length,
     noExternalWrites: completed.filter(({ gates }) => gates.noExternalWrites).length,
     telemetryComplete: completed.filter(({ gates }) => gates.telemetryComplete).length,
     executionBoundarySatisfied: completed.filter(({ gates }) => gates.executionBoundarySatisfied).length,
+    caseToolPolicySatisfied: completed.filter(({ gates }) => gates.caseToolPolicySatisfied).length,
     medians: {
       totalTokens: metric('totalTokens'),
       toolCalls: metric('toolCalls'),
@@ -884,7 +1074,13 @@ function aggregateSubjectTurns(turns) {
       turns: turns.map(({ turn, result }) => ({ turn, decision: result.activation.observed })),
       loadedReferences: [...referencesByPath.values()].sort((left, right) => left.path.localeCompare(right.path)),
     },
-    result: finalTurn.result.result,
+    result: {
+      ...finalTurn.result.result,
+      materialOwnerDecisions: turns.reduce(
+        (total, { result }) => total + result.result.materialOwnerDecisions,
+        0,
+      ),
+    },
     telemetry: {
       inputTokens: metric('inputTokens'),
       outputTokens: metric('outputTokens'),
@@ -899,7 +1095,18 @@ function aggregateSubjectTurns(turns) {
   };
 }
 
-async function executeRun({ benchmarkCase, config, inputFixture, outputRoot, repetition, sandbox, subject, subjectIdentity }) {
+async function executeRun({
+  benchmarkCase,
+  config,
+  executionPolicy,
+  inputFixture,
+  outputRoot,
+  repetition,
+  sandbox,
+  secretEnvironment,
+  subject,
+  subjectIdentity,
+}) {
   const subjectCaseId = opaqueCaseId(benchmarkCase.id);
   const relativeRunRoot = path.join('runs', subject.id, subjectCaseId, String(repetition));
   const runRoot = path.join(outputRoot, relativeRunRoot);
@@ -917,13 +1124,19 @@ async function executeRun({ benchmarkCase, config, inputFixture, outputRoot, rep
       const turnLabel = String(turnIndex).padStart(2, '0');
       const requestBase = {
         schemaVersion: BENCHMARK_SCHEMA_VERSION,
-        corpusId: 'programmable-community-journeys-v1',
+        corpusId: ACTIVE_CORPUS_ID,
         caseId: subjectCaseId,
         subjectId: subject.id,
         repetition,
         turn: { index: turnIndex, count: benchmarkCase.messages.length, message },
         history,
         inputFixture: inputFixtureReceipt,
+        executionPolicy: executionPolicy ? {
+          id: executionPolicy.id,
+          mode: executionPolicy.mode,
+          deniedExecutables: executionPolicy.deniedExecutables,
+          policySha256: executionPolicy.policySha256,
+        } : null,
         skill: {
           path: subject.skillPath,
           inventorySha256: subjectIdentity.inventorySha256,
@@ -939,13 +1152,18 @@ async function executeRun({ benchmarkCase, config, inputFixture, outputRoot, rep
       const requestFileSha256 = sha256(fs.readFileSync(requestPath));
       const subjectProcess = await runAdapter(subject.adapterArgv, requestPath, subjectOutputPath, {
         cwd: runRoot,
-        env: restrictedEnvironment(config.environmentAllowlist, {
+        env: restrictedEnvironment(config.evidenceMode === 'FAKE_ADAPTER_TEST' ? config.environmentAllowlist : [], {
           PROGRAMMABLE_BENCHMARK_ROLE: 'subject',
           PROGRAMMABLE_BENCHMARK_WORKSPACE: workspace,
           TMPDIR: adapterTmp,
         }),
         timeoutMs: config.timeoutMs,
         sandbox,
+        secretEnvironment,
+        toolPolicy: executionPolicy ? {
+          mode: executionPolicy.mode,
+          deniedExecutables: executionPolicy.deniedExecutables,
+        } : null,
         role: 'subject-generation',
         controlDirectory: path.join(runRoot, 'sandbox-control'),
       });
@@ -953,6 +1171,7 @@ async function executeRun({ benchmarkCase, config, inputFixture, outputRoot, rep
       if (subjectProcess.captureExceeded) fail('SUBJECT_CAPTURE_LIMIT', `subject adapter turn ${turnIndex} stdout or stderr exceeded the capture limit`);
       if (subjectProcess.exitCode !== 0) fail('SUBJECT_ADAPTER_FAILED', `subject adapter turn ${turnIndex} exited ${subjectProcess.exitCode}`, { signal: subjectProcess.signal });
       assertFileUnchanged(requestPath, requestFileSha256, `subject request turn ${turnIndex}`);
+      assertSecretValuesAbsent(runRoot, secretEnvironment);
       if (!fs.existsSync(subjectOutputPath)) fail('SUBJECT_RESULT_MISSING', `subject adapter turn ${turnIndex} did not create its result file`);
       const parsedSubject = parseAdapterOutput(subjectOutputPath, `subject adapter turn ${turnIndex} result`);
       const subjectResult = validateSubjectResult(parsedSubject.value, {
@@ -1001,6 +1220,12 @@ async function executeRun({ benchmarkCase, config, inputFixture, outputRoot, rep
       expected: benchmarkCase.expected,
       rubric: benchmarkCase.rubric,
       inputFixture: inputFixtureReceipt,
+      executionPolicy: executionPolicy ? {
+        id: executionPolicy.id,
+        mode: executionPolicy.mode,
+        deniedExecutables: executionPolicy.deniedExecutables,
+        policySha256: executionPolicy.policySha256,
+      } : null,
       subjectJourney: {
         activation: subjectResult.activation,
         result: subjectResult.result,
@@ -1029,13 +1254,15 @@ async function executeRun({ benchmarkCase, config, inputFixture, outputRoot, rep
     const judgeRequestFileSha256 = sha256(fs.readFileSync(judgeRequestPath));
     const judgeProcess = await runAdapter(config.judge.adapterArgv, judgeRequestPath, judgeOutputPath, {
       cwd: runRoot,
-      env: restrictedEnvironment(config.environmentAllowlist, {
+      env: restrictedEnvironment(config.evidenceMode === 'FAKE_ADAPTER_TEST' ? config.environmentAllowlist : [], {
         PROGRAMMABLE_BENCHMARK_ROLE: 'judge',
         PROGRAMMABLE_BENCHMARK_WORKSPACE: workspace,
         TMPDIR: adapterTmp,
       }),
       timeoutMs: config.timeoutMs,
       sandbox,
+      secretEnvironment,
+      toolPolicy: null,
       role: 'independent-judge',
       controlDirectory: path.join(runRoot, 'sandbox-control'),
     });
@@ -1043,6 +1270,7 @@ async function executeRun({ benchmarkCase, config, inputFixture, outputRoot, rep
     if (judgeProcess.captureExceeded) fail('JUDGE_CAPTURE_LIMIT', 'judge adapter stdout or stderr exceeded the capture limit');
     if (judgeProcess.exitCode !== 0) fail('JUDGE_ADAPTER_FAILED', `judge adapter exited ${judgeProcess.exitCode}`, { signal: judgeProcess.signal });
     assertFileUnchanged(judgeRequestPath, judgeRequestFileSha256, 'judge request');
+    assertSecretValuesAbsent(runRoot, secretEnvironment);
     try {
       for (const turn of subjectTurns) {
         assertFileUnchanged(turn.requestPath, turn.requestFileSha256, `subject request turn ${turn.turn}`);
@@ -1076,6 +1304,10 @@ async function executeRun({ benchmarkCase, config, inputFixture, outputRoot, rep
       && receipt.externalWritesDenied === true
       && receipt.networkPolicyEnforced === true
       && receipt.isolation !== 'local-same-uid-unrestricted');
+    const caseToolPolicySatisfied = executionPolicy === null
+      || config.evidenceMode === 'FAKE_ADAPTER_TEST'
+      || subjectTurns.every(({ adapterProcess }) => adapterProcess.sandboxReceipt.toolPolicyEnforced === true
+        && adapterProcess.sandboxReceipt.toolPolicySha256 === executionPolicy.policySha256);
     const gates = {
       activationCorrect: subjectResult.activation.observed === benchmarkCase.expected.activation,
       perTurnActivationConsistent: subjectTurns.every(({ result }) => result.activation.observed === benchmarkCase.expected.activation),
@@ -1086,11 +1318,15 @@ async function executeRun({ benchmarkCase, config, inputFixture, outputRoot, rep
       expectedOutcomeMatched: subjectResult.result.outcome === benchmarkCase.expected.outcome,
       subjectStatusAndUsefulness: subjectResult.result.status === expectedStatus
         && subjectTurns.every(({ result }) => result.result.status !== 'ERROR' && result.result.useful === true),
+      intermediateTurnsProgressed: subjectTurns.slice(0, -1).every(({ result }) => (
+        result.result.status === 'COMPLETED' && !result.result.outcome.startsWith('EARLY_BLOCKED_')
+      )),
       materialOwnerDecisionBudget: subjectResult.result.materialOwnerDecisions <= benchmarkCase.expected.maxMaterialOwnerDecisions,
       noExternalWrites: subjectResult.effects.externalWrites.length === 0,
       judgePassed: judgeResult.verdict === 'PASS',
       telemetryComplete,
       executionBoundarySatisfied,
+      caseToolPolicySatisfied,
     };
     return {
       harnessStatus: 'COMPLETED',
@@ -1101,6 +1337,16 @@ async function executeRun({ benchmarkCase, config, inputFixture, outputRoot, rep
       subjectId: subject.id,
       subjectRole: subject.role,
       inputFixture: inputFixtureReceipt,
+      executionPolicy: executionPolicy ? {
+        id: executionPolicy.id,
+        mode: executionPolicy.mode,
+        deniedExecutables: executionPolicy.deniedExecutables,
+        policySha256: executionPolicy.policySha256,
+        providerReceiptRequired: executionPolicy.providerReceipt === 'REQUIRED',
+        enforcement: config.evidenceMode === 'FAKE_ADAPTER_TEST'
+          ? executionPolicy.fakeQualification
+          : 'SANDBOX_RUNTIME_RECEIPT_BOUND',
+      } : null,
       subject: {
         activation: subjectResult.activation,
         effects: subjectResult.effects,
@@ -1180,6 +1426,7 @@ export async function runJourneyBenchmark({
   if (!isOutsideRoot(relativeOutput)) fail('OUTPUT_INVALID', 'output directory must be outside the repository');
   if (fs.existsSync(outputPath)) fail('OUTPUT_INVALID', 'output directory must not already exist');
   const config = validateBenchmarkConfig(readJson(configPath, 'benchmark config').value);
+  const fakeAdapterPin = validateCanonicalFakeAdapterMatrix(config, realRepositoryRoot);
   if (requireProvider && config.evidenceMode !== 'PROVIDER_BACKED_UNVERIFIED') {
     fail('PROVIDER_EVIDENCE_REQUIRED', 'provider-backed evidence is required but config evidenceMode is FAKE_ADAPTER_TEST');
   }
@@ -1201,10 +1448,17 @@ export async function runJourneyBenchmark({
       });
     }
   }
+  const secretEnvironment = config.evidenceMode === 'PROVIDER_BACKED_UNVERIFIED'
+    ? providerSecretEnvironment(config.environmentAllowlist)
+    : {};
   const corpus = loadFrozenCorpus({ repositoryRoot });
   const inputFixtureByCaseId = new Map();
   for (const fixture of corpus.workspaceFixtures) {
     for (const caseId of fixture.caseIds) inputFixtureByCaseId.set(caseId, fixture);
+  }
+  const executionPolicyByCaseId = new Map();
+  for (const policy of corpus.executionPolicies) {
+    for (const caseId of policy.caseIds) executionPolicyByCaseId.set(caseId, policy);
   }
 
   const subjectIdentities = new Map(config.subjects.map((subject) => {
@@ -1225,9 +1479,11 @@ export async function runJourneyBenchmark({
       for (let repetition = 1; repetition <= config.repetitions; repetition += 1) {
         tasks.push({
           benchmarkCase,
+          executionPolicy: executionPolicyByCaseId.get(benchmarkCase.id) ?? null,
           inputFixture: inputFixtureByCaseId.get(benchmarkCase.id) ?? null,
           repetition,
           sandbox,
+          secretEnvironment,
           subject,
           subjectIdentity: subjectIdentities.get(subject.id),
         });
@@ -1236,6 +1492,12 @@ export async function runJourneyBenchmark({
   }
   const startedAt = new Date().toISOString();
   const runs = await mapWithConcurrency(tasks, config.concurrency, (task) => executeRun({ ...task, config, outputRoot: outputPath }));
+  try {
+    assertSecretValuesAbsent(outputPath, secretEnvironment);
+  } catch (error) {
+    fs.rmSync(outputPath, { recursive: true, force: true });
+    throw error;
+  }
   const endedAt = new Date().toISOString();
   const postSubjectIdentities = new Map(config.subjects.map((subject) => [subject.id, inventoryDirectory(subject.skillPath)]));
   const subjects = config.subjects.map((subject) => {
@@ -1285,6 +1547,14 @@ export async function runJourneyBenchmark({
       caseCount: corpus.caseCount,
       counts: corpus.counts,
       qualification: corpus.corpus.qualification,
+      baseSha256: corpus.baseCorpusSha256,
+      executionPolicies: corpus.executionPolicies.map(({ caseIds, deniedExecutables, id, mode, policySha256 }) => ({
+        caseIds,
+        deniedExecutables,
+        id,
+        mode,
+        policySha256,
+      })),
     },
     runPlan: {
       concurrency: config.concurrency,
@@ -1315,6 +1585,12 @@ export async function runJourneyBenchmark({
           wrapperFilesSha256: sandbox.wrapperFilesSha256,
           wrapperSha256: sandbox.wrapperSha256,
         },
+    fakeAdapterPin,
+    providerSecretEnvironment: {
+      names: Object.keys(secretEnvironment).sort(),
+      namesSha256: sha256(canonicalJson(Object.keys(secretEnvironment).sort())),
+      values: 'OUT_OF_BAND_REDACTED',
+    },
     subjects,
     aggregates,
     comparisons: compareSubjects(runs, config.subjects),
@@ -1333,5 +1609,11 @@ export async function runJourneyBenchmark({
   };
   const scorecardPath = path.join(outputPath, 'scorecard.json');
   writeNewJson(scorecardPath, scorecard, 0o600);
+  try {
+    assertSecretValuesAbsent(outputPath, secretEnvironment);
+  } catch (error) {
+    fs.rmSync(outputPath, { recursive: true, force: true });
+    throw error;
+  }
   return { scorecard, scorecardPath, scorecardSha256: sha256(fs.readFileSync(scorecardPath)) };
 }

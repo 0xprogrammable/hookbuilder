@@ -1,15 +1,16 @@
 # Community journey benchmark
 
-`v1/corpus.json` is a frozen public regression and comparison corpus. It reproduces the reported Mizu
-design-to-implementation failure, then covers 20 natural English/German positive and adjacent-negative prompts plus
+`v1/corpus.json` is the immutable public base corpus. The active `v2/corpus.json` overlay binds that exact v1 digest and
+adds the case-specific Forge-denial execution policy without editing v1. Together they reproduce the reported Mizu
+design-to-implementation failure, then cover 20 natural English/German positive and adjacent-negative prompts plus
 malformed input, missing Foundry, denied deployment/GitHub authority, and untrusted repository instructions. It is
 deliberately public and must never be described as a blind holdout.
 
 The existing encrypted `evals/holdout/` population remains a separate evidence lane. This directory contains no
-holdout plaintext, key, decrypted metadata, membership oracle, or derived case list. `v1/corpus.sha256` is a
+holdout plaintext, key, decrypted metadata, membership oracle, or derived case list. Each adjacent `corpus.sha256` is a
 co-versioned tamper-detection checksum, not an independent freeze. The independent in-repository version authority is
 `config/journey-benchmark-corpus-versions.json`, backed by a hard-coded loader/test pin. The pinned v1 bytes are
-immutable: changing them requires a new corpus version instead of regenerating the adjacent checksum.
+immutable: changing v1 or v2 requires a new overlay version instead of regenerating an adjacent checksum.
 
 ## What the harness measures
 
@@ -22,6 +23,7 @@ Every subject runs the same case and repetition matrix. The scorecard records:
 - response, result inventory and optional Git commit/tree hashes;
 - input/output/total tokens when available, tool calls, tool errors, retries, elapsed time and time to useful output;
 - reported local writes, network calls, external writes and authority requests;
+- the sum of material owner decisions across every turn, so a multi-turn run cannot reset its budget;
 - an independent judge verdict with four bounded human-readable score dimensions;
 - candidate or competitor deltas against the frozen baseline for correctness and efficiency metrics.
 
@@ -49,8 +51,10 @@ Calling the runner without an explicitly authorized adapter matrix produces
 
 Create a private configuration file outside the repository. Do not put credentials or secret values in it. Every
 adapter executable must be an absolute path and accept harness-appended `--request ABSOLUTE_JSON --output
-ABSOLUTE_NEW_JSON` arguments. Provider authentication belongs to the trusted external adapter; only explicitly named
-environment variables in `environmentAllowlist` are forwarded.
+ABSOLUTE_NEW_JSON` arguments. Names in `environmentAllowlist` are treated as provider secrets: their values are passed
+only in the trusted wrapper process environment and never serialized into request, result or scorecard JSON. Persisted
+requests contain bounded names, a name-list digest and `OUT_OF_BAND_REDACTED`; a detected value in the result bundle
+fails closed and removes that newly created bundle.
 
 ```json
 {
@@ -109,16 +113,23 @@ The output directory must not exist and must resolve outside the repository. It 
 judge requests/results, generated workspaces and `scorecard.json`. Provider mode refuses to execute until the existing
 external subject-sandbox contract validates the wrapper, denied repository/sentinel paths, separate UID/container/VM
 boundary, path restrictions, role-scoped network policy and descendant teardown. Each runtime receipt must bind those
-claims to its exact invocation. Adapters receive a fixed `/usr/bin:/bin` PATH and never inherit the caller's HOME, PATH
-or TMPDIR; only named non-forbidden variables are forwarded inside the wrapper request.
+claims to its exact invocation. Adapters receive fixed runtime-owned PATH/locale/timezone fields and never inherit the
+caller's HOME, PATH or TMPDIR; those runtime names cannot be repurposed as provider-secret names.
 
 Fake mode invokes only the deterministic fixture adapters directly, without a shell, but it runs under the caller's UID
-and provides no filesystem, network or process isolation. It is therefore only a local harness regression. The external
+and provides no filesystem, network or process isolation. The harness pins the exact canonical fixture path and bytes,
+the current Node interpreter path and bytes, and rejects every alternate executable or option before creating output.
+It is therefore only a local harness regression. The external
 wrapper and its runtime receipts are operator-authored rather than cryptographically verified, so even provider mode
 remains `PROVIDER_BACKED_ADAPTER_REPORTED_UNVERIFIED` and cannot satisfy the release gate. Both modes cap concurrency at
 four, limit captures and result inventories, reject symlinked evidence, and verify that every skill inventory remains
 unchanged. The parent harness never runs Git commands against a subject-created repository; it inventories `.git` bytes
 and reads only a bounded regular `HEAD`/loose-ref value passively, leaving tree and dirty-state fields unmeasured.
+
+The `missing-foundry-tool` case is not inferred from the fixed PATH. In provider mode its v2 case policy sends an exact
+`deny-exec` policy for `forge` to the external sandbox, and every subject-turn runtime receipt must bind the policy hash
+and `toolPolicyEnforced: true`. Fake mode records `SIMULATED_NOT_ENFORCED`; that run can test harness behavior but is not
+evidence that Forge was unavailable to a real model.
 
 ## Adapter result contracts
 
