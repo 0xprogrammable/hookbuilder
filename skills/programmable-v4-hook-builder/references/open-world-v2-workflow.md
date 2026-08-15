@@ -39,7 +39,8 @@ tests, build manifests, caller-supplied lock bytes and assets are copied byte-fo
 control paths, non-portable names, symlinks, path escapes, component-level secret risks, generated/dependency
 directories, unresolved root build profiles and portable path collisions fail before output. Profile detection uses
 the frozen input inventory, and the materializer rechecks the input plus exact committed and cloned inventories before
-success. It runs none of those bytes.
+success. Known credential basenames such as gcloud ADC are rejected without treating ordinary credential-named source
+classes as secrets; the committed `surfaces/` namespace must exactly match the declared profile. It runs none of those bytes.
 
 The one bundled tradable profile is frozen legacy compatibility, not a current platform requirement. Require a natural
 idea that independently names a Uniswap v4 hook, fees on executed gross quote volume, buy/sell rates immutable after

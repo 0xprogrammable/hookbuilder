@@ -613,9 +613,9 @@ export function validateCustomTradableMaterializationReceipt(receipt, { reposito
 }
 
 function deriveCustomTradableReceipt({ trackedPlan, commit, tree, repositoryFiles, plan, fail }) {
-  if (trackedPlan?.schemaVersion !== "1.0.0" || trackedPlan?.kind !== "custom-tradable-local-build-plan"
-    || trackedPlan?.status !== "SOURCE_AND_TESTS_MATERIALIZED" || trackedPlan?.classification !== "tradable"
-    || trackedPlan?.architecture !== "custom" || !Object.hasOwn(receiptSurfaceLabels, trackedPlan?.projectProfile)) fail("tracked plan identity is invalid");
+  const identity = { schemaVersion: trackedPlan?.schemaVersion, kind: trackedPlan?.kind, status: trackedPlan?.status, classification: trackedPlan?.classification, architecture: trackedPlan?.architecture };
+  if (!closedJsonEqual(identity, { schemaVersion: "1.0.0", kind: "custom-tradable-local-build-plan", status: "SOURCE_AND_TESTS_MATERIALIZED", classification: "tradable", architecture: "custom" })
+    || !Object.hasOwn(receiptSurfaceLabels, trackedPlan?.projectProfile)) fail("tracked plan identity is invalid");
   if (!validReceiptSlug(trackedPlan.applicationId) || !validReceiptSlug(trackedPlan.marketRef)) fail("tracked application or market identity is invalid");
   const intent = { encoding: trackedPlan?.intent?.encoding, byteLength: trackedPlan?.intent?.byteLength, sha256: trackedPlan?.intent?.sha256 };
   if (!closedJsonEqual(trackedPlan.intent, intent) || intent.encoding !== "utf-8" || !Number.isSafeInteger(intent.byteLength) || intent.byteLength < 1 || !/^sha256:[0-9a-f]{64}$/u.test(intent.sha256 ?? "")) fail("tracked intent binding is invalid");
@@ -648,12 +648,15 @@ function deriveCustomTradableReceipt({ trackedPlan, commit, tree, repositoryFile
 
 function deriveReceiptSurfaces(trackedPlan, repositoryFiles, fail) {
   const label = receiptSurfaceLabels[trackedPlan.projectProfile];
+  const reservedSurfaceFiles = repositoryFiles.filter(({ path: filePath }) => /^surfaces(?:\/|$)/iu.test(filePath));
   if (label === null) {
     if (!closedJsonEqual(trackedPlan.surfaces, [])) fail("foundry profile must not declare an application surface");
+    if (reservedSurfaceFiles.length !== 0) fail("reserved surfaces namespace must be empty for the foundry profile");
     return [];
   }
   if (!Array.isArray(trackedPlan.surfaces) || trackedPlan.surfaces.length !== 1) fail("multi-surface profile requires exactly one tracked surface");
   const surface = trackedPlan.surfaces[0], root = `surfaces/${label}`, generatedConfig = `${root}/programmable-surface.json`;
+  if (reservedSurfaceFiles.some(({ path: filePath }) => !filePath.startsWith(`${root}/`))) fail("reserved surfaces namespace contains an undeclared surface root");
   if (surface?.id !== label || surface?.kind !== "application-surface" || surface?.layoutLabel !== label || surface?.root !== root
     || surface?.generatedConfig !== generatedConfig || !Array.isArray(surface?.buildProfiles) || surface.buildProfiles.length === 0) fail("tracked surface identity does not match its owner-declared profile");
   if (![surface.source, surface.tests, surface.configuration].every((group) => Array.isArray(group) && group.length > 0)) fail("tracked surface bindings are incomplete");

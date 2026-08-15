@@ -93,6 +93,12 @@ test("project materialize authors an arbitrary tradable Foundry hook without req
   assert.match(fs.readFileSync(path.join(output, "README.md"), "utf8"), /custom tradable.*not restricted to bundled profiles/isu);
   assert.equal(fs.existsSync(path.join(output, "submission")), false);
   assert.equal(git(output, ["status", "--porcelain", "--untracked-files=all"]), "");
+  const receiptPath = path.join(output, ".programmable/custom-tradable-materialization-receipt.v1.json");
+  const receipt = readMultiSurfaceJson(receiptPath);
+  assert.equal(validateCustomTradableMaterializationReceipt(receipt, { repositoryRoot: output }), true);
+  commitTrackedTestFile(output, "surfaces/game/undeclared.txt");
+  const topologyTamper = rewriteReceiptForCurrentHead(output, receipt);
+  assert.throws(() => validateCustomTradableMaterializationReceipt(topologyTamper, { repositoryRoot: output }), /PROJECT_MATERIALIZATION_RECEIPT_INVALID.*reserved surfaces namespace/iu);
 });
 
 test("project materialize writes an idea-specific no-market source plan without executing candidate bytes", (t) => {
@@ -588,6 +594,11 @@ test("custom tradable multi-surface profiles bind complete Mizu contract and app
     fs.appendFileSync(receiptPath, " ");
     assert.throws(() => validateCustomTradableMaterializationReceipt(receipt, { repositoryRoot: fixture.output }), /PROJECT_MATERIALIZATION_RECEIPT_INVALID.*exact ignored local artifact/iu);
     fs.writeFileSync(receiptPath, receiptBytes);
+    if (specification.id === "web") {
+      commitTrackedTestFile(fixture.output, "surfaces/game/undeclared.txt");
+      const topologyTamper = rewriteReceiptForCurrentHead(fixture.output, receipt);
+      assert.throws(() => validateCustomTradableMaterializationReceipt(topologyTamper, { repositoryRoot: fixture.output }), /PROJECT_MATERIALIZATION_RECEIPT_INVALID.*reserved surfaces namespace/iu);
+    }
     assert.equal(git(fixture.output, ["status", "--porcelain=v1", "--untracked-files=all"]), "");
   }
 });
@@ -669,6 +680,7 @@ test("multi-surface input rejects Git controls, component-level secret risks, an
   fs.rmSync(path.join(fixture.surfaceRoot, ".aws"), { recursive: true });
   rejectFile(".ssh/id_ed25519", /PROJECT_SURFACE_TREE_INVALID.*secret-risk/iu);
   fs.rmSync(path.join(fixture.surfaceRoot, ".ssh"), { recursive: true });
+  rejectFile(".config/gcloud/application_default_credentials.json", /PROJECT_SURFACE_TREE_INVALID.*secret-risk/iu);
   rejectFile("config/credentials", /PROJECT_SURFACE_TREE_INVALID.*secret-risk/iu);
   rejectFile("nested/.env.local", /PROJECT_SURFACE_TREE_INVALID.*secret-risk/iu);
   rejectFile("public/CON.txt", /PROJECT_SURFACE_TREE_INVALID.*portable ASCII/iu);
@@ -748,6 +760,30 @@ function multiSurfaceMaterializeArgs(fixture, projectProfile) {
     "--project-profile", projectProfile, "--source-root", fixture.sourceRoot, "--test-root", fixture.testRoot,
     "--surface-root", fixture.surfaceRoot, "--output", fixture.output
   ];
+}
+
+function commitTrackedTestFile(repositoryRoot, relativePath) {
+  writeFile(repositoryRoot, relativePath, "must not enter an undeclared surface root\n");
+  git(repositoryRoot, ["config", "user.name", "Materializer Test"]);
+  git(repositoryRoot, ["config", "user.email", "materializer-test@example.invalid"]);
+  git(repositoryRoot, ["add", "--", relativePath]);
+  git(repositoryRoot, ["-c", "core.hooksPath=/dev/null", "commit", "-qm", "add undeclared surface fixture"]);
+}
+
+function rewriteReceiptForCurrentHead(repositoryRoot, originalReceipt) {
+  const receipt = structuredClone(originalReceipt);
+  receipt.source.commit = git(repositoryRoot, ["rev-parse", "HEAD"]);
+  receipt.source.tree = git(repositoryRoot, ["rev-parse", "HEAD^{tree}"]);
+  receipt.repository.files = git(repositoryRoot, ["ls-tree", "-r", "HEAD"]).split("\n").filter(Boolean).map((record) => {
+    const match = /^(100644|100755) blob [0-9a-f]{40,64}\t(.+)$/u.exec(record);
+    assert.notEqual(match, null, record);
+    const bytes = fs.readFileSync(path.join(repositoryRoot, match[2]));
+    return { path: match[2], sha256: sha256Bytes(bytes), byteLength: bytes.length, mode: match[1] };
+  }).sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
+  receipt.repository.inventorySha256 = canonicalJsonSha256V2(receipt.repository.files);
+  receipt.plan = receipt.repository.files.find(({ path: filePath }) => filePath === ".programmable/custom-tradable-build-plan.v1.json");
+  fs.writeFileSync(path.join(repositoryRoot, ".programmable/custom-tradable-materialization-receipt.v1.json"), `${canonicalJsonV2(receipt)}\n`);
+  return receipt;
 }
 
 function runMultiSurface(args) {
