@@ -33,7 +33,7 @@ test("host-neutral help leads with one golden path and keeps every command in op
   const result = run("cli.mjs", ["--help"]);
   assert.equal(result.status, 0, result.stderr);
   assert.ok(Buffer.byteLength(result.stdout) < 600);
-  for (const command of ["doctor", "policy", "context", "project"]) {
+  for (const command of ["doctor", "policy", "context", "project", "handoff"]) {
     assert.match(result.stdout, new RegExp(`^  ${escapeRegExp(command)}\\b`, "m"));
   }
   assert.doesNotMatch(result.stdout, /^  submit\b/mu);
@@ -41,7 +41,7 @@ test("host-neutral help leads with one golden path and keeps every command in op
   const detail = run("cli.mjs", ["--help", "--json"]);
   assert.equal(detail.status, 0, detail.stderr);
   const payload = JSON.parse(detail.stdout);
-  assert.deepEqual(payload.result.goldenPath, ["doctor", "policy", "context", "project"]);
+  assert.deepEqual(payload.result.goldenPath, ["doctor", "policy", "context", "project", "handoff"]);
   for (const commandId of ["fee", "launch-bundle", "launch-bundle-v2", "package", "prepare-pr"]) {
     assert.equal(payload.result.frozenLegacyCommands.includes(commandId), true, commandId);
   }
@@ -118,7 +118,7 @@ test("host-neutral version reports the bundled standalone release without state"
   const result = run("cli.mjs", ["version"]);
   assert.equal(result.status, 0, result.stdout || result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(output.result.installed.releaseVersion, "0.9.1");
+  assert.equal(output.result.installed.releaseVersion, "0.10.0");
   assert.equal(output.result.installed.publicationState, "release-package");
   assert.equal(output.result.versionSource, "bundled-code-constants");
   assert.equal(output.result.installedStateOverrideUsed, false);

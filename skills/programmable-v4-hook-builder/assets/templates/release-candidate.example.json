@@ -41,12 +41,12 @@
     {
       "id": "complete-project-continuation",
       "kind": "feature",
-      "summary": "Continue an accepted Programmable or Uniswap v4 design into complete implementation work instead of treating a missing bundled profile as a refusal condition."
+      "summary": "Continue an accepted Programmable or Uniswap v4 design into complete implementation work instead of treating a missing bundled profile as a refusal condition, with an exact EN/DE structural trigger corpus that remains distinct from provider-level semantic proof."
     },
     {
       "id": "multi-surface-materialization",
       "kind": "feature",
-      "summary": "Preserve bounded caller-supplied contract, web, service, or game source trees as inert, byte-bound local project materialization inputs without executing candidate code."
+      "summary": "For custom tradable projects, pair a bounded caller-supplied Foundry contract tree with exactly one selected web, service, or game source tree as inert, byte-bound local inputs without executing candidate code."
     },
     {
       "id": "generic-application-handoff",
@@ -65,8 +65,13 @@
     },
     {
       "id": "lean-portable-package",
-      "kind": "optimization",
+      "kind": "maintenance",
       "summary": "Separate repository-only development tests from the portable runtime through one manifest-bound package closure and retain installed runtime smoke verification."
+    },
+    {
+      "id": "contributor-maintainer-authority-split",
+      "kind": "documentation",
+      "summary": "Document that contributors author and push the candidate while a separate current CODEOWNER reviews, approves, squash-merges, tags, and publishes the exact accepted revision."
     }
   ],
   "unbundledChangeIds": [],

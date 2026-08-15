@@ -8,12 +8,12 @@ Releases are immutable supply-chain events, not documentation edits.
   release and installed bytes are verified.
 - Bundled lifecycle reports retain `publicationStateVerified: false`; source identity alone is not a published or live
   state assertion.
-- Prior immutable releases: `v0.9.0`, `v0.8.0`, `v0.7.0`, `v0.6.0`, and `v0.5.1`.
+- Prior immutable releases: `v0.9.1`, `v0.9.0`, `v0.8.0`, `v0.7.0`, `v0.6.0`, and `v0.5.1`.
 - Canonical version authority: `config/plugin.json`. `package.json`, `package-lock.json`, the portable runtime constant,
   MCP identity, generated plugin manifests, marketplaces, and the release-planning template are mirrors. The
   repository and plugin checks fail on version drift.
 
-Never change the immutable `v0.5.1`, `v0.6.0`, `v0.7.0`, `v0.8.0`, or `v0.9.0` tags, release notes, assets, or changelog sections after publication.
+Never change the immutable `v0.5.1`, `v0.6.0`, `v0.7.0`, `v0.8.0`, `v0.9.0`, or `v0.9.1` tags, release notes, assets, or changelog sections after publication.
 Future work must use a new version and preserve released package bytes.
 
 ## Versioning

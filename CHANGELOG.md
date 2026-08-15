@@ -6,10 +6,11 @@ All notable Builder changes are recorded here. Historical releases remain immuta
 
 ### Added
 
-- Added complete multi-surface project materialization for owner-declared contract, web, service, and game trees while
-  keeping supplied bytes inert and every candidate command `NOT_RUN`.
-- Added an exact no-write application handoff that derives active requirements from the central policy preimages and
-  binds source, project, surfaces, protected Submit base, and intended draft pull-request identity.
+- Added custom-tradable materialization that pairs a Foundry contract tree with exactly one owner-declared web,
+  service, or game source tree while keeping supplied bytes inert and every candidate command `NOT_RUN`.
+- Added an exact no-write application handoff that validates supplied central-policy and schema preimages, derives
+  their active requirements, and binds source, project, surfaces, the recorded protected Submit base, and intended
+  draft pull-request identity without re-resolving remote state.
 - Added a versioned journey benchmark for activation, repository outcome, efficiency, external effects, and
   independent-judge comparison without leaking expected outcomes or rubrics to the subject.
 - Added a plan-only sandbox-host integration contract. Portable execution and completion remain fail-closed without a
