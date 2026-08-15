@@ -65,6 +65,21 @@ function sha256Text(value) {
   return crypto.createHash("sha256").update(value, "utf8").digest("hex");
 }
 
+function gitBlobInventory(revision, relativePath) {
+  const result = childProcess.spawnSync("git", ["ls-tree", "-lr", "-z", revision, "--", relativePath], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    shell: false
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const sizes = result.stdout.split("\0").filter(Boolean).map((row) => {
+    const match = row.match(/^\d+\s+blob\s+[0-9a-f]+\s+(\d+)\t/u);
+    assert.ok(match, row);
+    return Number(match[1]);
+  });
+  return { files: sizes.length, bytes: sizes.reduce((total, bytes) => total + bytes, 0) };
+}
+
 function markdownFiles(root) {
   const found = [];
   const visit = (directory) => {
@@ -407,24 +422,32 @@ test("candidate quantitative docs match generator-backed source inventories", ()
     .filter((name) => name.endsWith(".test.mjs"))
     .length;
   const productionModuleCount = sizeReport.discovery.discoveredFiles;
+  const priorPortableSkill = gitBlobInventory(
+    "01e1e691424d28bf9cc87dec1879f1482c2ad228",
+    "skills/programmable-v4-hook-builder"
+  );
 
   assert.equal(sizeReport.status, "SIZE_BUDGET_PASSED");
-  assert.equal(productionModuleCount, 338);
+  assert.equal(productionModuleCount, 340);
   assert.deepEqual(v2Inventory, { unit: 54, fuzz: 1, invariant: 3, invariantPolicy: "required-and-present" });
-  assert.equal(registry.inventory.contractCount, 51);
-  assert.equal(registry.inventory.validatorClosureCount, 26);
-  assert.equal(registry.inventory.validatorClosureModuleBindingCount, 1037);
-  assert.equal(registry.inventory.validatorClosureDistinctModuleCount, 178);
+  assert.equal(registry.inventory.contractCount, 55);
+  assert.equal(registry.inventory.validatorClosureCount, 28);
+  assert.equal(registry.inventory.validatorClosureModuleBindingCount, 1059);
+  assert.equal(registry.inventory.validatorClosureDistinctModuleCount, 186);
   assert.equal(evalTestCount, 10);
+  assert.deepEqual(priorPortableSkill, { files: 686, bytes: 10_722_006 });
+  assert.equal(sizeReport.portablePackage.files, 616);
+  assert.equal(sizeReport.portablePackage.bytes, 8_611_699);
 
   for (const document of [maturity]) {
     assert.match(document, new RegExp(`${productionModuleCount} production`, "u"));
     assert.match(document, new RegExp(`${registry.inventory.contractCount} (?:portable\\s+contracts|schema\\s+contracts)`, "u"));
     assert.match(document, new RegExp(`${registry.inventory.validatorClosureCount} validator closures`, "u"));
-    assert.match(document, /1,037 transitive\s+(?:module\s+)?bindings/u);
+    assert.match(document, /1,059 transitive\s+(?:module\s+)?bindings/u);
     assert.match(document, new RegExp(`${registry.inventory.validatorClosureDistinctModuleCount} distinct modules`, "u"));
   }
-  assert.match(candidateNotes, /338 production/u);
+  assert.match(candidateNotes, /340 production/u);
+  assert.match(candidateNotes, /686 files \/ 10,722,006 bytes[\s\S]{0,100}616 files \/\s+8,611,699 bytes/u);
   for (const document of [maturity, readiness, candidateNotes]) {
     assert.match(document, /54 unit, one fuzz and three invariant/u);
     assert.match(document, new RegExp(
