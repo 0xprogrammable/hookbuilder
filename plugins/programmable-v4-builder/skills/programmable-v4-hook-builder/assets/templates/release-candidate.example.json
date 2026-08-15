@@ -1,16 +1,16 @@
 {
   "schemaVersion": "1.0.0",
-  "candidateId": "programmable-v4-builder-v0.9.0-local-20260814",
+  "candidateId": "programmable-v4-builder-v0.9.1-local-20260815",
   "privateCandidate": true,
   "publicState": "not-published",
-  "releaseVersion": "0.9.0",
+  "releaseVersion": "0.9.1",
   "channel": "canary",
   "releaseKind": "normal",
   "plannedRelease": {
     "builder": {
-      "fromVersion": "0.8.0",
-      "toVersion": "0.9.0",
-      "semanticClassification": "minor"
+      "fromVersion": "0.9.0",
+      "toVersion": "0.9.1",
+      "semanticClassification": "patch"
     },
     "submissionStandard": {
       "fromVersion": "1.6.0",
@@ -34,49 +34,14 @@
       "sha256": null
     }
   },
-  "preparedAt": "2026-08-14T13:57:04Z",
-  "requestedReleaseAt": "2026-08-15T09:16:26Z",
+  "preparedAt": "2026-08-15T07:00:14Z",
+  "requestedReleaseAt": "2026-08-15T23:19:52Z",
   "changeSetComplete": true,
   "changes": [
     {
-      "id": "catalog-capability-routing-closure",
-      "kind": "feature",
-      "summary": "Require every canonical catalog capability to have an explicit knowledge route, source eval contexts from a closed registry, and reserve exact legacy Fee V2 context for its one matching case."
-    },
-    {
-      "id": "project-compiler-brief-output",
-      "kind": "feature",
-      "summary": "Add an optional hard-bounded brief Project Compiler view that preserves the full report identity, result and evidence boundary while omitting exhaustive arrays."
-    },
-    {
-      "id": "no-market-foundry-authoring",
-      "kind": "feature",
-      "summary": "Materialize bounded nested Solidity source and test trees as one inert source-bound Foundry plan without candidate execution, network, deployment, approval, or launch authority."
-    },
-    {
-      "id": "natural-v4-intent-triggering",
-      "kind": "feature",
-      "summary": "Trigger on explicit Programmable requests or clear intent to design, build, repair, review, test, upgrade, or submit a complete Uniswap v4 hook or project while excluding explanations, unrelated Solidity work, skill discovery, and non-blockchain use."
-    },
-    {
-      "id": "confirmed-context-activation",
-      "kind": "feature",
-      "summary": "Bind cold context by digest and activate at most one route-owned specialist per distinct confirmed capability, up to two references total, while preserving split-review holds and the frozen Fee V2 quarantine."
-    },
-    {
-      "id": "portable-node22-runtime",
-      "kind": "feature",
-      "summary": "Run the portable Builder and installed-package verification on Node.js 22 or newer while retaining the complete repository, Foundry, and release gate on pinned Node.js 24."
-    },
-    {
-      "id": "bounded-repair-diagnosis",
-      "kind": "feature",
-      "summary": "Add a hash-bound non-completion repair-attempt contract and bounded read-only diagnosis path without weakening the all-pass completion receipt or trusting the portable signer."
-    },
-    {
-      "id": "journey-activation-evidence",
-      "kind": "feature",
-      "summary": "Bind structured Builder responses and exact reference-activation receipts into repository E2E evidence and add a lean daily trigger sentinel."
+      "id": "custom-tradable-materialization",
+      "kind": "bug-fix",
+      "summary": "Allow technically viable custom tradable Foundry source and tests without requiring a bundled reference profile, while keeping launch policy separate and preserving no-execution, no-approval, and no-launch boundaries."
     }
   ],
   "unbundledChangeIds": [],

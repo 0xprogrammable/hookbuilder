@@ -4,11 +4,11 @@ Releases are immutable supply-chain events, not documentation edits.
 
 ## Current identities
 
-- Current release-package and installation identity: `v0.9.0`. Treat it as public only after the exact tag, GitHub
+- Current release-package and installation identity: `v0.9.1`. Treat it as public only after the exact tag, GitHub
   release and installed bytes are verified.
 - Bundled lifecycle reports retain `publicationStateVerified: false`; source identity alone is not a published or live
   state assertion.
-- Prior immutable releases: `v0.8.0`, `v0.7.0`, `v0.6.0`, and `v0.5.1`.
+- Prior immutable releases: `v0.9.0`, `v0.8.0`, `v0.7.0`, `v0.6.0`, and `v0.5.1`.
 - Canonical version authority: `config/plugin.json`. `package.json`, `package-lock.json`, the portable runtime constant,
   MCP identity, generated plugin manifests, marketplaces, and the release-planning template are mirrors. The
   repository and plugin checks fail on version drift.
@@ -54,8 +54,8 @@ any time. The cadence calculation never proves authority, privacy, completeness 
 Run the local infrastructure and packaging rehearsal:
 
 ```bash
-candidate_output=/absolute/path/to/programmable-v4-builder-v0.9.0-candidate
-npm run release:candidate -- --tag v0.9.0 --output-dir "$candidate_output"
+candidate_output=/absolute/path/to/programmable-v4-builder-v0.9.1-candidate
+npm run release:candidate -- --tag v0.9.1 --output-dir "$candidate_output"
 ```
 
 The `release:candidate` name is retained for CLI compatibility. A successful run is not a release-candidate verdict.
@@ -126,7 +126,7 @@ publication, create one immutable GitHub release. Run the Skill publication vali
 create a mutable release:
 
 ```bash
-release_tag=v0.9.0
+release_tag=v0.9.1
 gh skill publish --dry-run
 test "$(git rev-parse HEAD)" = "$(gh api repos/0xprogrammable/hookbuilder/commits/main --jq .sha)"
 test -z "$(git status --porcelain=v1 --untracked-files=all)"
@@ -144,7 +144,7 @@ gh release create "$release_tag" "$candidate_output"/artifacts/* \
   --verify-tag \
   --fail-on-no-commits \
   --title "Programmable v4 Builder $release_tag" \
-  --notes-file docs/releases/v0.9.0.md \
+  --notes-file docs/releases/v0.9.1.md \
   --latest
 
 gh release verify "$release_tag" --repo 0xprogrammable/hookbuilder
