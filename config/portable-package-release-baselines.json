@@ -1,0 +1,21 @@
+{
+  "$schema": "urn:programmable:portable-package-release-baselines:1.0.0",
+  "schemaVersion": "1.0.0",
+  "kind": "programmable-portable-package-release-baselines",
+  "baselines": [
+    {
+      "releaseVersion": "0.9.1",
+      "source": {
+        "commit": "01e1e691424d28bf9cc87dec1879f1482c2ad228",
+        "tree": "f49a87d20443ef5f8000027523b455d2edc9a686",
+        "skillTree": "39157141e23a0de6e32595cbdcda8c796a3d9c68",
+        "path": "skills/programmable-v4-hook-builder"
+      },
+      "inventory": {
+        "profile": "exact-git-blob-bytes-v1",
+        "files": 686,
+        "bytes": 10722006
+      }
+    }
+  ]
+}

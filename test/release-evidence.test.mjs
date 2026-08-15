@@ -392,10 +392,12 @@ test("current product docs keep central policy authority above the optional lega
   );
 });
 
-test("candidate quantitative docs match generator-backed source inventories", () => {
+test("candidate quantitative docs match current inventories and one hash-bound release baseline", () => {
   const maturity = readText("docs/CODE_MATURITY.md");
   const readiness = readText("docs/SECURITY_AUDIT_READINESS.md");
   const candidateNotes = readText("docs/releases/v0.9.2.md");
+  const portableBaselinesText = readText("config/portable-package-release-baselines.json");
+  const portableBaselines = JSON.parse(portableBaselinesText);
   const registry = readJson("skills/programmable-v4-hook-builder/references/contract-registry-v1.json");
   const sizeReport = evaluateSizeBudget({ repositoryRoot, budget: loadSizeBudget(repositoryRoot) });
   const v2Inventory = inventorySolidityTests(path.join(
@@ -407,7 +409,30 @@ test("candidate quantitative docs match generator-backed source inventories", ()
     .filter((name) => name.endsWith(".test.mjs"))
     .length;
   const productionModuleCount = sizeReport.discovery.discoveredFiles;
-  const priorPortableSkill = { files: 686, bytes: 10_722_006 };
+  assert.equal(
+    sha256Text(portableBaselinesText),
+    "5f7933929972a9751f680fb61b5afa9239d4ef46beeea11676a6583b0baf8535"
+  );
+  assert.deepEqual(portableBaselines, {
+    $schema: "urn:programmable:portable-package-release-baselines:1.0.0",
+    schemaVersion: "1.0.0",
+    kind: "programmable-portable-package-release-baselines",
+    baselines: [{
+      releaseVersion: "0.9.1",
+      source: {
+        commit: "01e1e691424d28bf9cc87dec1879f1482c2ad228",
+        tree: "f49a87d20443ef5f8000027523b455d2edc9a686",
+        skillTree: "39157141e23a0de6e32595cbdcda8c796a3d9c68",
+        path: "skills/programmable-v4-hook-builder"
+      },
+      inventory: {
+        profile: "exact-git-blob-bytes-v1",
+        files: 686,
+        bytes: 10_722_006
+      }
+    }]
+  });
+  const priorPortableSkill = portableBaselines.baselines[0].inventory;
 
   assert.equal(sizeReport.status, "SIZE_BUDGET_PASSED");
   assert.equal(productionModuleCount, 342);
@@ -417,7 +442,10 @@ test("candidate quantitative docs match generator-backed source inventories", ()
   assert.equal(registry.inventory.validatorClosureModuleBindingCount, 1060);
   assert.equal(registry.inventory.validatorClosureDistinctModuleCount, 187);
   assert.equal(evalTestCount, 10);
-  assert.deepEqual(priorPortableSkill, { files: 686, bytes: 10_722_006 });
+  assert.deepEqual(
+    { files: priorPortableSkill.files, bytes: priorPortableSkill.bytes },
+    { files: 686, bytes: 10_722_006 }
+  );
   assert.equal(sizeReport.portablePackage.files, 618);
   assert.equal(sizeReport.portablePackage.bytes, 8_656_209);
 
