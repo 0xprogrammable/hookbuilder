@@ -7,19 +7,19 @@ import { canonicalJsonV2 } from "./canonical-json-core.mjs";
 import {
   createDockerSandboxInvocationV1,
   createProjectSandboxSourceArchiveV1,
-  verifyProjectSandboxHostCompletionV1
+  inspectProjectSandboxHostEvidenceV1
 } from "./project-sandbox-host-core.mjs";
 import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
 
 const usage = `Usage:
   project-sandbox-host.mjs source-archive --request <json> --repository-root <git-root> --output <new-tar>
   project-sandbox-host.mjs plan-docker --profile <json> --request <json> --repository-root <git-root> --source-archive <tar> --output-root <empty-dir> --plan <json> --docker <absolute-binary>
-  project-sandbox-host.mjs verify --profile <json> --request <json> --receipt <json> --attestation <json> --trust-root <json> --invocation <json> --output-root <dir> --subject <urn>
+  project-sandbox-host.mjs inspect-evidence --profile <json> --request <json> --receipt <json> --attestation <json> --key-set <json> --invocation <json> --subject <urn>
 
-This opt-in host adapter never executes Docker. plan-docker emits exact argv with candidateCodeExecuted=false.
-An independently operated launcher may execute that argv and sign the receipt plus teardown attestation.
-verify authenticates those exact bytes against the separately supplied Ed25519 trust root. The portable
-project execute command remains blocked, and no approval, audit, deployment, or production authority is created.`;
+This adapter never executes Docker. plan-docker emits EXTERNAL_BLOCKED structure-and-coverage output only.
+inspect-evidence checks structure and signatures against a caller-supplied key set, which is not an owner-pinned
+trust root and cannot prove execution, isolation, output bytes, teardown, or completion. Portable project execute
+remains blocked; no approval, audit, deployment, production, or completion authority is created.`;
 
 try {
   const [operation, ...argumentsList] = process.argv.slice(2);
@@ -50,18 +50,17 @@ try {
       dockerExecutable: options.get("--docker")
     });
     process.stdout.write(`${canonicalJsonV2(result)}\n`);
-  } else if (operation === "verify") {
+  } else if (operation === "inspect-evidence") {
     const options = parseOptions(argumentsList, [
-      "--profile", "--request", "--receipt", "--attestation", "--trust-root", "--invocation", "--output-root", "--subject"
+      "--profile", "--request", "--receipt", "--attestation", "--key-set", "--invocation", "--subject"
     ]);
-    const result = verifyProjectSandboxHostCompletionV1({
+    const result = inspectProjectSandboxHostEvidenceV1({
       profile: readCanonicalJson(options.get("--profile"), "profile", 4 * 1024 * 1024),
       expectedRequest: readCanonicalJson(options.get("--request"), "request", 8 * 1024 * 1024),
       receipt: readCanonicalJson(options.get("--receipt"), "receipt", 64 * 1024 * 1024),
       attestation: readCanonicalJson(options.get("--attestation"), "attestation", 8 * 1024 * 1024),
-      trustRoot: readCanonicalJson(options.get("--trust-root"), "trust root", 4 * 1024 * 1024),
+      trustRoot: readCanonicalJson(options.get("--key-set"), "caller-supplied key set", 4 * 1024 * 1024),
       expectedInvocation: readCanonicalJson(options.get("--invocation"), "invocation", 8 * 1024 * 1024),
-      outputRoot: options.get("--output-root"),
       expectedSubject: options.get("--subject")
     });
     process.stdout.write(`${canonicalJsonV2(result)}\n`);

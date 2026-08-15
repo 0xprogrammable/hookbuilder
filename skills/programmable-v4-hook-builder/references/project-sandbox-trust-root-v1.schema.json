@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:programmable:project-sandbox-trust-root:1.0.0",
   "title": "Programmable project sandbox trust root",
-  "description": "An independently provisioned Ed25519 trust root that pins an authority subject, host profile, launcher, runtime image, and enforced isolation class. The portable release contains no instance of this contract.",
+  "description": "A key-and-scope document for signature inspection. Supplying this document to portable tooling never establishes owner trust or completion authority; production trust roots must be pinned independently in the repository-controlled completion path.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "kind", "rootId", "authorities"],

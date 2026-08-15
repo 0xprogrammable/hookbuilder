@@ -113,7 +113,7 @@ writer exists.
 Require Node.js 22+ for the portable Builder; repository release gates remain pinned to Node.js 24. Keep compilation,
 validation and evidence offline. `doctor` proves local capability only.
 `project execute` always stops with `PROJECT_EXTERNAL_SANDBOX_REQUIRED`. Sandbox receipts bind the exact subject,
-launcher/runtime, enforced filesystem/network/secret/write policy and command/output hashes to an independently
-configured Ed25519 trust root. The portable release ships no production trust root, so local JSON cannot unlock completion.
-Host operators may read [project-sandbox-host.md](references/project-sandbox-host.md) for the opt-in networkless Docker
-profile, exact teardown attestation, and verifier; its plan command never executes candidate bytes or claims isolation.
+launcher/runtime, policy claims and command/output hashes, but the portable release ships no production trust root and
+caller-supplied keys cannot unlock completion. Read [project-sandbox-host.md](references/project-sandbox-host.md) for the
+networkless Docker planning format and structural signature inspector. Both remain `EXTERNAL_BLOCKED`; neither executes
+candidate bytes, proves host isolation/output/teardown, or imports completion.

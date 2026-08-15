@@ -17,6 +17,21 @@ export const PROJECT_SANDBOX_HOST_PROFILE_KIND = "programmable-project-sandbox-h
 export const PROJECT_SANDBOX_HOST_ATTESTATION_KIND = "programmable-project-sandbox-host-attestation";
 export const PROJECT_SANDBOX_TRUST_ROOT_KIND = "programmable-project-sandbox-trust-root";
 export const PROJECT_SANDBOX_HOST_CONTRACT_VERSION = "1.0.0";
+export const PROJECT_SANDBOX_HOST_EXTERNAL_REQUIREMENTS = Object.freeze([
+  "OWNER_PINNED_TRUST_ROOT_REQUIRED",
+  "OWNER_CONTROLLED_COMPLETION_IMPORT_REQUIRED",
+  "ACTUAL_HOST_RUN_PROVENANCE_REQUIRED",
+  "NATIVE_LINUX_UID_GID_MOUNT_ACCESS_REQUIRED",
+  "HOST_DEADLINE_KILL_AND_REAP_REQUIRED",
+  "KERNEL_OUTPUT_BYTES_INODES_ENTRIES_DEPTH_QUOTA_REQUIRED",
+  "BOUNDED_STDOUT_STDERR_LOGS_REQUIRED",
+  "MEMORY_SWAP_PID_CPU_ENFORCEMENT_REQUIRED",
+  "DOCKER_CLIENT_DAEMON_PLATFORM_RESOLVED_IMAGE_IDENTITY_REQUIRED",
+  "PINNED_SECCOMP_AND_USER_NAMESPACE_REQUIRED",
+  "CLEAN_CANDIDATE_ENVIRONMENT_REQUIRED",
+  "DESCRIPTOR_SAFE_NOFOLLOW_OUTPUT_VERIFICATION_REQUIRED",
+  "RECEIPT_OBSERVATIONS_CROSS_BINDING_REQUIRED"
+]);
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 const KEY_ID = /^[A-Za-z0-9._:-]{1,160}$/u;
@@ -33,6 +48,7 @@ const containerPaths = Object.freeze({
 });
 const explicitContainerEnvironment = Object.freeze({ CI: "1", HOME: "/tmp", NO_COLOR: "1", TZ: "UTC" });
 const shellNames = new Set(["bash", "dash", "fish", "ksh", "sh", "zsh"]);
+const MAX_LAUNCHER_ENTRYPOINT_ITEMS = 32;
 
 export class ProjectSandboxHostError extends Error {
   constructor(code, message, details = {}) {
@@ -225,7 +241,8 @@ export function createDockerSandboxInvocationV1({
   const result = {
     schemaVersion: PROJECT_SANDBOX_HOST_CONTRACT_VERSION,
     kind: "programmable-project-sandbox-docker-invocation",
-    status: "PLAN_ONLY_NOT_EXECUTED",
+    status: "EXTERNAL_BLOCKED",
+    coverage: "STRUCTURE_AND_COVERAGE_ONLY",
     profileSha256: sandboxHostProfileSha256V1(profile),
     requestSha256: expectedRequest.requestSha256,
     adapter: {
@@ -243,6 +260,7 @@ export function createDockerSandboxInvocationV1({
     argvSha256: canonicalJsonSha256V2(argv),
     environmentKeysSha256: policyDigests.environmentKeysSha256,
     mountSetSha256: policyDigests.mountSetSha256,
+    externalRequirements: PROJECT_SANDBOX_HOST_EXTERNAL_REQUIREMENTS,
     evidenceBoundary: {
       candidateCodeExecuted: false,
       isolationObserved: false,
@@ -253,113 +271,20 @@ export function createDockerSandboxInvocationV1({
   return deepFreeze({ ...result, invocationSha256: canonicalJsonSha256V2(result) });
 }
 
-export function projectSandboxHostAttestationPayloadV1({
-  authoritySubject,
-  receipt,
-  profile,
-  invocation,
-  writesObservedSha256,
-  containerIdSha256,
-  teardownObservationSha256
-}) {
-  assertHostProfile(profile);
-  assertInvocation(invocation, profile);
-  const receiptFindings = validateProjectSandboxReceiptV1(receipt);
-  if (receiptFindings.length > 0) fail(receiptFindings[0].code, receiptFindings[0].message);
-  if (authoritySubject !== profile.authoritySubject) fail("PROJECT_SANDBOX_AUTHORITY_SUBJECT_MISMATCH", "host profile authority subject differs");
-  for (const digest of [writesObservedSha256, containerIdSha256, teardownObservationSha256]) {
-    if (!SHA256.test(digest ?? "")) fail("PROJECT_SANDBOX_HOST_ATTESTATION_INVALID", "host observation digests are required");
-  }
-  const digests = sandboxHostPolicyDigestsV1(profile);
-  return deepFreeze({
-    status: "completed",
-    authoritySubject,
-    requestSha256: receipt.payload.request.requestSha256,
-    receiptSha256: canonicalJsonSha256V2(receipt),
-    hostProfileSha256: sandboxHostProfileSha256V1(profile),
-    invocation: {
-      adapter: "docker-cli",
-      dockerBinarySha256: profile.adapter.binarySha256,
-      argvSha256: invocation.argvSha256,
-      invocationSha256: invocation.invocationSha256,
-      imageSha256: profile.runtime.imageSha256,
-      sourceArchiveSha256: invocation.sourceArchiveSha256,
-      planSha256: invocation.planSha256,
-      environmentKeysSha256: digests.environmentKeysSha256,
-      mountSetSha256: digests.mountSetSha256
-    },
-    enforcement: {
-      filesystem: {
-        sourceReadOnly: true,
-        disposableWorkspace: true,
-        allowedPathsSha256: digests.allowedPathsSha256,
-        deniedPathsSha256: digests.deniedPathsSha256,
-        writesObservedSha256
-      },
-      network: { mode: "forbidden", allowlistSha256: null, accessObserved: false },
-      secrets: { inherited: false, mounted: false, environmentKeysSha256: digests.environmentKeysSha256 },
-      externalWrites: { allowed: false, performed: false },
-      process: {
-        init: true,
-        pidsLimit: profile.policy.process.pidsLimit,
-        containerIdSha256,
-        runnerExitCode: 0,
-        containerExitCode: 0,
-        containerRemoved: true,
-        postRemovalState: "absent",
-        descendantsRemaining: 0,
-        teardownObservationSha256
-      }
-    },
-    outputArtifactsSha256: receipt.payload.result.outputArtifactsSha256,
-    evidenceBoundary: {
-      approvalCreated: false,
-      auditClaimed: false,
-      deploymentClaimed: false,
-      productionClaimed: false,
-      externalActionsPerformed: []
-    }
-  });
-}
-
-export function signProjectSandboxHostAttestationV1({ payload, keyId, privateKey }) {
-  assertAttestationPayload(payload);
-  if (!KEY_ID.test(keyId ?? "")) fail("PROJECT_SANDBOX_SIGNATURE_INVALID", "attestation keyId is invalid");
-  let key;
-  try {
-    key = privateKey instanceof crypto.KeyObject ? privateKey : crypto.createPrivateKey(privateKey);
-  } catch {
-    fail("PROJECT_SANDBOX_SIGNING_KEY_INVALID", "host signing key is invalid");
-  }
-  if (key.asymmetricKeyType !== "ed25519") fail("PROJECT_SANDBOX_SIGNING_KEY_INVALID", "host signing key must be Ed25519");
-  const signature = crypto.sign(null, canonicalBytes(payload), key).toString("base64");
-  const attestation = {
-    schemaVersion: PROJECT_SANDBOX_HOST_CONTRACT_VERSION,
-    kind: PROJECT_SANDBOX_HOST_ATTESTATION_KIND,
-    payload,
-    payloadSha256: canonicalJsonSha256V2(payload),
-    signature: { algorithm: "ed25519", keyId, value: signature }
-  };
-  assertHostAttestation(attestation);
-  return deepFreeze(attestation);
-}
-
-export function verifyProjectSandboxHostCompletionV1({
+export function inspectProjectSandboxHostEvidenceV1({
   receipt,
   expectedRequest,
   attestation,
   trustRoot,
   profile,
   expectedSubject,
-  expectedInvocation,
-  outputRoot
+  expectedInvocation
 }) {
   assertExpectedRequest(expectedRequest);
   assertHostProfile(profile);
   assertTrustRoot(trustRoot);
   assertHostAttestation(attestation);
   assertInvocation(expectedInvocation, profile);
-  assertInvocationOutputRoot(expectedInvocation, outputRoot);
   if (!SUBJECT.test(expectedSubject ?? "")) fail("PROJECT_SANDBOX_AUTHORITY_SUBJECT_INVALID", "expected authority subject is invalid");
   const receiptFindings = validateProjectSandboxReceiptV1(receipt);
   if (receiptFindings.length > 0) fail(receiptFindings[0].code, receiptFindings[0].message);
@@ -373,19 +298,19 @@ export function verifyProjectSandboxHostCompletionV1({
   if (attestation.signature.keyId !== keyId) {
     fail("PROJECT_SANDBOX_AUTHORITY_KEY_MISMATCH", "receipt and host attestation use different authority keys");
   }
-  const authority = trustRoot.authorities.find((entry) => entry.keyId === keyId && entry.subject === expectedSubject);
-  if (!authority || authority.status !== "active") {
-    fail("PROJECT_SANDBOX_AUTHORITY_UNTRUSTED", "sandbox signer is not active in the independently supplied trust root");
+  const signatureKey = trustRoot.authorities.find((entry) => entry.keyId === keyId && entry.subject === expectedSubject);
+  if (!signatureKey || signatureKey.status !== "active") {
+    fail("PROJECT_SANDBOX_SIGNATURE_KEY_UNAVAILABLE", "caller-supplied key set does not contain the claimed signer");
   }
-  if (authority.profileSha256 !== sandboxHostProfileSha256V1(profile)
-    || authority.launcher.id !== receipt.payload.launcher.id
-    || authority.launcher.binarySha256 !== receipt.payload.launcher.binarySha256
-    || authority.runtime.id !== receipt.payload.runtime.id
-    || authority.runtime.imageSha256 !== receipt.payload.runtime.imageSha256
-    || authority.runtime.isolation !== receipt.payload.runtime.isolation) {
-    fail("PROJECT_SANDBOX_AUTHORITY_SCOPE_MISMATCH", "receipt launcher, runtime, isolation, or host profile is outside authority scope");
+  if (signatureKey.profileSha256 !== sandboxHostProfileSha256V1(profile)
+    || signatureKey.launcher.id !== receipt.payload.launcher.id
+    || signatureKey.launcher.binarySha256 !== receipt.payload.launcher.binarySha256
+    || signatureKey.runtime.id !== receipt.payload.runtime.id
+    || signatureKey.runtime.imageSha256 !== receipt.payload.runtime.imageSha256
+    || signatureKey.runtime.isolation !== receipt.payload.runtime.isolation) {
+    fail("PROJECT_SANDBOX_SIGNATURE_SCOPE_MISMATCH", "receipt launcher, runtime, isolation, or host profile differs from the caller-supplied signature scope");
   }
-  const publicKey = authorityPublicKey(authority);
+  const publicKey = authorityPublicKey(signatureKey);
   verifySignature(receipt.payload, receipt.signature, publicKey, "PROJECT_SANDBOX_SIGNATURE_INVALID");
   verifySignature(attestation.payload, attestation.signature, publicKey, "PROJECT_SANDBOX_HOST_SIGNATURE_INVALID");
   const payload = attestation.payload;
@@ -398,28 +323,33 @@ export function verifyProjectSandboxHostCompletionV1({
     || payload.outputArtifactsSha256 !== receipt.payload.result.outputArtifactsSha256) {
     fail("PROJECT_SANDBOX_HOST_BINDING_MISMATCH", "host attestation request, receipt, profile, invocation, or output binding drifted");
   }
-  assertEnforcementMatches({ receipt, profile, payload, expectedInvocation });
-  const output = verifyOutputArtifacts(
-    outputRoot,
-    receipt.payload.result.outputArtifacts,
-    profile.limits.maximumOutputBytes
-  );
+  assertClaimedCoverageMatches({ receipt, profile, payload, expectedInvocation });
   return deepFreeze({
-    status: "PROJECT_SANDBOX_HOST_COMPLETION_VERIFIED",
-    authority: { rootId: trustRoot.rootId, subject: authority.subject, keyId: authority.keyId },
+    status: "EXTERNAL_BLOCKED",
+    inspectionStatus: "PROJECT_SANDBOX_HOST_STRUCTURE_AND_SIGNATURES_VALID",
+    coverage: "STRUCTURE_AND_COVERAGE_ONLY",
+    callerSuppliedKeySet: { rootId: trustRoot.rootId, subject: signatureKey.subject, keyId: signatureKey.keyId },
     requestSha256: expectedRequest.requestSha256,
     receiptSha256: payload.receiptSha256,
     attestationSha256: canonicalJsonSha256V2(attestation),
     profileSha256: payload.hostProfileSha256,
     invocationSha256: payload.invocation.invocationSha256,
-    executionCompleted: true,
-    isolation: receipt.payload.runtime.isolation,
-    networkAccessed: false,
-    externalWritesPerformed: false,
-    descendantsRemaining: 0,
-    outputArtifactsSha256: output.inventorySha256,
-    outputArtifactCount: output.count,
+    cryptographicSignaturesValid: true,
+    structuralBindingsValid: true,
+    policyClaimsStructurallyConsistent: true,
+    authorityTrusted: false,
+    ownerPinnedTrustRootVerified: false,
+    hostExecutionProven: false,
+    executionCompleted: false,
+    commandsExecuted: false,
+    isolationProven: false,
+    outputBytesVerified: false,
+    processTeardownProven: false,
+    completion: "NOT_COMPLETION",
+    projectPreflightStatus: "NOT_PROJECT_PREFLIGHT_VALID",
+    externalRequirements: PROJECT_SANDBOX_HOST_EXTERNAL_REQUIREMENTS,
     evidenceBoundary: {
+      completion: "NOT_COMPLETION",
       approvalCreated: false,
       auditClaimed: false,
       deploymentClaimed: false,
@@ -429,7 +359,7 @@ export function verifyProjectSandboxHostCompletionV1({
   });
 }
 
-function assertEnforcementMatches({ receipt, profile, payload, expectedInvocation }) {
+function assertClaimedCoverageMatches({ receipt, profile, payload, expectedInvocation }) {
   const expectedDigests = sandboxHostPolicyDigestsV1(profile);
   const filesystem = payload.enforcement.filesystem;
   const network = payload.enforcement.network;
@@ -444,7 +374,7 @@ function assertEnforcementMatches({ receipt, profile, payload, expectedInvocatio
     || payload.invocation.planSha256 !== expectedInvocation.planSha256
     || payload.invocation.environmentKeysSha256 !== expectedDigests.environmentKeysSha256
     || payload.invocation.mountSetSha256 !== expectedDigests.mountSetSha256) {
-    fail("PROJECT_SANDBOX_HOST_INVOCATION_MISMATCH", "host invocation identity differs from the trusted profile");
+    fail("PROJECT_SANDBOX_HOST_INVOCATION_MISMATCH", "claimed host invocation identity differs from the selected profile");
   }
   if (filesystem.sourceReadOnly !== true || filesystem.disposableWorkspace !== true
     || filesystem.allowedPathsSha256 !== expectedDigests.allowedPathsSha256
@@ -452,22 +382,22 @@ function assertEnforcementMatches({ receipt, profile, payload, expectedInvocatio
     || !SHA256.test(filesystem.writesObservedSha256 ?? "")
     || filesystem.allowedPathsSha256 !== receiptPolicy.filesystem.allowedPathsSha256
     || filesystem.deniedPathsSha256 !== receiptPolicy.filesystem.deniedPathsSha256) {
-    fail("PROJECT_SANDBOX_FILESYSTEM_POLICY_VIOLATED", "filesystem enforcement differs from the trusted profile or receipt");
+    fail("PROJECT_SANDBOX_FILESYSTEM_CLAIM_INVALID", "filesystem claims differ from the selected profile or receipt");
   }
   if (network.mode !== "forbidden" || network.allowlistSha256 !== null || network.accessObserved !== false
     || receiptPolicy.network.mode !== "forbidden"
     || receipt.payload.commands.some(({ networkAccessed }) => networkAccessed !== false)) {
-    fail("PROJECT_SANDBOX_NETWORK_POLICY_VIOLATED", "network access was not both forbidden and unobserved");
+    fail("PROJECT_SANDBOX_NETWORK_CLAIM_INVALID", "network claims do not state both forbidden and unobserved access");
   }
   if (secrets.inherited !== false || secrets.mounted !== false
     || secrets.environmentKeysSha256 !== expectedDigests.environmentKeysSha256
     || receiptPolicy.secrets.inherited !== false || receiptPolicy.secrets.mounted !== false) {
-    fail("PROJECT_SANDBOX_SECRET_POLICY_VIOLATED", "host or receipt carried inherited or mounted secrets");
+    fail("PROJECT_SANDBOX_SECRET_CLAIM_INVALID", "secret-handling claims differ or report inherited or mounted secrets");
   }
   if (writes.allowed !== false || writes.performed !== false
     || receiptPolicy.externalWrites.allowed !== false
     || receipt.payload.commands.some(({ externalWritesPerformed }) => externalWritesPerformed !== false)) {
-    fail("PROJECT_SANDBOX_EXTERNAL_WRITE_POLICY_VIOLATED", "external writes were not both forbidden and unobserved");
+    fail("PROJECT_SANDBOX_EXTERNAL_WRITE_CLAIM_INVALID", "external-write claims do not state both forbidden and unobserved writes");
   }
   if (processEvidence.init !== true || processEvidence.pidsLimit !== profile.policy.process.pidsLimit
     || !SHA256.test(processEvidence.containerIdSha256 ?? "")
@@ -475,77 +405,8 @@ function assertEnforcementMatches({ receipt, profile, payload, expectedInvocatio
     || processEvidence.containerRemoved !== true || processEvidence.postRemovalState !== "absent"
     || processEvidence.descendantsRemaining !== 0 || !SHA256.test(processEvidence.teardownObservationSha256 ?? "")
     || receiptPolicy.process.descendantsReaped !== true) {
-    fail("PROJECT_SANDBOX_PROCESS_TEARDOWN_UNPROVEN", "container exit, removal, or descendant teardown is not proven");
+    fail("PROJECT_SANDBOX_PROCESS_TEARDOWN_CLAIM_INVALID", "container exit, removal, or descendant teardown claims are inconsistent");
   }
-}
-
-function verifyOutputArtifacts(outputRoot, artifacts, maximumOutputBytes) {
-  const root = exactDirectory(outputRoot, "outputRoot", { mustBeEmpty: false });
-  const observed = inventoryOutputTree(root, maximumOutputBytes);
-  const expectedPaths = artifacts.map(({ path: artifactPath }) => repositoryPath(artifactPath, "output artifact path"));
-  const expectedDirectories = [...new Set(expectedPaths.flatMap(parentRepositoryPaths))].sort(compareUtf8);
-  if (canonicalJsonV2(observed.files) !== canonicalJsonV2([...expectedPaths].sort(compareUtf8))
-    || canonicalJsonV2(observed.directories) !== canonicalJsonV2(expectedDirectories)) {
-    fail("PROJECT_SANDBOX_OUTPUT_DRIFT", "output directory contains missing, extra, or unreceipted paths");
-  }
-  if (new Set(artifacts.map(({ id }) => id)).size !== artifacts.length
-    || new Set(expectedPaths).size !== expectedPaths.length) {
-    fail("PROJECT_SANDBOX_OUTPUT_DRIFT", "signed output artifact identifiers and paths must be unique");
-  }
-  const inventory = [];
-  for (let index = 0; index < artifacts.length; index += 1) {
-    const artifact = artifacts[index];
-    const relativePath = expectedPaths[index];
-    const absolute = resolveInside(root, relativePath, "output artifact path");
-    assertNoSymlinkComponents(root, absolute, "output artifact path");
-    const file = exactRegularFile(absolute, `output artifact ${artifact.id}`, maximumOutputBytes);
-    if (file.sha256 !== artifact.sha256 || file.byteLength !== artifact.byteLength) {
-      fail("PROJECT_SANDBOX_OUTPUT_DRIFT", `output artifact ${artifact.id} bytes differ from the signed receipt`);
-    }
-    inventory.push({ id: artifact.id, kind: artifact.kind, path: relativePath, sha256: file.sha256, byteLength: file.byteLength });
-  }
-  if (canonicalJsonSha256V2(inventory) !== canonicalJsonSha256V2(artifacts)) {
-    fail("PROJECT_SANDBOX_OUTPUT_DRIFT", "verified output inventory order or identity differs from the signed receipt");
-  }
-  return { count: inventory.length, inventorySha256: canonicalJsonSha256V2(inventory) };
-}
-
-function inventoryOutputTree(root, maximumOutputBytes) {
-  const files = [];
-  const directories = [];
-  let totalBytes = 0;
-  const visit = (directory, prefix) => {
-    const entries = fs.readdirSync(directory, { withFileTypes: true })
-      .sort((left, right) => compareUtf8(left.name, right.name));
-    for (const entry of entries) {
-      const relativePath = prefix.length === 0 ? entry.name : `${prefix}/${entry.name}`;
-      repositoryPath(relativePath, "output path");
-      const absolute = path.join(directory, entry.name);
-      const stat = fs.lstatSync(absolute);
-      if (stat.isSymbolicLink()) fail("PROJECT_SANDBOX_OUTPUT_DRIFT", `output path ${relativePath} is a symlink`);
-      if (stat.isDirectory()) {
-        directories.push(relativePath);
-        visit(absolute, relativePath);
-      } else if (stat.isFile()) {
-        totalBytes += stat.size;
-        if (!Number.isSafeInteger(totalBytes) || totalBytes > maximumOutputBytes) {
-          fail("PROJECT_SANDBOX_OUTPUT_LIMIT_EXCEEDED", "output directory exceeds the trusted profile byte limit");
-        }
-        files.push(relativePath);
-      } else {
-        fail("PROJECT_SANDBOX_OUTPUT_DRIFT", `output path ${relativePath} is not a regular file or directory`);
-      }
-    }
-  };
-  visit(root, "");
-  return { files: files.sort(compareUtf8), directories: directories.sort(compareUtf8), totalBytes };
-}
-
-function parentRepositoryPaths(relativePath) {
-  const segments = relativePath.split("/");
-  const parents = [];
-  for (let index = 1; index < segments.length; index += 1) parents.push(segments.slice(0, index).join("/"));
-  return parents;
 }
 
 function assertHostProfile(profile) {
@@ -561,6 +422,7 @@ function assertHostProfile(profile) {
   exactKeys(profile.launcher, ["id", "version", "binarySha256", "entrypoint"], "host profile launcher");
   if (!SLUG.test(profile.launcher.id ?? "") || !bounded(profile.launcher.version, 1, 120)
     || !SHA256.test(profile.launcher.binarySha256 ?? "") || !argv(profile.launcher.entrypoint)
+    || profile.launcher.entrypoint.length > MAX_LAUNCHER_ENTRYPOINT_ITEMS
     || shellNames.has(path.posix.basename(profile.launcher.entrypoint[0]).toLowerCase())) {
     fail("PROJECT_SANDBOX_HOST_PROFILE_INVALID", "host launcher identity or shell-free entrypoint is invalid");
   }
@@ -653,7 +515,7 @@ function assertHostAttestation(attestation) {
 
 function assertAttestationPayload(payload) {
   exactKeys(payload, ["status", "authoritySubject", "requestSha256", "receiptSha256", "hostProfileSha256", "invocation", "enforcement", "outputArtifactsSha256", "evidenceBoundary"], "host attestation payload");
-  if (payload.status !== "completed" || !SUBJECT.test(payload.authoritySubject ?? "")
+  if (payload.status !== "claimed-completed" || !SUBJECT.test(payload.authoritySubject ?? "")
     || ![payload.requestSha256, payload.receiptSha256, payload.hostProfileSha256, payload.outputArtifactsSha256].every((value) => SHA256.test(value ?? ""))) {
     fail("PROJECT_SANDBOX_HOST_ATTESTATION_INVALID", "host attestation payload identity is invalid");
   }
@@ -662,12 +524,12 @@ function assertAttestationPayload(payload) {
     || !Object.entries(payload.invocation).filter(([key]) => key !== "adapter").every(([, value]) => SHA256.test(value ?? ""))) {
     fail("PROJECT_SANDBOX_HOST_ATTESTATION_INVALID", "host invocation digests are invalid");
   }
-  exactKeys(payload.enforcement, ["filesystem", "network", "secrets", "externalWrites", "process"], "host enforcement evidence");
-  exactKeys(payload.enforcement.filesystem, ["sourceReadOnly", "disposableWorkspace", "allowedPathsSha256", "deniedPathsSha256", "writesObservedSha256"], "host filesystem evidence");
-  exactKeys(payload.enforcement.network, ["mode", "allowlistSha256", "accessObserved"], "host network evidence");
-  exactKeys(payload.enforcement.secrets, ["inherited", "mounted", "environmentKeysSha256"], "host secret evidence");
-  exactKeys(payload.enforcement.externalWrites, ["allowed", "performed"], "host external-write evidence");
-  exactKeys(payload.enforcement.process, ["init", "pidsLimit", "containerIdSha256", "runnerExitCode", "containerExitCode", "containerRemoved", "postRemovalState", "descendantsRemaining", "teardownObservationSha256"], "host process evidence");
+  exactKeys(payload.enforcement, ["filesystem", "network", "secrets", "externalWrites", "process"], "host enforcement claims");
+  exactKeys(payload.enforcement.filesystem, ["sourceReadOnly", "disposableWorkspace", "allowedPathsSha256", "deniedPathsSha256", "writesObservedSha256"], "host filesystem claims");
+  exactKeys(payload.enforcement.network, ["mode", "allowlistSha256", "accessObserved"], "host network claims");
+  exactKeys(payload.enforcement.secrets, ["inherited", "mounted", "environmentKeysSha256"], "host secret claims");
+  exactKeys(payload.enforcement.externalWrites, ["allowed", "performed"], "host external-write claims");
+  exactKeys(payload.enforcement.process, ["init", "pidsLimit", "containerIdSha256", "runnerExitCode", "containerExitCode", "containerRemoved", "postRemovalState", "descendantsRemaining", "teardownObservationSha256"], "host process claims");
   if (payload.enforcement.filesystem.sourceReadOnly !== true || payload.enforcement.filesystem.disposableWorkspace !== true
     || ![payload.enforcement.filesystem.allowedPathsSha256, payload.enforcement.filesystem.deniedPathsSha256, payload.enforcement.filesystem.writesObservedSha256].every((value) => SHA256.test(value ?? ""))
     || payload.enforcement.network.mode !== "forbidden" || payload.enforcement.network.allowlistSha256 !== null || payload.enforcement.network.accessObserved !== false
@@ -678,7 +540,7 @@ function assertAttestationPayload(payload) {
     || payload.enforcement.process.runnerExitCode !== 0 || payload.enforcement.process.containerExitCode !== 0
     || payload.enforcement.process.containerRemoved !== true || payload.enforcement.process.postRemovalState !== "absent"
     || payload.enforcement.process.descendantsRemaining !== 0 || !SHA256.test(payload.enforcement.process.teardownObservationSha256 ?? "")) {
-    fail("PROJECT_SANDBOX_HOST_ATTESTATION_INVALID", "host enforcement evidence is incomplete or records a policy violation");
+    fail("PROJECT_SANDBOX_HOST_ATTESTATION_INVALID", "host enforcement claims are incomplete or report noncompliance");
   }
   exactKeys(payload.evidenceBoundary, ["approvalCreated", "auditClaimed", "deploymentClaimed", "productionClaimed", "externalActionsPerformed"], "host evidence boundary");
   if (payload.evidenceBoundary.approvalCreated !== false || payload.evidenceBoundary.auditClaimed !== false
@@ -689,11 +551,12 @@ function assertAttestationPayload(payload) {
 }
 
 function assertInvocation(invocation, profile) {
-  exactKeys(invocation, ["schemaVersion", "kind", "status", "profileSha256", "requestSha256", "adapter", "containerName", "imageReference", "imageSha256", "sourceArchiveSha256", "sourceArchiveByteLength", "planSha256", "argv", "argvSha256", "environmentKeysSha256", "mountSetSha256", "evidenceBoundary", "invocationSha256"], "Docker invocation");
+  exactKeys(invocation, ["schemaVersion", "kind", "status", "coverage", "profileSha256", "requestSha256", "adapter", "containerName", "imageReference", "imageSha256", "sourceArchiveSha256", "sourceArchiveByteLength", "planSha256", "argv", "argvSha256", "environmentKeysSha256", "mountSetSha256", "externalRequirements", "evidenceBoundary", "invocationSha256"], "Docker invocation");
   const { invocationSha256, ...payload } = invocation;
   if (invocation.schemaVersion !== PROJECT_SANDBOX_HOST_CONTRACT_VERSION
     || invocation.kind !== "programmable-project-sandbox-docker-invocation"
-    || invocation.status !== "PLAN_ONLY_NOT_EXECUTED"
+    || invocation.status !== "EXTERNAL_BLOCKED"
+    || invocation.coverage !== "STRUCTURE_AND_COVERAGE_ONLY"
     || invocation.profileSha256 !== sandboxHostProfileSha256V1(profile)
     || invocation.imageReference !== profile.runtime.imageReference
     || invocation.imageSha256 !== profile.runtime.imageSha256
@@ -713,6 +576,8 @@ function assertInvocation(invocation, profile) {
     || invocation.containerName !== expectedContainerName(invocation.requestSha256)
     || invocation.environmentKeysSha256 !== policyDigests.environmentKeysSha256
     || invocation.mountSetSha256 !== policyDigests.mountSetSha256
+    || !Array.isArray(invocation.externalRequirements)
+    || canonicalJsonV2(invocation.externalRequirements) !== canonicalJsonV2(PROJECT_SANDBOX_HOST_EXTERNAL_REQUIREMENTS)
     || invocation.evidenceBoundary.candidateCodeExecuted !== false
     || invocation.evidenceBoundary.isolationObserved !== false
     || invocation.evidenceBoundary.receiptCreated !== false
@@ -765,17 +630,8 @@ function assertDockerArgv(argvValue, invocation, profile) {
     "--maximum-output-bytes", String(profile.limits.maximumOutputBytes)
   ];
   if (canonicalJsonV2(argvValue) !== canonicalJsonV2(expected)) {
-    fail("PROJECT_SANDBOX_HOST_INVOCATION_INVALID", "Docker argv differs from the exact trusted profile");
+    fail("PROJECT_SANDBOX_HOST_INVOCATION_INVALID", "Docker argv differs from the exact selected planning profile");
   }
-}
-
-function assertInvocationOutputRoot(invocation, outputRoot) {
-  const root = exactDirectory(outputRoot, "outputRoot", { mustBeEmpty: false });
-  const outputMount = invocation.argv.find((value) => (
-    typeof value === "string" && value.endsWith(`,dst=${containerPaths.output}`)
-  ));
-  const mountedRoot = dockerMountSource(outputMount, containerPaths.output, false);
-  if (mountedRoot !== root) fail("PROJECT_SANDBOX_OUTPUT_ROOT_MISMATCH", "verified output root differs from the signed Docker invocation");
 }
 
 function dockerMountSource(value, destination, readOnly) {
@@ -893,34 +749,9 @@ function gitArchiveBytes(root, headCommit) {
   return result.stdout;
 }
 
-function resolveInside(root, relativePath, label) {
-  const target = path.resolve(root, relativePath);
-  if (!isInside(root, target)) fail("PROJECT_SANDBOX_HOST_PATH_ESCAPE", `${label} escapes its declared root`);
-  assertNoSymlinkComponents(root, target, label);
-  return target;
-}
-
-function assertNoSymlinkComponents(root, target, label) {
-  const relative = path.relative(root, target);
-  let cursor = root;
-  for (const segment of relative.split(path.sep).filter(Boolean)) {
-    cursor = path.join(cursor, segment);
-    if (!fs.existsSync(cursor)) fail("PROJECT_SANDBOX_HOST_PATH_INVALID", `${label} is missing`);
-    if (fs.lstatSync(cursor).isSymbolicLink()) fail("PROJECT_SANDBOX_HOST_PATH_SYMLINK", `${label} traverses a symlink`);
-  }
-}
-
 function isInside(root, target) {
   const relative = path.relative(root, target);
   return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative));
-}
-
-function repositoryPath(value, label) {
-  if (!bounded(value, 1, 500) || path.posix.isAbsolute(value) || value.includes("\\")
-    || value.split("/").some((segment) => segment === "" || segment === "." || segment === "..")) {
-    fail("PROJECT_SANDBOX_HOST_PATH_INVALID", `${label} must be a portable repository path`);
-  }
-  return value;
 }
 
 function dockerBind(source, destination, readOnly) {

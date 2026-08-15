@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:programmable:project-sandbox-host-attestation:1.0.0",
   "title": "Programmable project sandbox host attestation",
-  "description": "An Ed25519-signed host observation binding one external sandbox receipt to an exact Docker invocation, policy enforcement, output inventory, and completed process teardown. It grants no approval, audit, deployment, or production authority.",
+  "description": "A signer-asserted Ed25519 envelope covering one external sandbox receipt, Docker plan, policy claims, output-inventory digest, and teardown claims. Portable validation proves only structure and signature consistency; it does not trust the signer or prove execution.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "kind", "payload", "payloadSha256", "signature"],
@@ -14,7 +14,7 @@
       "additionalProperties": false,
       "required": ["status", "authoritySubject", "requestSha256", "receiptSha256", "hostProfileSha256", "invocation", "enforcement", "outputArtifactsSha256", "evidenceBoundary"],
       "properties": {
-        "status": { "const": "completed" },
+        "status": { "const": "claimed-completed" },
         "authoritySubject": { "$ref": "#/$defs/subject" },
         "requestSha256": { "$ref": "#/$defs/sha256" },
         "receiptSha256": { "$ref": "#/$defs/sha256" },
