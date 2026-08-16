@@ -11,7 +11,10 @@ GitHub repository ID `1320171831`.
 
 ## Complete journey
 
-Finish the project and reach exact-byte `PROJECT_PREFLIGHT_VALID` before submission. Every generic project then uses:
+Finish the project, freeze its exact public source and produce a locally valid closed Application V3 package before
+submission. Do not require `PROJECT_PREFLIGHT_VALID` or a trusted external sandbox to create an unreviewed Applicant Draft.
+Local or applicant-supplied test evidence remains unverified until independent review. Authenticated sandbox completion
+may strengthen the evidence but is not Applicant admission authority. Every generic project then uses:
 
 ```text
 prepare-revision -> application -> submit plan -> explicit confirmation -> protected Draft PR -> status

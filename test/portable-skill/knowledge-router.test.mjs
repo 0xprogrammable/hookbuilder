@@ -97,6 +97,28 @@ test("Autopilot starts from the compact compiler with the productive completion 
   for (const option of ["--idea-file", "--application-id", "--classification", "--market-ref", "--reference-profile", "--source-contract", "--test-source", "--output", "--write"]) assert.match(help.stdout, new RegExp(option, "u"), option);
 });
 
+test("Applicant Draft eligibility is independent from trusted sandbox completion", () => {
+  const skill = fs.readFileSync(path.join(skillRoot, "SKILL.md"), "utf8");
+  const application = fs.readFileSync(path.join(skillRoot, "references", "github-application-v3.md"), "utf8");
+  const routing = JSON.parse(fs.readFileSync(path.join(skillRoot, "references", "knowledge-routing.json"), "utf8"));
+  const initialSubmitReferences = routing.modes.submit.initial.map((reference) => (
+    fs.readFileSync(path.join(skillRoot, "references", reference), "utf8")
+  ));
+  const publicBeta = fs.readFileSync(path.resolve(skillRoot, "..", "..", "docs", "PUBLIC_GITHUB_PR_BETA.md"), "utf8");
+
+  assert.deepEqual(routing.modes.submit.initial, ["open-world-v2-workflow.md"]);
+  for (const source of [skill, application, publicBeta, ...initialSubmitReferences]) {
+    assert.match(source, /Do not require `PROJECT_PREFLIGHT_VALID` or a trusted external sandbox to create an unreviewed Applicant Draft/u);
+    assert.match(source, /Local or applicant-supplied test evidence remains unverified until independent review/u);
+  }
+  for (const source of initialSubmitReferences) {
+    assert.match(source, /an existing completed project may create or repair its complete\s+`submission\.v2\.json`/u);
+    assert.match(source, /continue through\s+`prepare-revision`, `application`, and the confirmation-gated Draft transport/u);
+  }
+  assert.match(application, /APPLICATION_PACKAGE_VALID -> submit plan -> explicit confirmation -> protected Draft PR/u);
+  assert.doesNotMatch(application, /PROJECT_PREFLIGHT_VALID -> prepare-revision -> application -> submit plan/u);
+});
+
 test("an owner-defined Explore route stays within the cold-start budget", () => {
   const result = planKnowledge({
     mode: "explore",

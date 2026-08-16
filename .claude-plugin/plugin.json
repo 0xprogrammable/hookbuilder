@@ -1,7 +1,7 @@
 {
   "displayName": "Programmable v4 Builder",
   "name": "programmable-v4-builder",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Design, build, review, and submit Programmable hooks, tokens, apps, games, services, and standalone settlement projects through Submit a Launch.",
   "author": {
     "name": "Programmable"

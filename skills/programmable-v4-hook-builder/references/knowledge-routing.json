@@ -336,7 +336,7 @@
         },
         {
           "reference": "github-application-v3.md",
-          "trigger": "Load for every generic PROJECT_PREFLIGHT_VALID project before prepare-revision, application and the confirmation-gated protected Draft PR submit path. Unknown project kinds remain eligible."
+          "trigger": "Load for every complete generic project with exact public source before prepare-revision, application and the confirmation-gated protected Draft PR submit path. PROJECT_PREFLIGHT_VALID is optional stronger evidence, not Applicant admission. Unknown project kinds remain eligible."
         },
         {
           "reference": "public-pr-application-v3.schema.json",

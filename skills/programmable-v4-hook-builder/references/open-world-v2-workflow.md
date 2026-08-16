@@ -115,9 +115,10 @@ For the opt-in Docker planning format and structural signature inspection bounda
 Caller-supplied keys remain untrusted, outputs are not traversed, and both commands return `EXTERNAL_BLOCKED`; neither
 executes candidate bytes, observes isolation, proves teardown, or imports completion.
 
-Before showing or handing off ProjectSpec, ProductGraph, RepositoryPlan, ProjectState, Submission, or trade manifests,
-require them as one byte-bound output. `--submission-root` is repository-relative and must contain only files declared
-by the Open World package:
+The following stronger completion gate belongs only to authenticated Autopilot completion and the diagnostic
+`application-handoff` path. Before claiming that ProjectSpec, ProductGraph, RepositoryPlan, ProjectState, Submission,
+or trade manifests are one independently attested byte-bound output, run it with a repository-relative
+`--submission-root` that contains only files declared by the Open World package:
 
 ```bash
 node "$SKILL_ROOT/scripts/cli.mjs" project require-output \
@@ -128,12 +129,21 @@ node "$SKILL_ROOT/scripts/cli.mjs" project require-output \
   --submission-root "$SUBMISSION_PACKAGE_PATH"
 ```
 
-Proceed only when the command exits zero with `PROJECT_PREFLIGHT_VALID`; `CLEAR` is source-only and
-`DRAFT_UNRESOLVED` remains a noncanonical proposal. The report binds every project artifact plus the sorted complete submission
-inventory. It rejects invented contracts, adjacent unbound files, identity/facet/applicability/market/route drift,
-manufactured no-market evidence, unresolved completion, and non-byte-identical tradable manifests. It remains local
-deterministic validation: commands are not reexecuted and no approval, audit, deployment, production, or issuer trust is
-created.
+Proceed with an authenticated Autopilot completion or diagnostic handoff only when the command exits zero with
+`PROJECT_PREFLIGHT_VALID`; `CLEAR` is source-only and `DRAFT_UNRESOLVED` remains a noncanonical proposal. The report
+binds every project artifact plus the sorted complete submission inventory. It rejects invented contracts, adjacent
+unbound files, identity/facet/applicability/market/route drift, manufactured no-market evidence, unresolved completion,
+and non-byte-identical tradable manifests. It remains local deterministic validation: commands are not reexecuted and
+no approval, audit, deployment, production, or issuer trust is created.
+
+Do not require `PROJECT_PREFLIGHT_VALID` or a trusted external sandbox to create an unreviewed Applicant Draft through
+Application V3.1. For that public route, an existing completed project may create or repair its complete
+`submission.v2.json` and companion package directly from the preserved public-safe idea, owner-confirmed intent,
+actual architecture, exact source bindings, and honestly classified evidence. Validate that package with
+`open-world validate`, freeze every exact public GitHub source commit and tree, then continue through
+`prepare-revision`, `application`, and the confirmation-gated Draft transport in
+[`github-application-v3.md`](github-application-v3.md). Local or applicant-supplied test evidence remains unverified until independent review.
+Never invent a test run, deployment, audit, acceptance, approval, or launch claim to make the package validate.
 
 Retain an immutable repository-relative chain:
 
