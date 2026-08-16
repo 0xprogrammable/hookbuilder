@@ -383,7 +383,7 @@
   "portablePackage": {
     "path": "skills/programmable-v4-hook-builder",
     "observedFiles": 618,
-    "observedBytes": 8674902,
+    "observedBytes": 8674910,
     "maxFiles": 620,
     "maxBytes": 8750000
   }

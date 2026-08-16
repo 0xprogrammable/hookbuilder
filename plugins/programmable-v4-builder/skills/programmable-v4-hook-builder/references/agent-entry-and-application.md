@@ -3,9 +3,9 @@
 This reference preserves the frozen six-file **Public Applicant Beta** transport and separates it from current central
 policy consumption and a later **Connected Submission service**. The six-file `prepare-pr` path is historical replay
 only; it is not the current/default application transport and its local Fee V1/V2 fields define no current requirement.
-Current work binds protected central policy and workflow-canary contracts. It exposes no general application
-transport; the dedicated `prepare-canary` client is an exact preview-only canary path whose automated local-write
-boundary fails closed until a portable descriptor-bound writer exists.
+Current generic applications bind the protected central active contract and follow
+[github-application-v3.md](github-application-v3.md). The dedicated `prepare-canary` client remains a separate
+preview-only workflow-test path whose automated local-write boundary fails closed.
 
 ## Contents
 
@@ -41,9 +41,9 @@ or another capable coding agent. The skill supplies the workflow, universal engi
 validators, and a strict client for exact protected central-policy bytes.
 
 The skill is the technical engine. The website may provide discovery and installation entry points. The protected
-central workflow-canary contract, rather than the frozen six-file transport below, defines current canary input. A
-later Connected Submission service may add human identity binding, service-backed application status, review results,
-and an approved launch handoff.
+Application V3.1 contract, rather than the frozen six-file transport below, defines current generic Applicant input.
+The workflow canary is a separate test contract. A later Connected Submission service may add human identity binding,
+service-backed application status, review results, and an approved launch handoff.
 
 The skill must make the declared project reviewable whether it uses a product-selected hook, a no-hook path, or
 additional app, game, service, keeper, or indexer surfaces. Only applicable current central-policy Rule IDs determine
@@ -660,7 +660,7 @@ semantics.
 
 ## Agent command contract
 
-The host-neutral entry point implements `context`, `templates`, `discover`, `start`, `profile`,
+The host-neutral entry point implements `context`, `templates`, `discover`, `start`, `profile`, `open-world`,
 `doctor`, `scaffold`, `check`, `fee`, `package`, `companion`, `prepare-canary`, `prepare-pr`, `submit`, `status`, `update`, `version`,
 `update-check`, `migrate`, and `plan-release`. Their installed `scripts/cli.mjs --help` and per-command `--help` output
 are authoritative for flags.

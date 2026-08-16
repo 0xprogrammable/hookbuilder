@@ -4,7 +4,7 @@ The repository is one portable, evidence-first Builder with version-scoped machi
 one canonical owner within its version. Historical V1 contracts remain reproducible; Open-World V2 and Application V3
 add new contracts instead of silently widening or reinterpreting V1 evidence.
 
-This document describes the private candidate architecture; it is not a release receipt. Any claimed repository,
+This document describes both released and candidate architecture; it is not a release receipt. Any claimed repository,
 kernel or installation result must live in a separate receipt bound to one clean commit, repository tree and portable
 skill tree. Source drift invalidates that receipt, and neither this document nor a local receipt proves publication.
 
@@ -27,7 +27,7 @@ In the table below, unprefixed `references/`, `scripts/`, `assets/`, `evals/` an
 | Trade capability | `references/trade-capability-manifest-v1.schema.json`, `programmable-trade-execution-v1.schema.json` and `scripts/trade-capability-manifest-core.mjs` | Per-market PoolKey, router/quoter/Permit2, hook data, direction, slippage, deadline, fee and test contracts; standard Uniswap v4 or canonical adapter, always `NOT_APPROVED` |
 | Historical application | `references/public-pr-application.schema.json` | Frozen pre-V3 application compatibility and immutable history |
 | Public application | `references/public-pr-application-v3.schema.json` and `scripts/public-pr-application-v3-core.mjs` | GitHub-only Application V3 intent, review, source and policy closure for every complete `PROJECT_PREFLIGHT_VALID` project; publication of any project still requires its own confirmed draft request and protected review |
-| Public Applicant intake | `scripts/registry-intake-contract.mjs` plus the GitHub application client | Generated, draft-only review requests to `0xprogrammable/submit-launch`, immutable repository ID `1320171831`, status schema `2`, exact source/package binding, and no approval, Router, deployment, or launch write |
+| Public Applicant intake | `scripts/registry-intake-contract.mjs` plus the namespaced open-world GitHub client | Generated, draft-only review requests to `0xprogrammable/submit-launch`, immutable repository ID `1320171831`, exact protected active-contract and Application V3 schema binding, exact source/package binding, and no approval, Router, deployment, or launch write |
 | Legacy Hookbuilder intake | Root `submissions/` schema, example and validator | Frozen continuations for Hookbuilder pull requests #10, #11, #12, #14, #15, #18, #19, and #20 only; never a new Applicant route |
 | Large source closure | `references/source-closure-manifest-v1.schema.json` | Ordered, content-addressed manifest and fragment contract for large primary or companion repositories |
 | Registry acceptance | `references/registry-acceptance-v3.schema.json` and `scripts/registry-acceptance-v3-github-core.mjs` | Historical Application V3 acceptance architecture; current requirements and outcomes come only from the exact central Submit Launch policy, while mocked transport remains inspection-only and grants no authority |
@@ -163,7 +163,7 @@ transaction or signature and cannot inherit a previous approval.
 | Change project discovery | Registry schema and discovery client | Snapshot, hashes, non-adverse search tests and lifecycle wording |
 | Change host display metadata | `config/plugin.json` | Generated manifests and repository version test |
 | Decompose a large orchestrator | `docs/MAINTAINABILITY_OWNERSHIP.md` plus one named seam | Public exports, finding order, CLI artifacts and focused regressions |
-| Release a version | Changelog and frozen private candidate | Final reruns, checksums, SBOM, tag, release and installation canaries |
+| Release a version | Changelog and frozen release candidate | Final reruns, checksums, SBOM, tag, release and installation canaries |
 
 ## Stable extension points
 

@@ -234,12 +234,12 @@ Never execute candidate hooks, filters, submodules, or build scripts during clos
 or verifier budgets to an exact split-review/tooling hold without rejecting the idea.
 
 After source freeze, derive source-assessed security and verification reports against the already-existing commit; do
-not create a Git self-reference. Current Applicant handoff uses only the protected top-level Submit Launch client and
-its exact central policy binding. Read [github-application-v3.md](github-application-v3.md) and rerun V3 generation only
-for an explicitly identified frozen Fee V2/Application V3 replay. Do not write to GitHub without exact authority, and
-never treat a PR, merge, label, or Builder verdict as canonical acceptance. Without a public GitHub numeric repository
-id, URI, commit, and tree, emit only a validated local transport plan marked `NOT_SUBMITTED`; never manufacture an
-Application V3 package for current work.
+not create a Git self-reference. The protected generic Applicant handoff uses Application V3.1 and its
+exact central contract binding. Read [github-application-v3.md](github-application-v3.md), prepare revision and lineage
+through GET-only discovery, then materialize the package without network access. Do not write to GitHub without exact
+authority, and never treat a PR, merge, label, or Builder verdict as canonical acceptance. Without a public GitHub
+numeric repository id, URI, commit, and tree, report `INTEGRATION_PENDING` and `NOT_SUBMITTED`; do not manufacture a
+public Application V3 package.
 
 ## 6. Run release-only E2E evidence
 

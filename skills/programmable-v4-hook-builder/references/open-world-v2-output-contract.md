@@ -25,14 +25,13 @@ Use the versioned contracts and exact filenames:
 | Open project graph | `submission.v2.json` |
 | Frozen legacy trade capability, only for the exact intent-bound Fee V2 profile | `trade-capability.v1.json` |
 | Optional legacy Fee V2 contract, only when selected by intent or an applicable current central Rule ID | `fee-policy-v2.schema.json` |
-| Optional legacy Fee V2 applicability, under that exact frozen package only | frozen Application V3 `policyBindings.feeApplicability` |
+| Optional legacy Fee V2 applicability, under that exact frozen package only | Application V3 `policyBindings.feeApplicability` |
 | Optional scoped Fee V2 instance, under that exact frozen package only | `fee-policy.v2.json` |
 | Security contract | `security-assessment-v1.schema.json` |
 | Source proposal security state | null/pending or unassessed `security-assessment.v1.json` |
-| Derived source-assessed evidence | `security-assessment.v1.json`; frozen Application V3 only during exact legacy replay |
-| Derived closure verification | one versioned report per repository; frozen Application V3 only during exact legacy replay |
-| Current GitHub Applicant handoff | no Application V3 artifact; use the protected top-level Submit Launch client |
-| Frozen legacy GitHub application | `application.v3.json`, exact legacy replay only |
+| Derived source-assessed evidence | `security-assessment.v1.json` inside the Application V3 package after source freeze |
+| Derived closure verification | one versioned report per repository inside the Application V3 package |
+| Current GitHub Applicant handoff | `application.v3.json` through namespaced `open-world submit`, `update`, or `status` |
 | Canonical acceptance | nullable Registry-controlled record; null before acceptance |
 
 Do not substitute schema bytes for a project instance or evidence artifact. Do not derive a local fee requirement merely
@@ -58,12 +57,12 @@ optional legacy Fee V2 package is selected, keep its fee owner and independent p
 authorities; neither role inherits the other's claim or launch power. Without that selection, do not create those
 authorities or a fee-exemption question.
 
-For exact frozen legacy replay only, encode `applicationRevision` across Application V3, Registry Acceptance V3 and Launch V2 as a canonical positive decimal
+For current Application V3 transport, encode `applicationRevision` across Application V3, Registry Acceptance V3 and Launch V2 as a canonical positive decimal
 string with no historical V1 integer, `1,000,000` or JavaScript safe-integer ceiling. Historical V1 revisions retain
 their frozen integer shape. V3 starts at `"1"`; each update binds the prior exact revision and increments it by one using
 arbitrary-precision decimal semantics.
 
-Inside that frozen legacy replay only, an Application V3 public financial-identifier attestation binds only the exact pointer and matched-substring digest,
+An Application V3 public financial-identifier attestation binds only the exact pointer and matched-substring digest,
 matching application id, owner-stated purpose and one authorization review record. Report it as human review required,
 never ownership or approval; wrong/unused/blanket attestations and every credential/key/token candidate remain privacy
 holds. Language-scoped automated findings stay independent-review holds when partial, disputed or mismatched.

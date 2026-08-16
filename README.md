@@ -130,11 +130,9 @@ The namespaced `open-world submit`, `update`, and `status` commands read the pro
 and the accepted V3 schema at that exact commit. A submit or update first returns a read-only plan bound to those
 bytes, the source closure, and the intended draft pull request. It never means reviewed, approved, deployed, or live.
 
-`prepare-pr` creates the exact six-file application without changing GitHub. `submit` and `update` first return a
-read-only action plan. Only the exact confirmed plan may create the builder's `submit-launch` fork, application branch,
-and one draft pull request. The client reads `docs/builder/intake-status.json` as the released schema-v2 contract and
-stops before any write unless intake permits that exact application or continuation. Do not hand-create an application
-pull request.
+The top-level `prepare-pr`, `submit`, `update`, and `status` commands preserve the historical six-file transport only.
+Do not use them for a new project. New submissions use the namespaced Application V3.1 commands above, and no
+application pull request should be assembled by hand.
 
 `prepare-canary` is a separate hidden, non-production workflow-test path. It returns the exact canonical
 `application.json` bytes and plan digest. Automated local writing currently fails closed because the portable client
