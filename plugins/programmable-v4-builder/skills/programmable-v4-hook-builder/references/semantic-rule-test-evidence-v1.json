@@ -6,8 +6,8 @@
     {
       "repositoryPath": "test/portable-skill/builder-lifecycle.test.mjs",
       "portablePath": "assets/semantic-rule-test-evidence-v1/builder-lifecycle.test.mjs",
-      "bytes": 51140,
-      "sha256": "dbb54d51f9aa5b34260d4b71649120b46a06855865b4eab64ab492ef489aebc7"
+      "bytes": 51141,
+      "sha256": "60108dc87ee8c780a6cb3d5facf1a2d2e1e67f8397ffae22cb58a9d74cfcae97"
     },
     {
       "repositoryPath": "test/portable-skill/cross-chain-policy.test.mjs",

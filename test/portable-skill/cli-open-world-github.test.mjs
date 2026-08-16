@@ -106,6 +106,8 @@ test("Application V3 transport rejects maintainer_can_modify substitution before
 test("generic complete project plans the same protected draft transport without selecting Fee V2", (t) => {
   const fixture = createTransportFixture(t, { feeV2Selected: false });
   const application = readFixtureApplication(fixture);
+  assert.equal(JSON.stringify(application).includes("PROJECT_PREFLIGHT_VALID"), false);
+  assert.equal(JSON.stringify(application).includes("project-external-sandbox-receipt"), false);
   assert.equal(application.contract.version, "3.1.0");
   assert.equal(application.policyBindings.feeApplicability, "not-selected");
   assert.equal(application.reviewPackage.requiredKinds.includes("fee-policy-schema"), false);

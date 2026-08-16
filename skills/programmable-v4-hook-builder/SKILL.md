@@ -72,12 +72,11 @@ A plan is not complete. Require output only with authenticated sandbox command/o
 node "$SKILL_ROOT/scripts/cli.mjs" project require-output --brief --repository-root "$NEW_REPOSITORY" --state .programmable/project-states/000006-submission-evidence.v1.json --previous-state .programmable/project-states/000005-verification.v1.json --submission-root submission
 ```
 
-Only exact-byte `PROJECT_PREFLIGHT_VALID` completes Autopilot. `CLEAR` is source-only; `DRAFT_UNRESOLVED` is
-noncanonical. Local pass remains `NOT_APPROVED` and `NOT_SUBMITTED`.
-
-Every `PROJECT_PREFLIGHT_VALID` project uses [V3.1](references/github-application-v3.md):
-`prepare-revision -> application -> submit`. Confirm its fresh digest for a protected Draft. Unknowns stay eligible;
-[handoff preview](references/application-handoff.md) is diagnostic only.
+Only exact-byte `PROJECT_PREFLIGHT_VALID` completes Autopilot; it is not Applicant admission.
+Do not require `PROJECT_PREFLIGHT_VALID` or a trusted external sandbox to create an unreviewed Applicant Draft.
+Local or applicant-supplied test evidence remains unverified until independent review.
+Valid public source and V2/V3.1 packages use [V3.1](references/github-application-v3.md):
+`prepare-revision -> application -> submit`. Confirm its digest; the Draft stays `NOT_APPROVED`.
 
 ## Specialist invariants
 

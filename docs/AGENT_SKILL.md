@@ -16,8 +16,8 @@ launch authorization, deployment receipt, provider result or Uniswap endorsement
 
 ## Release status
 
-Open-world Submission V2, conditional Fee V2, layered security and public Application V3.1 are packaged for the immutable `v0.10.0`
-release. The bundled status retains `publicationStateVerified: false`; this source is not proof that v0.10.0 is published
+Open-world Submission V2, conditional Fee V2, layered security and public Application V3.1 are packaged for the immutable `v0.10.1`
+release. The bundled status retains `publicationStateVerified: false`; this source is not proof that v0.10.1 is published
 or live. A verified publication establishes exact package bytes and release artifacts only. It does not establish model behavior,
 an independent audit, Registry acceptance, launch authorization, deployment, routing, or public availability. See
 [`OPEN_WORLD_V2_RELEASE_GATES.md`](OPEN_WORLD_V2_RELEASE_GATES.md) for the still-separate evidence states.
@@ -70,18 +70,18 @@ The canonical package is
 layout. `SKILL.md`, references, schemas, templates, scripts, tests and `LICENSE.txt` form one package; copying only the
 entry file is incomplete.
 
-For reproducible public work, first verify that GitHub exposes the exact `v0.10.0` tag and release, then preview and pin
+For reproducible public work, first verify that GitHub exposes the exact `v0.10.1` tag and release, then preview and pin
 that immutable release:
 
 ```bash
 gh skill preview 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.10.0
+  programmable-v4-hook-builder@v0.10.1
 
 gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.10.0
+  --pin v0.10.1
 ```
 
 Replace `codex` with the supported host name when appropriate. User scope is the beginner default because it keeps the
@@ -285,6 +285,10 @@ For the released generic path, materialize the closed Application V3.1 revision 
 control root. `open-world submit` and `open-world update` first produce a read-only plan; only an exact confirmation
 after explicit owner authorization may create or update one Draft pull request to
 [`0xprogrammable/submit-launch:main`](https://github.com/0xprogrammable/submit-launch).
+
+Applicant admission and trusted execution completion are separate. Do not require `PROJECT_PREFLIGHT_VALID` or a
+trusted external sandbox before the unreviewed Draft. Preserve local or applicant-supplied test evidence as unverified
+until independent review; never turn the relaxed admission boundary into an approval or launch claim.
 
 The client binds repository ID `1320171831`, the observed central commit and tree, the protected active-contract
 manifest and Application V3 schema bytes, every source package, and the exact proposed pull-request action. It fails

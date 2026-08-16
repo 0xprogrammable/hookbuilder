@@ -1,7 +1,7 @@
 # Generic application handoff
 
-The official route for every generic `no-market` or `tradable` project that reaches exact-byte
-`PROJECT_PREFLIGHT_VALID` is Application V3.1. Follow
+The official route for every complete generic `no-market` or `tradable` project with exact public source and a valid
+closed package is Application V3.1. It does not require trusted sandbox completion. Follow
 [github-application-v3.md](github-application-v3.md): `open-world prepare-revision` then `open-world application` then
 `open-world submit`. Unknown project kinds remain eligible; the package records their actual source and evidence rather
 than reducing them to a bundled hook profile or allowlist.
@@ -9,6 +9,9 @@ than reducing them to a bundled hook profile or allowlist.
 Use `handoff preview` only when the accepted V3.1 package cannot yet be prepared and an exact diagnostic artifact is
 useful. It is not a second submission format, must not be hand-copied into Submit a Launch, and never proves a Draft PR,
 review, approval, deployment or launch.
+
+This diagnostic preview retains its older exact `PROJECT_PREFLIGHT_VALID` input contract. Do not route through it or
+wait for its authenticated sandbox receipt when the goal is the official unreviewed V3.1 Applicant Draft.
 
 ## Official protected Draft PR path
 

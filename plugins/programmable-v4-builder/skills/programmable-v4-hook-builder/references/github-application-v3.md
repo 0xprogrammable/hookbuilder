@@ -7,6 +7,11 @@ Use this path for every completed generic Programmable project, including hooks,
 multi-repository systems and unfamiliar custom architectures. Unknown project kinds remain eligible and enter review;
 they are not rejected or forced into a template because they are novel.
 
+Do not require `PROJECT_PREFLIGHT_VALID` or a trusted external sandbox to create an unreviewed Applicant Draft.
+Local or applicant-supplied test evidence remains unverified until independent review. Preserve that limitation in
+the review package and keep the application `unreviewed`; authenticated sandbox completion is optional stronger
+evidence, not admission authority.
+
 Fee V2 fields below are exact compatibility only. They apply only when preserved project intent or
 an applicable current central-policy Rule ID selects that exact legacy package; Submission V2 cannot create the
 requirement itself.
@@ -188,10 +193,10 @@ candidate-code execution.
 
 ## External-write boundary
 
-Every completed generic project follows one path:
+Every completed generic project follows one path after its exact public source and closed local package validate:
 
 ```text
-PROJECT_PREFLIGHT_VALID -> prepare-revision -> application -> submit plan -> explicit confirmation -> protected Draft PR
+APPLICATION_PACKAGE_VALID -> submit plan -> explicit confirmation -> protected Draft PR
 ```
 
 Keep GitHub preparation and GitHub mutation separate. Use only namespaced `cli.mjs open-world submit`, `update`, and

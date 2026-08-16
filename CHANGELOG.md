@@ -2,6 +2,28 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.10.1 - 2026-08-16
+
+### Fixed
+
+- Removed the impossible Applicant admission dependency on `PROJECT_PREFLIGHT_VALID`. A complete project with exact
+  public source and a valid closed Application V3.1 package can now proceed to the protected unreviewed Draft path
+  without a private trusted sandbox signer.
+- Kept local and applicant-supplied test evidence explicitly unverified until independent review. The stronger
+  authenticated sandbox completion claim remains available without becoming submission, approval, deployment, or
+  launch authority.
+- Added regressions proving that the official Skill route no longer waits for a sandbox receipt and that a generic
+  no-Fee V3.1 package containing neither a preflight-valid state nor an external-sandbox receipt still produces the
+  same read-only protected Draft plan with zero writes.
+
+### Evidence boundary
+
+- The central Application V3.1 contract and `0xprogrammable/submit-launch` target are unchanged. This patch corrects
+  the Skill's Applicant routing; it does not weaken protected package validation or execute candidate code in central
+  CI.
+- A Draft remains unreviewed, unapproved, undeployed, and unlaunched. Projects still need exact public GitHub source
+  before the current GitHub-only transport can submit them.
+
 ## 0.10.0 - 2026-08-16
 
 ### Added
