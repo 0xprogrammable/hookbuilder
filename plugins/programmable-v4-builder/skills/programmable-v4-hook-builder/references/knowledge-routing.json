@@ -24,14 +24,6 @@
       ]
     },
     {
-      "id": "candidate-application-v3-transport",
-      "reason": "Retained only for exact frozen legacy Application V3/Fee V2 replay; it is not current admission and must never route a public Applicant away from Submit a Launch.",
-      "references": [
-        "github-application-v3.md",
-        "public-pr-application-v3.schema.json"
-      ]
-    },
-    {
       "id": "legacy-fee-v2-launch-bundle",
       "reason": "Load only to replay the frozen Fee V2 launch-bundle contract after an exact legacy acceptance record; it is not a current Submit or Handoff route and cannot create a current platform rule.",
       "references": [
@@ -340,7 +332,19 @@
       "later": [
         {
           "reference": "agent-entry-and-application.md",
-          "trigger": "Load only after local checks pass and exact public source is frozen for the Submit a Launch handoff."
+          "trigger": "Load only after local checks pass and exact public source is frozen for the Submit a Launch Applicant route."
+        },
+        {
+          "reference": "github-application-v3.md",
+          "trigger": "Load for every generic PROJECT_PREFLIGHT_VALID project before prepare-revision, application and the confirmation-gated protected Draft PR submit path. Unknown project kinds remain eligible."
+        },
+        {
+          "reference": "public-pr-application-v3.schema.json",
+          "trigger": "Load only when an exact Application V3.1 field or central schema validation failure must be diagnosed; use the generator for the normal path."
+        },
+        {
+          "reference": "application-handoff.md",
+          "trigger": "Load only when the accepted V3.1 package cannot be prepared and a deterministic diagnostic preview is needed; never route the preview as a parallel submission format."
         },
         {
           "reference": "workflow-canary-application.md",
@@ -390,6 +394,14 @@
         {
           "reference": "agent-entry-and-application.md",
           "trigger": "Load when emitting or diagnosing the exact Submit a Launch Applicant review handoff."
+        },
+        {
+          "reference": "github-application-v3.md",
+          "trigger": "Load when a completed generic project must continue through prepare-revision, application, confirmation-gated submit, or read-only status."
+        },
+        {
+          "reference": "application-handoff.md",
+          "trigger": "Load only for a diagnostic preview after the official V3.1 path is unavailable; the preview is not a Draft PR."
         },
         {
           "reference": "approval-criteria.md",

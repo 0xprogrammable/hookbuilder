@@ -1,7 +1,6 @@
 import { canonicalJson, validateAgainstSchema } from "./submission-core.mjs";
 import { PROGRAMMABLE_FEE_V2, sha256Bytes } from "./open-world-v2-core.mjs";
 import {
-  PUBLIC_PR_APPLICATION_V3_REQUIRED_REVIEW_KINDS,
   SOURCE_CLOSURE_MANIFEST_SCHEMA_ID,
   SOURCE_CLOSURE_MANIFEST_VERSION,
   compareUtf8,
@@ -11,6 +10,7 @@ import {
   githubRepositoryPattern,
   isObject,
   positiveDecimalPattern,
+  publicPrApplicationV3RequiredReviewKinds,
   readJson,
   safeRepositoryPath,
   sha256Pattern
@@ -36,7 +36,7 @@ export function derivePublicPrApplicationV3PreviousBinding({
   const submissionStandard = application?.contract?.submissionStandard;
   if (
     application?.contract?.id !== "public-pr-application-v3"
-    || application?.contract?.version !== "3.0.0"
+    || application?.contract?.version !== "3.1.0"
     || application?.schemaVersion !== 3
     || !positiveDecimalPattern.test(application?.applicationRevision ?? "")
     || !sha256Pattern.test(applicationSha256 ?? "")
@@ -178,6 +178,20 @@ function validateLineage(lineage, applicationRevision, add) {
     } else if (applicationRevision !== incrementCanonicalDecimal(previousRevision)) {
       add("blocker", "APPLICATION_LINEAGE_REVISION_SEQUENCE_INVALID", "$.applicationRevision", "Application revision must be exactly the prior canonical decimal revision plus one.", "Increment the exact decimal string with arbitrary-precision semantics and regenerate all revision-bound evidence.", "lineage");
     }
+    const previousFeeApplicability = lineage.previous?.feeApplicability;
+    const previousFeeIdentity = [
+      lineage.previous?.feePolicyId,
+      lineage.previous?.feePolicyVersion
+    ];
+    if (
+      previousFeeApplicability === "not-selected"
+      && (
+        previousFeeIdentity.some((value) => value !== null)
+        || lineage.previous?.feePolicyInstanceSha256 !== null
+      )
+    ) {
+      add("blocker", "APPLICATION_LINEAGE_PREVIOUS_FEE_NOT_SELECTED_INVALID", "$.lineage.previous", "A predecessor that did not select Fee V2 must preserve null fee identity and instance fields.", "Preserve the exact all-null historical fee projection for not-selected lineage.", "lineage");
+    }
   }
 }
 
@@ -240,24 +254,45 @@ function validateIntentAndFidelity(intent, fidelity, add) {
 
 function validatePolicyBindings(policy, stage, add) {
   if (!isObject(policy)) return;
-  for (const [field, expected] of Object.entries({
+  const feeV2Selected = policy.feeApplicability !== "not-selected";
+  const feeIdentity = {
     feePolicySchemaId: PROGRAMMABLE_FEE_V2.policySchemaId,
     programmableFeePolicyId: PROGRAMMABLE_FEE_V2.policyId,
     programmableFeePolicyVersion: PROGRAMMABLE_FEE_V2.policyVersion,
     programmableFeePolicyHashPreimage: PROGRAMMABLE_FEE_V2.policyHashPreimage,
     programmableFeePolicyHash: PROGRAMMABLE_FEE_V2.policyHash
-  })) {
-    if (policy[field] !== expected) {
-      add("blocker", "APPLICATION_FEE_V2_BINDING_INVALID", `$.policyBindings.${field}`, "New v3 applications must bind the exact active Fee V2 policy; Fee V1 is historical lineage only.", "Use the exact versioned Fee V2 constants and preserve older policy data only under lineage.previous.", "fee-policy");
+  };
+  const feeSchemaFields = [
+    "feePolicySchemaPath",
+    "feePolicySchemaRepositoryRef",
+    "feePolicySchemaSha256"
+  ];
+  const feeInstanceFields = [
+    "feePolicyInstancePath",
+    "feePolicyInstanceRepositoryRef",
+    "feePolicyInstanceSha256"
+  ];
+  if (!feeV2Selected) {
+    for (const field of [...Object.keys(feeIdentity), ...feeSchemaFields, ...feeInstanceFields]) {
+      if (policy[field] !== null) {
+        add("blocker", "APPLICATION_FEE_NOT_SELECTED_BINDING_INVALID", `$.policyBindings.${field}`, "A Submission V2 that does not select legacy Fee V2 must not fabricate a fee identity or schema binding.", "Set every Fee V2 identity, schema, and instance field to null.", "fee-policy");
+      }
+    }
+  } else {
+    for (const [field, expected] of Object.entries(feeIdentity)) {
+      if (policy[field] !== expected) {
+        add("blocker", "APPLICATION_FEE_V2_BINDING_INVALID", `$.policyBindings.${field}`, "Applications that select legacy Fee V2 must bind its exact active policy identity; Fee V1 is historical lineage only.", "Use the exact versioned Fee V2 constants and preserve older policy data only under lineage.previous.", "fee-policy");
+      }
+    }
+    for (const field of feeSchemaFields) {
+      if (policy[field] === null) {
+        add("blocker", "APPLICATION_FEE_V2_SCHEMA_BINDING_MISSING", `$.policyBindings.${field}`, "A selected legacy Fee V2 contract requires the exact schema path, repository, and digest tuple.", "Bind the exact Fee V2 schema selected by Submission V2.", "fee-policy");
+      }
     }
   }
-  const instanceFields = [
-    policy.feePolicyInstancePath,
-    policy.feePolicyInstanceRepositoryRef,
-    policy.feePolicyInstanceSha256
-  ];
-  if (stage === "proposal" && policy.feeApplicability !== "unresolved") {
-    add("blocker", "APPLICATION_PROPOSAL_FEE_APPLICABILITY_INVALID", "$.policyBindings.feeApplicability", "A proposal must keep Fee applicability unresolved until exact prototype execution scopes exist.", "Use unresolved with all feePolicyInstance fields null.", "fee-policy-role-separation");
+  const instanceFields = feeInstanceFields.map((field) => policy[field]);
+  if (stage === "proposal" && !new Set(["unresolved", "not-selected"]).has(policy.feeApplicability)) {
+    add("blocker", "APPLICATION_PROPOSAL_FEE_APPLICABILITY_INVALID", "$.policyBindings.feeApplicability", "A proposal may keep selected Fee V2 applicability unresolved or explicitly record that Fee V2 was not selected.", "Use unresolved for selected legacy Fee V2 or not-selected with the all-null fee tuple.", "fee-policy-role-separation");
   }
   if (stage === "prototype" && policy.feeApplicability === "unresolved") {
     add("blocker", "APPLICATION_PROTOTYPE_FEE_APPLICABILITY_UNRESOLVED", "$.policyBindings.feeApplicability", "A prototype cannot leave Fee applicability unresolved.", "Revalidate the exact bound V2 source package and select applicable or exact zero-scope not-applicable.", "fee-policy-role-separation");
@@ -278,12 +313,14 @@ function validatePolicyBindings(policy, stage, add) {
 
 function validateReviewPackage(reviewPackage, policy, stage, intent, add) {
   if (!isObject(reviewPackage)) return;
-  if (canonicalJson(reviewPackage.requiredKinds) !== canonicalJson(PUBLIC_PR_APPLICATION_V3_REQUIRED_REVIEW_KINDS)) {
+  const feeV2Selected = policy?.feeApplicability !== "not-selected";
+  const requiredReviewKinds = publicPrApplicationV3RequiredReviewKinds({ feeV2Selected });
+  if (canonicalJson(reviewPackage.requiredKinds) !== canonicalJson(requiredReviewKinds)) {
     add("blocker", "APPLICATION_REVIEW_REQUIRED_KINDS_INVALID", "$.reviewPackage.requiredKinds", "The semantic review-kind contract is missing, reordered, or expanded as if optional records were mandatory.", "Use the exact required-kind list; add novel evidence as extra open records.", "review-package");
   }
   const records = Array.isArray(reviewPackage.records) ? reviewPackage.records : [];
   const kinds = new Set(records.map((record) => record?.kind));
-  for (const kind of PUBLIC_PR_APPLICATION_V3_REQUIRED_REVIEW_KINDS) {
+  for (const kind of requiredReviewKinds) {
     if (!kinds.has(kind)) {
       add("blocker", "APPLICATION_REVIEW_RECORD_KIND_MISSING", "$.reviewPackage.records", `Required semantic review record ${kind} is missing.`, "Bind at least one exact record of every required semantic kind.", "review-package", { requiredKind: kind });
     }
@@ -313,15 +350,18 @@ function validateReviewPackage(reviewPackage, policy, stage, intent, add) {
     }
   }
   if (isObject(policy)) {
-    const feeSchemaRecord = records.find((record) => (
+    const feeSchemaRecords = records.filter((record) => record?.kind === "fee-policy-schema");
+    const feeSchemaRecord = feeSchemaRecords.find((record) => (
       record?.kind === "fee-policy-schema"
       && record?.source === "source-repository"
       && record?.repositoryRef === policy.feePolicySchemaRepositoryRef
       && record?.path === policy.feePolicySchemaPath
       && record?.sha256 === policy.feePolicySchemaSha256
     ));
-    if (!feeSchemaRecord) {
+    if (feeV2Selected && !feeSchemaRecord) {
       add("blocker", "APPLICATION_FEE_SCHEMA_REVIEW_BINDING_MISMATCH", "$.reviewPackage.records", "The Fee V2 schema path and hash do not match a source-repository fee-policy-schema record.", "Bind the same exact immutable schema bytes in policyBindings and reviewPackage.records.", "fee-policy-role-separation");
+    } else if (!feeV2Selected && feeSchemaRecords.length !== 0) {
+      add("blocker", "APPLICATION_FEE_NOT_SELECTED_SCHEMA_RECORD_FORBIDDEN", "$.reviewPackage.records", "A Submission V2 that does not select legacy Fee V2 cannot carry a fee-policy-schema review record.", "Remove every Fee V2 schema record from the not-selected application.", "fee-policy-role-separation");
     }
     const feeInstanceRecords = records.filter((record) => record?.kind === "fee-policy");
     if (stage === "prototype" && policy.feeApplicability === "applicable") {

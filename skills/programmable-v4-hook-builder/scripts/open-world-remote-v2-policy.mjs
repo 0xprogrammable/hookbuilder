@@ -1,4 +1,4 @@
-import { CliFailure, MAX_APPLICATION_V3_JSON_NODES, MAX_OUTPUT_FILE_BYTES, OPEN_WORLD_V2_ARTIFACTS, OPEN_WORLD_V2_OPTIONAL_SUPPORTING_ARTIFACTS, OPEN_WORLD_V2_SUPPORTING_ARTIFACTS, SHA256_PATTERN, deriveOpenWorldV2FeeApplicability, isRepositorySchemaBinding, path, strictUtf8, validateLegacyFeeV2OpenWorldV2Package } from "./open-world-shared.mjs";
+import { CliFailure, MAX_APPLICATION_V3_JSON_NODES, MAX_OUTPUT_FILE_BYTES, OPEN_WORLD_V2_ARTIFACTS, OPEN_WORLD_V2_OPTIONAL_SUPPORTING_ARTIFACTS, OPEN_WORLD_V2_SUPPORTING_ARTIFACTS, SHA256_PATTERN, deriveOpenWorldV2FeeApplicability, isRepositorySchemaBinding, path, strictUtf8, validateLegacyFeeV2OpenWorldV2Package, validateOpenWorldV2Package } from "./open-world-shared.mjs";
 
 const TRADE_APPLICATION_RECORD_KINDS = new Set(["trade-capability-manifest", "trade-test-result"]);
 
@@ -171,7 +171,12 @@ export function installOpenWorldRemoteV2Policy(runtime) {
         boundArtifacts.push({ kind: "extension-schema", repositoryPath, snapshot });
       }
     }
-    const report = validateLegacyFeeV2OpenWorldV2Package({
+    const feeV2Selected = submission?.programmableFee !== undefined
+      || submission?.supportingPackage?.feePolicySchema !== undefined;
+    const validateSourcePackage = feeV2Selected
+      ? validateLegacyFeeV2OpenWorldV2Package
+      : validateOpenWorldV2Package;
+    const report = validateSourcePackage({
       submission,
       submissionBytes: submissionSnapshot.bytes,
       records,
@@ -190,12 +195,19 @@ export function installOpenWorldRemoteV2Policy(runtime) {
       throw new CliFailure("APPLICATION_V3_FEE_APPLICABILITY_MISMATCH", "Application V3 fee state differs from the complete exact validated remote V2 package", { exitCode: 1 });
     }
     const schemaRecord = boundArtifacts.find(({ kind }) => kind === "fee-policy-schema");
-    if (
-      policy.feePolicySchemaRepositoryRef !== repositoryRef
-      || policy.feePolicySchemaPath !== schemaRecord?.repositoryPath
-      || policy.feePolicySchemaSha256 !== schemaRecord?.snapshot.sha256
-    ) {
+    const schemaTuple = [
+      policy.feePolicySchemaRepositoryRef,
+      policy.feePolicySchemaPath,
+      policy.feePolicySchemaSha256
+    ];
+    if (feeV2Selected && (
+      schemaTuple[0] !== repositoryRef
+      || schemaTuple[1] !== schemaRecord?.repositoryPath
+      || schemaTuple[2] !== schemaRecord?.snapshot.sha256
+    )) {
       throw new CliFailure("APPLICATION_REMOTE_V2_PACKAGE_INVALID", "Application V3 differs from the exact remote Fee V2 schema binding", { exitCode: 1 });
+    } else if (!feeV2Selected && (schemaRecord !== undefined || schemaTuple.some((value) => value !== null))) {
+      throw new CliFailure("APPLICATION_REMOTE_V2_PACKAGE_INVALID", "an unselected Fee V2 contract must not fabricate a remote schema binding", { exitCode: 1 });
     }
     const feeRecord = boundArtifacts.filter(({ kind }) => kind === "fee-policy");
     const instanceTuple = [
@@ -213,11 +225,11 @@ export function installOpenWorldRemoteV2Policy(runtime) {
         throw new CliFailure("APPLICATION_REMOTE_V2_PACKAGE_INVALID", "the applicable Fee V2 instance tuple differs from the exact validated remote package", { exitCode: 1 });
       }
     } else if (
-      feePolicyBinding !== null
+      (feePolicyBinding !== null && feePolicyBinding !== undefined)
       || feeRecord.length !== 0
       || instanceTuple.some((value) => value !== null)
     ) {
-      throw new CliFailure("APPLICATION_REMOTE_V2_PACKAGE_INVALID", "a non-applicable or unresolved Fee state carries a forbidden policy instance", { exitCode: 1 });
+      throw new CliFailure("APPLICATION_REMOTE_V2_PACKAGE_INVALID", "a non-applicable, unresolved, or unselected Fee state carries a forbidden policy instance", { exitCode: 1 });
     }
     for (const { kind, repositoryPath, snapshot } of boundArtifacts) {
       const isTradeApplicationRecord = TRADE_APPLICATION_RECORD_KINDS.has(kind);
@@ -233,7 +245,10 @@ export function installOpenWorldRemoteV2Policy(runtime) {
         && record.byteLength === snapshot.byteLength
       ));
       if (matches.length !== 1) {
-        throw new CliFailure("APPLICATION_V2_REVIEW_BINDING_MISMATCH", "every required V2 artifact must have one exact source-repository review binding", { exitCode: 1 });
+        throw new CliFailure("APPLICATION_V2_REVIEW_BINDING_MISMATCH", "every required V2 artifact must have one exact source-repository review binding", {
+          exitCode: 1,
+          details: { artifactKind: kind, repositoryPath, expectedRecordSource: isTradeApplicationRecord ? "application-package" : "source-repository" }
+        });
       }
     }
     const expectedTradeRecordCount = boundArtifacts.filter(({ kind }) => TRADE_APPLICATION_RECORD_KINDS.has(kind)).length;

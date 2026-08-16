@@ -1,11 +1,13 @@
 export {
   PUBLIC_PR_APPLICATION_V3_CAPTURE_STATUSES,
+  PUBLIC_PR_APPLICATION_V3_BASE_REQUIRED_REVIEW_KINDS,
   PUBLIC_PR_APPLICATION_V3_REPORT_VERSION,
   PUBLIC_PR_APPLICATION_V3_REQUIRED_REVIEW_KINDS,
   SOURCE_CLOSURE_MANIFEST_SCHEMA_ID,
   SOURCE_CLOSURE_MANIFEST_VERSION,
   classifyPublicPrApplicationV3RawGitFailure,
-  classifyPublicPrApplicationV3SourceManifestFailure
+  classifyPublicPrApplicationV3SourceManifestFailure,
+  publicPrApplicationV3RequiredReviewKinds
 } from "./public-pr-application-v3-shared.mjs";
 export {
   classifyPublicPrApplicationV3GitLfsPointer,

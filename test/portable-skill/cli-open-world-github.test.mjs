@@ -20,7 +20,10 @@ import {
 } from "../../skills/programmable-v4-hook-builder/scripts/source-manifest.mjs";
 import { buildExampleBaseline } from "../../skills/programmable-v4-hook-builder/scripts/example-materializer-core.mjs";
 import { canonicalJson } from "../../skills/programmable-v4-hook-builder/scripts/submission-core.mjs";
-import { createApplicableOpenWorldV2PrototypeFixture } from "./open-world-v2-prototype-fixture.mjs";
+import {
+  createApplicableOpenWorldV2PrototypeFixture,
+  createFeeUnselectedOpenWorldV2PrototypeFixture
+} from "./open-world-v2-prototype-fixture.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "..", "..", "skills", "programmable-v4-hook-builder");
@@ -30,6 +33,130 @@ const sourceTree = "d".repeat(40);
 const centralCommit = "1".repeat(40);
 const centralTree = "2".repeat(40);
 const TRADE_APPLICATION_RECORD_KINDS = new Set(["trade-capability-manifest", "trade-test-result"]);
+
+test("Application V3 3.1.0 represents an unselected Fee V2 contract without fabricating fee bindings", () => {
+  const application = JSON.parse(fs.readFileSync(
+    path.join(skillRoot, "assets", "templates", "open-world-v2", "public-pr-application-v3.example.json"),
+    "utf8"
+  ));
+  application.contract.version = "3.1.0";
+  application.policyBindings = {
+    ...application.policyBindings,
+    feePolicySchemaId: null,
+    programmableFeePolicyId: null,
+    programmableFeePolicyVersion: null,
+    programmableFeePolicyHashPreimage: null,
+    programmableFeePolicyHash: null,
+    feeApplicability: "not-selected",
+    feePolicySchemaPath: null,
+    feePolicySchemaRepositoryRef: null,
+    feePolicySchemaSha256: null,
+    feePolicyInstancePath: null,
+    feePolicyInstanceRepositoryRef: null,
+    feePolicyInstanceSha256: null
+  };
+  application.reviewPackage.requiredKinds = application.reviewPackage.requiredKinds
+    .filter((kind) => kind !== "fee-policy-schema");
+  application.reviewPackage.records = application.reviewPackage.records
+    .filter((record) => record.kind !== "fee-policy-schema");
+
+  const report = validatePublicPrApplicationV3(application);
+  assert.equal(report.valid, true, JSON.stringify(report.findings));
+  assert.equal(application.reviewPackage.requiredKinds.includes("fee-policy-schema"), false);
+
+  for (const field of [
+    "feePolicySchemaId",
+    "programmableFeePolicyId",
+    "programmableFeePolicyVersion",
+    "programmableFeePolicyHashPreimage",
+    "programmableFeePolicyHash",
+    "feePolicySchemaPath",
+    "feePolicySchemaRepositoryRef",
+    "feePolicySchemaSha256",
+    "feePolicyInstancePath",
+    "feePolicyInstanceRepositoryRef",
+    "feePolicyInstanceSha256"
+  ]) {
+    const substituted = structuredClone(application);
+    substituted.policyBindings[field] = "substitution";
+    const substitutedReport = validatePublicPrApplicationV3(substituted);
+    assert.equal(substitutedReport.valid, false, field);
+    assert.ok(substitutedReport.findings.some((finding) => (
+      finding.code === "APPLICATION_FEE_NOT_SELECTED_BINDING_INVALID"
+      && finding.path === `$.policyBindings.${field}`
+    )), field);
+  }
+});
+
+test("Application V3 transport rejects maintainer_can_modify substitution before any write", (t) => {
+  const fixture = createTransportFixture(t, { mode: "status" });
+  const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+  state.pull.maintainer_can_modify = true;
+  fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
+
+  const result = run([
+    "open-world", "status", fixture.packageRoot,
+    "--pull-request", "7"
+  ], fixture);
+  assert.equal(result.status, 1, result.stdout || result.stderr);
+  assert.equal(JSON.parse(result.stdout).error.code, "APPLICATION_PULL_REQUEST_MISMATCH");
+  assert.deepEqual(mutatingCalls(fixture), []);
+});
+
+test("generic complete project plans the same protected draft transport without selecting Fee V2", (t) => {
+  const fixture = createTransportFixture(t, { feeV2Selected: false });
+  const application = readFixtureApplication(fixture);
+  assert.equal(application.contract.version, "3.1.0");
+  assert.equal(application.policyBindings.feeApplicability, "not-selected");
+  assert.equal(application.reviewPackage.requiredKinds.includes("fee-policy-schema"), false);
+  assert.equal(application.reviewPackage.records.some(({ kind }) => kind === "fee-policy-schema"), false);
+
+  const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+  assert.equal(result.status, 0, result.stdout || result.stderr);
+  const payload = JSON.parse(result.stdout).result;
+  assert.equal(payload.action, "submit-plan");
+  assert.equal(payload.applicationId, "generic-no-fee-example");
+  assert.deepEqual(payload.centralContract, {
+    activeContractManifestPath: ".programmable/active-contract.json",
+    activeContractManifestSha256: payload.centralContract.activeContractManifestSha256,
+    contractId: "submit-launch",
+    schemaPath: "intake/schemas/public-pr-application-v3.schema.json",
+    schemaSha256: "sha256:2d51837bbbfe52672ecca334596243bebcec78e8e0a885d67084dfd98955bcb7"
+  });
+  assert.match(payload.centralContract.activeContractManifestSha256, /^sha256:[0-9a-f]{64}$/u);
+  assert.ok(payload.externalWrites.includes("open-draft-pull-request"));
+  assert.match(payload.confirmationDigest, /^sha256:[0-9a-f]{64}$/u);
+  assert.ok(allCalls(fixture).every(({ method }) => method === "GET"));
+  assert.deepEqual(mutatingCalls(fixture), []);
+});
+
+test("Application V3 submit rejects protected-base active-contract or schema substitution before any write", (t) => {
+  for (const substitution of ["manifest-declaration", "contract-id", "schema-bytes"]) {
+    const fixture = createTransportFixture(t, { feeV2Selected: false });
+    const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+    if (substitution !== "schema-bytes") {
+      const manifestPath = ".programmable/active-contract.json";
+      const manifest = JSON.parse(Buffer.from(state.centralContractContents[manifestPath], "base64").toString("utf8"));
+      if (substitution === "manifest-declaration") {
+        manifest.artifacts.package[0].sha256 = `sha256:${"d".repeat(64)}`;
+      } else {
+        manifest.contractId = "substituted-contract";
+      }
+      state.centralContractContents[manifestPath] = Buffer.from(`${canonicalJson(manifest)}\n`, "utf8").toString("base64");
+    } else {
+      state.centralContractContents["intake/schemas/public-pr-application-v3.schema.json"] = Buffer.from(
+        "{\"substituted\":true}\n",
+        "utf8"
+      ).toString("base64");
+    }
+    fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
+
+    const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+    assert.equal(result.status, 1, `${substitution}: ${result.stdout || result.stderr}`);
+    assert.equal(JSON.parse(result.stdout).error.code, "APPLICATION_V3_CENTRAL_CONTRACT_INVALID", substitution);
+    assert.deepEqual(mutatingCalls(fixture), [], substitution);
+  }
+});
 
 test("validate-application checks the closed V3 package locally from a non-Git directory", (t) => {
   const fixture = createTransportFixture(t);
@@ -2696,7 +2823,8 @@ function createTransportFixture(t, {
   treeRequestByteLength = null,
   applicationRevision = null,
   unmaterializedProposal = false,
-  manifestSource = false
+  manifestSource = false,
+  feeV2Selected = true
 } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-open-world-github-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -2704,7 +2832,7 @@ function createTransportFixture(t, {
   fs.mkdirSync(priorRoot);
   const priorApplication = unmaterializedProposal
     ? createUnmaterializedProposalPackage(priorRoot, { sentinel })
-    : createApplicationPackage(priorRoot, { sentinel, manifestSource });
+    : createApplicationPackage(priorRoot, { sentinel, manifestSource, feeV2Selected });
   if (applicationRevision !== null) {
     priorApplication.applicationRevision = applicationRevision;
     priorApplication.lineage = applicationRevision === "1"
@@ -2796,6 +2924,7 @@ function createTransportFixture(t, {
     number: 7,
     state: "open",
     draft: true,
+    maintainer_can_modify: false,
     merged_at: null,
     merge_commit_sha: null,
     html_url: "https://github.com/0xprogrammable/submit-launch/pull/7",
@@ -2831,6 +2960,24 @@ function createTransportFixture(t, {
     repositoryPath,
     Buffer.from(fixtureSourceContent(application, repositoryPath), "utf8").toString("base64")
   ]));
+  const centralApplicationV3SchemaPath = "intake/schemas/public-pr-application-v3.schema.json";
+  const centralApplicationV3SchemaBytes = fs.readFileSync(
+    path.join(skillRoot, "references", "public-pr-application-v3.schema.json")
+  );
+  const centralApplicationV3SchemaSha256 = sha256(centralApplicationV3SchemaBytes);
+  const centralActiveContractBytes = Buffer.from(`${canonicalJson({
+    $schema: "urn:programmable:active-contract-manifest:1.0.0",
+    artifacts: {
+      package: [{ path: centralApplicationV3SchemaPath, sha256: centralApplicationV3SchemaSha256 }],
+      policy: [{ path: "policy/launch-policy.v1.json", sha256: `sha256:${"a".repeat(64)}` }],
+      validator: [{ path: "scripts/verify-public-application-v3.mjs", sha256: `sha256:${"b".repeat(64)}` }],
+      workflow: [{ path: ".github/workflows/verify-hook-builder.yml", sha256: `sha256:${"c".repeat(64)}` }]
+    },
+    contractId: "submit-launch",
+    defaultBranch: "main",
+    kind: "programmable-active-contract",
+    schemaVersion: "1.0.0"
+  })}\n`, "utf8");
   fs.writeFileSync(statePath, `${canonicalJson({
     viewer,
     centralRepository,
@@ -2863,6 +3010,10 @@ function createTransportFixture(t, {
     sourceArchives: {},
     packageContents: projection.contents,
     centralContents: priorIsMerged ? priorProjection.contents : {},
+    centralContractContents: {
+      ".programmable/active-contract.json": centralActiveContractBytes.toString("base64"),
+      [centralApplicationV3SchemaPath]: centralApplicationV3SchemaBytes.toString("base64")
+    },
     centralTreeEntries: [],
     intakeStatus: Buffer.from(`${canonicalJson({
       continuingPullRequests: [],
@@ -2985,11 +3136,12 @@ function createPrepareRevisionDraftFiles(fixture, sourceRoot) {
   };
 }
 
-function createApplicationPackage(packageRoot, { sentinel = null, manifestSource = false } = {}) {
+function createApplicationPackage(packageRoot, { sentinel = null, manifestSource = false, feeV2Selected = true } = {}) {
   const application = JSON.parse(fs.readFileSync(
     path.join(skillRoot, "assets", "templates", "open-world-v2", "public-pr-application-v3.example.json"),
     "utf8"
   ));
+  if (!feeV2Selected) application.applicationId = "generic-no-fee-example";
   application.applicationRevision = "1";
   application.lineage = { kind: "new", previous: null };
   if (manifestSource) configureFixtureManifestSource(application);
@@ -3856,7 +4008,6 @@ function writeApplicationPackage(packageRoot, application, {
 
 function prepareFixturePrototype(application) {
   application.stage = "prototype";
-  application.policyBindings.feeApplicability = "applicable";
   application.intentCapture.captureStatus = "captured-verbatim-public-safe";
   application.intentCapture.originalIdeaDisplayExcerpt = "Build the exact owner-confirmed open-world mechanism.";
   application.intentCapture.agentInterpretationStatus = "owner-confirmed";
@@ -3873,14 +4024,38 @@ function prepareFixturePrototype(application) {
     requirementBindings: []
   };
   const fixture = canonicalV2Fixture(application.applicationId);
+  const feeV2Selected = fixture.submission.programmableFee !== undefined
+    || fixture.submission.supportingPackage?.feePolicySchema !== undefined;
+  application.policyBindings.feeApplicability = fixture.feeApplicability;
+  if (!feeV2Selected) {
+    for (const field of [
+      "feePolicySchemaId",
+      "programmableFeePolicyId",
+      "programmableFeePolicyVersion",
+      "programmableFeePolicyHashPreimage",
+      "programmableFeePolicyHash",
+      "feePolicySchemaPath",
+      "feePolicySchemaRepositoryRef",
+      "feePolicySchemaSha256",
+      "feePolicyInstancePath",
+      "feePolicyInstanceRepositoryRef",
+      "feePolicyInstanceSha256"
+    ]) application.policyBindings[field] = null;
+    application.reviewPackage.requiredKinds = application.reviewPackage.requiredKinds
+      .filter((kind) => kind !== "fee-policy-schema");
+    application.reviewPackage.records = application.reviewPackage.records
+      .filter(({ kind }) => kind !== "fee-policy-schema" && kind !== "fee-policy");
+  }
   const packageDirectory = path.posix.dirname(application.policyBindings.submissionPath);
   const repositoryPathFor = (relativePath) => path.posix.join(packageDirectory, relativePath);
-  const feePath = repositoryPathFor(fixture.submission.supportingPackage.feePolicy.path);
-  application.policyBindings.feePolicySchemaPath = repositoryPathFor(
-    fixture.submission.supportingPackage.feePolicySchema.path
-  );
-  application.policyBindings.feePolicyInstancePath = feePath;
-  application.policyBindings.feePolicyInstanceRepositoryRef = "primary";
+  if (feeV2Selected) {
+    const feePath = repositoryPathFor(fixture.submission.supportingPackage.feePolicy.path);
+    application.policyBindings.feePolicySchemaPath = repositoryPathFor(
+      fixture.submission.supportingPackage.feePolicySchema.path
+    );
+    application.policyBindings.feePolicyInstancePath = feePath;
+    application.policyBindings.feePolicyInstanceRepositoryRef = "primary";
+  }
   application.intentCapture.ideaSourcePath = repositoryPathFor(fixture.submission.intentPackage.ideaSource.path);
   const kindByRelativePath = new Map([
     ["submission.v2.json", "submission"],
@@ -3888,7 +4063,7 @@ function prepareFixturePrototype(application) {
     ...Object.values(fixture.submission.supportingPackage)
       .filter((binding) => binding !== null)
       .map((binding) => [binding.path, binding.artifactType]),
-    ...fixture.submission.programmableFee.conformance.scopeArtifacts.flatMap((artifact) => [
+    ...(fixture.submission.programmableFee?.conformance?.scopeArtifacts ?? []).flatMap((artifact) => [
       [artifact.receipt.path, artifact.receipt.artifactType],
       [artifact.vectorSet.path, artifact.vectorSet.artifactType]
     ]),
@@ -3908,7 +4083,8 @@ function prepareFixturePrototype(application) {
       application.source.primary.sourceClosureMode === "inline"
       && !application.source.primary.sourcePaths.includes(repositoryPath)
     ) application.source.primary.sourcePaths.push(repositoryPath);
-    const kind = kindByRelativePath.get(relativePath) ?? "v2-supporting-artifact";
+    const kind = kindByRelativePath.get(relativePath)
+      ?? (relativePath.startsWith("schemas/") ? "extension-schema" : "v2-supporting-artifact");
     const tradeApplicationRecord = TRADE_APPLICATION_RECORD_KINDS.has(kind);
     const recordPath = tradeApplicationRecord ? relativePath : repositoryPath;
     const recordSource = tradeApplicationRecord ? "application-package" : "source-repository";
@@ -4083,7 +4259,12 @@ const canonicalV2Fixtures = new Map();
 
 function canonicalV2Fixture(applicationId) {
   if (!canonicalV2Fixtures.has(applicationId)) {
-    canonicalV2Fixtures.set(applicationId, createApplicableOpenWorldV2PrototypeFixture(applicationId));
+    canonicalV2Fixtures.set(
+      applicationId,
+      applicationId === "generic-no-fee-example"
+        ? createFeeUnselectedOpenWorldV2PrototypeFixture(applicationId)
+        : createApplicableOpenWorldV2PrototypeFixture(applicationId)
+    );
   }
   return canonicalV2Fixtures.get(applicationId);
 }
@@ -4351,6 +4532,9 @@ function treeEntriesForContents(contents) {
     };
   });
 }
+function centralBaseContents() {
+  return { ...(state.centralContractContents ?? {}), ...(state.centralContents ?? {}) };
+}
 function sourceSnapshot(repositorySlug, commit) {
   if (repositorySlug === state.sourceRepository.full_name && commit === state.sourceCommit) {
     return {
@@ -4392,7 +4576,7 @@ if (method === "POST" && endpoint === "repos/0xprogrammable/submit-launch/forks"
 if (method === "POST" && endpoint === "repos/example-builder/submit-launch/git/trees") {
   state.createdTree = "6".repeat(40);
   const baseContents = body.base_tree === state.centralTree
-    ? state.centralContents
+    ? centralBaseContents()
     : body.base_tree === state.branchTree
       ? state.contents
       : null;
@@ -4463,6 +4647,7 @@ if (method === "POST" && endpoint === "repos/0xprogrammable/submit-launch/pulls"
     number: 7,
     state: "open",
     draft: body.draft,
+    maintainer_can_modify: body.maintainer_can_modify,
     merged_at: null,
     merge_commit_sha: null,
     html_url: "https://github.com/0xprogrammable/submit-launch/pull/7",
@@ -4592,7 +4777,7 @@ if (endpoint === "repos/0xprogrammable/submit-launch/git/commits/" + state.centr
   output({ sha: state.centralCommit, tree: { sha: state.centralTree } });
 }
 if (endpoint === "repos/0xprogrammable/submit-launch/git/trees/" + state.centralTree + "?recursive=1") {
-  output({ sha: state.centralTree, truncated: false, tree: [...(state.centralTreeEntries ?? []), ...treeEntriesForContents(state.centralContents)] });
+  output({ sha: state.centralTree, truncated: false, tree: [...(state.centralTreeEntries ?? []), ...treeEntriesForContents(centralBaseContents())] });
 }
 if (endpoint === "repos/example-builder/submit-launch/git/ref/heads/" + encodeURIComponent(state.branch)) {
   if (!state.branchExists) missing();
@@ -4606,7 +4791,7 @@ if (state.branchCommit !== state.createdCommit && endpoint === "repos/example-bu
   output({ sha: state.branchCommit, tree: { sha: state.branchTree } });
 }
 if (endpoint === "repos/example-builder/submit-launch/git/trees/" + state.centralTree + "?recursive=1") {
-  output({ sha: state.centralTree, truncated: false, tree: [...(state.centralTreeEntries ?? []), ...treeEntriesForContents(state.centralContents)] });
+  output({ sha: state.centralTree, truncated: false, tree: [...(state.centralTreeEntries ?? []), ...treeEntriesForContents(centralBaseContents())] });
 }
 if (state.branchTree !== state.createdTree && endpoint === "repos/example-builder/submit-launch/git/trees/" + state.branchTree + "?recursive=1") {
   output({ sha: state.branchTree, truncated: false, tree: treeEntriesForContents(state.contents) });
@@ -4677,7 +4862,9 @@ if (endpoint.startsWith("repos/example-builder/submit-launch/contents/")) {
   if (
     state.raceMode === "branch-package-readback-tamper"
     && ref === state.createdCommit
-    && repositoryPath === Object.keys(state.createdTreeContents ?? {}).sort()[0]
+    && repositoryPath === Object.keys(state.createdTreeContents ?? {})
+      .filter((candidate) => candidate.startsWith("submissions/"))
+      .sort()[0]
   ) content = Buffer.from("tampered\\n", "utf8").toString("base64");
   if (typeof content !== "string") missing();
   const bytes = Buffer.from(content, "base64");
@@ -4693,7 +4880,7 @@ if (endpoint.startsWith("repos/0xprogrammable/submit-launch/contents/")) {
   const repositoryPath = encodedPath.split("/").map(decodeURIComponent).join("/");
   let content = repositoryPath === "docs/builder/intake-status.json"
     ? state.intakeStatus
-    : state.centralContents[repositoryPath];
+    : state.centralContractContents?.[repositoryPath] ?? state.centralContents[repositoryPath];
   if (repositoryPath === "docs/builder/intake-status.json" && state.raceMode === "intake-pause-before-write") {
     state.intakeReads = (state.intakeReads ?? 0) + 1;
     if (state.intakeReads >= 2) {

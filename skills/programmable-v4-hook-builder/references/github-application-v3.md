@@ -1,22 +1,23 @@
 # GitHub application v3
 
-> Candidate Application V3 contract, not the released package version. Both released and future Applicant transports
-> use the canonical `0xprogrammable/submit-launch:main` repository identity; never create a new Applicant PR in
-> Hookbuilder.
+> Application V3.1 is the accepted generic Applicant contract for protected Draft PRs to
+> `0xprogrammable/submit-launch:main`. Never create a new Applicant PR in Hookbuilder.
 
-Fee V2 fields below are frozen candidate-contract compatibility only. They apply only when preserved project intent or
+Use this path for every completed generic Programmable project, including hooks, applications, services, games,
+multi-repository systems and unfamiliar custom architectures. Unknown project kinds remain eligible and enter review;
+they are not rejected or forced into a template because they are novel.
+
+Fee V2 fields below are exact compatibility only. They apply only when preserved project intent or
 an applicable current central-policy Rule ID selects that exact legacy package; Submission V2 cannot create the
 requirement itself.
 
 Use this reference only for `submission.v2.json` and `public-pr-application-v3`. Do not route a v2 project through the
 historical v1 `prepare-pr` contract, six-file `application.json` package or maximum-eight-companion path.
 
-Application v3 is a candidate until its local generator, trusted Registry validator, update/status client and release
-gates pass together. Schema presence or a locally valid example is not evidence that public v3 intake is active.
-
-The authenticated approval-to-Website bridge is part of the same local release candidate and remains pending production
-activation. The target path is GitHub application and exact-revision status, then Website Custom Launcher eligibility
-for that same unchanged approved source SHA. The Builder never derives that eligibility locally.
+The protected Submit a Launch workflow validates the accepted V3.1 schema and exact revision package with trusted base
+code. Local generation or validation alone is not submission; only remote readback of the exact Draft PR and its checks
+proves transport. Website eligibility remains a separate later authority for the same unchanged approved source SHA,
+and the Builder never derives it locally.
 
 Application V3 is GitHub-only. Every source surface must be an exact public GitHub repository. Another Git host, private
 repository, ZIP, pasted source, upload form or email is not an alternate V3 transport; it needs a different versioned
@@ -35,7 +36,7 @@ no public Application V3 package for that source.
 
 ## Application contract
 
-Generate `application.v3.json` only through the released v3 generator. Bind:
+Generate `application.v3.json` only through the installed V3.1 generator. Bind:
 
 - application id, revision and explicit lineage;
 - builder identity and public-data acknowledgements;
@@ -187,9 +188,15 @@ candidate-code execution.
 
 ## External-write boundary
 
-Keep GitHub preparation and GitHub mutation separate. After trusted V3 intake is active, use only namespaced
-`cli.mjs open-world submit`, `update`, and `status`; top-level application commands remain the released V1 path. The first V3
-submit or update invocation must be a read-only plan
+Every completed generic project follows one path:
+
+```text
+PROJECT_PREFLIGHT_VALID -> prepare-revision -> application -> submit plan -> explicit confirmation -> protected Draft PR
+```
+
+Keep GitHub preparation and GitHub mutation separate. Use only namespaced `cli.mjs open-world submit`, `update`, and
+`status`; top-level application commands remain the released V1 path. The first V3 submit or update invocation must be
+a read-only plan
 that reports:
 
 - target repository, base revision, application id and revision;
@@ -229,8 +236,8 @@ remote package and review state; optional local source roots add evidence but ar
 The confirmed client may perform only the writes listed in the plan. It must never mark the pull request ready, approve,
 merge, deploy, sign, launch, change an account or move funds.
 
-`open-world status` is read-only. Do not claim that the client, trusted intake or public Registry path exists merely
-because the local command schema is present; require the exact released client, protected workflow and live canary.
+`open-world status` is read-only. Report a Draft PR only after it re-reads the exact remote package, pull request and
+checks. That proof still establishes transport only, never review, approval, deployment or launch.
 
 ## Review and status
 

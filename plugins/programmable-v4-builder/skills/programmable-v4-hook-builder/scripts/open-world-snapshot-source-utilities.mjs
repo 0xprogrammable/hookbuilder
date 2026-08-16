@@ -72,9 +72,39 @@ export function installOpenWorldSnapshotSourceUtilities(runtime) {
     if (initialStat.size > BigInt(maximumBytes)) {
       throwApplicationInputSplitReviewHold(`${label} exceeds the bounded local input-inspection window`);
     }
-    const bytes = fs.readFileSync(filePath);
-    if (BigInt(bytes.length) !== initialStat.size) {
-      throw new CliFailure("SOURCE_CHANGED_DURING_OPERATION", `${label} changed while it was read`, { exitCode: 1 });
+    const noFollow = Number.isInteger(fs.constants.O_NOFOLLOW) ? fs.constants.O_NOFOLLOW : 0;
+    const nonBlock = Number.isInteger(fs.constants.O_NONBLOCK) ? fs.constants.O_NONBLOCK : 0;
+    let descriptor;
+    try {
+      descriptor = fs.openSync(filePath, fs.constants.O_RDONLY | noFollow | nonBlock);
+    } catch {
+      throw new CliFailure("APPLICATION_INPUT_INVALID", `${label} could not be opened as a regular non-symlink file`, { exitCode: 1 });
+    }
+    let bytes;
+    let openedStat;
+    try {
+      openedStat = fs.fstatSync(descriptor, { bigint: true });
+      if (!openedStat.isFile() || !sameSnapshotFile(initialStat, openedStat)) {
+        throw new CliFailure("SOURCE_CHANGED_DURING_OPERATION", `${label} changed before its descriptor-bound read`, { exitCode: 1 });
+      }
+      bytes = fs.readFileSync(descriptor);
+      const finalStat = fs.fstatSync(descriptor, { bigint: true });
+      let finalPathStat;
+      try {
+        finalPathStat = fs.lstatSync(filePath, { bigint: true });
+      } catch {
+        throw new CliFailure("SOURCE_CHANGED_DURING_OPERATION", `${label} path changed while it was read`, { exitCode: 1 });
+      }
+      if (
+        BigInt(bytes.length) !== openedStat.size
+        || !sameStableSnapshot(openedStat, finalStat)
+        || !sameSnapshotFile(finalStat, finalPathStat)
+        || finalPathStat.isSymbolicLink()
+      ) {
+        throw new CliFailure("SOURCE_CHANGED_DURING_OPERATION", `${label} changed while it was read`, { exitCode: 1 });
+      }
+    } finally {
+      fs.closeSync(descriptor);
     }
     let text = null;
     if (requireUtf8) {
@@ -90,8 +120,25 @@ export function installOpenWorldSnapshotSourceUtilities(runtime) {
       text,
       byteLength: bytes.length,
       sha256: sha256Bytes(bytes),
-      identity: fileIdentity(initialStat)
+      identity: fileIdentity(openedStat)
     });
+  }
+
+  function sameSnapshotFile(left, right) {
+    return String(left.dev) === String(right.dev)
+      && String(left.ino) === String(right.ino);
+  }
+
+  function sameStableSnapshot(left, right) {
+    return sameSnapshotFile(left, right)
+      && String(left.size) === String(right.size)
+      && snapshotStatTime(left, "mtime") === snapshotStatTime(right, "mtime")
+      && snapshotStatTime(left, "ctime") === snapshotStatTime(right, "ctime");
+  }
+
+  function snapshotStatTime(stat, name) {
+    const nanoseconds = stat[`${name}Ns`];
+    return nanoseconds === undefined ? String(stat[`${name}Ms`]) : String(nanoseconds);
   }
 
   function readApplicationV2PackageSnapshots(packageRoot) {

@@ -310,6 +310,7 @@ export function installOpenWorldGitHubTransportUtilities(runtime) {
       || !isPlainObject(value.base.repo)
       || !new Set(["open", "closed"]).has(value.state)
       || typeof value.draft !== "boolean"
+      || typeof value.maintainer_can_modify !== "boolean"
     ) {
       throw new CliFailure("GITHUB_OUTPUT_INVALID", "GitHub returned an invalid pull request", { exitCode: 1 });
     }
@@ -317,6 +318,7 @@ export function installOpenWorldGitHubTransportUtilities(runtime) {
       number: parsePullRequestNumber(value.number),
       state: value.state,
       draft: value.draft,
+      maintainerCanModify: value.maintainer_can_modify,
       mergedAt: value.merged_at ?? null,
       mergeCommit: value.merge_commit_sha === null || value.merge_commit_sha === undefined
         ? null
@@ -372,6 +374,7 @@ export function installOpenWorldGitHubTransportUtilities(runtime) {
       || (deletedMergedHead && !allowDeletedMergedHead)
       || (allowHistoricalState ? !new Set(["open", "closed"]).has(pull.state) : pull.state !== "open")
       || (requireDraft && pull.draft !== true)
+      || pull.maintainerCanModify !== false
       || viewer.id !== String(applicationPackage.application.builder.githubUserId)
     ) {
       throw new CliFailure("APPLICATION_PULL_REQUEST_MISMATCH", "the selected pull request does not match the exact Application V3 builder, fork, branch, and Registry target", { exitCode: 1 });
@@ -382,6 +385,7 @@ export function installOpenWorldGitHubTransportUtilities(runtime) {
     return pull.user.id === viewer.id
       && pull.state === "open"
       && pull.draft === true
+      && pull.maintainerCanModify === false
       && pull.title === plan.pullRequest.title
       && pull.body === plan.pullRequest.body
       && pull.base.ref === CENTRAL_GITHUB_BASE_BRANCH
@@ -597,7 +601,7 @@ export function installOpenWorldGitHubTransportUtilities(runtime) {
     const isUpdate = command === "update";
     return {
       usage: `open-world.mjs ${command} <application-v3-package> ${isUpdate ? "--pull-request <number> " : ""}[--source-root <repository-ref=git-root>...] [--mutation-receipt <absolute-json>] [--resume] [--dry-run | --confirm-external-write <sha256:...>]`,
-      summary: `Candidate Application V3 ${isUpdate ? "update" : "submission"} transport only; not the public Applicant path. The default is an authenticated read-only plan; external writes require the exact current confirmation digest.`,
+      summary: `Prepare the current protected Application V3 ${isUpdate ? "update" : "submission"} path. The default is an authenticated read-only plan; external writes require the exact current confirmation digest and create or update only a draft pull request.`,
       options: [
         ...(isUpdate ? [{ name: "--pull-request", key: "pullRequest", type: "value", valueName: "number", description: "Select the exact existing draft Application V3 review thread." }] : []),
         { name: "--source-root", key: "sourceRoots", type: "value", repeatable: true, valueName: "repository-ref=git-root", description: "Replay every manifest source closure from exact local Git roots before planning or writing; inline transport may remain remote-only." },

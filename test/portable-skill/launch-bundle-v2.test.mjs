@@ -2074,7 +2074,7 @@ function fixture({
   ];
   const application = {
     schemaVersion: 3,
-    contract: { id: "public-pr-application-v3", version: "3.0.0", submissionStandard: "2.0.0", validatorProfile: "intent-open-world-v1" },
+    contract: { id: "public-pr-application-v3", version: "3.1.0", submissionStandard: "2.0.0", validatorProfile: "intent-open-world-v1" },
     applicationId: "bound-open-world-project",
     applicationRevision,
     stage: "prototype",

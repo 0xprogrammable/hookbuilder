@@ -274,7 +274,7 @@
         "properties": {
           "policyBindings": {
             "properties": {
-              "feeApplicability": { "const": "unresolved" },
+              "feeApplicability": { "enum": ["unresolved", "not-selected"] },
               "feePolicyInstancePath": { "type": "null" },
               "feePolicyInstanceRepositoryRef": { "type": "null" },
               "feePolicyInstanceSha256": { "type": "null" }
@@ -287,8 +287,56 @@
           "policyBindings": {
             "properties": {
               "feeApplicability": {
-                "enum": ["applicable", "not-applicable"]
+                "enum": ["applicable", "not-applicable", "not-selected"]
               }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "policyBindings": {
+            "properties": {
+              "feeApplicability": { "const": "not-selected" }
+            },
+            "required": ["feeApplicability"]
+          }
+        },
+        "required": ["policyBindings"]
+      },
+      "then": {
+        "properties": {
+          "policyBindings": {
+            "properties": {
+              "feePolicySchemaId": { "type": "null" },
+              "programmableFeePolicyId": { "type": "null" },
+              "programmableFeePolicyVersion": { "type": "null" },
+              "programmableFeePolicyHashPreimage": { "type": "null" },
+              "programmableFeePolicyHash": { "type": "null" },
+              "feePolicySchemaPath": { "type": "null" },
+              "feePolicySchemaRepositoryRef": { "type": "null" },
+              "feePolicySchemaSha256": { "type": "null" },
+              "feePolicyInstancePath": { "type": "null" },
+              "feePolicyInstanceRepositoryRef": { "type": "null" },
+              "feePolicyInstanceSha256": { "type": "null" }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "policyBindings": {
+            "properties": {
+              "feePolicySchemaId": { "const": "urn:programmable:fee-policy-v2:1.0.0" },
+              "programmableFeePolicyId": { "const": "programmable-volume-fee-v2" },
+              "programmableFeePolicyVersion": { "const": "2.0.0" },
+              "programmableFeePolicyHashPreimage": { "const": "programmable-volume-fee-v2@2.0.0" },
+              "programmableFeePolicyHash": { "const": "0x03cd386824b1c0aa152200e0a470aa0c885f802e257f0f46066de508d241811e" },
+              "feePolicySchemaPath": { "$ref": "#/$defs/repositoryPath" },
+              "feePolicySchemaRepositoryRef": { "$ref": "#/$defs/slug" },
+              "feePolicySchemaSha256": { "$ref": "#/$defs/sha256" }
             }
           }
         }
@@ -369,7 +417,7 @@
           "const": "public-pr-application-v3"
         },
         "version": {
-          "const": "3.0.0"
+          "const": "3.1.0"
         },
         "submissionStandard": {
           "const": "2.0.0"
@@ -832,18 +880,22 @@
           "$ref": "#/$defs/sha256"
         },
         "feePolicyId": {
-          "type": "string",
+          "type": ["string", "null"],
           "minLength": 1,
           "maxLength": 120
         },
         "feePolicyVersion": {
-          "$ref": "#/$defs/semver"
+          "oneOf": [
+            { "$ref": "#/$defs/semver" },
+            { "type": "null" }
+          ]
         },
         "feeApplicability": {
           "enum": [
             "applicable",
             "not-applicable",
-            "unresolved"
+            "unresolved",
+            "not-selected"
           ]
         },
         "feePolicyInstanceSha256": {
@@ -1071,35 +1123,45 @@
       ],
       "properties": {
         "feePolicySchemaId": {
-          "const": "urn:programmable:fee-policy-v2:1.0.0"
+          "enum": ["urn:programmable:fee-policy-v2:1.0.0", null]
         },
         "programmableFeePolicyId": {
-          "const": "programmable-volume-fee-v2"
+          "enum": ["programmable-volume-fee-v2", null]
         },
         "programmableFeePolicyVersion": {
-          "const": "2.0.0"
+          "enum": ["2.0.0", null]
         },
         "programmableFeePolicyHashPreimage": {
-          "const": "programmable-volume-fee-v2@2.0.0"
+          "enum": ["programmable-volume-fee-v2@2.0.0", null]
         },
         "programmableFeePolicyHash": {
-          "const": "0x03cd386824b1c0aa152200e0a470aa0c885f802e257f0f46066de508d241811e"
+          "enum": ["0x03cd386824b1c0aa152200e0a470aa0c885f802e257f0f46066de508d241811e", null]
         },
         "feeApplicability": {
           "enum": [
             "applicable",
             "not-applicable",
-            "unresolved"
+            "unresolved",
+            "not-selected"
           ]
         },
         "feePolicySchemaPath": {
-          "$ref": "#/$defs/repositoryPath"
+          "oneOf": [
+            { "$ref": "#/$defs/repositoryPath" },
+            { "type": "null" }
+          ]
         },
         "feePolicySchemaRepositoryRef": {
-          "$ref": "#/$defs/slug"
+          "oneOf": [
+            { "$ref": "#/$defs/slug" },
+            { "type": "null" }
+          ]
         },
         "feePolicySchemaSha256": {
-          "$ref": "#/$defs/sha256"
+          "oneOf": [
+            { "$ref": "#/$defs/sha256" },
+            { "type": "null" }
+          ]
         },
         "feePolicyInstancePath": {
           "oneOf": [
@@ -1192,26 +1254,14 @@
         },
         "requiredKinds": {
           "type": "array",
-          "minItems": 12,
+          "minItems": 11,
           "maxItems": 12,
-          "prefixItems": [
-            { "const": "proposal" },
-            { "const": "test-plan" },
-            { "const": "threat-model" },
-            { "const": "compatibility-report" },
-            { "const": "evidence-index" },
-            { "const": "idea-source" },
-            { "const": "intent-contract" },
-            { "const": "architecture-decisions" },
-            { "const": "intent-fidelity" },
-            { "const": "fee-policy-schema" },
-            { "const": "security-assessment-schema" },
-            { "const": "security-assessment" }
-          ]
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/slug" }
         },
         "records": {
           "type": "array",
-          "minItems": 12,
+          "minItems": 11,
           "items": {
             "$ref": "#/$defs/reviewRecord"
           },
@@ -1225,7 +1275,6 @@
             { "contains": { "properties": { "kind": { "const": "intent-contract" } }, "required": ["kind"] }, "minContains": 1 },
             { "contains": { "properties": { "kind": { "const": "architecture-decisions" } }, "required": ["kind"] }, "minContains": 1 },
             { "contains": { "properties": { "kind": { "const": "intent-fidelity" } }, "required": ["kind"] }, "minContains": 1 },
-            { "contains": { "properties": { "kind": { "const": "fee-policy-schema" } }, "required": ["kind"] }, "minContains": 1 },
             { "contains": { "properties": { "kind": { "const": "security-assessment-schema" } }, "required": ["kind"] }, "minContains": 1 },
             { "contains": { "properties": { "kind": { "const": "security-assessment" } }, "required": ["kind"] }, "minContains": 1 }
           ]

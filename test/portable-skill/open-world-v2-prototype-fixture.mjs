@@ -8,7 +8,8 @@ import {
   architectureSnapshotSha256,
   createLegacyFeeV2DraftPackage,
   sha256Bytes,
-  validateLegacyFeeV2OpenWorldV2Package as validateOpenWorldV2Package
+  validateLegacyFeeV2OpenWorldV2Package as validateLegacyFeeV2OpenWorldV2Package,
+  validateOpenWorldV2Package
 } from "../../skills/programmable-v4-hook-builder/scripts/open-world-v2-core.mjs";
 import { canonicalFeeConformanceReceiptBytesV1 } from "../../skills/programmable-v4-hook-builder/scripts/fee-conformance-receipt-v1-core.mjs";
 import { canonicalJson } from "../../skills/programmable-v4-hook-builder/scripts/submission-core.mjs";
@@ -668,7 +669,7 @@ export function createApplicableOpenWorldV2PrototypeFixture(applicationId) {
   pkg.submission.supportingPackage.securityAssessment = null;
   delete pkg.supportingRecords.securityAssessment;
   rebindPackage(pkg);
-  const report = validateOpenWorldV2Package({
+  const report = validateLegacyFeeV2OpenWorldV2Package({
     submission: pkg.submission,
     submissionBytes: pkg.submissionBytes,
     records: pkg.records,
@@ -729,9 +730,61 @@ export function createNoMarketOpenWorldV2PrototypeFixture(applicationId) {
   pkg.submission.supportingPackage.feePolicy = null;
   delete pkg.supportingRecords.feePolicy;
   rebindPackage(pkg);
-  const report = validateOpenWorldV2Package({ submission: pkg.submission, submissionBytes: pkg.submissionBytes, records: pkg.records, supportingRecords: pkg.supportingRecords, extensionSchemaBytes: pkg.extensionSchemaBytes });
+  const report = validateLegacyFeeV2OpenWorldV2Package({ submission: pkg.submission, submissionBytes: pkg.submissionBytes, records: pkg.records, supportingRecords: pkg.supportingRecords, extensionSchemaBytes: pkg.extensionSchemaBytes });
   if (report.valid !== true) throw new Error(`canonical no-market V2 fixture is invalid: ${JSON.stringify(report.findings)}`);
   return freezePrototypePackage(pkg, "not-applicable");
+}
+
+export function createFeeUnselectedOpenWorldV2PrototypeFixture(applicationId) {
+  const pkg = unpackDraft(applicationId, "Build a standalone reward service without a token, market, pool, hook, or legacy Fee V2 selection.");
+  const extensionSchema = {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $id: "urn:test:standalone-unpriced-service-profile:1.0.0",
+    type: "object",
+    additionalProperties: false,
+    required: ["description"],
+    properties: { description: { type: "string", minLength: 1 } }
+  };
+  const extensionBytes = jsonBytes(extensionSchema);
+  const extensionPath = "schemas/standalone-unpriced-service-profile.schema.json";
+  const repositoryProfile = {
+    kind: "repository",
+    schemaId: extensionSchema.$id,
+    path: extensionPath,
+    sha256: sha256Bytes(extensionBytes),
+    byteLength: extensionBytes.length
+  };
+  pkg.extensionSchemaBytes[extensionPath] = extensionBytes;
+  pkg.submission.stage = "prototype";
+  pkg.submission.tradeCapability = { applicability: "no-market", facetEntryRef: "trade-capability-not-applicable", markets: [] };
+  pkg.submission.project.summary = { language: "en", text: "A complete standalone service with no market and no legacy Fee V2 selection." };
+  pkg.submission.targets = [{ id: "service-runtime", kind: "offchain-service-runtime", profileSchema: clone(repositoryProfile), profile: { description: "Runs the standalone service." } }];
+  pkg.submission.components = [{ id: "standalone-service", kind: "standalone-service", profileSchema: clone(repositoryProfile), profile: { description: "Records one bounded service state." }, implementationRefs: ["src/app.mjs"], authorityRefs: [] }];
+  pkg.submission.implementation = { sourcePaths: ["src/app.mjs"], testPaths: ["test/app.test.mjs"], evidenceRefs: [] };
+  pkg.submission.authorities = pkg.submission.authorities.filter(({ id }) => id !== "programmable-fee-owner");
+  delete pkg.submission.programmableFee;
+  delete pkg.submission.supportingPackage.feePolicy;
+  delete pkg.submission.supportingPackage.feePolicySchema;
+  delete pkg.supportingRecords.feePolicy;
+  delete pkg.supportingRecords.feePolicySchema;
+
+  const intent = pkg.records.intentContract.value;
+  intent.status = "builder-confirmed";
+  intent.route = { id: "CUSTOM_ARCHITECTURE", reasons: [{ language: "en", text: "The confirmed product is a standalone service without a market or Fee V2." }], blockedByRefs: [] };
+  intent.facts[0].kind = "standalone-service";
+  intent.facts[0].state = "confirmed";
+  intent.facts[0].semanticPayload = { description: "Standalone service only; no token, market, pool, hook, or legacy Fee V2 selection." };
+  intent.facts[0].payloadSchema = clone(repositoryProfile);
+  intent.confirmation = { state: "builder-confirmed", ideaEntryId: "original-idea", confirmedFactIds: [intent.facts[0].id], delegatedDefaultFactIds: [] };
+  const fidelity = pkg.records.intentFidelity.value;
+  fidelity.overallStatus = "preserved";
+  fidelity.traces[0] = { ...fidelity.traces[0], status: "preserved", architectureRefs: [{ collection: "components", id: "standalone-service" }], implementationRefs: ["src/app.mjs"], testRefs: ["test/app.test.mjs"], difference: null };
+  pkg.submission.supportingPackage.securityAssessment = null;
+  delete pkg.supportingRecords.securityAssessment;
+  rebindPackage(pkg);
+  const report = validateOpenWorldV2Package({ submission: pkg.submission, submissionBytes: pkg.submissionBytes, records: pkg.records, supportingRecords: pkg.supportingRecords, extensionSchemaBytes: pkg.extensionSchemaBytes });
+  if (report.valid !== true) throw new Error(`canonical fee-unselected V2 fixture is invalid: ${JSON.stringify(report.findings)}`);
+  return freezePrototypePackage(pkg, "not-selected");
 }
 
 function unpackDraft(applicationId, publicIdeaText = "Build an exact canonical onchain game with fee-bearing execution.") {
@@ -1004,6 +1057,10 @@ function rebindPackage(pkg) {
   for (const [key, spec] of Object.entries(OPEN_WORLD_V2_ARTIFACTS)) pkg.submission.intentPackage[key] = artifactBinding(spec, pkg.records[key].bytes);
   for (const [key, spec] of Object.entries(OPEN_WORLD_V2_SUPPORTING_ARTIFACTS)) {
     if (key === "securityAssessment" && !pkg.supportingRecords.securityAssessment) continue;
+    if (!pkg.supportingRecords[key]) {
+      delete pkg.submission.supportingPackage[key];
+      continue;
+    }
     pkg.supportingRecords[key].bytes = jsonBytes(pkg.supportingRecords[key].value);
     pkg.submission.supportingPackage[key] = artifactBinding(spec, pkg.supportingRecords[key].bytes);
   }
@@ -1023,7 +1080,7 @@ function freezePrototypePackage(pkg, feeApplicability) {
   for (const [key, spec] of Object.entries(OPEN_WORLD_V2_SUPPORTING_ARTIFACTS)) if (pkg.supportingRecords[key]) files.set(spec.file, pkg.supportingRecords[key].bytes);
   if (pkg.supportingRecords.feePolicy) files.set(OPEN_WORLD_V2_OPTIONAL_SUPPORTING_ARTIFACTS.feePolicy.file, pkg.supportingRecords.feePolicy.bytes);
   for (const [relativePath, bytes] of Object.entries(pkg.extensionSchemaBytes)) files.set(relativePath, bytes);
-  for (const [index, declaration] of (pkg.submission.programmableFee.conformance.scopeArtifacts ?? []).entries()) {
+  for (const [index, declaration] of (pkg.submission.programmableFee?.conformance?.scopeArtifacts ?? []).entries()) {
     const record = pkg.supportingRecords.feeConformance[index];
     files.set(declaration.receipt.path, record.receipt.bytes);
     files.set(declaration.vectorSet.path, record.vectorSet.bytes);

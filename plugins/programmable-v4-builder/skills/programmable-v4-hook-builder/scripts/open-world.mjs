@@ -59,7 +59,7 @@ const commandSpecs = new Map([
   }],
   ["validate-application", {
     usage: "open-world.mjs validate-application <application-v3-package> [--source-root <repository-ref=git-root>...]",
-    summary: "Validate one frozen legacy Application V3 package without network access, writes, or candidate-code execution; it is not the current Applicant path.",
+    summary: "Validate one current Application V3 public Applicant package without network access, writes, or candidate-code execution.",
     options: [
       { name: "--source-root", key: "sourceRoots", type: "value", repeatable: true, valueName: "repository-ref=git-root", description: "Optionally replay every declared source repository from its exact local Git root; when supplied, mappings must cover the complete declared source set." }
     ],
@@ -78,7 +78,7 @@ const commandSpecs = new Map([
   }],
   ["application", {
     usage: "open-world.mjs application <v2-package-directory> --application-draft <application.v3.json> --review-package <directory> --security-assessment <json> --security-evidence-bindings <json> --source-root <repository-ref>=<git-root>... --output <absolute-new-directory> [--write | --dry-run] [--repository-root <path>]",
-    summary: "Replay the frozen legacy Application V3/Fee V2 package locally; it is not current Programmable admission. Explicit --write creates only the compatibility package.",
+    summary: "Assemble one current Application V3 package from any valid complete Submission V2; legacy Fee V2 bindings remain conditional. Explicit --write creates only the local package.",
     options: [
       repositoryOption(),
       { name: "--application-draft", key: "applicationDraft", type: "value", valueName: "application.v3.json", description: "Read the V3 metadata/source template; application-package review, security, and verifier records are replaced by exact derived bindings." },
@@ -94,7 +94,7 @@ const commandSpecs = new Map([
   }],
   ["prepare-revision", {
     usage: "open-world.mjs prepare-revision <application-v3-draft.json> --source-root <repository-ref=git-root>... [--predecessor-source-root <repository-ref=git-root>...] --output <absolute-new-directory> [--write | --dry-run] [--repository-root <path>]",
-    summary: "Derive the next frozen legacy Application V3 revision with GET-only GitHub reads; this compatibility lane is not the current Applicant path.",
+    summary: "Derive the next current Application V3 revision with GET-only GitHub reads and exact immutable lineage.",
     options: [
       repositoryOption(),
       { name: "--source-root", key: "sourceRoots", type: "value", repeatable: true, valueName: "repository-ref=git-root", description: "Map every declared source repository ID to its exact local Git root for pre-network and pre-rename replay." },

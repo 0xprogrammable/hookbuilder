@@ -323,20 +323,19 @@ test("doctor distinguishes local generation from an actual Git worktree", () => 
     assert.equal(report.readyForApplicationV3Submission, false);
     assert.equal(report.cleanWorktree, null);
     assert.equal(report.readyForPublicBeta, false);
-    assert.equal(report.applicationV3Lifecycle, "frozen-legacy");
-    assert.equal(report.githubCli.requiredForPublicBetaApplication, false);
-    assert.equal(report.githubCli.requiredOnlyForFrozenLegacyApplicationV3, true);
+    assert.equal(report.applicationV3Lifecycle, "public-applicant");
+    assert.equal(report.githubCli.requiredForPublicBetaApplication, true);
     assert.equal(report.githubCli.authenticationChecked, false);
     assert.equal(report.readyForGitHubApplicationClient, false);
     assert.equal(report.runtimeCompatibility.node.minimumMajor, 22);
     assert.equal(report.runtimeCompatibility.node.supported, true);
-    assert.deepEqual(report.runtimeCompatibility.frozenLegacyApplicationV3.supportedPlatforms, ["darwin", "linux"]);
+    assert.deepEqual(report.runtimeCompatibility.applicationV3.supportedPlatforms, ["darwin", "linux"]);
     assert.equal(
-      report.runtimeCompatibility.frozenLegacyApplicationV3.platformSupported,
+      report.runtimeCompatibility.applicationV3.platformSupported,
       ["darwin", "linux"].includes(process.platform)
     );
-    assert.equal(report.runtimeCompatibility.frozenLegacyApplicationV3.minimumGitVersion, "2.49.0");
-    assert.match(report.runtimeCompatibility.frozenLegacyApplicationV3.exactObjectGit.status, /^(?:ready|toolingBlocked)$/u);
+    assert.equal(report.runtimeCompatibility.applicationV3.minimumGitVersion, "2.49.0");
+    assert.match(report.runtimeCompatibility.applicationV3.exactObjectGit.status, /^(?:ready|toolingBlocked)$/u);
     assert.deepEqual(report.runtimeCompatibility.offlineCapabilities, {
       ideaWork: true,
       contextRouting: true,
@@ -348,10 +347,10 @@ test("doctor distinguishes local generation from an actual Git worktree", () => 
       githubSubmissionOrUpdate: false
     });
     assert.equal(
-      report.tools.find(({ name }) => name === "gh").frozenLegacyApplicationV3Requirement,
+      report.tools.find(({ name }) => name === "gh").applicationV3Requirement,
       true
     );
-    assert.deepEqual(report.publicBetaBlockers, ["FROZEN_LEGACY_APPLICATION_V3_NOT_CURRENT"]);
+    assert.deepEqual(report.publicBetaBlockers, ["EXACT_GIT_WORKTREE_UNAVAILABLE"]);
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
@@ -378,7 +377,7 @@ test("doctor reports the Node 22 blocker for an unsupported runtime", () => {
       currentMajor: 21,
       supported: false
     });
-    assert.deepEqual(report.publicBetaBlockers, ["FROZEN_LEGACY_APPLICATION_V3_NOT_CURRENT"]);
+    assert.deepEqual(report.publicBetaBlockers, ["EXACT_GIT_WORKTREE_UNAVAILABLE", "NODE_22_OR_NEWER_REQUIRED"]);
     assert.equal(report.readyForDeterministicPreflight, false);
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });

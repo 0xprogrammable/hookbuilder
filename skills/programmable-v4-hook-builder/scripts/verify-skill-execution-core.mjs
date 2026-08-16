@@ -24,7 +24,7 @@ github-public-source-core golden-scenarios historical-v1-freeze implementation-l
 knowledge-router launch-bundle launch-bundle-v2 launch-bundle-v2-cli
 launch-plan-graph legacy-strict-json-boundaries official-launchpad open-world-migration
 open-world-regressions open-world-runtime open-world-security open-world-source-signals
-open-world-v2 open-world-v2-module-boundaries ordinary-launch-cli package-dependency-contract
+open-world-snapshot-source-utilities open-world-v2 open-world-v2-module-boundaries ordinary-launch-cli package-dependency-contract
 policy-bundle project-compiler-foundation project-compiler-materialization
 prepare-canary project-compiler-output project-compiler-plan project-compiler-receipts
 project-compiler-v4-deployment project-executor-safety project-repair-attempt project-sandbox-host

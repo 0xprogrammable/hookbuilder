@@ -39,14 +39,14 @@ const tools = [
   ["slither", ["--version"], false, false]
 ];
 
-const checks = tools.map(([name, toolArgs, deterministic, frozenLegacyApplicationV3]) => {
+const checks = tools.map(([name, toolArgs, deterministic, applicationV3]) => {
   const result = name === "git"
     ? spawnSafeGitSync(toolArgs, { encoding: "utf8", timeout: 5000 })
     : childProcess.spawnSync(name, toolArgs, { encoding: "utf8", shell: false, timeout: 5000 });
   return {
     name,
     deterministicPreflightRequirement: deterministic,
-    frozenLegacyApplicationV3Requirement: frozenLegacyApplicationV3,
+    applicationV3Requirement: applicationV3,
     available: result.status === 0,
     version: result.status === 0 ? `${result.stdout || result.stderr}`.trim().split("\n")[0] : null
   };
@@ -100,7 +100,22 @@ const gitWorktreeStatus = repositoryRoot === null
           : "unavailable-git-status";
 const gitWorktreeAvailable = gitWorktreeStatus === "available";
 const githubCli = checks.find(({ name }) => name === "gh");
-const publicBetaBlockers = ["FROZEN_LEGACY_APPLICATION_V3_NOT_CURRENT"];
+const applicationV3ToolchainAvailable = repositoryRoot !== null
+  && checks.find(({ name }) => name === "git")?.available === true
+  && gitWorktreeAvailable
+  && repositoryGitBlocker === null
+  && nodeSupported
+  && applicationV3PlatformSupported
+  && exactObjectGit.status === "ready"
+  && githubCli?.available === true;
+const publicBetaBlockers = [
+  ...(repositoryRoot === null ? ["PROJECT_ROOT_UNAVAILABLE"] : []),
+  ...(!gitWorktreeAvailable || repositoryGitBlocker !== null ? ["EXACT_GIT_WORKTREE_UNAVAILABLE"] : []),
+  ...(!nodeSupported ? ["NODE_22_OR_NEWER_REQUIRED"] : []),
+  ...(!applicationV3PlatformSupported ? ["APPLICATION_V3_PLATFORM_UNSUPPORTED"] : []),
+  ...(exactObjectGit.status !== "ready" ? ["EXACT_OBJECT_GIT_UNAVAILABLE"] : []),
+  ...(githubCli?.available !== true ? ["GITHUB_CLI_UNAVAILABLE"] : [])
+];
 const report = {
   readyForIdeaWork: true,
   readyForDeterministicPreflight: checks.find(({ name }) => name === "node")?.available === true && nodeSupported,
@@ -109,24 +124,15 @@ const report = {
     && checks.find(({ name }) => name === "git")?.available === true
     && gitWorktreeAvailable
     && repositoryGitBlocker === null,
-  readyForGitHubApplicationClient: false,
-  readyForApplicationV3Preparation: false,
-  applicationV3SubmissionToolchainAvailable: false,
-  frozenLegacyApplicationV3ToolchainAvailable: repositoryRoot !== null
-    && checks.find(({ name }) => name === "git")?.available === true
-    && gitWorktreeAvailable
-    && repositoryGitBlocker === null
-    && nodeSupported
-    && applicationV3PlatformSupported
-    && exactObjectGit.status === "ready"
-    && githubCli?.available === true,
+  readyForGitHubApplicationClient: applicationV3ToolchainAvailable,
+  readyForApplicationV3Preparation: applicationV3ToolchainAvailable,
+  applicationV3SubmissionToolchainAvailable: applicationV3ToolchainAvailable,
   readyForApplicationV3Submission: false,
-  readyForPublicBeta: false,
-  applicationV3Lifecycle: "frozen-legacy",
+  readyForPublicBeta: applicationV3ToolchainAvailable,
+  applicationV3Lifecycle: "public-applicant",
   publicBetaBlockers,
   githubCli: {
-    requiredForPublicBetaApplication: false,
-    requiredOnlyForFrozenLegacyApplicationV3: true,
+    requiredForPublicBetaApplication: true,
     available: githubCli?.available === true,
     version: githubCli?.version ?? null,
     authenticationChecked: false
@@ -137,8 +143,8 @@ const report = {
       currentMajor: nodeMajor,
       supported: nodeSupported
     },
-    frozenLegacyApplicationV3: {
-      lifecycle: "frozen-legacy",
+    applicationV3: {
+      lifecycle: "public-applicant",
       currentPlatform: process.platform,
       supportedPlatforms: applicationV3Platforms,
       platformSupported: applicationV3PlatformSupported,
@@ -190,10 +196,10 @@ else {
   if (!report.gitWorktreeChecks.available) console.log(`unavailable Git-only checks: ${report.gitWorktreeChecks.reason}`);
   console.log(`${report.cleanWorktree === true ? "ok" : report.cleanWorktree === false ? "dirty" : "unknown"} git worktree`);
   if (report.repositoryGitBlocker) console.log(`blocked git repository: ${report.repositoryGitBlocker}`);
-  console.log(`${report.githubCli.available ? "ok" : "missing"} GitHub CLI (gh), relevant only to frozen legacy Application V3 replay`);
-  console.log(`frozen legacy Application V3 platform ${process.platform}; current/default application readiness is not evaluated`);
+  console.log(`${report.githubCli.available ? "ok" : "missing"} GitHub CLI (gh), required for confirmed Application V3 submission or update`);
+  console.log(`public Applicant Application V3 platform ${process.platform}`);
   console.log(`${exactObjectGit.status === "ready" ? "ok" : "blocked"} exact-object Git tooling${exactObjectGit.version ? ` ${exactObjectGit.version}` : ""}${exactObjectGit.reason ? `: ${exactObjectGit.reason}` : ""}`);
-  console.log(`current application transport unavailable in Task 7A (${report.publicBetaBlockers.join(", ")})`);
+  console.log(`${report.readyForPublicBeta ? "ready" : "blocked"} public Applicant Application V3 tooling${report.publicBetaBlockers.length > 0 ? ` (${report.publicBetaBlockers.join(", ")})` : ""}`);
 }
 
 if (!report.readyForDeterministicPreflight) process.exit(1);
