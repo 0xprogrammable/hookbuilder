@@ -309,7 +309,7 @@ export function installOpenWorldApplicationPackage(runtime) {
     ) {
       throw new CliFailure(
         "APPLICATION_V3_MATERIALIZATION_INVALID",
-        "the package cannot be reconstructed as an exact source-verified prototype emitted by the current Application V3 materializer",
+        "the package cannot be reconstructed as an exact source-verified application emitted by the current Application V3 materializer",
         {
           exitCode: 1,
           details: {

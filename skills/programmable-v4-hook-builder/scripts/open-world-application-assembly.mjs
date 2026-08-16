@@ -112,7 +112,7 @@ export function installOpenWorldApplicationAssembly(runtime) {
     ];
     for (const [kind, binding, explicitPath, explicitSha256] of bindings) {
       if (!binding || typeof binding.path !== "string") {
-        throw new CliFailure("APPLICATION_V2_PACKAGE_BINDING_MISMATCH", `prototype V2 package is missing ${kind}`, { exitCode: 1 });
+        throw new CliFailure("APPLICATION_V2_PACKAGE_BINDING_MISMATCH", `V2 package is missing ${kind}`, { exitCode: 1 });
       }
       const snapshot = snapshotsByName.get(binding.path);
       const repositoryPath = snapshot ? relative(packageRepositoryRoot, snapshot.path) : null;

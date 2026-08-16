@@ -102,8 +102,10 @@ export function generatePublicPrApplicationV3({
   if (!isObject(generatedApplication)) {
     add("blocker", "APPLICATION_GENERATOR_INPUT_INVALID", "$.application", "Application input must be one closed v3 object.", "Assemble the exact application contract before materialization.", "application-contract");
   }
-  if (generatedApplication?.stage !== "prototype") {
-    add("blocker", "APPLICATION_GENERATOR_PROTOTYPE_REQUIRED", "$.application.stage", "Only a source-backed prototype can be materialized as a public application; ideas, proposals, and migration previews remain editable and eligible.", "Complete the prototype evidence package without changing or narrowing the product idea.", "review-readiness");
+  const policyNeutralProposal = generatedApplication?.stage === "proposal"
+    && generatedApplication?.policyBindings?.feeApplicability === "not-selected";
+  if (generatedApplication?.stage !== "prototype" && !policyNeutralProposal) {
+    add("blocker", "APPLICATION_GENERATOR_PROTOTYPE_REQUIRED", "$.application.stage", "Public materialization requires either a source-backed prototype or a policy-neutral proposal whose legacy Fee V2 applicability is explicitly not-selected.", "Complete the prototype evidence package, or keep the proposal unreviewed and remove every legacy Fee V2 selection without changing or narrowing the product idea.", "review-readiness");
   }
 
   const securityIssues = validateOpenWorldSecurityInput(securityAssessment);
@@ -116,7 +118,7 @@ export function generatePublicPrApplicationV3({
     || securityAssessment?.subject?.revision !== primary?.revisionObjectId
     || securityAssessment?.subject?.stage !== generatedApplication?.stage
   ) {
-    add("blocker", "APPLICATION_SECURITY_SUBJECT_BINDING_MISMATCH", "$.securityAssessment.subject", "Security subject id, source revision, and stage must exactly match the application primary source.", "Analyze the exact bound prototype commit and stage.", "security-evidence");
+    add("blocker", "APPLICATION_SECURITY_SUBJECT_BINDING_MISMATCH", "$.securityAssessment.subject", "Security subject id, source revision, and stage must exactly match the application primary source.", "Analyze the exact bound source commit and application stage.", "security-evidence");
   }
   let dependencyDisposition = null;
   try {
@@ -214,6 +216,7 @@ export function generatePublicPrApplicationV3({
     ideaEligibility: "ELIGIBLE_FOR_REVIEW",
     publicApplicationEligibility: privacyHeld ? "HELD_FOR_PRIVACY_REDACTION" : "ELIGIBLE_FOR_REVIEW",
     approvalGranted: false,
+    deploymentAuthorizationGranted: false,
     launchAuthorizationGranted: false,
     implementationAuthorizationGranted: false,
     securityDisposition: confirmedIntentRedesign.length > 0
