@@ -94,7 +94,7 @@ function continuedCommands(source, prefix) {
   return commands;
 }
 
-test("active Markdown installs resolve only the intended immutable v0.9.3 release package", () => {
+test("active Markdown installs resolve only the intended immutable v0.10.0 release package", () => {
   const documents = markdownFiles(repositoryRoot).map((absolutePath) => ({
     path: path.relative(repositoryRoot, absolutePath),
     source: fs.readFileSync(absolutePath, "utf8")
@@ -106,7 +106,8 @@ test("active Markdown installs resolve only the intended immutable v0.9.3 releas
     "docs/releases/v0.8.0.md",
     "docs/releases/v0.9.0.md",
     "docs/releases/v0.9.1.md",
-    "docs/releases/v0.9.2.md"
+    "docs/releases/v0.9.2.md",
+    "docs/releases/v0.9.3.md"
   ].includes(documentPath)).filter(({ path: documentPath }) => ![
     "CHANGELOG.md",
     "docs/UNISWAP_MASTER_SKILL_ADOPTION.md"
@@ -123,24 +124,24 @@ test("active Markdown installs resolve only the intended immutable v0.9.3 releas
   assert.ok(installs.length > 0);
   assert.ok(previews.length > 0);
   for (const { path: documentPath, source, command } of installs) {
-    assert.match(command, /(?:@v0\.9\.3\b|--pin\s+v0\.9\.3\b)/u, documentPath);
+    assert.match(command, /(?:@v0\.10\.0\b|--pin\s+v0\.10\.0\b)/u, documentPath);
     assert.match(source, /(?:confirm|verify)[\s\S]{0,200}(?:public tag|GitHub exposes|GitHub release|tag and release)/iu, documentPath);
   }
   for (const { path: documentPath, command } of previews) {
-    assert.match(command, /@v0\.9\.3\b/u, documentPath);
+    assert.match(command, /@v0\.10\.0\b/u, documentPath);
   }
 
   const forbiddenActiveClaims = [
-    /\bv(?!0\.9\.3\b)\d+\.\d+(?:\.\d+)?\b[^\n]{0,96}\b(?:is|remains)\s+(?:the\s+)?(?:current|latest|stable|live|published)\b/iu,
-    /\b(?:current|latest|stable|published)\s+(?:public\s+)?(?:release|version|identity|guidance)?[^\n]{0,80}\bv(?!0\.9\.3\b)\d+\.\d+(?:\.\d+)?\b/iu,
-    /\bv(?!0\.9\.3\b)\d+\.\d+(?:\.\d+)?\b[^\n]{0,96}\badds?\s+(?:a\s+)?live\b/iu
+    /\bv(?!0\.10\.0\b)\d+\.\d+(?:\.\d+)?\b[^\n]{0,96}\b(?:is|remains)\s+(?:the\s+)?(?:current|latest|stable|live|published)\b/iu,
+    /\b(?:current|latest|stable|published)\s+(?:public\s+)?(?:release|version|identity|guidance)?[^\n]{0,80}\bv(?!0\.10\.0\b)\d+\.\d+(?:\.\d+)?\b/iu,
+    /\bv(?!0\.10\.0\b)\d+\.\d+(?:\.\d+)?\b[^\n]{0,96}\badds?\s+(?:a\s+)?live\b/iu
   ];
   const changelog = documents.find(({ path: documentPath }) => documentPath === "CHANGELOG.md")?.source ?? "";
-  const currentChangelogSection = changelog.match(/^## 0\.9\.3[^\n]*\n[\s\S]*?(?=^## 0\.9\.2)/mu)?.[0];
+  const currentChangelogSection = changelog.match(/^## 0\.10\.0[^\n]*\n[\s\S]*?(?=^## 0\.9\.3)/mu)?.[0];
   assert.ok(currentChangelogSection);
   const claimDocuments = [
     ...activeDocuments,
-    { path: "CHANGELOG.md#0.9.3", source: currentChangelogSection }
+    { path: "CHANGELOG.md#0.10.0", source: currentChangelogSection }
   ];
   for (const { path: documentPath, source } of claimDocuments) {
     for (const line of source.split("\n")) {
@@ -150,7 +151,7 @@ test("active Markdown installs resolve only the intended immutable v0.9.3 releas
   }
 });
 
-test("stable v0.5.1 through v0.9.2 history is immutable and v0.9.3 is the release package", () => {
+test("stable v0.5.1 through v0.9.3 history is immutable and v0.10.0 is the release package", () => {
   const versionAuthority = readJson("config/plugin.json");
   const packageDocument = readJson("package.json");
   const packageLock = readJson("package-lock.json");
@@ -158,7 +159,8 @@ test("stable v0.5.1 through v0.9.2 history is immutable and v0.9.3 is the releas
   const readme = readText("README.md");
   const changelog = readText("CHANGELOG.md");
   const releasing = readText("docs/RELEASING.md");
-  const candidateNotes = readText("docs/releases/v0.9.3.md");
+  const candidateNotes = readText("docs/releases/v0.10.0.md");
+  const immediatePriorNotes = readText("docs/releases/v0.9.3.md");
   const priorNotes = readText("docs/releases/v0.9.2.md");
   const predecessorReleaseNotes = readText("docs/releases/v0.9.1.md");
   const publishedNotes = readText("docs/releases/v0.9.0.md");
@@ -178,8 +180,9 @@ test("stable v0.5.1 through v0.9.2 history is immutable and v0.9.3 is the releas
   const publishedSection = changelog.match(/^## 0\.9\.0[^\n]*\n[\s\S]*?(?=^## 0\.8\.0)/mu)?.[0];
   const priorSection = changelog.match(/^## 0\.9\.2[^\n]*\n[\s\S]*?(?=^## 0\.9\.1)/mu)?.[0];
   const previousReleaseSection = changelog.match(/^## 0\.9\.1[^\n]*\n[\s\S]*?(?=^## 0\.9\.0)/mu)?.[0];
+  const immediatePriorSection = changelog.match(/^## 0\.9\.3[^\n]*\n[\s\S]*?(?=^## 0\.9\.2)/mu)?.[0];
 
-  assert.equal(versionAuthority.version, "0.9.3");
+  assert.equal(versionAuthority.version, "0.10.0");
   assert.equal(packageDocument.version, versionAuthority.version);
   assert.equal(packageLock.version, versionAuthority.version);
   assert.equal(packageLock.packages[""].version, versionAuthority.version);
@@ -192,13 +195,15 @@ test("stable v0.5.1 through v0.9.2 history is immutable and v0.9.3 is the releas
   assert.equal(candidate.changeSetComplete, true);
   assert.deepEqual(candidate.unbundledChangeIds, []);
   assert.deepEqual(candidate.changes.map(({ id, kind }) => ({ id, kind })), [
-    { id: "bounded-module-syntax-verifier", kind: "maintenance" }
+    { id: "universal-application-v3-submission", kind: "feature" },
+    { id: "conditional-fee-v3-contract", kind: "feature" },
+    { id: "application-v3-transport-hardening", kind: "security-fix" }
   ]);
   assert.equal(candidate.requestedReleaseAt, candidate.preparedAt);
   assert.deepEqual(candidate.plannedRelease.builder, {
-    fromVersion: "0.9.2",
-    toVersion: "0.9.3",
-    semanticClassification: "patch"
+    fromVersion: "0.9.3",
+    toVersion: "0.10.0",
+    semanticClassification: "minor"
   });
 
   assert.equal(sha256Text(stableNotes), "e141136b2f5da9a4140912361c618883342e013c465f567930014a7e5a9415db");
@@ -215,9 +220,12 @@ test("stable v0.5.1 through v0.9.2 history is immutable and v0.9.3 is the releas
   assert.equal(sha256Text(priorSection), "9fe0add75dd5d8577df91ae539087f7b76381b45248f7b4f3c8630eeb78b68b8");
   assert.equal(sha256Text(predecessorReleaseNotes), "ed3102e0f76868e169038db71db90cbab17ae0e5f4531acf6fbe3efefbe896cb");
   assert.equal(sha256Text(previousReleaseSection), "076d8c0a4b77c5cf1b72e360e328960eaeb01a0ad54eaa2bec303222c7e96ee3");
-  assert.match(readme, /Release package `v0\.9\.3`/u);
+  assert.equal(sha256Text(immediatePriorNotes), "509f6fa06868a6a0f4c335b03cc41637a5e3c9e0e4e3d38a7ca123e8b50eb731");
+  assert.equal(sha256Text(immediatePriorSection), "a1497cbfaeff0e7a6bb837bb368f68cfe2acabe367bd14ce0c3153b132c8105c");
+  assert.match(readme, /Release package `v0\.10\.0`/u);
   assert.match(readme, /`publicationStateVerified: false`/u);
-  assert.match(readme, /--pin v0\.9\.3/u);
+  assert.match(readme, /--pin v0\.10\.0/u);
+  assert.match(changelog, /^## 0\.10\.0 - 2026-08-16$/mu);
   assert.match(changelog, /^## 0\.9\.3 - 2026-08-15$/mu);
   assert.match(changelog, /^## 0\.9\.2 - 2026-08-15$/mu);
   assert.match(changelog, /^## 0\.9\.1 - 2026-08-15$/mu);
@@ -225,14 +233,14 @@ test("stable v0.5.1 through v0.9.2 history is immutable and v0.9.3 is the releas
   assert.match(changelog, /^## 0\.8\.0 - 2026-08-14$/mu);
   assert.match(changelog, /^## 0\.7\.0 - 2026-08-14$/mu);
   assert.match(changelog, /^## 0\.6\.0 - 2026-08-13$/mu);
-  assert.match(candidateNotes, /^# Programmable v4 Builder v0\.9\.3$/mu);
-  assert.match(candidateNotes, /Bounded module syntax inspection/u);
-  assert.match(candidateNotes, /Measured local evidence/u);
+  assert.match(candidateNotes, /^# Programmable v4 Builder v0\.10\.0$/mu);
+  assert.match(candidateNotes, /Universal public Applicant path/u);
+  assert.match(candidateNotes, /Transport hardening/u);
   assert.match(candidateNotes, /Authority boundary/u);
   assert.match(candidateNotes, /`publicationStateVerified: false`/u);
-  assert.match(releasing, /Current release-package and installation identity: `v0\.9\.3`/u);
+  assert.match(releasing, /Current release-package and installation identity: `v0\.10\.0`/u);
   assert.match(releasing, /`publicationStateVerified: false`/u);
-  assert.match(releasing, /Prior immutable releases: `v0\.9\.2`, `v0\.9\.1`, `v0\.9\.0`, `v0\.8\.0`, `v0\.7\.0`, `v0\.6\.0`, and `v0\.5\.1`/u);
+  assert.match(releasing, /Prior immutable releases: `v0\.9\.3`, `v0\.9\.2`, `v0\.9\.1`, `v0\.9\.0`, `v0\.8\.0`, `v0\.7\.0`, `v0\.6\.0`, and `v0\.5\.1`/u);
   assert.match(releasing, /Canonical version authority: `config\/plugin\.json`/u);
   assert.match(releasing, /There is no minimum interval between Builder releases/u);
   assert.match(lifecycleReference, /no minimum interval exists between Builder releases/iu);
@@ -342,7 +350,7 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
   const feeReference = "references/programmable-fee-policy-v2.md";
   const applicationReference = "references/github-application-v3.md";
   assert.equal(Buffer.byteLength(readText(`skills/programmable-v4-hook-builder/${feeReference}`), "utf8"), 16_731);
-  assert.equal(Buffer.byteLength(readText(`skills/programmable-v4-hook-builder/${applicationReference}`), "utf8"), 20_538);
+  assert.equal(Buffer.byteLength(readText(`skills/programmable-v4-hook-builder/${applicationReference}`), "utf8"), 20_721);
   assert.ok(contextProfiles["legacy-fee-v2"].includes(feeReference));
   for (const profile of ["architecture", "autopilot", "claims", "authority"]) {
     assert.equal(contextProfiles[profile].includes(feeReference), false, profile);
@@ -391,7 +399,7 @@ test("current product docs keep central policy authority above the optional lega
   );
 });
 
-test("candidate quantitative docs match current inventories and one hash-bound release baseline", () => {
+test("v0.9.3 quantitative docs retain their exact inventories and one hash-bound release baseline", () => {
   const maturity = readText("docs/CODE_MATURITY.md");
   const readiness = readText("docs/SECURITY_AUDIT_READINESS.md");
   const candidateNotes = readText("docs/releases/v0.9.3.md");
@@ -446,7 +454,7 @@ test("candidate quantitative docs match current inventories and one hash-bound r
     { files: 686, bytes: 10_722_006 }
   );
   assert.equal(sizeReport.portablePackage.files, 618);
-  assert.equal(sizeReport.portablePackage.bytes, 8_657_625);
+  assert.equal(sizeReport.portablePackage.bytes, 8_674_902);
 
   for (const document of [maturity]) {
     assert.match(document, new RegExp(`${productionModuleCount} production`, "u"));

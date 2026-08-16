@@ -54,14 +54,18 @@ export function installOpenWorldGitHubTransportUtilities(runtime) {
   }
 
   function assertSafeApplicationPackagePath(value) {
-    if (
-      typeof value !== "string"
-      || value.length === 0
-      || value.startsWith("/")
-      || value.includes("\\")
-      || CONTROL_OR_BIDI_PATTERN.test(value)
-      || value.split("/").some((segment) => segment === "" || segment === "." || segment === ".." || segment.toLowerCase() === ".git")
-    ) {
+    const stringValue = typeof value === "string" ? value : "";
+    const unsafeSegment = stringValue.split("/").some((segment) => (
+      new Set(["", ".", "..", ".git"]).has(segment.toLowerCase())
+    ));
+    if ([
+      typeof value !== "string",
+      stringValue.length === 0,
+      stringValue.startsWith("/"),
+      stringValue.includes("\\"),
+      CONTROL_OR_BIDI_PATTERN.test(stringValue),
+      unsafeSegment
+    ].includes(true)) {
       throw new CliFailure("APPLICATION_V3_PACKAGE_INVALID", "Application V3 package contains an unsafe path", { exitCode: 1 });
     }
   }

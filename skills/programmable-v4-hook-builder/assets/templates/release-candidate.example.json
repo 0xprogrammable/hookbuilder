@@ -1,16 +1,16 @@
 {
   "schemaVersion": "1.0.0",
-  "candidateId": "programmable-v4-builder-v0.9.3-local-20260815",
+  "candidateId": "programmable-v4-builder-v0.10.0-local-20260816",
   "privateCandidate": true,
   "publicState": "not-published",
-  "releaseVersion": "0.9.3",
+  "releaseVersion": "0.10.0",
   "channel": "canary",
   "releaseKind": "normal",
   "plannedRelease": {
     "builder": {
-      "fromVersion": "0.9.2",
-      "toVersion": "0.9.3",
-      "semanticClassification": "patch"
+      "fromVersion": "0.9.3",
+      "toVersion": "0.10.0",
+      "semanticClassification": "minor"
     },
     "submissionStandard": {
       "fromVersion": "1.6.0",
@@ -34,14 +34,24 @@
       "sha256": null
     }
   },
-  "preparedAt": "2026-08-15T10:52:58Z",
-  "requestedReleaseAt": "2026-08-15T10:52:58Z",
+  "preparedAt": "2026-08-16T00:00:00Z",
+  "requestedReleaseAt": "2026-08-16T00:00:00Z",
   "changeSetComplete": true,
   "changes": [
     {
-      "id": "bounded-module-syntax-verifier",
-      "kind": "maintenance",
-      "summary": "Parse the portable skill's JavaScript modules in one bounded worker without linking or executing them, preserve deterministic diagnostics, and keep the repository-only adversarial regression coverage and generated plugin payload in sync."
+      "id": "universal-application-v3-submission",
+      "kind": "feature",
+      "summary": "Route every complete PROJECT_PREFLIGHT_VALID project through the public namespaced Application V3 submit, update, and status transport while preserving the legacy top-level continuation path and explicit draft-only confirmation."
+    },
+    {
+      "id": "conditional-fee-v3-contract",
+      "kind": "feature",
+      "summary": "Advance Application V3 to 3.1.0 so Submission V2 projects that select no legacy Fee V2 contract declare feeApplicability not-selected without fabricated fee bindings."
+    },
+    {
+      "id": "application-v3-transport-hardening",
+      "kind": "security-fix",
+      "summary": "Bind plans to the protected base active-contract and exact V3 schema bytes, enforce maintainer_can_modify false on pull readback, and snapshot local package files through no-follow descriptor and stable fstat checks."
     }
   ],
   "unbundledChangeIds": [],

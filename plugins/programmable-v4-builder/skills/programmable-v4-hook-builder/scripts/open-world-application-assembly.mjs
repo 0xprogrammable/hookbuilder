@@ -1,7 +1,5 @@
 import { CliFailure, FULL_GIT_OBJECT_PATTERN, MAX_OUTPUT_FILE_BYTES, MAX_OUTPUT_PACKAGE_BYTES, MAX_ROOT_MANIFEST_BYTES, canonicalJson, computeRawGitObjectId, createOpenWorldDraftPackage, deriveDependencyAwareSecurityAssessment, fs, path, publicPrApplicationV3RequiredReviewKinds, sha256Bytes, strictUtf8 } from "./open-world-shared.mjs";
-
 const TRADE_APPLICATION_RECORD_KINDS = new Set(["trade-capability-manifest", "trade-test-result"]);
-
 export function installOpenWorldApplicationAssembly(runtime) {
   const compareUtf8 = (...args) => runtime.compareUtf8(...args);
   const isPlainObject = (...args) => runtime.isPlainObject(...args);
@@ -9,7 +7,6 @@ export function installOpenWorldApplicationAssembly(runtime) {
   const relative = (...args) => runtime.relative(...args);
   const routeStrictJsonResourceFailure = (...args) => runtime.routeStrictJsonResourceFailure(...args);
   const runGitBytes = (...args) => runtime.runGitBytes(...args);
-
   function readCommittedJsonAtPath(repositoryRoot, commit, binding, label) {
     if (
       !binding
@@ -54,7 +51,6 @@ export function installOpenWorldApplicationAssembly(runtime) {
     }
     return { document, bytes, objectId: entry.objectId };
   }
-
   function parseApplicationTreeEntry(bytes, repositoryPath, label) {
     const records = bytes.toString("utf8").split("\0").filter(Boolean);
     const match = records.length === 1

@@ -16,8 +16,8 @@ launch authorization, deployment receipt, provider result or Uniswap endorsement
 
 ## Release status
 
-Open-world submission v2, Fee V2, layered security and public application v3 are packaged for the immutable `v0.9.3`
-release. The bundled status retains `publicationStateVerified: false`; this source is not proof that v0.9.3 is published
+Open-world Submission V2, conditional Fee V2, layered security and public Application V3.1 are packaged for the immutable `v0.10.0`
+release. The bundled status retains `publicationStateVerified: false`; this source is not proof that v0.10.0 is published
 or live. A verified publication establishes exact package bytes and release artifacts only. It does not establish model behavior,
 an independent audit, Registry acceptance, launch authorization, deployment, routing, or public availability. See
 [`OPEN_WORLD_V2_RELEASE_GATES.md`](OPEN_WORLD_V2_RELEASE_GATES.md) for the still-separate evidence states.
@@ -70,18 +70,18 @@ The canonical package is
 layout. `SKILL.md`, references, schemas, templates, scripts, tests and `LICENSE.txt` form one package; copying only the
 entry file is incomplete.
 
-For reproducible public work, first verify that GitHub exposes the exact `v0.9.3` tag and release, then preview and pin
+For reproducible public work, first verify that GitHub exposes the exact `v0.10.0` tag and release, then preview and pin
 that immutable release:
 
 ```bash
 gh skill preview 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.9.3
+  programmable-v4-hook-builder@v0.10.0
 
 gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.9.3
+  --pin v0.10.0
 ```
 
 Replace `codex` with the supported host name when appropriate. User scope is the beginner default because it keeps the
