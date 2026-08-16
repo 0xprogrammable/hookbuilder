@@ -9,8 +9,8 @@ license: MIT
 ## Contract
 
 Build a complete evidence-backed repository. Use Autopilot; after isolated failure run `context --mode repair --brief`.
-Ask only for a material owner decision. Continue design into implementation. Claim eligibility,
-review, Registry, deployment and availability separately.
+Ask only for a material owner decision. Continue design into implementation. Separate eligibility, review, Registry,
+deployment and availability.
 
 ## Boundaries
 
@@ -53,9 +53,9 @@ launch, never source. Dry-run this custom-tradable command, then add `--write`:
 node "$BUILDER_CLI" project materialize --idea-file "$IDEA_FILE" --application-id "$APPLICATION_ID" --classification tradable --market-ref "$MARKET_REF" --project-profile foundry --contract-config-root "$CONTRACT_CONFIG_ROOT" --source-root "$SOURCE_ROOT" --test-root "$TEST_ROOT" --output "$NEW_REPOSITORY"
 ```
 
-`$CONTRACT_CONFIG_ROOT` supplies inert `package.json`, lock, remappings, `foundry.toml` and extra root config; preserve
-bytes/modes; never infer dependencies, `via_ir` or EVM. Use `--contract-config-profile foundry-default` as fallback;
-omission retains it for v0.9.1 compatibility.
+`$CONTRACT_CONFIG_ROOT` supplies inert package, lock, remappings, `foundry.toml` and root config. Preserve bytes/modes;
+never infer dependencies, `via_ir` or EVM. `--contract-config-profile foundry-default` is an explicit fallback;
+omission keeps v0.9.1 compatibility.
 
 For one application surface select `foundry-web`, `foundry-service` or `foundry-game` and add `--surface-root`. Labels
 certify no semantics; files are byte/mode-bound; unsafe, secret-risk or Git-control paths fail.
@@ -75,23 +75,24 @@ node "$SKILL_ROOT/scripts/cli.mjs" project require-output --brief --repository-r
 Only exact-byte `PROJECT_PREFLIGHT_VALID` completes Autopilot; it is not Applicant admission.
 Do not require `PROJECT_PREFLIGHT_VALID` or a trusted external sandbox to create an unreviewed Applicant Draft.
 Local or applicant-supplied test evidence remains unverified until independent review.
+`proposal` Drafts require exact source, Fee V2 `not-selected`, `unreviewed`, unresolved trade capability and no invented
+prototype or route evidence.
 Valid public source and V2/V3.1 packages use [V3.1](references/github-application-v3.md):
 `prepare-revision -> application -> submit`. Confirm its digest; the Draft stays `NOT_APPROVED`.
 
 ## Specialist invariants
 
-- Semantic preflight and typed composition are mandatory; `NO_KNOWN_CONFLICT` is never approval.
-- Materialize complete source/config/locks/tests/evidence; never hand-author derived bindings.
+- Require semantic preflight, typed composition and complete source/config/locks/tests/evidence; never hand-author
+  bindings. `NO_KNOWN_CONFLICT` is never approval.
 - Start v4 with 14 permissions disabled; prove PoolManager, isolation, hookData, deltas, settlement, routing and deploy
   preimage. `beforeSwapReturnDelta` needs backing, bounds, NoOp and adversarial proofs.
 - Classify `tradable`, `no-market` or `unresolved`; canonical v4 covers four direction/exactness quadrants. No-market has
-  no route. Fee V2 is exact legacy compatibility only; custom source remains eligible.
+  no route; Fee V2 is exact legacy only; custom remains eligible.
 - Escalate novel/value-bearing ambiguity; unavailable provider gates are `EXTERNAL_BLOCKED`.
-- V3.1 is generic; six-file `prepare-pr` is legacy and [Canary](references/workflow-canary-application.md) is a test.
-  None grants review, approval, deploy or launch.
+- V3.1 is generic; six-file `prepare-pr` and [Canary](references/workflow-canary-application.md) are legacy/test. None
+  grants review, approval, deploy or launch.
 
 ## Runtime
 
-Portable runtime is Node.js 22+; release gates use Node.js 24. `doctor` is local only. `project execute` returns
-`PROJECT_EXTERNAL_SANDBOX_REQUIRED`; [project-sandbox-host.md](references/project-sandbox-host.md) defines the
-`EXTERNAL_BLOCKED` host plan. No bundled production trust root or caller key can prove completion.
+Node.js 22+; release uses 24. `doctor` is local. `project execute` returns `PROJECT_EXTERNAL_SANDBOX_REQUIRED`;
+[project-sandbox-host.md](references/project-sandbox-host.md) is `EXTERNAL_BLOCKED`. Bundled/caller keys prove no completion.

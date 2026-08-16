@@ -718,7 +718,7 @@ test("public application v3 fee applicability is a closed stage tuple and review
   )), JSON.stringify(missingRecordReport.findings));
 });
 
-test("public application v3 generator materializes only an exact source-assessed prototype", () => {
+test("public application v3 generator materializes source-assessed prototypes and policy-neutral proposals", () => {
   const application = JSON.parse(fs.readFileSync(
     path.join(skillRoot, "assets", "templates", "open-world-v2", "public-pr-application-v3.example.json"),
     "utf8"
@@ -1374,15 +1374,68 @@ test("public application v3 generator materializes only an exact source-assessed
   assert.equal(confirmedDrainResult.report.ideaEligibility, "ELIGIBLE_FOR_REVIEW");
   assert.ok(confirmedDrainResult.report.findings.some(({ code }) => code === "APPLICATION_SECURITY_CONFIRMED_REDESIGN_REQUIRED"));
 
-  const proposal = structuredClone(input);
-  proposal.application.stage = "proposal";
-  proposal.application.policyBindings.feePolicyInstancePath = null;
-  proposal.application.policyBindings.feePolicyInstanceRepositoryRef = null;
-  proposal.application.policyBindings.feePolicyInstanceSha256 = null;
-  proposal.application.policyBindings.feeApplicability = "unresolved";
-  proposal.application.reviewPackage.records = proposal.application.reviewPackage.records.filter(({ kind }) => kind !== "fee-policy");
-  proposal.securityAssessment.subject.stage = "proposal";
-  const held = generatePublicPrApplicationV3(proposal);
+  const policyNeutralProposal = structuredClone(input);
+  policyNeutralProposal.application.stage = "proposal";
+  Object.assign(policyNeutralProposal.application.policyBindings, {
+    feePolicySchemaId: null,
+    programmableFeePolicyId: null,
+    programmableFeePolicyVersion: null,
+    programmableFeePolicyHashPreimage: null,
+    programmableFeePolicyHash: null,
+    feeApplicability: "not-selected",
+    feePolicySchemaPath: null,
+    feePolicySchemaRepositoryRef: null,
+    feePolicySchemaSha256: null,
+    feePolicyInstancePath: null,
+    feePolicyInstanceRepositoryRef: null,
+    feePolicyInstanceSha256: null
+  });
+  policyNeutralProposal.application.reviewPackage.requiredKinds = policyNeutralProposal.application.reviewPackage.requiredKinds
+    .filter((kind) => kind !== "fee-policy-schema");
+  policyNeutralProposal.application.reviewPackage.records = policyNeutralProposal.application.reviewPackage.records
+    .filter(({ kind }) => kind !== "fee-policy-schema" && kind !== "fee-policy");
+  policyNeutralProposal.securityAssessment.subject.stage = "proposal";
+  refreshDerivedSecurityBinding(policyNeutralProposal);
+  const policyNeutralProposalResult = generatePublicPrApplicationV3(policyNeutralProposal);
+  assert.equal(
+    policyNeutralProposalResult.materializationAllowed,
+    true,
+    JSON.stringify(policyNeutralProposalResult.report.findings)
+  );
+  assert.equal(policyNeutralProposalResult.application.stage, "proposal");
+  assert.equal(policyNeutralProposalResult.application.reviewState.status, "unreviewed");
+  assert.equal(policyNeutralProposalResult.application.policyBindings.feeApplicability, "not-selected");
+  assert.equal(policyNeutralProposalResult.report.approvalGranted, false);
+  assert.equal(policyNeutralProposalResult.report.deploymentAuthorizationGranted, false);
+  assert.equal(policyNeutralProposalResult.report.launchAuthorizationGranted, false);
+
+  for (const kind of ["trade-capability-manifest", "trade-test-result"]) {
+    const fabricatedTradeEvidence = structuredClone(policyNeutralProposal);
+    const templateRecord = fabricatedTradeEvidence.application.reviewPackage.records
+      .find((record) => record.source === "application-package");
+    fabricatedTradeEvidence.application.reviewPackage.records.push({
+      ...templateRecord,
+      kind,
+      path: `${kind}.json`
+    });
+    const fabricatedTradeResult = generatePublicPrApplicationV3(fabricatedTradeEvidence);
+    assert.equal(fabricatedTradeResult.materializationAllowed, false);
+    assert.ok(fabricatedTradeResult.report.findings.some(({ code }) => (
+      code === "APPLICATION_PROPOSAL_TRADE_EVIDENCE_FORBIDDEN"
+    )));
+  }
+
+  const selectedFeeProposal = structuredClone(input);
+  selectedFeeProposal.application.stage = "proposal";
+  selectedFeeProposal.application.policyBindings.feePolicyInstancePath = null;
+  selectedFeeProposal.application.policyBindings.feePolicyInstanceRepositoryRef = null;
+  selectedFeeProposal.application.policyBindings.feePolicyInstanceSha256 = null;
+  selectedFeeProposal.application.policyBindings.feeApplicability = "unresolved";
+  selectedFeeProposal.application.reviewPackage.records = selectedFeeProposal.application.reviewPackage.records
+    .filter(({ kind }) => kind !== "fee-policy");
+  selectedFeeProposal.securityAssessment.subject.stage = "proposal";
+  refreshDerivedSecurityBinding(selectedFeeProposal);
+  const held = generatePublicPrApplicationV3(selectedFeeProposal);
   assert.equal(held.materializationAllowed, false);
   assert.ok(held.report.findings.some(({ code }) => code === "APPLICATION_GENERATOR_PROTOTYPE_REQUIRED"));
 

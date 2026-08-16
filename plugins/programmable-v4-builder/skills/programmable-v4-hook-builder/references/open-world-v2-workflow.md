@@ -143,7 +143,8 @@ actual architecture, exact source bindings, and honestly classified evidence. Va
 `open-world validate`, freeze every exact public GitHub source commit and tree, then continue through
 `prepare-revision`, `application`, and the confirmation-gated Draft transport in
 [`github-application-v3.md`](github-application-v3.md). Local or applicant-supplied test evidence remains unverified until independent review.
-Never invent a test run, deployment, audit, acceptance, approval, or launch claim to make the package validate.
+Never invent evidence or authority. A custom `proposal` Draft requires exact source, Fee V2 `not-selected`, no legacy
+bindings or trade records, and unresolved trade capability. Never call it a prototype.
 
 Retain an immutable repository-relative chain:
 

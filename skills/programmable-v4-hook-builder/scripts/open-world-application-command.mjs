@@ -1,4 +1,4 @@
-import { CliFailure, MAX_APPLICATION_BYTES, MAX_SECURITY_BINDINGS_BYTES, canonicalJson, deriveOpenWorldV2FeeApplicability, fs, generatePublicPrApplicationV3, path, sha256Bytes, validateLegacyFeeV2OpenWorldPackage, validateOpenWorldPackage, verifyLocalSourceClosureManifestV1, verifyRawGitCommitTreeIntegrity } from "./open-world-shared.mjs";
+import { CliFailure, MAX_APPLICATION_BYTES, MAX_SECURITY_BINDINGS_BYTES, canonicalJson, deriveOpenWorldV2FeeApplicability, fs, generatePublicPrApplicationV3, parseBoundedStrictJson, path, sha256Bytes, validateLegacyFeeV2OpenWorldPackage, validateOpenWorldPackage, verifyLocalSourceClosureManifestV1, verifyRawGitCommitTreeIntegrity } from "./open-world-shared.mjs";
 
 export function installOpenWorldApplicationCommand(runtime) {
   const assembleDerivedApplicationV3 = (...args) => runtime.assembleDerivedApplicationV3(...args);
@@ -68,19 +68,21 @@ export function installOpenWorldApplicationCommand(runtime) {
       throw new CliFailure("APPLICATION_V2_PACKAGE_INVALID", "the V2 package changed or failed validation while Application V3 inputs were collected", { exitCode: 1 });
     }
     const feeApplicability = deriveOpenWorldV2FeeApplicability(submission);
-    if (
-      submission?.stage !== "prototype"
-      || feeApplicability === "unresolved"
-    ) {
+    const policyNeutralProposal = submission?.stage === "proposal"
+      && feeApplicability === "not-selected";
+    const reviewablePrototype = submission?.stage === "prototype"
+      && feeApplicability !== "unresolved";
+    if (!policyNeutralProposal && !reviewablePrototype) {
       throw new CliFailure(
         "APPLICATION_PROTOTYPE_EVIDENCE_REQUIRED",
-        "an Application V3 package requires a committed prototype whose validated Submission V2 resolves any selected legacy Fee V2 scope; projects that do not select Fee V2 use the explicit not-selected state",
+        "an Application V3 package requires either a committed prototype whose validated Submission V2 resolves any selected legacy Fee V2 scope, or an unreviewed policy-neutral proposal whose Fee V2 applicability is explicitly not-selected",
         {
           exitCode: 1,
           details: {
             stage: submission?.stage ?? null,
             feeApplicability,
-            feePolicyInstancePresent: submission?.supportingPackage?.feePolicy !== null,
+            feePolicyInstancePresent: submission?.supportingPackage?.feePolicy !== undefined
+              && submission.supportingPackage.feePolicy !== null,
             writePerformed: false,
             ideaEligibility: "ELIGIBLE_FOR_REVIEW"
           }
@@ -96,15 +98,42 @@ export function installOpenWorldApplicationCommand(runtime) {
     const securityAssessmentSnapshot = readJsonValueSnapshot(securityAssessmentPath, "derived security assessment", MAX_APPLICATION_BYTES, { requireObject: true });
     const bindingsSnapshot = readJsonValueSnapshot(bindingsPath, "security evidence bindings", MAX_SECURITY_BINDINGS_BYTES, { requireArray: true });
     const reviewSnapshots = readApplicationReviewSnapshots(reviewRoot);
+    if (policyNeutralProposal) {
+      const compatibilitySnapshot = reviewSnapshots.find(({ reviewSpec }) => reviewSpec.kind === "compatibility-report");
+      const compatibility = parseBoundedStrictJson(compatibilitySnapshot?.text ?? "", {
+        maxSourceBytes: MAX_APPLICATION_BYTES,
+        maxDepth: 32,
+        maxNodes: 1_024,
+        maxNumberCharacters: 256
+      });
+      if (compatibility?.result !== "architecture-review-required") {
+        throw new CliFailure(
+          "APPLICATION_PROPOSAL_COMPATIBILITY_INVALID",
+          "a policy-neutral proposal must remain architecture-review-required and cannot claim prototype or trade readiness",
+          {
+            exitCode: 1,
+            details: {
+              stage: submission.stage,
+              feeApplicability,
+              reviewState: "unreviewed",
+              writePerformed: false,
+              approvalGranted: false,
+              deploymentAuthorizationGranted: false,
+              launchAuthorizationGranted: false
+            }
+          }
+        );
+      }
+    }
     const application = applicationSnapshot.document;
     const securityAssessmentDraft = securityAssessmentSnapshot.document;
 
     if (
       application?.applicationId !== submission?.applicationId
-      || application?.stage !== "prototype"
+      || application?.stage !== submission?.stage
       || application?.contract?.id !== "public-pr-application-v3"
     ) {
-      throw new CliFailure("APPLICATION_V3_BINDING_INVALID", "Application V3 does not bind the exact prototype application identity and contract", { exitCode: 1 });
+      throw new CliFailure("APPLICATION_V3_BINDING_INVALID", "Application V3 does not bind the exact V2 application identity, stage, and contract", { exitCode: 1 });
     }
 
     const sourceRoots = resolveSourceRootMappings(options.sourceRoots, repositoryRoot, application);
@@ -418,6 +447,7 @@ export function installOpenWorldApplicationCommand(runtime) {
       writePerformed: options.write,
       reviewRequired: true,
       approvalGranted: false,
+      deploymentAuthorizationGranted: false,
       launchAuthorizationGranted: false,
       networkAccessed: false,
       candidateCodeExecuted: false,

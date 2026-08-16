@@ -319,6 +319,14 @@ function validateReviewPackage(reviewPackage, policy, stage, intent, add) {
     add("blocker", "APPLICATION_REVIEW_REQUIRED_KINDS_INVALID", "$.reviewPackage.requiredKinds", "The semantic review-kind contract is missing, reordered, or expanded as if optional records were mandatory.", "Use the exact required-kind list; add novel evidence as extra open records.", "review-package");
   }
   const records = Array.isArray(reviewPackage.records) ? reviewPackage.records : [];
+  if (stage === "proposal") {
+    const fabricatedTradeRecord = records.find(({ kind }) => (
+      kind === "trade-capability-manifest" || kind === "trade-test-result"
+    ));
+    if (fabricatedTradeRecord !== undefined) {
+      add("blocker", "APPLICATION_PROPOSAL_TRADE_EVIDENCE_FORBIDDEN", "$.reviewPackage.records", "An unresolved proposal cannot carry a trade-capability manifest or trade-test result.", "Keep proposal trade capability unresolved with no selected route or fabricated execution evidence.", "trade-capability");
+    }
+  }
   const kinds = new Set(records.map((record) => record?.kind));
   for (const kind of requiredReviewKinds) {
     if (!kinds.has(kind)) {

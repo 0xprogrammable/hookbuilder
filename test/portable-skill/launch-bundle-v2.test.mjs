@@ -950,6 +950,130 @@ test("application CLI materializes a validated zero-scope service without a fee-
   assert.equal(fs.existsSync(path.join(fixtureValue.outputRoot, "fee-policy.v2.json")), false);
 });
 
+test("application CLI materializes a policy-neutral custom tradable proposal only as an unreviewed Applicant package", (t) => {
+  const fixtureValue = createApplicationCliFixture(t, {
+    name: "policy-neutral-custom-tradable-proposal",
+    symlinkTarget: "OpenWorldHook.sol",
+    feeApplicability: "policy-neutral-proposal"
+  });
+  const result = runApplicationCli(fixtureValue);
+  assert.equal(result.status, 0, result.stdout || result.stderr);
+  const payload = JSON.parse(result.stdout).result;
+  assert.equal(payload.action, "application");
+  assert.equal(payload.stage, "proposal");
+  assert.equal(payload.writePerformed, true);
+  assert.equal(payload.reviewRequired, true);
+  assert.equal(payload.approvalGranted, false);
+  assert.equal(payload.deploymentAuthorizationGranted, false);
+  assert.equal(payload.launchAuthorizationGranted, false);
+  assert.equal(payload.candidateCodeExecuted, false);
+  assert.deepEqual(payload.externalActionsPerformed, []);
+
+  const application = readJson(path.join(fixtureValue.outputRoot, "application.v3.json"));
+  const security = readJson(path.join(fixtureValue.outputRoot, "security-assessment.v1.json"));
+  assert.equal(application.stage, "proposal");
+  assert.equal(application.reviewState.status, "unreviewed");
+  assert.equal(application.reviewState.inheritedApproval, false);
+  assert.equal(application.policyBindings.feeApplicability, "not-selected");
+  for (const field of [
+    "feePolicySchemaId",
+    "programmableFeePolicyId",
+    "programmableFeePolicyVersion",
+    "programmableFeePolicyHashPreimage",
+    "programmableFeePolicyHash",
+    "feePolicySchemaPath",
+    "feePolicySchemaRepositoryRef",
+    "feePolicySchemaSha256",
+    "feePolicyInstancePath",
+    "feePolicyInstanceRepositoryRef",
+    "feePolicyInstanceSha256"
+  ]) assert.equal(application.policyBindings[field], null, field);
+  assert.equal(application.reviewPackage.requiredKinds.includes("fee-policy-schema"), false);
+  assert.equal(application.reviewPackage.records.some(({ kind }) => (
+    kind === "fee-policy-schema"
+    || kind === "fee-policy"
+    || kind === "trade-capability-manifest"
+    || kind === "trade-test-result"
+  )), false);
+  assert.deepEqual(readJson(path.join(fixtureValue.outputRoot, "compatibility-report.json")), {
+    result: "architecture-review-required",
+    schemaVersion: 3
+  });
+  assert.equal(security.subject.stage, "proposal");
+  assert.equal(fs.existsSync(path.join(fixtureValue.outputRoot, "fee-policy-v2.schema.json")), false);
+  assert.equal(fs.existsSync(path.join(fixtureValue.outputRoot, "fee-policy.v2.json")), false);
+});
+
+test("application CLI rejects a policy-neutral proposal that claims prototype readiness", (t) => {
+  const fixtureValue = createApplicationCliFixture(t, {
+    name: "policy-neutral-prototype-readiness-claim",
+    symlinkTarget: "OpenWorldHook.sol",
+    feeApplicability: "policy-neutral-proposal"
+  });
+  fs.writeFileSync(
+    path.join(fixtureValue.reviewRoot, "compatibility-report.json"),
+    `${canonicalJson({ result: "prototype-ready", schemaVersion: 3 })}\n`,
+    "utf8"
+  );
+  const result = runApplicationCli(fixtureValue);
+  assert.equal(result.status, 1, result.stdout || result.stderr);
+  const error = JSON.parse(result.stdout).error;
+  assert.equal(error.code, "APPLICATION_PROPOSAL_COMPATIBILITY_INVALID");
+  assert.equal(error.details.stage, "proposal");
+  assert.equal(error.details.feeApplicability, "not-selected");
+  assert.equal(error.details.reviewState, "unreviewed");
+  assert.equal(error.details.approvalGranted, false);
+  assert.equal(error.details.deploymentAuthorizationGranted, false);
+  assert.equal(error.details.launchAuthorizationGranted, false);
+  assert.equal(error.details.writePerformed, false);
+  assert.equal(fs.existsSync(fixtureValue.outputRoot), false);
+});
+
+test("application CLI keeps a selected Fee V2 proposal blocked and reports the absent instance accurately", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-selected-fee-proposal-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const packageRoot = path.join(root, "open-world-v2");
+  fs.mkdirSync(packageRoot);
+  const draft = createLegacyFeeV2DraftPackage({
+    applicationId: "selected-fee-proposal",
+    publicIdeaText: "Build a custom tradable hook while keeping the selected legacy Fee V2 scope unresolved.",
+    sourceRef: "test-message"
+  });
+  assert.equal(draft.materializationAllowed, true, JSON.stringify(draft.report.findings));
+  for (const file of draft.files) {
+    const filePath = path.join(packageRoot, ...file.path.split("/"));
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, file.content, "utf8");
+  }
+  const result = childProcess.spawnSync(process.execPath, [
+    cli,
+    "open-world", "application", "open-world-v2",
+    "--application-draft", path.join(root, "unused-application.json"),
+    "--review-package", path.join(root, "unused-review"),
+    "--security-assessment", path.join(root, "unused-security.json"),
+    "--security-evidence-bindings", path.join(root, "unused-bindings.json"),
+    "--source-root", `primary-source=${root}`,
+    "--output", path.join(root, "application-output"),
+    "--write",
+    "--repository-root", root
+  ], {
+    cwd: root,
+    encoding: "utf8",
+    shell: false,
+    env: process.env,
+    timeout: 30_000,
+    maxBuffer: 16_000_000
+  });
+  assert.equal(result.status, 1, result.stdout || result.stderr);
+  const error = JSON.parse(result.stdout).error;
+  assert.equal(error.code, "APPLICATION_PROTOTYPE_EVIDENCE_REQUIRED");
+  assert.equal(error.details.stage, "proposal");
+  assert.equal(error.details.feeApplicability, "unresolved");
+  assert.equal(error.details.feePolicyInstancePresent, false);
+  assert.equal(error.details.writePerformed, false);
+  assert.equal(fs.existsSync(path.join(root, "application-output")), false);
+});
+
 test("application CLI rejects duplicate or byte-conflicting consumed V2 source identities", (t) => {
   for (const mutation of ["duplicate", "wrong-sha256"]) {
     const fixtureValue = createApplicationCliFixture(t, {
@@ -3122,6 +3246,119 @@ function makeZeroScopeServiceInput(input, { unknownScope = false, injectFeeInsta
   }
 }
 
+function makePolicyNeutralProposalInput(input) {
+  const currentSubmission = input.artifacts.submission;
+  const submission = JSON.parse(currentSubmission.content);
+  submission.stage = "proposal";
+  submission.project.summary = {
+    language: "en",
+    text: "A custom tradable Uniswap v4 hook proposal with no legacy Fee V2 selection or claimed trade evidence."
+  };
+  submission.tradeCapability = {
+    applicability: "unresolved",
+    facetEntryRef: "routing-trade-capability",
+    markets: []
+  };
+  for (const market of submission.markets) {
+    market.executionClass = "unknown";
+    market.canonicalScopes = [];
+  }
+  submission.valueFlows = submission.valueFlows.filter(({ id }) => id !== "platform-fee-flow");
+  submission.authorities = submission.authorities.filter(({ id }) => id !== "programmable-fee-owner");
+  for (const phase of submission.lifecyclePhases) {
+    phase.valueFlowRefs = phase.valueFlowRefs.filter((id) => id !== "platform-fee-flow");
+    phase.authorityRefs = phase.authorityRefs.filter((id) => id !== "programmable-fee-owner");
+  }
+  submission.implementation.sourcePaths = submission.implementation.sourcePaths
+    .filter((sourcePath) => sourcePath !== "src/FeeCollector.sol");
+  submission.implementation.evidenceRefs = submission.implementation.evidenceRefs
+    .filter((evidenceRef) => evidenceRef !== "fee-implementation");
+  delete submission.programmableFee;
+  delete submission.supportingPackage.feePolicy;
+  delete submission.supportingPackage.feePolicySchema;
+
+  const currentFidelity = input.artifacts.intentFidelity;
+  const fidelity = JSON.parse(currentFidelity.content);
+  fidelity.inputDigests.architectureSnapshotSha256 = architectureSnapshotSha256(submission);
+  const fidelityBinding = jsonBinding({
+    id: currentFidelity.id,
+    sourceRef: currentFidelity.sourceRef,
+    path: currentFidelity.path,
+    schemaId: currentFidelity.schemaId,
+    value: fidelity
+  });
+  input.artifacts.intentFidelity = fidelityBinding;
+  submission.intentPackage.intentFidelity = intentArtifact(
+    "intent-fidelity",
+    INTENT_FIDELITY_V1_SCHEMA_ID,
+    fidelityBinding
+  );
+
+  const submissionBinding = jsonBinding({
+    id: currentSubmission.id,
+    sourceRef: currentSubmission.sourceRef,
+    path: currentSubmission.path,
+    schemaId: currentSubmission.schemaId,
+    value: submission
+  });
+  input.artifacts.submission = submissionBinding;
+  input.artifacts.feePolicy = null;
+  input.artifacts.evidence = input.artifacts.evidence.filter(({ id }) => !id.startsWith("fee-"));
+  const compatibilityIndex = input.artifacts.evidence.findIndex(({ id }) => id === "compatibility-report");
+  const compatibility = input.artifacts.evidence[compatibilityIndex];
+  input.artifacts.evidence[compatibilityIndex] = jsonEvidence(
+    compatibility.id,
+    compatibility.evidenceType,
+    compatibility.path,
+    { result: "architecture-review-required", schemaVersion: 3 },
+    compatibility.sourceRef,
+    compatibility.schemaId
+  );
+  input.feeScopeBindings = [];
+
+  rebindApplication(input, (application) => {
+    application.stage = "proposal";
+    application.title = "Custom tradable hook Applicant proposal";
+    application.summary = "A source-bound custom tradable proposal without claimed prototype, trade, or legacy Fee V2 evidence.";
+    Object.assign(application.policyBindings, {
+      feePolicySchemaId: null,
+      programmableFeePolicyId: null,
+      programmableFeePolicyVersion: null,
+      programmableFeePolicyHashPreimage: null,
+      programmableFeePolicyHash: null,
+      feeApplicability: "not-selected",
+      feePolicySchemaPath: null,
+      feePolicySchemaRepositoryRef: null,
+      feePolicySchemaSha256: null,
+      feePolicyInstancePath: null,
+      feePolicyInstanceRepositoryRef: null,
+      feePolicyInstanceSha256: null,
+      submissionPath: submissionBinding.path,
+      submissionRepositoryRef: submissionBinding.sourceRef,
+      submissionSha256: submissionBinding.sha256
+    });
+    application.source.primary.contractPaths = application.source.primary.contractPaths
+      .filter((contractPath) => contractPath !== "src/FeeCollector.sol");
+    application.reviewPackage.requiredKinds = application.reviewPackage.requiredKinds
+      .filter((kind) => kind !== "fee-policy-schema");
+    application.reviewPackage.records = application.reviewPackage.records
+      .filter(({ kind, path: recordPath }) => (
+        !new Set([
+          "fee-policy-schema",
+          "fee-policy",
+          "fee-conformance-receipt",
+          "fee-conformance-vector-set",
+          "trade-capability-manifest",
+          "trade-test-result"
+        ]).has(kind)
+        && recordPath !== "src/FeeCollector.sol"
+      ));
+    const fidelityRecord = application.reviewPackage.records.find(({ kind }) => kind === "intent-fidelity");
+    fidelityRecord.sha256 = fidelityBinding.sha256;
+    fidelityRecord.byteLength = fidelityBinding.byteLength;
+  });
+}
+
 function makeCanonicalNotApplicableApplicationClaim(input) {
   rebindApplication(input, (application) => {
     application.policyBindings.feeApplicability = "not-applicable";
@@ -3136,6 +3373,7 @@ function makeCanonicalNotApplicableApplicationClaim(input) {
 function createApplicationCliFixture(t, { name, symlinkTarget, feeApplicability = "applicable" }) {
   const launchInput = fixture({ sourceClosureMode: "inline" });
   if (feeApplicability === "not-applicable") makeZeroScopeServiceInput(launchInput);
+  if (feeApplicability === "policy-neutral-proposal") makePolicyNeutralProposalInput(launchInput);
   if (feeApplicability === "not-applicable-unknown") {
     makeZeroScopeServiceInput(launchInput, { unknownScope: true });
   }
@@ -3228,7 +3466,7 @@ function createApplicationCliFixture(t, { name, symlinkTarget, feeApplicability 
   security.subject = {
     id: application.applicationId,
     revision: primary.revisionObjectId,
-    stage: "prototype"
+    stage: application.stage
   };
   security.assessment.state = "source-assessed";
   security.assessment.reasonCode = null;

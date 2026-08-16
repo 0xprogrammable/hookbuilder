@@ -74,16 +74,16 @@ path, regular file or symlink target fails closed and removes that newly created
   },
   "subjects": [
     {
-      "id": "v0-10-0-baseline",
+      "id": "v0-10-1-baseline",
       "role": "baseline",
-      "skillPath": "/absolute/frozen/v0.10.0/skill",
+      "skillPath": "/absolute/frozen/v0.10.1/skill",
       "adapterArgv": ["/absolute/trusted/subject-adapter", "--host", "codex"],
       "host": { "name": "codex", "version": "exact-host-version", "provider": "exact-provider", "model": "subject-model-a" }
     },
     {
-      "id": "v0-10-1-candidate",
+      "id": "v0-10-2-candidate",
       "role": "candidate",
-      "skillPath": "/absolute/frozen/v0.10.1/skill",
+      "skillPath": "/absolute/frozen/v0.10.2/skill",
       "adapterArgv": ["/absolute/trusted/subject-adapter", "--host", "codex"],
       "host": { "name": "codex", "version": "exact-host-version", "provider": "exact-provider", "model": "subject-model-a" }
     },

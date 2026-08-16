@@ -3,9 +3,9 @@
 > Application V3.1 is the accepted generic Applicant contract for protected Draft PRs to
 > `0xprogrammable/submit-launch:main`. Never create a new Applicant PR in Hookbuilder.
 
-Use this path for every completed generic Programmable project, including hooks, applications, services, games,
-multi-repository systems and unfamiliar custom architectures. Unknown project kinds remain eligible and enter review;
-they are not rejected or forced into a template because they are novel.
+Use this path for every completed generic Programmable project and for an exact source-bound policy-neutral proposal,
+including hooks, applications, services, games, multi-repository systems and unfamiliar custom architectures. Unknown
+project kinds remain eligible and enter review; they are not rejected or forced into a template because they are novel.
 
 Do not require `PROJECT_PREFLIGHT_VALID` or a trusted external sandbox to create an unreviewed Applicant Draft.
 Local or applicant-supplied test evidence remains unverified until independent review. Preserve that limitation in
@@ -75,6 +75,11 @@ second normative summary that can replace provenance.
 
 Keep a submitted application `unreviewed`. Require no acceptance binding and grant no approval. A later trusted review
 decision is a separate authority record for one exact revision.
+
+A policy-neutral `proposal` may be materialized for this unreviewed Applicant route only when `feeApplicability` is
+`not-selected`, every legacy Fee V2 field is null, and no Fee V2 record exists. Preserve unresolved trade capability and
+omit trade manifests and trade-test results. If exact trade evidence exists, advance honestly to `prototype` instead of
+attaching it to a proposal. Source verification still does not prove trade capability, audit, deployment, approval, or launch.
 
 Only after the legacy Fee V2 package is explicitly selected, derive its compatibility field from the exact bound
 Submission V2 graph:
@@ -170,6 +175,7 @@ complete review/security inputs and repeatable current-source mappings. This sec
 - accept only already-derived immutable repository identities, revision/lineage and exact local Git objects;
 - validate the complete v2 package and source closure;
 - derive source-assessed security and repository verification reports only after all source commits are fixed;
+- preserve a policy-neutral proposal as `proposal` with Fee V2 `not-selected` and no invented prototype or trade evidence;
 - generate canonical deterministic `application.v3.json` bytes;
 - refuse an existing destination unless a separately documented update path owns that exact revision; and
 - write only after an explicit local write flag through staging and atomic rename.

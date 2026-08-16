@@ -2,6 +2,28 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.10.2 - 2026-08-16
+
+### Fixed
+
+- Allowed an exactly valid custom Submission V2 at `stage: "proposal"` to materialize an Application V3.1 Applicant
+  package when `ideaEligibility` remains `ELIGIBLE_FOR_REVIEW` and legacy Fee V2 is explicitly `not-selected`.
+- Required policy-neutral proposals to retain `architecture-review-required` compatibility and rejected proposal
+  packages that fabricate a trade-capability manifest, trade-test result, prototype readiness, or a mismatched stage.
+- Corrected the absent Fee V2 instance diagnostic so an omitted instance is reported as absent instead of present.
+
+### Evidence boundary
+
+- Proposal transport creates only an unreviewed Applicant Draft path. It does not prove prototype readiness, trade
+  capability, testing, audit, approval, deployment, availability, or launch authorization.
+- Every legacy Fee V2 identity and instance binding remains null for `not-selected`; selected or unresolved Fee V2
+  proposals remain blocked rather than being relabeled.
+- Read-only GitHub verification bound Submit a Launch `v1.6.1` to commit
+  `86be682bf92041103316d3a6616a10568d8360fb`, tree
+  `3a5f2f0279ee06e560a43c499f62107a43c60f5d`, active-contract SHA-256
+  `b2a610c6e8e682df8dad0549827c1b8e7712299e1b523778cd6e34523244f7e0`, and Application V3 schema SHA-256
+  `2d51837bbbfe52672ecca334596243bebcec78e8e0a885d67084dfd98955bcb7`.
+
 ## 0.10.1 - 2026-08-16
 
 ### Fixed
