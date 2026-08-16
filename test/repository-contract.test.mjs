@@ -172,7 +172,7 @@ test("canonical config version and generated package identities agree", () => {
   assert.equal(packageDocument.homepage, "https://github.com/0xprogrammable/hookbuilder#readme");
   assert.equal(Object.hasOwn(packageDocument, "dependencies"), false);
   assert.equal(Object.hasOwn(packageDocument, "devDependencies"), false);
-  assert.equal(metadata.version, "0.9.3");
+  assert.equal(metadata.version, "0.10.0");
   assert.equal(packageLock.name, packageDocument.name);
   assert.equal(packageLock.version, packageDocument.version);
   assert.equal(packageLock.packages[""].name, packageDocument.name);
@@ -277,7 +277,7 @@ test("plugin manifests are generated from canonical metadata and package version
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(result.stdout);
   assert.equal(report.status, "PLUGIN_MANIFESTS_VALID");
-  assert.equal(report.version, "0.9.3");
+  assert.equal(report.version, "0.10.0");
   assert.deepEqual(report.outputs, [
     ".codex-plugin/plugin.json",
     ".agents/plugins/marketplace.json",
@@ -292,9 +292,9 @@ test("plugin manifests are generated from canonical metadata and package version
   assert.equal(report.payload.sourceModeVerified, true);
   assert.deepEqual(report.payload.portableSkill, {
     files: 618,
-    bytes: 8_657_625,
-    repositoryOnlyFiles: 97,
-    repositoryOnlyBytes: 3_016_669,
+    bytes: 8_674_949,
+    repositoryOnlyFiles: 98,
+    repositoryOnlyBytes: 3_031_906,
     repositorySourcesVerified: true
   });
 });
@@ -500,9 +500,10 @@ test("trusted-base intake routing rejects every new Hookbuilder application with
   assert.match(codeowners, /^submissions\/requests\/\*\* @0xprogrammable$/mu);
   assert.match(support, /0xprogrammable\/submit-launch/u);
   assert.match(support, /against Hookbuilder `main` only/u);
-  assert.match(publicGuide, /path-filtered check is early feedback/u);
-  assert.match(publicGuide, /rejects Applicant changes targeting `release\/\*`/u);
-  assert.match(publicGuide, /Applicant gate.*authoritative merge boundary/u);
+  assert.match(publicGuide, /canonical public review path for every completed one-off Programmable project/u);
+  assert.match(publicGuide, /Every generic project then uses/u);
+  assert.match(publicGuide, /The first submit call is read-only/u);
+  assert.match(publicGuide, /Draft PR against `0xprogrammable\/submit-launch:main`/u);
   assert.equal(HOOKBUILDER_LEGACY_APPLICANT_BASE_BRANCH, "main");
   for (const pullRequest of HOOKBUILDER_LEGACY_APPLICANT_PULL_REQUESTS) {
     assert.match(support, new RegExp(`#${pullRequest}(?:,| and|\\.)`, "u"));
@@ -733,7 +734,7 @@ test("release output containment rejects an in-repository ..x directory and perm
     process.execPath,
     [
       script,
-      "--tag", "v0.9.3",
+      "--tag", "v0.10.0",
       "--output-dir", path.join(repositoryRoot, "..x-release-output"),
       "--kernel-evidence", evidence
     ],
@@ -747,7 +748,7 @@ test("release output containment rejects an in-repository ..x directory and perm
   fs.writeFileSync(path.join(outside, "sentinel"), "keep non-empty\n");
   const escaped = childProcess.spawnSync(
     process.execPath,
-    [script, "--tag", "v0.9.3", "--output-dir", outside, "--kernel-evidence", evidence],
+    [script, "--tag", "v0.10.0", "--output-dir", outside, "--kernel-evidence", evidence],
     { cwd: repositoryRoot, encoding: "utf8", shell: false, stdio: ["ignore", "pipe", "pipe"] }
   );
   assert.notEqual(escaped.status, 0);

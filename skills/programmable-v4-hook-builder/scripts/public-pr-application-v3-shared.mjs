@@ -3,7 +3,7 @@ import { TextDecoder } from "node:util";
 import { canonicalJson } from "./submission-core.mjs";
 
 export const PUBLIC_PR_APPLICATION_V3_REPORT_VERSION = "1.0.0";
-export const PUBLIC_PR_APPLICATION_V3_REQUIRED_REVIEW_KINDS = Object.freeze([
+export const PUBLIC_PR_APPLICATION_V3_BASE_REQUIRED_REVIEW_KINDS = Object.freeze([
   "proposal",
   "test-plan",
   "threat-model",
@@ -13,10 +13,23 @@ export const PUBLIC_PR_APPLICATION_V3_REQUIRED_REVIEW_KINDS = Object.freeze([
   "intent-contract",
   "architecture-decisions",
   "intent-fidelity",
-  "fee-policy-schema",
   "security-assessment-schema",
   "security-assessment"
 ]);
+export const PUBLIC_PR_APPLICATION_V3_REQUIRED_REVIEW_KINDS = Object.freeze([
+  ...PUBLIC_PR_APPLICATION_V3_BASE_REQUIRED_REVIEW_KINDS.slice(0, 9),
+  "fee-policy-schema",
+  ...PUBLIC_PR_APPLICATION_V3_BASE_REQUIRED_REVIEW_KINDS.slice(9)
+]);
+
+export function publicPrApplicationV3RequiredReviewKinds({ feeV2Selected }) {
+  if (typeof feeV2Selected !== "boolean") {
+    throw new TypeError("Application V3 review-kind selection requires one explicit Fee V2 selection state");
+  }
+  return feeV2Selected
+    ? PUBLIC_PR_APPLICATION_V3_REQUIRED_REVIEW_KINDS
+    : PUBLIC_PR_APPLICATION_V3_BASE_REQUIRED_REVIEW_KINDS;
+}
 export const PUBLIC_PR_APPLICATION_V3_CAPTURE_STATUSES = Object.freeze([
   "captured-verbatim-public-safe",
   "redacted-sensitive",

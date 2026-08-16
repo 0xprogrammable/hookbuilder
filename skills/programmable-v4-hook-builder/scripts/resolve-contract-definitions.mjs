@@ -40,6 +40,8 @@ export const RESOLVE_CONTRACT_V1 = Object.freeze({
       "scripts/validate-application.mjs"
     ]),
     package: Object.freeze([
+      "contracts/public-pr-application-v3/3.1.0/contract.json",
+      "contracts/public-pr-application-v3/3.1.0/schema.json",
       "contracts/public-pr-application-v3/3.0.0/contract.json",
       "contracts/public-pr-application-v3/3.0.0/schema.json",
       "contracts/registry-acceptance-v3/3.0.0/schema.json",

@@ -1,13 +1,41 @@
 # Generic application handoff
 
-Use this path after a custom `no-market` or `tradable` project reaches exact-byte
-`PROJECT_PREFLIGHT_VALID`. It prepares one deterministic review handoff for the complete project without reducing it
-to a bundled hook profile or confusing local completion with submission, review, approval, deployment, or launch.
+The official route for every generic `no-market` or `tradable` project that reaches exact-byte
+`PROJECT_PREFLIGHT_VALID` is Application V3.1. Follow
+[github-application-v3.md](github-application-v3.md): `open-world prepare-revision` then `open-world application` then
+`open-world submit`. Unknown project kinds remain eligible; the package records their actual source and evidence rather
+than reducing them to a bundled hook profile or allowlist.
 
-This is the current generic handoff boundary. It is not a generic GitHub mutation adapter. The public Submit a Launch
-intake still has to expose and protect an accepted generic application package before Hookbuilder may send one.
+Use `handoff preview` only when the accepted V3.1 package cannot yet be prepared and an exact diagnostic artifact is
+useful. It is not a second submission format, must not be hand-copied into Submit a Launch, and never proves a Draft PR,
+review, approval, deployment or launch.
 
-## Bind the current facts
+## Official protected Draft PR path
+
+Prepare the exact next revision, assemble its closed package, and ask for a read-only GitHub plan:
+
+```bash
+node "$SKILL_ROOT/scripts/cli.mjs" open-world prepare-revision \
+  "/absolute/outside-source/application-v3-draft.json" \
+  --source-root "primary=$REPOSITORY_ROOT" \
+  --output "/absolute/outside-source/prepared-revision" \
+  --write
+
+node "$SKILL_ROOT/scripts/cli.mjs" open-world application --help
+node "$SKILL_ROOT/scripts/cli.mjs" open-world submit \
+  "/absolute/outside-source/application-v3-package" --dry-run
+```
+
+The application command requires the prepared revision, validated V2 project package, review package, security inputs,
+every exact source-root mapping, and a new output directory. Its `--help` is the command authority. Inspect the submit
+plan and obtain explicit authority for its exact fresh digest. Only then repeat submit with
+`--mutation-receipt <absolute-json> --confirm-external-write <sha256:...>`. The confirmed command may create or advance
+the authenticated builder's fork branch and create one Draft PR against `0xprogrammable/submit-launch:main`. It cannot
+mark the PR ready, approve, merge, deploy, sign or launch.
+
+## Diagnostic fallback
+
+### Bind the current facts
 
 Create one strict JSON document satisfying
 [`application-handoff-input-v1.schema.json`](application-handoff-input-v1.schema.json). Retain it outside the frozen
@@ -26,7 +54,7 @@ source repository. Bind:
 Arrays are UTF-8 bytewise sorted and unique. Do not add remembered rules or treat an unavailable policy, source
 authority, current base, or pull-request identity as a harmless omission. Regenerate the input after any drift.
 
-## Preview without a write
+### Preview without a write
 
 The input and optional output must remain outside the source repository. Preview is the default:
 
@@ -47,7 +75,7 @@ does not independently prove their remote Git-tree membership or currentness, ev
 requirements, or revalidate the supplied public GitHub, preflight, source-authority, or existing-PR observations. Those
 limitations are explicit in `evidenceBoundary`; the receiving reviewer must repeat them against the bound identities.
 
-## Guarded local-write boundary
+### Guarded local-write boundary
 
 An explicit second call may present the current output-bound digest:
 
@@ -73,13 +101,13 @@ Keep these states independent:
 | Axis | Preview meaning |
 | --- | --- |
 | Source completion | Exact `PROJECT_PREFLIGHT_VALID` receipt is bound but not revalidated by the pure preview. |
-| Submission | `NOT_SUBMITTED`, or an existing draft is bound as observed and not revalidated. |
+| Submission | A diagnostic preview is `NOT_SUBMITTED`; only the confirmed V3.1 transport plus remote readback proves a Draft PR. |
 | Review | `NOT_REVIEWED`; the Builder cannot disposition its own findings. |
 | Approval | `NOT_APPROVED`; a preview, PR, check, or merge is not approval. |
 | Deployment | `NOT_DEPLOYED`; no signing or transaction occurs. |
 | Launch | `NOT_LAUNCHED`; no routing, indexing, listing, or availability is claimed. |
 
 The legacy six-file `prepare-pr`/`submit` adapter remains restricted to its exact accepted legacy package. Never feed a
-generic handoff into it or hand-author files around its gate. A later generic GitHub adapter must first bind a currently
-accepted public schema and protected intake, produce a fresh exact mutation plan, require explicit authority, preserve
-a durable receipt, create only a draft, and remain unable to approve, merge, deploy, or launch.
+generic handoff into it or hand-author files around either gate. Regenerate a valid V3.1 package and use the protected
+generic transport. A Draft PR remains `NOT_REVIEWED`, `NOT_APPROVED`, `NOT_DEPLOYED` and `NOT_LAUNCHED` until separate
+authorities establish those states.

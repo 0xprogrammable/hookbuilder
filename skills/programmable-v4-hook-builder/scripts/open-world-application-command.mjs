@@ -1,4 +1,4 @@
-import { CliFailure, MAX_APPLICATION_BYTES, MAX_SECURITY_BINDINGS_BYTES, canonicalJson, deriveOpenWorldV2FeeApplicability, fs, generatePublicPrApplicationV3, path, sha256Bytes, validateLegacyFeeV2OpenWorldPackage, verifyLocalSourceClosureManifestV1, verifyRawGitCommitTreeIntegrity } from "./open-world-shared.mjs";
+import { CliFailure, MAX_APPLICATION_BYTES, MAX_SECURITY_BINDINGS_BYTES, canonicalJson, deriveOpenWorldV2FeeApplicability, fs, generatePublicPrApplicationV3, path, sha256Bytes, validateLegacyFeeV2OpenWorldPackage, validateOpenWorldPackage, verifyLocalSourceClosureManifestV1, verifyRawGitCommitTreeIntegrity } from "./open-world-shared.mjs";
 
 export function installOpenWorldApplicationCommand(runtime) {
   const assembleDerivedApplicationV3 = (...args) => runtime.assembleDerivedApplicationV3(...args);
@@ -49,20 +49,24 @@ export function installOpenWorldApplicationCommand(runtime) {
 
     const repositoryRoot = resolveRoot(options.repositoryRoot);
     const packageRoot = resolveDirectoryInside(repositoryRoot, positionals[0], "open-world v2 package");
-    const packageReport = validateLegacyFeeV2OpenWorldPackage({ packageRoot });
+    const packageSnapshots = readApplicationV2PackageSnapshots(packageRoot);
+    const submission = packageSnapshots.find(({ packagePath }) => packagePath === "submission.v2.json")?.document;
+    const validateSourcePackage = submission?.programmableFee === undefined
+      && submission?.supportingPackage?.feePolicySchema === undefined
+      ? validateOpenWorldPackage
+      : validateLegacyFeeV2OpenWorldPackage;
+    const packageReport = validateSourcePackage({ packageRoot });
     if (!openWorldReportIsValid(packageReport)) {
       throw new CliFailure("APPLICATION_V2_PACKAGE_INVALID", "the source open-world v2 package is structurally or semantically invalid", {
         exitCode: 1,
         details: { report: sanitizeOpenWorldReport(packageReport), writePerformed: false }
       });
     }
-    const packageSnapshots = readApplicationV2PackageSnapshots(packageRoot);
-    const stablePackageReport = validateLegacyFeeV2OpenWorldPackage({ packageRoot });
+    const stablePackageReport = validateSourcePackage({ packageRoot });
     for (const snapshot of packageSnapshots) assertSnapshotUnchanged(snapshot, "open-world v2 package artifact");
     if (!openWorldReportIsValid(stablePackageReport)) {
       throw new CliFailure("APPLICATION_V2_PACKAGE_INVALID", "the V2 package changed or failed validation while Application V3 inputs were collected", { exitCode: 1 });
     }
-    const submission = packageSnapshots.find(({ packagePath }) => packagePath === "submission.v2.json")?.document;
     const feeApplicability = deriveOpenWorldV2FeeApplicability(submission);
     if (
       submission?.stage !== "prototype"
@@ -70,7 +74,7 @@ export function installOpenWorldApplicationCommand(runtime) {
     ) {
       throw new CliFailure(
         "APPLICATION_PROTOTYPE_EVIDENCE_REQUIRED",
-        "an Application V3 package requires a committed prototype whose validated V2 execution scope resolves the fee state to applicable or exact zero-scope not-applicable; the later derived security assessment remains separate and the idea stays eligible",
+        "an Application V3 package requires a committed prototype whose validated Submission V2 resolves any selected legacy Fee V2 scope; projects that do not select Fee V2 use the explicit not-selected state",
         {
           exitCode: 1,
           details: {

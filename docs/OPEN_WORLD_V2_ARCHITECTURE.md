@@ -1,7 +1,7 @@
 # Open-world v2 architecture
 
-This document defines the target architecture for the local open-world v2 candidate. It is a design and review
-contract, not evidence that v2 is released, live, audited, deployed, accepted by Programmable, or safe for production.
+This document defines the versioned architecture for Open-World V2. It is a design and review contract, not by itself
+evidence that a particular Builder revision is released, audited, deployed, accepted by Programmable, or safe for production.
 The checked-in schemas, validators, tests, release receipts and maintainer decisions remain the authority for those
 separate states.
 
@@ -143,11 +143,10 @@ revisions preserve their original integer representation. V3 starts at `"1"`; ev
 revision and advances by exactly one under arbitrary-precision decimal semantics.
 
 Published tags, exact historical v1 application bytes and their receipts are immutable evidence; they are never
-reinterpreted or overwritten. Surgical corrections in this private working candidate do not change that history. New
-semantics move forward through a new version or explicit migration. The v2 candidate is not publicly compatible until
-its example, semantic validator, materializer, CLI, application generator and trusted central validator consume the v2
-shape together. The release gate fails if only the JSON Schema exists or any consumer silently projects it back into
-v1 semantics.
+reinterpreted or overwritten. New semantics move forward through a new version or explicit migration. Public V2
+compatibility requires its example, semantic validator, materializer, CLI, application generator and trusted central
+validator to consume the shape together. The gate fails if only the JSON Schema exists or any consumer silently
+projects it back into v1 semantics.
 
 ### 5. Preserve intent through code and tests
 
@@ -172,7 +171,7 @@ ZIP, pasted source or a private repository can support local exploration but can
 contract. It remains idea-eligible as `INTEGRATION_PENDING`, with no public package or write. The application package
 binds immutable repository ids, commits, trees, source submissions and evidence instead of trusting branch names or
 pasted summaries.
-The v2 candidate flow is:
+The generic V2 application flow is:
 
 ```text
 open-world init -> intent and build -> open-world validate -> freeze source commits

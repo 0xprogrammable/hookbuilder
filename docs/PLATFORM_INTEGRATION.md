@@ -4,13 +4,13 @@ This repository owns the portable Builder and its versioned application contract
 website, admin panel, database, deployment keys, provider accounts, production indexer or a wallet-connected launch
 service.
 
-The open-world v2 and public-application v3 files in this repository are a local development implementation. A green
-local infrastructure-and-packaging rehearsal would still not make them a mission-defined release candidate. Their
-presence is not evidence that the public Registry accepts v3, that intake is open, or that any reviewed project can
-launch. The current state and promotion requirements are defined in
+The open-world V2 and public-application V3 files implement the Builder side of the protected generic Applicant path.
+The public Submit a Launch repository owns intake and validates candidate data with protected-base code. A green local
+rehearsal still does not prove that this Builder revision is released, that a particular Draft was submitted or
+reviewed, or that any project was accepted or launched. The remaining state boundaries are defined in
 [`OPEN_WORLD_V2_RELEASE_GATES.md`](OPEN_WORLD_V2_RELEASE_GATES.md).
 
-## Candidate builder journey
+## Builder journey
 
 1. A builder gives any compatible coding agent a public-safe idea in their own language, or points it at an existing
    public project.
@@ -31,7 +31,7 @@ launch. The current state and promotion requirements are defined in
    derives both from exact current sources and the highest eligible predecessor. Zero-network `open-world application`
    then derives source-assessed security and one verification report per repository into the complete package; no
    source-committed artifact predicts its own containing commit.
-7. After V3 intake activation, namespaced `open-world submit` or `update` remains a later, explicitly confirmed
+7. Namespaced `open-world submit` or `update` is an explicitly confirmed
    GitHub write; `open-world status` is read-only. The pull request is transport and a public review thread, not
    self-approval, canonical acceptance or launch authorization. Top-level application commands remain V1-only.
 8. Programmable maintainers review the exact revision and evidence. Unknown or disputed findings can enter independent
@@ -43,8 +43,8 @@ launch. The current state and promotion requirements are defined in
 The target machine contracts are
 [`submission-v2.schema.json`](../skills/programmable-v4-hook-builder/references/submission-v2.schema.json) and
 [`public-pr-application-v3.schema.json`](../skills/programmable-v4-hook-builder/references/public-pr-application-v3.schema.json).
-The v3 generator, trusted Registry validator and status/update path must land and pass the same corpus before this
-journey may be described as publicly active.
+The local client reads the protected active-contract manifest and accepted V3 schema from the exact central base,
+verifies those bytes against the bundled contract, and fails closed on drift before any GitHub write.
 
 Every V2 EVM `chainId` is serialized as a canonical positive `uint256` decimal string (`"1"`, never the JSON number
 `1`). This applies across submission, fee and launch bindings; it is not limited by JavaScript's safe-integer range.

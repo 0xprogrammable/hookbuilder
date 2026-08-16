@@ -47,17 +47,16 @@ test("doctor defaults to a concise readiness result and preserves full JSON on r
     assert.equal(output.ok, true);
     assert.equal(output.result.repositoryRoot, fixture.repository);
     assert.equal(output.result.readyForDeterministicPreflight, true);
-    assert.equal(output.result.readyForApplicationV3Preparation, false);
-    assert.equal(output.result.applicationV3SubmissionToolchainAvailable, false);
+    assert.equal(output.result.readyForApplicationV3Preparation, true);
+    assert.equal(output.result.applicationV3SubmissionToolchainAvailable, true);
     assert.equal(output.result.readyForApplicationV3Submission, false);
-    assert.equal(output.result.readyForPublicBeta, false);
-    assert.equal(output.result.applicationV3Lifecycle, "frozen-legacy");
-    assert.equal(output.result.githubCli.requiredForPublicBetaApplication, false);
-    assert.equal(output.result.githubCli.requiredOnlyForFrozenLegacyApplicationV3, true);
+    assert.equal(output.result.readyForPublicBeta, true);
+    assert.equal(output.result.applicationV3Lifecycle, "public-applicant");
+    assert.equal(output.result.githubCli.requiredForPublicBetaApplication, true);
     assert.equal(output.result.githubCli.authenticationChecked, false);
-    assert.equal(output.result.readyForGitHubApplicationClient, false);
-    assert.deepEqual(output.result.publicBetaBlockers, ["FROZEN_LEGACY_APPLICATION_V3_NOT_CURRENT"]);
-    assert.equal(output.result.runtimeCompatibility.frozenLegacyApplicationV3.lifecycle, "frozen-legacy");
+    assert.equal(output.result.readyForGitHubApplicationClient, true);
+    assert.deepEqual(output.result.publicBetaBlockers, []);
+    assert.equal(output.result.runtimeCompatibility.applicationV3.lifecycle, "public-applicant");
     assert.equal(Object.hasOwn(output.result, "publicBetaGit"), false);
   } finally {
     fixture.cleanup();
@@ -150,7 +149,7 @@ test("doctor defaults to the installed plugin root when the host cwd is not a Gi
   assert.equal(output.result.readyForRepositoryWork, false);
   assert.equal(output.result.readyForApplicationV3Preparation, false);
   assert.equal(output.result.readyForApplicationV3Submission, false);
-  assert.equal(output.result.applicationV3Lifecycle, "frozen-legacy");
+  assert.equal(output.result.applicationV3Lifecycle, "public-applicant");
   assert.equal(Object.hasOwn(output.result, "publicBetaGit"), false);
 });
 

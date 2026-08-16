@@ -1,78 +1,99 @@
 # Submit a Launch
 
-Submit a Launch is the canonical public review path for new one-off Programmable projects.
+Submit a Launch is the canonical public review path for every completed one-off Programmable project. Application V3.1
+accepts hooks, applications, services, games, multi-repository systems and unfamiliar custom architectures without a
+project allowlist. Novelty can require independent review, but it does not make a project ineligible to submit.
 
-The Builder's generic `handoff preview` covers complete custom projects without forcing a frozen profile. It is a
-deterministic local handoff only: current public generic package acceptance and GitHub mutation are not proven active.
-The six-file workflow below remains the exact released transport for its accepted legacy package and must not be used
-to bypass that boundary. See the [generic handoff contract](../skills/programmable-v4-hook-builder/references/application-handoff.md).
+Project source stays in the builder's own public GitHub repository. Hookbuilder binds its exact repository identity,
+commit, tree, source closure, tests and evidence into one immutable Application V3 revision, then opens a protected
+Draft pull request in [`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch), immutable
+GitHub repository ID `1320171831`.
 
-The project stays in the builder's own public GitHub repository. Hookbuilder builds and checks it, then prepares an
-exact six-file application for
-[`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch), immutable GitHub repository ID
-`1320171831`. Git commits, pull-request history, checks, and reviews provide the public record.
+## Complete journey
 
-## Use the Builder
-
-Give the installed Skill an idea or public repository and ask it to build, check, and prepare the application for
-Submit a Launch. The supported journey is:
+Finish the project and reach exact-byte `PROJECT_PREFLIGHT_VALID` before submission. Every generic project then uses:
 
 ```text
-doctor -> scaffold -> check -> package -> prepare-pr -> submit
+prepare-revision -> application -> submit plan -> explicit confirmation -> protected Draft PR -> status
 ```
 
-`scaffold` is optional for an existing project. `prepare-pr` resolves and freezes the exact public source repository,
-commit, tree, application package, and evidence without writing to GitHub.
+`prepare-revision` resolves the exact next application revision and lineage. `application` replays the fixed local Git
+objects and creates the closed review package. Both commands preview before an explicit local `--write`.
 
-`submit` and `update` are two-step operations. The first call returns a read-only action plan and confirmation digest.
-Only a second call with that exact digest may create or update:
+```bash
+node "$SKILL_ROOT/scripts/cli.mjs" open-world prepare-revision \
+  "/absolute/outside-source/application-v3-draft.json" \
+  --source-root "primary=$REPOSITORY_ROOT" \
+  --output "/absolute/outside-source/prepared-revision" \
+  --write
 
-- the authenticated builder's fork of `0xprogrammable/submit-launch`;
-- one application branch; and
-- one draft pull request against `0xprogrammable/submit-launch:main`.
+node "$SKILL_ROOT/scripts/cli.mjs" open-world application \
+  "$V2_PACKAGE" \
+  --application-draft "/absolute/outside-source/prepared-revision/application.v3.json" \
+  --review-package "$REVIEW_PACKAGE" \
+  --security-assessment "$SECURITY_ASSESSMENT" \
+  --security-evidence-bindings "$SECURITY_EVIDENCE_BINDINGS" \
+  --source-root "primary=$REPOSITORY_ROOT" \
+  --output "$APPLICATION_V3_PACKAGE" \
+  --write
 
-The transport never creates a ready-for-review pull request, enables maintainer edits, merges, approves, deploys,
-signs, routes, or launches.
+node "$SKILL_ROOT/scripts/cli.mjs" open-world submit "$APPLICATION_V3_PACKAGE" --dry-run
+```
 
-## Intake contract
+Repeat `--source-root <repository-ref>=<git-root>` for every companion repository. Inspect each command's `--help` for
+the complete current input contract.
 
-Every write is bound to one canonical contract:
+The first submit call is read-only. It returns the exact base revision, fork branch, Draft PR action, package digests,
+external writes and one fresh confirmation digest. Only after explicit user authority for that digest may the same
+package be submitted:
+
+```bash
+node "$SKILL_ROOT/scripts/cli.mjs" open-world submit "$APPLICATION_V3_PACKAGE" \
+  --mutation-receipt "/absolute/outside-package/application-v3-mutation-receipt.json" \
+  --confirm-external-write "sha256:<exact-fresh-confirmation-digest>"
+```
+
+The confirmed client may create or use the authenticated builder's fork, create one application branch and create one
+Draft PR against `0xprogrammable/submit-launch:main`. It never marks the PR ready, approves, merges, deploys, signs,
+routes, launches, changes an account or moves funds. `open-world update` uses the same confirmation boundary for a new
+immutable revision; `open-world status` is read-only.
+
+## Protected intake contract
 
 | Field | Value |
 | --- | --- |
 | Repository | `0xprogrammable/submit-launch` |
 | Immutable GitHub ID | `1320171831` |
 | Base branch | `main` |
-| Application directory | `submissions/<application-id>/` |
-| Status document | `docs/builder/intake-status.json` |
-| Status schema | `2` |
+| Revision directory | `submissions/<application-id>/v3/revisions/<application-revision>/` |
+| Root document | `application.v3.json` |
 | Pull-request state | Draft only |
 
-The client reads the exact status document from the observed central commit before any write. `prelaunch`,
-`paused-new`, and `paused-all` fail closed for a new application. `paused-new` permits only an exact trusted continuation
-listed by the status document. A central-branch or status change invalidates the confirmed plan.
+One application PR adds exactly one immutable revision directory containing `application.v3.json` and its exact bound
+application-package records. Trusted base workflow code fetches and validates bounded candidate data without executing
+the applicant repository, package hooks, Git hooks, workflows or scripts. A changed central base, source revision,
+package, identity, intake state or planned write invalidates confirmation.
 
-Do not hand-create an application pull request. The generated six-file package and exact draft transport are part of
-the contract.
+Do not hand-create or reshape the package in the central repository. Regenerate it from the exact source revision and
+use the namespaced V3.1 transport. The old six-file `prepare-pr` path remains legacy compatibility only and must not be
+used for a generic project. `handoff preview` is a diagnostic fallback when V3.1 preparation is blocked, not a parallel
+submission format.
 
-## Application identity
+## What a Draft proves
 
-Repository names, branches, and tags are navigation aids. Review identity is built from immutable values including the
-numeric source repository ID, full commit, root tree, package bytes, and declared evidence. A changed source commit or
-tree is a new review target.
+Remote readback of the exact Draft PR proves only that a revision was submitted for review. Keep these states separate:
 
-The pull request requests review only. A local check, valid package, green GitHub check, review comment, or merged
-record does not prove safety, approval, deployment, provider support, tradability, or launch authorization.
+- submitted is not reviewed;
+- reviewed is not approved;
+- approved is not deployed;
+- deployed is not indexed, routed, available or launched; and
+- a green check or merged review thread is not an audit or safety guarantee.
 
-## Hookbuilder legacy continuations
+Unknown mechanics stay eligible and can be routed to architecture or independent review. Findings must bind the exact
+revision and evidence; the Builder cannot disposition its own findings or issue launch authority.
 
-Hookbuilder is not open for new Applicant pull requests. The only legacy continuations are pull requests #10, #11,
-#12, #14, #15, #18, #19, and #20. Their existing files and history remain available for their original review threads;
-they must target Hookbuilder `main` and do not define the route for a new application.
+## Historical paths
 
-Every new one-off application goes to Submit a Launch through the Builder. Template intake is separate and is not
-opened by this contract.
-
-A trusted-base Hookbuilder check immediately redirects a new `submissions/requests/*.json` pull request. That
-path-filtered check is early feedback and also rejects Applicant changes targeting `release/*`; the protected
-`Applicant gate` on `main` remains the authoritative merge boundary.
+Existing V1 and six-file V2 application records remain immutable compatibility history. New generic projects use
+Application V3.1 in Submit a Launch. New Applicant PRs never target Hookbuilder, and template intake remains a separate
+contract.

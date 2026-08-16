@@ -1,6 +1,6 @@
 # Security and audit readiness
 
-This is the review entry point for the private Open-World V2 / Application V3 / Fee V2 and routing development scope. It records
+This is the review entry point for the versioned Open-World V2 / Application V3 / Fee V2 and routing scope. It records
 the intended review surface, controls already present in local code and the evidence still required. It is not an
 independent audit report, deployment approval or claim that the Builder or an arbitrary generated project is safe.
 
@@ -55,7 +55,7 @@ artifacts, while `unresolved` blocks completion. No route result grants approval
 | --- | --- | --- |
 | Complete deterministic repository gate | The gate and clean-tree rehearsal emit commit/tree/skill-tree-bound receipts; source or generated-artifact drift invalidates prior results | Public Node 24 CI required for the same frozen revision |
 | Open-World V2 schemas, V4 semantics, security, composition, routing, and Project Compiler | Focused local suites exercise no-market absence, standard-v4/canonical-adapter contracts, fail-closed Node/Python/shell/PATH/symlink/network cases, and a deterministic external sandbox invocation-plan boundary. The portable builder executes no candidate bytes and cannot authenticate or import host completion; local host evidence remains `EXTERNAL_BLOCKED` and `NOT_COMPLETION` | Trusted external sandbox authority/integration plus independent adversarial validator, compiler, adapter, and protocol review pending |
-| Application V3 and multi-repository dependency/source closure | Local suites and transitive Contract Registry closure tests cover exact-byte carry-through | Trusted central-intake parity and a public large-repository canary pending |
+| Application V3 and multi-repository dependency/source closure | Local suites and transitive Contract Registry closure tests cover exact-byte carry-through; Submit a Launch v1.6.0 carries the protected matching V3.1 contract | Public end-to-end project canary pending |
 | Registry Acceptance V3 and Launch Bundle V2 | Local suites preserve exact trade manifests/results; every launch result remains unsigned and `NOT_AUTHORIZED` | Exact trusted-review substitution and authority-boundary review pending |
 | Fee V1 reference kernel | Historical/local format, build, unit, gas, fuzz, invariant, and Slither evidence is retained for exact V1 bytes only | V1 public CI/reproduction receipt pending for a frozen commit |
 | Fee V2 policy, receipt/vector contracts and `standard-amm` kernel | The release generator inventories 58 Solidity test functions in source, including 54 unit, one fuzz and three invariant functions; exact execution outcomes exist only in a clean revision-bound receipt | Pinned-fork receipt, Permit2 signatures, deployed bytecode/configuration, public CI, independent conformance, and protocol review pending |
@@ -68,9 +68,9 @@ None of this evidence automatically applies after source drift. CI configuration
 fuzz/invariant profile, schema-valid fixture, or builder-authored receipt is not an immutable pass until the exact
 command, result, commit, dependency lock, timestamp, and artifact digest are recorded on the frozen revision.
 
-## Candidate controls already present
+## Versioned controls to review
 
-These are code and contract properties to review, not claims that the final gate passed:
+These are code and contract properties to review, not release, audit, approval, deployment or runtime receipts:
 
 - New-project routing initially loads only compact fee-applicability guidance. Full Fee V2 policy activates after an
   actual `programmable-canonical` or otherwise explicit fee-bearing surface is confirmed; Fee V1 remains a historical
@@ -154,9 +154,9 @@ These are code and contract properties to review, not claims that the final gate
 - A matched Launch Bundle V2 remains preparation evidence only; signing, deployment, configuration verification,
   indexing and availability are separate external states.
 
-## Remaining release and production gates
+## Non-compensating release and production evidence
 
-### Candidate freeze and deterministic proof
+### Release freeze and deterministic proof
 
 - Freeze one clean commit and tree after all V2/V3 changes, generated files and docs agree.
 - Run the full repository gate and publication dry run; record exact output and artifact digests instead of pass counts

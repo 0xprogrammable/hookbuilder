@@ -2,6 +2,43 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.10.0 - 2026-08-16
+
+### Added
+
+- Activated the existing namespaced Application V3 `submit`, `update`, and `status` transport for every complete
+  `PROJECT_PREFLIGHT_VALID` project. The legacy top-level Applicant continuation path remains unchanged.
+- Added Application V3 contract 3.1.0. Submission V2 remains mandatory, while projects that select neither
+  `programmableFee` nor the legacy Fee V2 schema now declare `feeApplicability: "not-selected"`, keep every Fee V2
+  identity and instance binding null, and omit `fee-policy-schema` from required records.
+- Added protected-base contract readback. Every remote plan binds the exact Submit a Launch commit and tree, its
+  `.programmable/active-contract.json` bytes, and the declared and retrieved
+  `intake/schemas/public-pr-application-v3.schema.json` digest before confirmation.
+
+### Changed
+
+- Promoted the generic application handoff, Application V3 reference, router help, and public submission guide from
+  candidate-only wording to the supported public Applicant path without changing draft-only or explicit-confirmation
+  behavior.
+- Hardened local Application V3 package snapshots with no-follow descriptor reads and stable file identity checks
+  before and after the read.
+- Required every normalized and final pull-request readback to retain `maintainer_can_modify: false`; a substitution
+  now fails closed before any later mutation.
+- Regenerated the canonical Plugin payload, contract registry, semantic-rule evidence, and portable package receipts
+  for the exact release package.
+
+### Evidence boundary
+
+- Read-only public verification bound Submit a Launch `v1.6.0` to main commit
+  `e15b9288b485be9b28a3e6d1a048d35cdf7ed918`, tree
+  `bb428bda6f239afe7fbbefc792bfe222916a3d58`, active-contract SHA-256
+  `b22f3d79119f75c9912aa03966e3397528ff9ce264b694eaa49598e61a50dfd4`, and Application V3 schema SHA-256
+  `2d51837bbbfe52672ecca334596243bebcec78e8e0a885d67084dfd98955bcb7`.
+- The transport only prepares or opens a draft pull request after the caller confirms the exact current plan. It does
+  not mark a pull request ready, approve, merge, deploy, sign, route, or authorize a launch.
+- Local checks and central readback do not prove public Hookbuilder publication. The exact `v0.10.0` tag, release
+  assets, protected CI, and fresh installed bytes still require independent verification.
+
 ## 0.9.3 - 2026-08-15
 
 ### Changed

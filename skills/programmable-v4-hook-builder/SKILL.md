@@ -75,8 +75,9 @@ node "$SKILL_ROOT/scripts/cli.mjs" project require-output --brief --repository-r
 Only exact-byte `PROJECT_PREFLIGHT_VALID` completes Autopilot. `CLEAR` is source-only; `DRAFT_UNRESOLVED` is
 noncanonical. Local pass remains `NOT_APPROVED` and `NOT_SUBMITTED`.
 
-For custom projects read [application-handoff.md](references/application-handoff.md); `handoff preview` binds source,
-policy/schema preimages, surfaces and draft PR without writes. Portable handoff writes remain fail-closed.
+Every `PROJECT_PREFLIGHT_VALID` project uses [V3.1](references/github-application-v3.md):
+`prepare-revision -> application -> submit`. Confirm its fresh digest for a protected Draft. Unknowns stay eligible;
+[handoff preview](references/application-handoff.md) is diagnostic only.
 
 ## Specialist invariants
 
@@ -87,8 +88,8 @@ policy/schema preimages, surfaces and draft PR without writes. Portable handoff 
 - Classify `tradable`, `no-market` or `unresolved`; canonical v4 covers four direction/exactness quadrants. No-market has
   no route. Fee V2 is exact legacy compatibility only; custom source remains eligible.
 - Escalate novel/value-bearing ambiguity; unavailable provider gates are `EXTERNAL_BLOCKED`.
-- Generic GitHub mutation remains unavailable. Six-file `prepare-pr` is legacy only. Canary preview is documented in
-  [workflow-canary-application.md](references/workflow-canary-application.md); neither path grants launch authority.
+- V3.1 is generic; six-file `prepare-pr` is legacy and [Canary](references/workflow-canary-application.md) is a test.
+  None grants review, approval, deploy or launch.
 
 ## Runtime
 

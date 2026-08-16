@@ -4,16 +4,16 @@
 > Nothing in this chapter is current Programmable eligibility or launch authority. New work resolves exact protected
 > Submit Launch policy bytes and follows only applicable current Rule IDs.
 
-This chapter owns the released six-file `prepare-pr` and confirmed draft-PR transport. New public review requests go
-only to `0xprogrammable/submit-launch:main`; follow
-[agent-entry-and-application.md](agent-entry-and-application.md). Use
+This chapter preserves the historical six-file `prepare-pr` and confirmed Draft PR transport. New public review requests
+use Application V3.1 and go only to `0xprogrammable/submit-launch:main`; follow
+[github-application-v3.md](github-application-v3.md). Use
 [open-world-v2-workflow.md](open-world-v2-workflow.md) to build and verify an Open-World project before an eligible
 handoff.
 
-For exact candidate Application V3 replay, the GitHub sequence is namespaced and separate:
+For the generic Application V3.1 transport, the GitHub sequence is namespaced and separate:
 `open-world prepare-revision` derives revision/lineage through GET-only discovery, `open-world application` builds the
-complete zero-network package, and `open-world submit|update|status` models its separate review thread. Those candidate
-commands do not replace the released top-level Applicant transport.
+complete zero-network package, and `open-world submit|update|status` models its separate review thread. The top-level
+Applicant transport remains only for documented legacy continuations.
 
 The **Public GitHub PR Builder Beta** keeps the complete project in the builder's own public GitHub
 repository. A draft pull request carried one bounded six-file application record pointing to the exact public source
@@ -22,7 +22,7 @@ connected application service was part of that beta.
 
 ## Resolve the active package contract first
 
-This skill revision documents the released six-file Builder Beta package. A trusted intake channel may be migrating to
+The remainder of this chapter documents the released six-file Builder Beta package for exact legacy replay. A trusted intake channel may be migrating to
 a different closed package, including a seven-file generation with central `launch.json`. Before scaffolding, repairing,
 or reviewing, bind the exact default-branch workflow or service revision, PR target base, validator revision, allowed
 filenames, package-contract id or digest, skill revision, central policy binding, and fee-policy version. Do not assume that
@@ -404,7 +404,7 @@ It does not push a branch or open a pull request.
 
 ## Submit or update through the confirmed application client
 
-This is the normal public builder path. Save the canonical `prepare-pr` result outside the source repository, then use
+This is only the legacy continuation path. Save the canonical `prepare-pr` result outside the source repository, then use
 the application client. Do not manually fork the central repository, push a central branch, or open the draft pull
 request as an alternative to this flow.
 

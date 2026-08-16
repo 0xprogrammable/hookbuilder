@@ -201,16 +201,16 @@ test("every installed Markdown reference is routed, linked, or explicitly archiv
   assert.deepEqual([...archival].sort(), [
     "compatibility-standard.md",
     "github-application-journey.md",
-    "github-application-v3.md",
     "launch-bundle-input-v2.schema.json",
     "launch-bundle-output-v2.schema.json",
     "output-contract.md",
     "programmable-fee-policy.md",
-    "public-pr-application-v3.schema.json",
     "standard-fee-kernel.md",
     "submission-workflow.md",
     "workflow.md"
   ]);
+  assert.equal(routed.has("github-application-v3.md"), true);
+  assert.equal(routed.has("public-pr-application-v3.schema.json"), true);
   assert.equal(routed.has("build-profiles.md"), true);
 
   const skill = fs.readFileSync(path.join(skillRoot, "SKILL.md"), "utf8");

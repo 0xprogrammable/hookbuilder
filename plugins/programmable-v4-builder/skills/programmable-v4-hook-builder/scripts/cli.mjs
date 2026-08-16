@@ -197,7 +197,7 @@ async function execute(command, options, positionals) {
       ),
       "doctor.mjs"
     );
-    const report = { ...tooling, readyForPublicBeta: false, publicBetaNote: "The six-file/Application V3 transport is frozen legacy; Task 7A evaluates no current application transport." };
+    const report = { ...tooling, publicBetaNote: "Application V3 is the current protected public Applicant path; doctor does not inspect GitHub authentication." };
     return new Map([[false, compactDoctorReport(report)], [true, report]]).get(options.fullJson);
   }
   if (command === "scaffold") {

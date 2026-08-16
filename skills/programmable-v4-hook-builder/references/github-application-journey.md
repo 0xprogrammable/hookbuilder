@@ -1,9 +1,12 @@
 # GitHub Application journey
 
-This reference defines the released client-side transport for the **Public GitHub PR Builder Beta**. It consumes the
+This archival reference defines the historical six-file client-side transport for the **Public GitHub PR Builder Beta**. It consumes the
 already verified six-file output of `prepare-pr`, plans a public GitHub draft pull request, updates that same draft,
 and reads GitHub review state. It does not create a Connected Submission/W2 application and it never approves,
 merges, deploys, launches, lists, or marks a project ready for review.
+
+New generic applications use [github-application-v3.md](github-application-v3.md). Do not use this archived flow for a
+new project.
 
 ## Contents
 
@@ -40,9 +43,9 @@ record means only that the public beta review record was completed for its exact
 
 ## Requirements
 
-Before using this client:
+Before using this legacy client for an existing continuation:
 
-1. Run the current `check`, `package`, and `prepare-pr` flow successfully.
+1. Run the matching historical `check`, `package`, and `prepare-pr` flow successfully.
 2. Keep the source branch at the exact public commit and tree resolved by `prepare-pr`.
 3. Store the `prepare-pr` JSON output outside the source repository.
 4. Authenticate `gh` to `github.com` as the same immutable GitHub user id recorded in `application.json`.
@@ -75,7 +78,7 @@ The client revalidates, rather than trusts, all of the following before any GitH
 - the retained human-confirmation and no-external-action markers.
 
 A package prepared by an older client remains bound to its original transport identity. Never edit its prepared target
-or copy it into the current intake. Current clients prepare new applications only against Submit a Launch.
+or copy it into the generic V3.1 intake. Legacy clients prepare continuations only against Submit a Launch.
 
 An altered byte, extra file, path escape, symlinked input, stale base, ambiguous checklist, or inconsistent projection
 fails closed. Regenerate with `prepare-pr`; do not hand-repair its machine output.
@@ -252,7 +255,7 @@ The client uses the active user's canonical `programmable` fork. If that name is
 different parent network, or reports a different owner id, the operation stops with a fork collision. It does not
 delete, rename, overwrite, or repurpose the repository.
 
-Application commits use the current trusted central tree plus the exact six files. An update commit retains the prior
+Legacy application commits use the observed trusted central tree plus the exact six files. An update commit retains the prior
 application branch head and current central base as parents, then advances the ref with `force: false`. Immediately
 before the ref update, the client rereads the old head to detect races.
 

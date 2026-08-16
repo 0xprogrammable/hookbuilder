@@ -2,7 +2,7 @@
 
 This is the byte-compatible legacy six-file `prepare-pr` output contract. Its local platform rules exist only for
 frozen replay and do not define current Programmable admission. Current consumers resolve exact protected policy and
-schema bytes from `0xprogrammable/submit-launch:main`; Application V3 remains a separate candidate contract.
+schema bytes from `0xprogrammable/submit-launch:main`; Application V3.1 is the separate current generic contract.
 
 Produce only the artifacts required at the current stage. Use explicit unknowns instead of placeholder claims.
 

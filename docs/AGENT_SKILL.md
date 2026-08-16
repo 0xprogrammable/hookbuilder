@@ -16,8 +16,8 @@ launch authorization, deployment receipt, provider result or Uniswap endorsement
 
 ## Release status
 
-Open-world submission v2, Fee V2, layered security and public application v3 are packaged for the immutable `v0.9.3`
-release. The bundled status retains `publicationStateVerified: false`; this source is not proof that v0.9.3 is published
+Open-world Submission V2, conditional Fee V2, layered security and public Application V3.1 are packaged for the immutable `v0.10.0`
+release. The bundled status retains `publicationStateVerified: false`; this source is not proof that v0.10.0 is published
 or live. A verified publication establishes exact package bytes and release artifacts only. It does not establish model behavior,
 an independent audit, Registry acceptance, launch authorization, deployment, routing, or public availability. See
 [`OPEN_WORLD_V2_RELEASE_GATES.md`](OPEN_WORLD_V2_RELEASE_GATES.md) for the still-separate evidence states.
@@ -70,18 +70,18 @@ The canonical package is
 layout. `SKILL.md`, references, schemas, templates, scripts, tests and `LICENSE.txt` form one package; copying only the
 entry file is incomplete.
 
-For reproducible public work, first verify that GitHub exposes the exact `v0.9.3` tag and release, then preview and pin
+For reproducible public work, first verify that GitHub exposes the exact `v0.10.0` tag and release, then preview and pin
 that immutable release:
 
 ```bash
 gh skill preview 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.9.3
+  programmable-v4-hook-builder@v0.10.0
 
 gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.9.3
+  --pin v0.10.0
 ```
 
 Replace `codex` with the supported host name when appropriate. User scope is the beginner default because it keeps the
@@ -274,21 +274,23 @@ Git objects from the exact pinned commit without following symlinks, running can
 loading filters or using the network. Resource limits can request a content-addressed split review; they cannot label
 the product unsafe.
 
-Application v3 remains unreleased candidate architecture. Do not use it to claim a released review transport. The
-released public Applicant client uses `prepare-pr`, then the two-step `submit` or `update` flow, and targets only
-`0xprogrammable/submit-launch` under the canonical schema-v2 intake contract.
+Application V3.1 is the released generic Applicant transport. Use `open-world prepare-revision` for GET-only lineage
+discovery, `open-world application` for zero-network package materialization, and the namespaced `open-world submit`,
+`update`, or `status` commands for the fixed `0xprogrammable/submit-launch:main` Draft PR path. The historical
+six-file `prepare-pr` client remains available only for its documented legacy continuations.
 
 ### 6. Submit, review and repair
 
-For the released public beta, use `prepare-pr` to materialize the exact six-file application outside the source
-repository. This step is read-only. `submit` and `update` first produce a read-only plan; only an exact confirmation
-after explicit owner authorization may create or update one draft pull request to
+For the released generic path, materialize the closed Application V3.1 revision package outside every source and Git
+control root. `open-world submit` and `open-world update` first produce a read-only plan; only an exact confirmation
+after explicit owner authorization may create or update one Draft pull request to
 [`0xprogrammable/submit-launch:main`](https://github.com/0xprogrammable/submit-launch).
 
-The client binds repository ID `1320171831`, the observed central commit and tree, status schema `2`, and the exact
-source package. It fails closed when intake does not permit the application or the central state moves. Never hand-open
-the pull request and never submit a new Applicant request to Hookbuilder. Hookbuilder pull requests #10, #11, #12, #14,
-#15, #18, #19, and #20 are legacy continuations only.
+The client binds repository ID `1320171831`, the observed central commit and tree, the protected active-contract
+manifest and Application V3 schema bytes, every source package, and the exact proposed pull-request action. It fails
+closed when intake does not permit the application or any confirmed identity moves. Never hand-open the pull request
+and never submit a new Applicant request to Hookbuilder. The old top-level client and historical Hookbuilder Applicant
+pull requests are legacy continuations only.
 
 The request stays review-only. It does not approve, register, deploy, sign, route, or launch. A changed source commit,
 tree, or canonical Applicant package is a new review target; any later authority or runtime claim needs separate

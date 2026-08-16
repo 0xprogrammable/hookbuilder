@@ -1,7 +1,6 @@
 import { TextDecoder } from "node:util";
 import {
   canonicalJson,
-  deriveOpenWorldV2FeeApplicability,
   sha256Bytes
 } from "./open-world-v2-core.mjs";
 import {
@@ -168,7 +167,7 @@ function deriveFromV3({ applicationDraft, predecessor }) {
   const previousApplication = parseCanonicalPredecessorBytes(predecessor.applicationBytes);
   if (
     previousApplication?.contract?.id !== "public-pr-application-v3"
-    || previousApplication?.contract?.version !== "3.0.0"
+    || previousApplication?.contract?.version !== "3.1.0"
     || previousApplication?.schemaVersion !== 3
     || previousApplication.applicationId !== applicationDraft.applicationId
     || previousApplication?.builder?.githubUserId !== applicationDraft?.builder?.githubUserId
@@ -305,7 +304,7 @@ function deriveFromV2({ applicationDraft, predecessor }) {
     submissionSha256: fee.submissionBinding.sha256,
     feePolicyId: fee.policyId,
     feePolicyVersion: fee.policyVersion,
-    feeApplicability: deriveOpenWorldV2FeeApplicability(submission),
+    feeApplicability: "unresolved",
     feePolicyInstanceSha256: null
   };
   const targetSource = applicationDraft?.source?.primary;
@@ -457,10 +456,12 @@ function requireV3PreviousBinding(binding) {
     || typeof binding.submissionPath !== "string"
     || binding.submissionPath.length === 0
     || !SHA256_PATTERN.test(binding.submissionSha256 ?? "")
-    || typeof binding.feePolicyId !== "string"
-    || typeof binding.feePolicyVersion !== "string"
-    || !new Set(["unresolved", "applicable", "not-applicable"]).has(binding.feeApplicability)
+    || !new Set(["unresolved", "applicable", "not-applicable", "not-selected"]).has(binding.feeApplicability)
+    || (binding.feeApplicability === "not-selected"
+      ? binding.feePolicyId !== null || binding.feePolicyVersion !== null
+      : typeof binding.feePolicyId !== "string" || typeof binding.feePolicyVersion !== "string")
     || !(binding.feePolicyInstanceSha256 === null || SHA256_PATTERN.test(binding.feePolicyInstanceSha256 ?? ""))
+    || (binding.feeApplicability === "not-selected" && binding.feePolicyInstanceSha256 !== null)
   ) {
     failPredecessorInvalid();
   }
@@ -481,7 +482,7 @@ function requireApplicationDraft(value) {
     !isPlainObject(value)
     || value.schemaVersion !== 3
     || value.contract?.id !== "public-pr-application-v3"
-    || value.contract?.version !== "3.0.0"
+    || value.contract?.version !== "3.1.0"
     || typeof value.applicationId !== "string"
     || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value.applicationId)
   ) {

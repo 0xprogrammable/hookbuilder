@@ -4,7 +4,7 @@
   "kind": "programmable-maintainability-size-budget",
   "observation": {
     "scope": "discovered-builder-production-mjs-and-portable-package-bytes",
-    "recordedAt": "2026-08-07T20:21:54Z",
+    "recordedAt": "2026-08-16T09:37:08Z",
     "broadQualityClaimed": false
   },
   "productionModules": {
@@ -50,6 +50,14 @@
           "observedComplexityScore": 155,
           "observedMaxBlockDepth": 4,
           "reviewRef": "v0.5.1 working-tree package inventory excludes tracked files deleted by a reviewed test split"
+        },
+        {
+          "path": "skills/programmable-v4-hook-builder/scripts/application-v3-prepare-revision-core.mjs",
+          "observedLines": 550,
+          "observedBytes": 19899,
+          "observedComplexityScore": 142,
+          "observedMaxBlockDepth": 4,
+          "reviewRef": "v0.10.0 reviewed public Application V3.1 lineage and conditional Fee V2 preparation"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/build-info-core.mjs",
@@ -277,11 +285,11 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/public-pr-application-v3-core.mjs",
-          "observedLines": 24,
-          "observedBytes": 1018,
+          "observedLines": 26,
+          "observedBytes": 1117,
           "observedComplexityScore": 1,
           "observedMaxBlockDepth": 1,
-          "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
+          "reviewRef": "v0.10.0 reviewed Application V3.1 validator and required-kind exports"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/registry-acceptance-v3-github-core.mjs",
@@ -375,7 +383,7 @@
   "portablePackage": {
     "path": "skills/programmable-v4-hook-builder",
     "observedFiles": 618,
-    "observedBytes": 8657625,
+    "observedBytes": 8674949,
     "maxFiles": 620,
     "maxBytes": 8750000
   }

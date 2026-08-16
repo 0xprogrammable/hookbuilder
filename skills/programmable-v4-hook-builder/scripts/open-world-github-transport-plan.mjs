@@ -1,4 +1,11 @@
-import { CENTRAL_GITHUB_BASE_BRANCH, CENTRAL_GITHUB_NUMERIC_REPOSITORY_ID, CENTRAL_GITHUB_REPOSITORY, CENTRAL_GITHUB_REPOSITORY_NAME, CliFailure, INTAKE_STATUS_PATH, canonicalJson, parseIntakeStatusBytes, path, sha256Canonical } from "./open-world-shared.mjs";
+import { CENTRAL_GITHUB_BASE_BRANCH, CENTRAL_GITHUB_NUMERIC_REPOSITORY_ID, CENTRAL_GITHUB_REPOSITORY, CENTRAL_GITHUB_REPOSITORY_NAME, CliFailure, INTAKE_STATUS_PATH, canonicalJson, parseIntakeStatusBytes, sha256Bytes, sha256Canonical } from "./open-world-shared.mjs";
+import {
+  SUBMIT_LAUNCH_ACTIVE_CONTRACT_MANIFEST_PATH,
+  SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_PATH,
+  SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_SHA256
+} from "./registry-intake-contract.mjs";
+import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
+import { validateActiveContractManifestV1 } from "./resolve-contract-validation.mjs";
 
 export function installOpenWorldGitHubTransportPlan(runtime) {
   const applicationV3CommitMessage = (...args) => runtime.applicationV3CommitMessage(...args);
@@ -101,6 +108,7 @@ export function installOpenWorldGitHubTransportPlan(runtime) {
         pullRequestAction: operation === "submit" ? "open-draft" : "update-existing-draft"
       },
       intake: remote.intake,
+      centralContract: remote.centralContract,
       sources: remote.sources,
       localSourceReplay,
       lineageVerification: remote.lineageVerification,
@@ -150,6 +158,68 @@ export function installOpenWorldGitHubTransportPlan(runtime) {
       throw error;
     }
     return intake;
+  }
+
+  async function readApplicationV3CentralContract({ transport, commit }) {
+    const manifestValue = await transport.getContent(
+      CENTRAL_GITHUB_REPOSITORY,
+      SUBMIT_LAUNCH_ACTIVE_CONTRACT_MANIFEST_PATH,
+      commit,
+      { allowNotFound: true }
+    );
+    const schemaValue = await transport.getContent(
+      CENTRAL_GITHUB_REPOSITORY,
+      SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_PATH,
+      commit,
+      { allowNotFound: true }
+    );
+    if (manifestValue === null || schemaValue === null) {
+      throw new CliFailure(
+        "APPLICATION_V3_CENTRAL_CONTRACT_INVALID",
+        "the exact protected base does not publish the active Application V3 contract and schema",
+        { exitCode: 1 }
+      );
+    }
+    const manifestBytes = decodeGitHubContent(manifestValue, SUBMIT_LAUNCH_ACTIVE_CONTRACT_MANIFEST_PATH);
+    const schemaBytes = decodeGitHubContent(schemaValue, SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_PATH);
+    let manifest;
+    try {
+      manifest = validateActiveContractManifestV1(parseBoundedStrictJsonBytes(manifestBytes, {
+        maxSourceBytes: 65_536,
+        maxDepth: 64,
+        maxNodes: 10_000,
+        maxNumberCharacters: 128
+      }), { defaultBranch: CENTRAL_GITHUB_BASE_BRANCH });
+    } catch {
+      throw new CliFailure(
+        "APPLICATION_V3_CENTRAL_CONTRACT_INVALID",
+        "the exact protected base active-contract manifest is invalid",
+        { exitCode: 1 }
+      );
+    }
+    const schemaDeclarations = manifest.artifacts.package.filter(({ path: artifactPath }) => (
+      artifactPath === SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_PATH
+    ));
+    const schemaSha256 = sha256Bytes(schemaBytes);
+    if (
+      manifest.contractId !== "submit-launch"
+      || schemaDeclarations.length !== 1
+      || schemaDeclarations[0].sha256 !== SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_SHA256
+      || schemaSha256 !== SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_SHA256
+    ) {
+      throw new CliFailure(
+        "APPLICATION_V3_CENTRAL_CONTRACT_INVALID",
+        "the exact protected base does not bind the supported Application V3 schema bytes",
+        { exitCode: 1 }
+      );
+    }
+    return Object.freeze({
+      activeContractManifestPath: SUBMIT_LAUNCH_ACTIVE_CONTRACT_MANIFEST_PATH,
+      activeContractManifestSha256: sha256Bytes(manifestBytes),
+      contractId: manifest.contractId,
+      schemaPath: SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_PATH,
+      schemaSha256
+    });
   }
 
   function enforceApplicationV3Intake({ intake, operation, application, history, pullRequest }) {
@@ -280,6 +350,7 @@ export function installOpenWorldGitHubTransportPlan(runtime) {
       "central base"
     );
     const intake = await readApplicationV3IntakeStatus({ transport, commit: base.sha });
+    const centralContract = await readApplicationV3CentralContract({ transport, commit: base.sha });
     let history = null;
     if (operation === "submit") {
       for (const { path: targetPath } of applicationPackage.files) {
@@ -402,6 +473,7 @@ export function installOpenWorldGitHubTransportPlan(runtime) {
         baseCommit: base.sha,
         baseTree: base.tree,
         intake,
+        centralContract,
         fork,
         branch,
         pullRequest: null,
@@ -491,6 +563,7 @@ export function installOpenWorldGitHubTransportPlan(runtime) {
       baseCommit: base.sha,
       baseTree: base.tree,
       intake,
+      centralContract,
       fork,
       branch: updateBranch,
       branchRef,

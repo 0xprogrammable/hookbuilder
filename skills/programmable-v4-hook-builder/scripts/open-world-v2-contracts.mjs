@@ -250,9 +250,12 @@ export function isExactZeroScopeFeeNotApplicableDeclaration(submission) {
  * evidence.
  */
 export function deriveOpenWorldV2FeeApplicability(submission) {
+  const feeV2Selected = submission?.programmableFee !== undefined
+    || submission?.supportingPackage?.feePolicySchema !== undefined;
+  if (!feeV2Selected) return "not-selected";
   if (submission?.stage !== "prototype") return "unresolved";
   const fee = submission?.programmableFee;
-  if (fee === undefined) return "not-applicable";
+  if (fee === undefined) return "unresolved";
   const claimAuthority = Array.isArray(submission?.authorities)
     ? submission.authorities.find(({ id }) => id === fee?.claimAuthorityRef)
     : null;

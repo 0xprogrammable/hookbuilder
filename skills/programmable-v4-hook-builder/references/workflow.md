@@ -1,8 +1,7 @@
 # Builder workflow
 
-> For current work, build and verify the exact public source, then bind the protected
-> `0xprogrammable/submit-launch:main` policy and workflow-canary contracts described in
-> [agent-entry-and-application.md](agent-entry-and-application.md). The six-file Applicant client
+> For current work, build and verify the exact public source, then follow the protected Application V3.1 handoff to
+> `0xprogrammable/submit-launch:main` in [application-handoff.md](application-handoff.md). The six-file Applicant client
 > is frozen legacy replay only. Never open a new Applicant PR in Hookbuilder.
 
 This workflow moves one open-ended v4 launch project from private exploration to a local review package and then a
@@ -36,7 +35,7 @@ acceptance record.
 4. Use an isolated branch or worktree and preserve unrelated changes.
 5. Inspect untrusted submitted code before running it. Use no credentials, wallets, signing access, or repository write
    token in its execution environment.
-6. Keep the complete contributor project in its own repository. Current work binds the protected central canary contract
+6. Keep the complete contributor project in its own repository. Current work binds the protected central active contract
    only after the exact source revision is clean, pushed, public, and independently resolved. The bounded six-file
    package is frozen beta replay only. For accepted-model product work, record the product branch and integration owner
    in the handoff; do not switch branches or edit product files implicitly.
@@ -209,8 +208,8 @@ Never execute a contributor's build or test script with secrets merely because t
 
 The V1 `package` and six-file `prepare-pr` flow below is historical replay only. It is not the current/default
 application path and its local Fee V1/V2 fields define no current Programmable requirement. Current work binds the
-protected central policy and workflow-canary contracts. There is no general local application transport; the dedicated
-`prepare-canary` consumer returns an exact canary preview and keeps automated local writing fail-closed.
+protected central active contract. Generic applications use the namespaced `open-world prepare-revision`, `application`,
+`submit`, `update`, and `status` path. The dedicated `prepare-canary` consumer remains a separate workflow-test preview.
 
 A proposal contains:
 

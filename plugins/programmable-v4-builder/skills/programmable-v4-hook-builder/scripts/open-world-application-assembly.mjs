@@ -1,7 +1,5 @@
-import { APPLICATION_V3_REQUIRED_KINDS, CliFailure, FULL_GIT_OBJECT_PATTERN, MAX_OUTPUT_FILE_BYTES, MAX_OUTPUT_PACKAGE_BYTES, MAX_ROOT_MANIFEST_BYTES, canonicalJson, computeRawGitObjectId, createOpenWorldDraftPackage, deriveDependencyAwareSecurityAssessment, fs, path, sha256Bytes, strictUtf8 } from "./open-world-shared.mjs";
-
+import { CliFailure, FULL_GIT_OBJECT_PATTERN, MAX_OUTPUT_FILE_BYTES, MAX_OUTPUT_PACKAGE_BYTES, MAX_ROOT_MANIFEST_BYTES, canonicalJson, computeRawGitObjectId, createOpenWorldDraftPackage, deriveDependencyAwareSecurityAssessment, fs, path, publicPrApplicationV3RequiredReviewKinds, sha256Bytes, strictUtf8 } from "./open-world-shared.mjs";
 const TRADE_APPLICATION_RECORD_KINDS = new Set(["trade-capability-manifest", "trade-test-result"]);
-
 export function installOpenWorldApplicationAssembly(runtime) {
   const compareUtf8 = (...args) => runtime.compareUtf8(...args);
   const isPlainObject = (...args) => runtime.isPlainObject(...args);
@@ -9,7 +7,6 @@ export function installOpenWorldApplicationAssembly(runtime) {
   const relative = (...args) => runtime.relative(...args);
   const routeStrictJsonResourceFailure = (...args) => runtime.routeStrictJsonResourceFailure(...args);
   const runGitBytes = (...args) => runtime.runGitBytes(...args);
-
   function readCommittedJsonAtPath(repositoryRoot, commit, binding, label) {
     if (
       !binding
@@ -54,7 +51,6 @@ export function installOpenWorldApplicationAssembly(runtime) {
     }
     return { document, bytes, objectId: entry.objectId };
   }
-
   function parseApplicationTreeEntry(bytes, repositoryPath, label) {
     const records = bytes.toString("utf8").split("\0").filter(Boolean);
     const match = records.length === 1
@@ -93,6 +89,8 @@ export function installOpenWorldApplicationAssembly(runtime) {
     }
 
     const submissionDocument = submission.document;
+    const feeV2Selected = submissionDocument?.programmableFee !== undefined
+      || submissionDocument?.supportingPackage?.feePolicySchema !== undefined;
     if (application.policyBindings?.feeApplicability !== feeApplicability) {
       throw new CliFailure(
         "APPLICATION_V3_FEE_APPLICABILITY_MISMATCH",
@@ -105,7 +103,9 @@ export function installOpenWorldApplicationAssembly(runtime) {
       ["intent-contract", submissionDocument.intentPackage?.intentContract, null, null],
       ["architecture-decisions", submissionDocument.intentPackage?.architectureDecisions, null, null],
       ["intent-fidelity", submissionDocument.intentPackage?.intentFidelity, null, null],
-      ["fee-policy-schema", submissionDocument.supportingPackage?.feePolicySchema, application.policyBindings?.feePolicySchemaPath, application.policyBindings?.feePolicySchemaSha256],
+      ...(feeV2Selected
+        ? [["fee-policy-schema", submissionDocument.supportingPackage?.feePolicySchema, application.policyBindings?.feePolicySchemaPath, application.policyBindings?.feePolicySchemaSha256]]
+        : []),
       ...(feeApplicability === "applicable"
         ? [["fee-policy", submissionDocument.supportingPackage?.feePolicy, application.policyBindings?.feePolicyInstancePath, application.policyBindings?.feePolicyInstanceSha256]]
         : [])
@@ -202,6 +202,31 @@ export function installOpenWorldApplicationAssembly(runtime) {
         throw new CliFailure(
           "APPLICATION_V3_FEE_NOT_APPLICABLE_BINDING_INVALID",
           "exact zero-scope fee-not-applicable packages require a null fee-policy instance tuple and no fee-policy review record",
+          { exitCode: 1 }
+        );
+      }
+    }
+    if (feeApplicability === "not-selected") {
+      const feeBindingFields = [
+        application.policyBindings?.feePolicySchemaId,
+        application.policyBindings?.programmableFeePolicyId,
+        application.policyBindings?.programmableFeePolicyVersion,
+        application.policyBindings?.programmableFeePolicyHashPreimage,
+        application.policyBindings?.programmableFeePolicyHash,
+        application.policyBindings?.feePolicySchemaPath,
+        application.policyBindings?.feePolicySchemaRepositoryRef,
+        application.policyBindings?.feePolicySchemaSha256,
+        application.policyBindings?.feePolicyInstancePath,
+        application.policyBindings?.feePolicyInstanceRepositoryRef,
+        application.policyBindings?.feePolicyInstanceSha256
+      ];
+      const feeReviewRecords = application.reviewPackage?.records?.filter(({ kind }) => (
+        kind === "fee-policy" || kind === "fee-policy-schema"
+      )) ?? [];
+      if (feeV2Selected || !feeBindingFields.every((value) => value === null) || feeReviewRecords.length !== 0) {
+        throw new CliFailure(
+          "APPLICATION_V3_FEE_NOT_SELECTED_BINDING_INVALID",
+          "a Submission V2 that does not select legacy Fee V2 requires an all-null fee tuple and no fee review records",
           { exitCode: 1 }
         );
       }
@@ -522,9 +547,12 @@ export function installOpenWorldApplicationAssembly(runtime) {
     if (new Set(identities).size !== identities.length) {
       throw new CliFailure("APPLICATION_REVIEW_PACKAGE_INVALID", "derived and source review records contain a duplicate source/path identity", { exitCode: 1 });
     }
+    const submission = packageSnapshots.find(({ packagePath }) => packagePath === "submission.v2.json")?.document;
+    const feeV2Selected = submission?.programmableFee !== undefined
+      || submission?.supportingPackage?.feePolicySchema !== undefined;
     assembled.reviewPackage = {
       schemaVersion: "1.0.0",
-      requiredKinds: [...APPLICATION_V3_REQUIRED_KINDS],
+      requiredKinds: [...publicPrApplicationV3RequiredReviewKinds({ feeV2Selected })],
       records
     };
     assembled.securityBindings = {

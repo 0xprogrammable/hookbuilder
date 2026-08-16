@@ -137,7 +137,7 @@ test("current install and Builder identity surfaces use the canonical Hookbuilde
   }
 });
 
-test("released and candidate transports keep the canonical Submit a Launch target", () => {
+test("historical and generic transports keep the canonical Submit a Launch target", () => {
   const transportSurfaces = [
     "github-application-journey.md",
     "github-application-v3.md",
@@ -151,14 +151,15 @@ test("released and candidate transports keep the canonical Submit a Launch targe
     assert.match(contents, /0xprogrammable\/submit-launch:main/u, relativePath);
     assert.doesNotMatch(contents, /0xprogrammable\/(?:hookbuilder|programmable-registry):main/u, relativePath);
   }
-  const candidate = fs.readFileSync(path.join(
+  const genericApplication = fs.readFileSync(path.join(
     repositoryRoot,
     "skills",
     "programmable-v4-hook-builder",
     "references",
     "github-application-v3.md"
   ), "utf8");
-  assert.match(candidate.slice(0, 1_200), /Candidate/u);
+  assert.match(genericApplication.slice(0, 1_200), /accepted generic Applicant contract/u);
+  assert.doesNotMatch(genericApplication.slice(0, 1_200), /unreleased candidate/iu);
 
   const cli = fs.readFileSync(path.join(
     repositoryRoot,

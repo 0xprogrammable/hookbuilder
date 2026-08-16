@@ -3,7 +3,7 @@ import { canonicalJson } from "./submission-core.mjs";
 
 export const APPLICATION_RECHECK_SCHEMA_VERSION = "1.0.0";
 export const TARGET_APPLICATION_CONTRACT = "public-pr-application-v3";
-export const TARGET_APPLICATION_CONTRACT_VERSION = "3.0.0";
+export const TARGET_APPLICATION_CONTRACT_VERSION = "3.1.0";
 export const TARGET_SUBMISSION_STANDARD = "2.0.0";
 export const TARGET_VALIDATOR_PROFILE = "intent-open-world-v1";
 export const OPEN_WORLD_MIGRATION_SCHEMA_VERSION = "1.0.0";
