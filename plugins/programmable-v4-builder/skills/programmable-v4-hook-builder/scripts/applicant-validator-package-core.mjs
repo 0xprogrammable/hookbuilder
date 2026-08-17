@@ -3,12 +3,15 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { canonicalJsonV2 } from "./canonical-json-core.mjs";
+import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
 
 const safePackagePathPattern = /^(?!\/)(?!.*(?:^|\/)\.git(?:\/|$))(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/u;
 const importPattern = /(?:^|\n)\s*import\s+(?:[^;]*?\s+from\s+)?["']([^"'\r\n]+)["']\s*;/gu;
 const exportPattern = /(?:^|\n)\s*export\s+(?:\*\s*(?:as\s+[A-Za-z_$][\w$]*\s*)?|\{[^;]*\}\s*)from\s*["']([^"'\r\n]+)["']\s*;/gu;
 const staticUrlPattern = /new\s+URL\(\s*["']([^"'\r\n]+)["']\s*,\s*import\.meta\.url\s*\)/gu;
 const dynamicImportPattern = /\bimport\s*\(/u;
+const sha256Pattern = /^[0-9a-f]{64}$/u;
+const bundledCatalogManifestPath = "assets/starter-catalog/catalog.json";
 
 export const PUBLIC_APPLICANT_VALIDATOR_PACKAGE_LIMITS = deepFreeze({
   files: 256,
@@ -53,6 +56,7 @@ export function generateApplicantValidatorPackageClosure({
   const discovered = new Map();
 
   for (const assetPath of selected.assets) addFile(assetPath, roleFor(assetPath, entrypointSet));
+  if (selected.assets.includes(bundledCatalogManifestPath)) addBundledCatalogClosure();
 
   while (pending.length > 0) {
     const current = pending.shift();
@@ -126,6 +130,107 @@ export function generateApplicantValidatorPackageClosure({
       fail("VALIDATOR_PACKAGE_SIZE_LIMIT", "Validator package dependency closure exceeds its aggregate byte limit");
     }
     discovered.set(filePath, Object.freeze({ path: filePath, role, bytes }));
+    return bytes;
+  }
+
+  function addBundledCatalogClosure() {
+    const catalogDirectory = path.posix.dirname(bundledCatalogManifestPath);
+    const catalog = parseManifest(
+      discovered.get(bundledCatalogManifestPath)?.bytes,
+      "VALIDATOR_PACKAGE_CATALOG_INVALID",
+      "Bundled template catalog manifest is invalid"
+    );
+    if (
+      catalog?.kind !== "programmable-starter-catalog"
+      || catalog.schemaVersion !== "1.0.0"
+      || !Array.isArray(catalog.entries)
+      || catalog.entries.length < 1
+      || catalog.entries.length > 128
+    ) {
+      fail("VALIDATOR_PACKAGE_CATALOG_INVALID", "Bundled template catalog manifest identity or entries are invalid");
+    }
+    for (const entry of catalog.entries) {
+      addHashBoundCatalogAsset({
+        baseDirectory: catalogDirectory,
+        reference: entry,
+        code: "VALIDATOR_PACKAGE_CATALOG_HASH_MISMATCH",
+        label: "template catalog entry"
+      });
+    }
+
+    const implementationManifestBytes = addHashBoundCatalogAsset({
+      baseDirectory: catalogDirectory,
+      reference: catalog.implementationLegos,
+      code: "VALIDATOR_PACKAGE_IMPLEMENTATION_LEGO_HASH_MISMATCH",
+      label: "implementation Lego manifest"
+    });
+    const implementationManifest = parseManifest(
+      implementationManifestBytes,
+      "VALIDATOR_PACKAGE_IMPLEMENTATION_LEGO_INVALID",
+      "Bundled implementation Lego manifest is invalid"
+    );
+    if (
+      implementationManifest?.kind !== "programmable-implementation-lego-manifest"
+      || implementationManifest.schemaVersion !== "1.0.0"
+      || !Array.isArray(implementationManifest.entries)
+      || implementationManifest.entries.length < 1
+      || implementationManifest.entries.length > 128
+    ) {
+      fail("VALIDATOR_PACKAGE_IMPLEMENTATION_LEGO_INVALID", "Bundled implementation Lego manifest identity or entries are invalid");
+    }
+    const implementationDirectory = path.posix.join(
+      catalogDirectory,
+      path.posix.dirname(catalog.implementationLegos.path)
+    );
+    for (const entry of implementationManifest.entries) {
+      const definitionBytes = addHashBoundCatalogAsset({
+        baseDirectory: implementationDirectory,
+        reference: entry,
+        code: "VALIDATOR_PACKAGE_IMPLEMENTATION_LEGO_HASH_MISMATCH",
+        label: "implementation Lego definition"
+      });
+      const definition = parseManifest(
+        definitionBytes,
+        "VALIDATOR_PACKAGE_IMPLEMENTATION_LEGO_INVALID",
+        "Bundled implementation Lego definition is invalid"
+      );
+      if (!Array.isArray(definition?.files) || definition.files.length > 128) {
+        fail("VALIDATOR_PACKAGE_IMPLEMENTATION_LEGO_INVALID", "Bundled implementation Lego definition files are invalid");
+      }
+      for (const source of definition.files) {
+        addHashBoundCatalogAsset({
+          baseDirectory: implementationDirectory,
+          reference: { path: source?.sourcePath, sha256: source?.sha256 },
+          code: "VALIDATOR_PACKAGE_IMPLEMENTATION_LEGO_HASH_MISMATCH",
+          label: "implementation Lego source"
+        });
+      }
+    }
+  }
+
+  function addHashBoundCatalogAsset({ baseDirectory, reference, code, label }) {
+    if (
+      reference === null
+      || typeof reference !== "object"
+      || Array.isArray(reference)
+      || typeof reference.path !== "string"
+      || typeof reference.sha256 !== "string"
+      || !sha256Pattern.test(reference.sha256)
+    ) {
+      fail("VALIDATOR_PACKAGE_CATALOG_INVALID", `Bundled ${label} reference is invalid`);
+    }
+    validatePackagePath(reference.path, `${label} path`);
+    const assetPath = path.posix.join(baseDirectory, reference.path);
+    validatePackagePath(assetPath, `${label} packaged path`);
+    const bytes = addFile(assetPath, roleFor(assetPath, entrypointSet));
+    const actual = sha256(bytes).slice("sha256:".length);
+    if (actual !== reference.sha256) {
+      fail(code, `Bundled ${label} bytes do not match their manifest digest`, {
+        path: assetPath,
+        expected: reference.sha256,
+        actual
+      });
+    }
     return bytes;
   }
 }
@@ -326,6 +431,20 @@ function validateProfile(value) {
   const entrypoints = uniqueSorted(value.entrypoints, "entrypoint");
   const assets = uniqueSorted(value.assets, "asset");
   return Object.freeze({ entrypoints, assets });
+}
+
+function parseManifest(bytes, code, message) {
+  if (!Buffer.isBuffer(bytes)) fail(code, message);
+  try {
+    return parseBoundedStrictJsonBytes(bytes, {
+      maxSourceBytes: 1024 * 1024,
+      maxNodes: 50_000,
+      maxDepth: 128,
+      maxNumberCharacters: 256
+    });
+  } catch (cause) {
+    fail(code, message, { causeCode: cause?.code ?? null });
+  }
 }
 
 function uniqueSorted(values, label) {

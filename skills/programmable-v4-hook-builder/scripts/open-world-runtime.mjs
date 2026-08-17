@@ -13,6 +13,7 @@ import { installOpenWorldGitHubMutationPrimitives } from "./open-world-github-mu
 import { installOpenWorldGitHubReceiptStore } from "./open-world-github-receipt-store.mjs";
 import { installOpenWorldGitHubReceiptReconcile } from "./open-world-github-receipt-reconcile.mjs";
 import { installOpenWorldGitHubStatusHistory } from "./open-world-github-status-history.mjs";
+import { installOpenWorldGitHubDraftAdoption } from "./open-world-github-draft-adoption.mjs";
 import { installOpenWorldGitHubTransportUtilities } from "./open-world-github-transport-utilities.mjs";
 import { installOpenWorldFilesystemGitUtilities } from "./open-world-filesystem-git-utilities.mjs";
 import { installOpenWorldSnapshotSourceUtilities } from "./open-world-snapshot-source-utilities.mjs";
@@ -37,6 +38,7 @@ const installers = Object.freeze([
   installOpenWorldGitHubReceiptStore,
   installOpenWorldGitHubReceiptReconcile,
   installOpenWorldGitHubStatusHistory,
+  installOpenWorldGitHubDraftAdoption,
   installOpenWorldGitHubTransportUtilities,
   installOpenWorldFilesystemGitUtilities,
   installOpenWorldSnapshotSourceUtilities,

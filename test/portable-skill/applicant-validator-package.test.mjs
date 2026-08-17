@@ -13,6 +13,11 @@ import {
   materializeApplicantValidatorPackage,
   verifyApplicantValidatorPackage
 } from "../../skills/programmable-v4-hook-builder/scripts/applicant-validator-package-core.mjs";
+import { builderTemplateFromPlan } from "../../skills/programmable-v4-hook-builder/scripts/builder-template-contract.mjs";
+import {
+  composeTemplate,
+  loadTemplateCatalog
+} from "../../skills/programmable-v4-hook-builder/scripts/template-catalog-core.mjs";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const skillRoot = path.join(repositoryRoot, "skills/programmable-v4-hook-builder");
@@ -39,7 +44,7 @@ test("the default package is a deterministic minimal closed dependency set", () 
   assert.deepEqual(first.receiptBytes, second.receiptBytes);
   assert.equal(first.receipt.entrypoint, "scripts/public-applicant-validator.mjs");
   assert.equal(first.receipt.fileCount, first.receipt.files.length);
-  assert.equal(first.receipt.fileCount, 128);
+  assert.equal(first.receipt.fileCount, 200);
   assert.equal(PUBLIC_APPLICANT_VALIDATOR_PACKAGE_LIMITS.aggregateBytes, 16 * 1024 * 1024);
   assert.equal(first.receipt.files.some(({ path: filePath }) => filePath === "SKILL.md"), false);
   assert.equal(first.receipt.files.some(({ path: filePath }) => filePath.startsWith("assets/templates/")), false);
@@ -102,6 +107,44 @@ test("materialization and verification preserve the exact receipt and reject dri
   );
 });
 
+test("the materialized facade carries the exact catalog closure required to normalize reviewed templates", async (t) => {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-validator-catalog-"));
+  const outputRoot = path.join(parent, "package");
+  t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
+
+  const catalog = loadTemplateCatalog({ skillRoot });
+  const unsupportedStandalonePacks = new Set([
+    "chainlink-ccip",
+    "chainlink-cre",
+    "chainlink-data-feeds",
+    "chainlink-data-streams",
+    "chainlink-provider",
+    "chainlink-vrf-v2-5",
+    "programmable-volume-fee"
+  ]);
+  const templates = catalog.definitions
+    .filter((definition) => definition.kind === "starter" || !unsupportedStandalonePacks.has(definition.id))
+    .map((definition) => builderTemplateFromPlan(composeTemplate({
+      catalog,
+      starterId: definition.kind === "starter" ? definition.id : "blank-custom",
+      packIds: definition.kind === "pack" ? [definition.id] : []
+    })));
+
+  const closure = generateApplicantValidatorPackageClosure({ skillRoot });
+  materializeApplicantValidatorPackage({ closure, outputRoot });
+  const isolated = await import(pathToFileURL(path.join(outputRoot, closure.receipt.entrypoint)));
+  for (const template of templates) {
+    assert.deepEqual(isolated.normalizeBuilderTemplate(template), template);
+  }
+
+  const expectedCatalogPaths = listRegularFilePaths(path.join(skillRoot, "assets/starter-catalog"))
+    .map((filePath) => `assets/starter-catalog/${filePath}`);
+  const packagedCatalogPaths = closure.receipt.files
+    .map(({ path: filePath }) => filePath)
+    .filter((filePath) => filePath.startsWith("assets/starter-catalog/"));
+  assert.deepEqual(packagedCatalogPaths, expectedCatalogPaths);
+});
+
 test("materialization recomputes receipt totals, file digests and closure digest", (t) => {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-validator-tamper-"));
   t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
@@ -112,6 +155,29 @@ test("materialization recomputes receipt totals, file digests and closure digest
     (error) => error.code === "VALIDATOR_PACKAGE_CLOSURE_INVALID"
   );
   assert.equal(fs.existsSync(path.join(parent, "package")), false);
+});
+
+test("missing or substituted manifest-bound catalog packs fail package generation closed", (t) => {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-validator-catalog-drift-"));
+  t.after(() => fs.rmSync(parent, { recursive: true, force: true }));
+  const closure = generateApplicantValidatorPackageClosure({ skillRoot });
+  const packPath = path.join("assets", "starter-catalog", "packs", "active-liquidity-market.json");
+
+  const missingRoot = path.join(parent, "missing");
+  materializeApplicantValidatorPackage({ closure, outputRoot: missingRoot });
+  fs.unlinkSync(path.join(missingRoot, packPath));
+  assert.throws(
+    () => generateApplicantValidatorPackageClosure({ skillRoot: missingRoot }),
+    (error) => error instanceof ValidatorPackageError && error.code === "VALIDATOR_PACKAGE_FILE_MISSING"
+  );
+
+  const substitutedRoot = path.join(parent, "substituted");
+  materializeApplicantValidatorPackage({ closure, outputRoot: substitutedRoot });
+  fs.writeFileSync(path.join(substitutedRoot, packPath), "{}\n");
+  assert.throws(
+    () => generateApplicantValidatorPackageClosure({ skillRoot: substitutedRoot }),
+    (error) => error instanceof ValidatorPackageError && error.code === "VALIDATOR_PACKAGE_CATALOG_HASH_MISMATCH"
+  );
 });
 
 test("verification never follows a packaged symlink", (t) => {
@@ -151,3 +217,18 @@ test("missing, escaping, bare and dynamic dependencies fail closed", (t) => {
   expectCode('export const load = () => import("./later.mjs");\n', "VALIDATOR_PACKAGE_DYNAMIC_IMPORT_FORBIDDEN");
   expectCode('import "../../outside.mjs";\n', "VALIDATOR_PACKAGE_PATH_ESCAPE");
 });
+
+function listRegularFilePaths(root) {
+  const files = [];
+  visit(root, "");
+  return files.sort();
+
+  function visit(directory, relativeDirectory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const relative = relativeDirectory === "" ? entry.name : `${relativeDirectory}/${entry.name}`;
+      const absolute = path.join(directory, entry.name);
+      if (entry.isDirectory()) visit(absolute, relative);
+      else if (entry.isFile()) files.push(relative);
+    }
+  }
+}

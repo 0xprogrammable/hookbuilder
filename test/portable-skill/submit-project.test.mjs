@@ -7,9 +7,12 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  projectAdoptedDraftTransport,
   projectTrustedTransportFailureEffects,
   runSubmitProjectJourney
 } from "../../skills/programmable-v4-hook-builder/scripts/submit-project.mjs";
+import { planSubmitOrAdoptExistingDraft } from "../../skills/programmable-v4-hook-builder/scripts/submit-project-draft-adoption.mjs";
+import { selectExactApplicationV3DraftCandidate } from "../../skills/programmable-v4-hook-builder/scripts/open-world-github-draft-adoption.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "..", "..", "skills", "programmable-v4-hook-builder");
@@ -257,6 +260,117 @@ test("successful compatibility creates one private persistent workspace before p
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
+});
+
+test("submit-project adopts one exact existing Draft after the protected submit conflict", async () => {
+  const calls = [];
+  const applicationPackage = {
+    applicationId: "existing-applicant",
+    packageSha256: `sha256:${"a".repeat(64)}`
+  };
+  const selection = await planSubmitOrAdoptExistingDraft({
+    applicationPackage,
+    applicationPackagePath: "/workspace/application-package",
+    repositoryRoot: "/project",
+    sourceRoots: [{ repositoryRef: "primary", root: "/project" }],
+    runTransport(args) {
+      calls.push(args);
+      return { ok: false, code: "APPLICATION_BRANCH_EXISTS_USE_UPDATE" };
+    },
+    async adoptExistingDraft(input) {
+      assert.equal(input.applicationPackagePath, "/workspace/application-package");
+      assert.deepEqual(input.sourceRoots, [{ repositoryRef: "primary", root: "/project" }]);
+      return {
+        ok: true,
+        result: {
+          action: "adopt-draft",
+          adopted: true,
+          applicationId: applicationPackage.applicationId,
+          package: {
+            matchesRemote: true,
+            packageSha256: applicationPackage.packageSha256
+          },
+          target: {
+            repository: "0xprogrammable/submit-launch",
+            pullRequestNumber: 40
+          },
+          readOnly: true,
+          writePerformed: false,
+          approvalGranted: false,
+          launchAuthorizationGranted: false,
+          status: { transport: "submitted", integrity: "matched" }
+        }
+      };
+    }
+  });
+  assert.equal(selection.adopted, true);
+  assert.equal(selection.pullRequest, 40);
+  assert.equal(selection.status, null);
+  assert.deepEqual(calls, [["submit", "/workspace/application-package", "--source-root", "primary=/project", "--dry-run"]]);
+  assert.deepEqual(projectAdoptedDraftTransport(null, 40, { status: { transport: "submitted" } }), {
+    operation: "update",
+    pullRequest: 40,
+    confirmationDigest: null,
+    lastStatus: { status: { transport: "submitted" } }
+  });
+});
+
+test("existing Draft adoption fails closed for ambiguous candidates or a package mismatch", async () => {
+  assert.throws(
+    () => selectExactApplicationV3DraftCandidate({
+      byHead: [{ number: 40 }, { number: 41 }],
+      search: {
+        total_count: 2,
+        items: [
+          { number: 40, title: "[Application V3] existing-applicant revision 1", user: { id: 258789013 } },
+          { number: 41, title: "[Application V3] existing-applicant revision 1", user: { id: 258789013 } }
+        ]
+      },
+      expectedTitle: "[Application V3] existing-applicant revision 1",
+      expectedAuthorId: "258789013"
+    }),
+    (error) => error?.code === "APPLICATION_DRAFT_ADOPTION_AMBIGUOUS"
+  );
+
+  const applicationPackage = {
+    applicationId: "existing-applicant",
+    packageSha256: `sha256:${"a".repeat(64)}`
+  };
+  const selection = await planSubmitOrAdoptExistingDraft({
+    applicationPackage,
+    applicationPackagePath: "/workspace/application-package",
+    repositoryRoot: "/project",
+    sourceRoots: [],
+    runTransport() {
+      return { ok: false, code: "APPLICATION_ALREADY_OPEN_USE_UPDATE" };
+    },
+    async adoptExistingDraft() {
+      return {
+        ok: true,
+        result: {
+          action: "adopt-draft",
+          adopted: true,
+          applicationId: applicationPackage.applicationId,
+          package: {
+            matchesRemote: false,
+            packageSha256: `sha256:${"b".repeat(64)}`
+          },
+          target: {
+            repository: "0xprogrammable/submit-launch",
+            pullRequestNumber: 40
+          },
+          readOnly: true,
+          writePerformed: false,
+          approvalGranted: false,
+          launchAuthorizationGranted: false
+        }
+      };
+    }
+  });
+  assert.equal(selection.adopted, false);
+  assert.equal(selection.pullRequest, null);
+  assert.equal(selection.status.code, "APPLICATION_DRAFT_ADOPTION_PACKAGE_MISMATCH");
+  assert.equal(selection.status.details.writePerformed, false);
 });
 
 test("concrete submit-project failure projection preserves recorded partial GitHub writes", () => {
