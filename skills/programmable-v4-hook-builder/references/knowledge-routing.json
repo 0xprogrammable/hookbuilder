@@ -327,7 +327,7 @@
       "dynamicRouteTiming": "deferred",
       "dynamicRouteTrigger": "Load a capability-specific chapter only when a concrete package or source-binding failure cannot be resolved from the submission workflow and its exact failing field.",
       "initial": [
-        "open-world-v2-workflow.md"
+        "applicant-journey.md"
       ],
       "later": [
         {
