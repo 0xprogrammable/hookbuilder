@@ -83,7 +83,7 @@
       "globalOrSystemConfig": false,
       "minimumGitVersion": "2.49.0",
       "partialCloneFilter": "blob:none",
-      "materialization": "git backfill --sparse followed by raw git cat-file --batch",
+      "materialization": "one bounded git fetch --stdin batch for tree-derived blob object ids followed by raw git cat-file --batch",
       "temporaryRepositoryBytes": 67108864,
       "temporaryRepositoryEnforcement": "process monitoring plus post-command measurement; not a filesystem quota"
     }
@@ -120,7 +120,7 @@
     "https://docs.github.com/en/rest/git/trees?apiVersion=2026-03-10#get-a-tree",
     "https://docs.github.com/en/rest/actions/workflow-runs?apiVersion=2026-03-10#get-a-workflow-run",
     "https://git-scm.com/docs/partial-clone",
-    "https://git-scm.com/docs/git-backfill",
+    "https://git-scm.com/docs/git-fetch",
     "https://git-scm.com/docs/git-cat-file"
   ]
 }

@@ -134,24 +134,10 @@ export function inspectExactObjectGitTooling(gitProbe = spawnSafeGitSync) {
     };
   }
 
-  const backfillResult = gitProbe(["backfill", "-h"], {
-    encoding: "utf8",
-    timeout: 5000,
-    maxBuffer: 65_536
-  });
-  const backfillOutput = `${backfillResult?.stdout ?? ""}\n${backfillResult?.stderr ?? ""}`;
-  if (!/(?:^|\n)usage: git backfill(?: |\n)/u.test(backfillOutput)) {
-    return {
-      status: "toolingBlocked",
-      version,
-      reason: "git backfill --sparse is required for exact public-source verification"
-    };
-  }
-
   return {
     status: "ready",
     version,
-    capability: "git backfill --sparse"
+    capability: "bounded git fetch --stdin"
   };
 }
 

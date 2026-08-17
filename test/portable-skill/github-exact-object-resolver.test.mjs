@@ -51,7 +51,6 @@ function makeFixture(options = {}) {
 
 function createFakeGit(fixture, options = {}) {
   const calls = [];
-  const sparseSelections = [];
   let gitDirectory = null;
 
   const runGit = async (call) => {
@@ -94,13 +93,10 @@ function createFakeGit(fixture, options = {}) {
     if (parsed.command === "--version") {
       return success(`git version ${options.gitVersion ?? "2.50.1"}\n`);
     }
-    if (parsed.command === "backfill" && parsed.arguments[0] === "-h") {
-      if (options.capabilityAvailable === false) {
-        return success("", "git: 'backfill' is not a git command\n", 1);
-      }
-      return success("", "usage: git backfill [--sparse]\n", 129);
-    }
-    if (options.failurePhase === parsed.command) {
+    if (
+      options.failurePhase === parsed.command
+      || (options.failurePhase === "object-fetch" && parsed.command === "fetch" && parsed.arguments.includes("--stdin"))
+    ) {
       return success("", options.failureStderr ?? "untrusted upstream failure\n", 1);
     }
     if (parsed.command === "init") {
@@ -118,10 +114,6 @@ function createFakeGit(fixture, options = {}) {
           Buffer.from([0])
         ]));
       return success(Buffer.concat(records));
-    }
-    if (parsed.command === "backfill" && parsed.arguments[0] === "--sparse") {
-      sparseSelections.push(fs.readFileSync(path.join(gitDirectory, "info", "sparse-checkout"), "utf8"));
-      return success();
     }
     if (parsed.command === "cat-file" && parsed.arguments[0] === "--batch") {
       const objectIds = inputLines(call.input);
@@ -149,7 +141,7 @@ function createFakeGit(fixture, options = {}) {
     return success("", "unexpected fake git invocation\n", 1);
   };
 
-  return { calls, runGit, sparseSelections, get gitDirectory() { return gitDirectory; } };
+  return { calls, runGit, get gitDirectory() { return gitDirectory; } };
 }
 
 function parseGitInvocation(args) {
@@ -184,7 +176,7 @@ async function assertResolverError(promise, code, messagePattern = null) {
   });
 }
 
-test("resolves exact regular blobs through literal sparse backfill and raw batch reads", async () => {
+test("resolves exact regular blobs through bounded exact-object fetch and raw batch reads", async () => {
   const fixture = makeFixture();
   const fake = createFakeGit(fixture);
   const resolver = createAnonymousGitHubExactObjectResolverV1({ runGit: fake.runGit });
@@ -195,26 +187,20 @@ test("resolves exact regular blobs through literal sparse backfill and raw batch
   assert.equal(result.records.get("contracts/Hook.sol").mode, "100644");
   assert.equal(result.records.get(SPECIAL_PATH).mode, "100755");
   assert.deepEqual(result.records.get(SPECIAL_PATH).bytes, Buffer.from("special literal path\n"));
-  assert.equal(
-    fake.sparseSelections[0],
-    "/contracts/Hook.sol\n/src/\\!\\ \\#\\*\\?\\[\\]\\ trailing\\ /file\\ \n"
-  );
-
   const invocations = fake.calls.map((call) => parseGitInvocation(call.args));
   assert.deepEqual(invocations.map((entry) => entry.command), [
     "--version",
-    "backfill",
     "init",
     "fetch",
     "cat-file",
     "cat-file",
     "ls-tree",
-    "backfill",
+    "fetch",
     "cat-file",
     "cat-file"
   ]);
   assert.ok(invocations.find((entry) => entry.command === "fetch").arguments.includes("--filter=blob:none"));
-  assert.ok(invocations.some((entry) => entry.command === "backfill" && entry.arguments[0] === "--sparse"));
+  assert.ok(invocations.some((entry) => entry.command === "fetch" && entry.arguments.includes("--stdin")));
   assert.equal(invocations.some((entry) => ["checkout", "worktree", "submodule"].includes(entry.command)), false);
   assert.equal(fake.calls.some((call) => call.args.includes("--filters")), false);
 
@@ -248,12 +234,44 @@ test("resolves exact regular blobs through literal sparse backfill and raw batch
     return parsed.command === "cat-file" || parsed.command === "ls-tree";
   });
   assert.ok(contentReads.every((call) => call.env.GIT_NO_LAZY_FETCH === "1"));
-  const networkBackfill = fake.calls.find((call) => {
+  const networkObjectFetch = fake.calls.find((call) => {
     const parsed = parseGitInvocation(call.args);
-    return parsed.command === "backfill" && parsed.arguments[0] === "--sparse";
+    return parsed.command === "fetch" && parsed.arguments.includes("--stdin");
   });
-  assert.equal(networkBackfill.env.GIT_NO_LAZY_FETCH, undefined);
+  assert.equal(networkObjectFetch.env.GIT_NO_LAZY_FETCH, undefined);
   assert.equal(fs.existsSync(path.dirname(fake.gitDirectory)), false);
+});
+
+test("fetches every tree-derived blob object id in one bounded stdin batch", async () => {
+  const fixture = makeFixture({
+    files: [
+      ["submissions/project/idea-source.v1.json", { mode: "100644", bytes: Buffer.from("{\"idea\":true}\n") }],
+      ["submissions/project/source-fragment-000000.jsonl", { mode: "100644", bytes: Buffer.from("{\"path\":\"src/Hook.sol\"}\n") }],
+      ["src/Hook.sol", { mode: "100644", bytes: Buffer.from("contract Hook {}\n") }]
+    ]
+  });
+  const fake = createFakeGit(fixture);
+  const resolver = createAnonymousGitHubExactObjectResolverV1({ runGit: fake.runGit });
+
+  const result = await resolver(fixture.request);
+
+  assert.deepEqual([...result.records.keys()], [...fixture.files.keys()].sort());
+  const invocations = fake.calls.map((call) => ({ call, parsed: parseGitInvocation(call.args) }));
+  const objectFetches = invocations.filter(({ parsed }) => (
+    parsed.command === "fetch" && parsed.arguments.includes("--stdin")
+  ));
+  assert.equal(objectFetches.length, 1);
+  assert.deepEqual(
+    new Set(inputLines(objectFetches[0].call.input)),
+    new Set([...fixture.files.values()].map(({ objectId }) => objectId))
+  );
+  assert.ok(objectFetches[0].parsed.arguments.includes("--no-write-fetch-head"));
+  assert.ok(objectFetches[0].parsed.arguments.includes("--recurse-submodules=no"));
+  assert.ok(objectFetches[0].parsed.arguments.includes("--filter=blob:none"));
+  assert.equal(
+    invocations.some(({ parsed }) => parsed.command === "backfill" && parsed.arguments[0] === "--sparse"),
+    false
+  );
 });
 
 test("the same isolated exact-object flow is supported on macOS and Linux hosts", async (t) => {
@@ -294,28 +312,16 @@ test("closed input and hard limits reject unsafe requests before invoking Git", 
   assert.equal(fake.calls.length, 0);
 });
 
-test("requires the minimum Git version and backfill capability without a per-blob fallback", async (t) => {
+test("requires the minimum Git version before any repository fetch", async () => {
   const fixture = makeFixture();
-  await t.test("old Git", async () => {
-    const fake = createFakeGit(fixture, { gitVersion: "2.48.9" });
-    const resolver = createAnonymousGitHubExactObjectResolverV1({ runGit: fake.runGit });
-    await assertResolverError(
-      resolver(fixture.request),
-      "GITHUB_UPSTREAM_REJECTED",
-      /^Exact Git object tooling is unavailable: Git 2\.49\.0 or newer is required$/u
-    );
-    assert.deepEqual(fake.calls.map((call) => parseGitInvocation(call.args).command), ["--version"]);
-  });
-  await t.test("missing backfill", async () => {
-    const fake = createFakeGit(fixture, { capabilityAvailable: false });
-    const resolver = createAnonymousGitHubExactObjectResolverV1({ runGit: fake.runGit });
-    await assertResolverError(
-      resolver(fixture.request),
-      "GITHUB_UPSTREAM_REJECTED",
-      /^Exact Git object tooling is unavailable: git backfill --sparse is required$/u
-    );
-    assert.deepEqual(fake.calls.map((call) => parseGitInvocation(call.args).command), ["--version", "backfill"]);
-  });
+  const fake = createFakeGit(fixture, { gitVersion: "2.48.9" });
+  const resolver = createAnonymousGitHubExactObjectResolverV1({ runGit: fake.runGit });
+  await assertResolverError(
+    resolver(fixture.request),
+    "GITHUB_UPSTREAM_REJECTED",
+    /^Exact Git object tooling is unavailable: Git 2\.49\.0 or newer is required$/u
+  );
+  assert.deepEqual(fake.calls.map((call) => parseGitInvocation(call.args).command), ["--version"]);
 });
 
 test("fails closed on unsupported platforms before invoking Git", async () => {
@@ -445,9 +451,9 @@ test("smart-HTTP failures remain system errors and never expose Git stderr", asy
   const fetchResolver = createAnonymousGitHubExactObjectResolverV1({ runGit: fetchFake.runGit });
   await assertResolverError(fetchResolver(fixture.request), "GITHUB_UNAVAILABLE", /REST-verified exact commit/u);
 
-  const backfillFake = createFakeGit(fixture, { failurePhase: "backfill", failureStderr: secret });
-  const backfillResolver = createAnonymousGitHubExactObjectResolverV1({ runGit: backfillFake.runGit });
-  await assert.rejects(backfillResolver(fixture.request), (error) => {
+  const objectFetchFake = createFakeGit(fixture, { failurePhase: "object-fetch", failureStderr: secret });
+  const objectFetchResolver = createAnonymousGitHubExactObjectResolverV1({ runGit: objectFetchFake.runGit });
+  await assert.rejects(objectFetchResolver(fixture.request), (error) => {
     assert.ok(error instanceof GitHubPublicSourceError);
     assert.equal(error.code, "GITHUB_UPSTREAM_REJECTED");
     assert.equal(error.message.includes(secret), false);
@@ -468,13 +474,11 @@ test("an oversized temporary pack is killed, cleaned up, and never leaks stderr"
   const secret = "credential=https://token@example.invalid";
   const script = `#!/bin/bash
 previous=""
-penultimate=""
 git_directory=""
 expect_git_directory=0
 saw_fetch=0
 saw_init=0
 for argument in "$@"; do
-  penultimate="$previous"
   previous="$argument"
   if [[ "$expect_git_directory" == "1" ]]; then
     git_directory="$argument"
@@ -488,10 +492,6 @@ done
 if [[ "$previous" == "--version" ]]; then
   printf 'git version 2.50.1\\n'
   exit 0
-fi
-if [[ "$penultimate" == "backfill" && "$previous" == "-h" ]]; then
-  printf 'usage: git backfill [--sparse]\\n' >&2
-  exit 129
 fi
 if [[ "$saw_init" == "1" ]]; then
   mkdir -p "$previous/info"
@@ -680,29 +680,21 @@ test("default process runner uses the sanitized environment and no shell expansi
   const logPath = path.join(fixtureRoot, "calls.tsv");
   const script = `#!/bin/bash
 previous=""
-penultimate=""
 saw_init=0
 for argument in "$@"; do
-  penultimate="$previous"
   previous="$argument"
   [[ "$argument" == "init" ]] && saw_init=1
 done
 is_version=0
-is_backfill_help=0
 [[ "$previous" == "--version" ]] && is_version=1
-[[ "$penultimate" == "backfill" && "$previous" == "-h" ]] && is_backfill_help=1
-printf '%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n' \
-  "$is_version" "$is_backfill_help" "$saw_init" \
+printf '%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n' \
+  "$is_version" "$saw_init" \
   "\${HOME+x}" "\${GH_TOKEN+x}" "\${GITHUB_TOKEN+x}" "\${SSH_AUTH_SOCK+x}" \
   "$GIT_TERMINAL_PROMPT" "$GIT_CONFIG_GLOBAL" "$LANG" "$LC_ALL:$LC_CTYPE" \
   >> ${shellQuote(logPath)}
 if [[ "$is_version" == "1" ]]; then
   printf 'git version 2.50.1\\n'
   exit 0
-fi
-if [[ "$is_backfill_help" == "1" ]]; then
-  printf 'usage: git backfill [--sparse]\\n' >&2
-  exit 129
 fi
 exit 1
 `;
@@ -719,18 +711,17 @@ exit 1
 
   const calls = fs.readFileSync(logPath, "utf8").trim().split("\n").map((line) => {
     const fields = line.split("\t");
-    assert.equal(fields.length, 11);
+    assert.equal(fields.length, 10);
     return fields;
   });
-  assert.equal(calls.length, 3);
-  assert.deepEqual(calls.map((call) => call.slice(0, 3)), [
-    ["1", "0", "0"],
-    ["0", "1", "0"],
-    ["0", "0", "1"]
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls.map((call) => call.slice(0, 2)), [
+    ["1", "0"],
+    ["0", "1"]
   ]);
   for (const call of calls) {
-    assert.deepEqual(call.slice(3, 7), ["", "", "", ""]);
-    assert.deepEqual(call.slice(7), ["0", "/dev/null", "C", "C:C"]);
+    assert.deepEqual(call.slice(2, 6), ["", "", "", ""]);
+    assert.deepEqual(call.slice(6), ["0", "/dev/null", "C", "C:C"]);
   }
 });
 

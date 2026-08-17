@@ -33,7 +33,7 @@ export function enforceContentLimits(request, treeRecords, objectSizes) {
     if (header?.type !== "blob") {
       throw new GitHubPublicSourceError(
         "GITHUB_DECLARED_PATH_NOT_FOUND",
-        "A declared source blob was unavailable after sparse backfill"
+        "A declared source blob was unavailable after exact-object fetch"
       );
     }
     if (header.size > request.maximumFileBytes) {
@@ -177,10 +177,6 @@ function splitNulRecords(output) {
     start = index + 1;
   }
   return records;
-}
-
-export function escapeSparsePattern(value) {
-  return value.replace(/[\\!#*?\[\] ]/gu, (character) => `\\${character}`);
 }
 
 export function uniqueObjectIds(treeRecords) {

@@ -2,6 +2,29 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.10.3 - 2026-08-17
+
+### Fixed
+
+- Replaced the status-only sparse backfill step with one bounded anonymous `git fetch --stdin` batch containing every
+  unique blob object ID derived from the exact verified Git tree.
+- Removed the obsolete `git backfill --sparse` capability requirement from the resolver, doctor output, and public
+  portability contract while retaining the Git 2.49 minimum, no-checkout execution, and process resource bounds.
+
+### Regression proof
+
+- A focused regression requires the resolver to request every tree-derived blob ID exactly through the bounded batch
+  and forbids a sparse-backfill fallback.
+- The exact Lucky Hook source identity from Submit a Launch PR #36 resolved all 18 requested package and manifest
+  records, including the previously absent blob `262dadd2d3cdccb6534c98bc5d9a36c67a5d0bfa`, without changing Applicant bytes.
+
+### Evidence boundary
+
+- This Builder release repairs the canonical resolver. Public intake is fixed only after the protected Submit a Launch
+  validator vendors the same reviewed bytes and passes its own merge, release, and unchanged-PR verification.
+- The resolver still treats source as inert data and grants no review, approval, deployment, signing, routing, fund,
+  availability, or launch authority.
+
 ## 0.10.2 - 2026-08-16
 
 ### Fixed

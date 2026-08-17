@@ -17,7 +17,6 @@ import {
   compareNumericVersion,
   compareUtf8,
   enforceContentLimits,
-  escapeSparsePattern,
   parseBatchCheck,
   parseBatchObjects,
   parseGitVersion,
@@ -124,7 +123,7 @@ export function createAnonymousGitHubExactObjectResolverV1(options = {}) {
     let operationFailed = false;
 
     try {
-      await requireBackfillCapability(state);
+      await requireGitCapability(state);
       temporaryDirectory = await fs.promises.mkdtemp(path.join(temporaryDirectoryRoot, TEMPORARY_PREFIX));
       const gitDirectory = path.join(temporaryDirectory, "repository.git");
       await initializeBareRepository(state, gitDirectory, request.repositoryUri);
@@ -136,8 +135,7 @@ export function createAnonymousGitHubExactObjectResolverV1(options = {}) {
       }
 
       const treeRecords = await resolveTreeRecords(state, gitDirectory, request.treeObjectId, request.paths);
-      await writeSparseSelection(gitDirectory, request.paths);
-      await backfillSparseBlobs(state, gitDirectory);
+      await fetchExactBlobObjects(state, gitDirectory, treeRecords);
       const objectSizes = await readObjectSizes(state, gitDirectory, treeRecords);
       enforceContentLimits(request, treeRecords, objectSizes);
       const objectBytes = await readBlobObjects(
@@ -250,7 +248,7 @@ function normalizeRepositoryUri(value) {
   return value;
 }
 
-async function requireBackfillCapability(state) {
+async function requireGitCapability(state) {
   const versionResult = await invokeGit(state, ["--version"], {
     maximumOutputBytes: SMALL_COMMAND_OUTPUT_BYTES,
     phase: "capability"
@@ -264,15 +262,6 @@ async function requireBackfillCapability(state) {
     || compareNumericVersion(version, GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.minimumGitVersion) < 0
   ) {
     throw toolingBlocked(`Git ${GITHUB_PUBLIC_GIT_OBJECT_RESOLVER_V1.minimumGitVersion} or newer is required`);
-  }
-  const result = await invokeGit(state, ["backfill", "-h"], {
-    acceptedStatuses: null,
-    maximumOutputBytes: SMALL_COMMAND_OUTPUT_BYTES,
-    phase: "capability"
-  });
-  const output = Buffer.concat([result.stdout, result.stderr]).toString("utf8");
-  if (!/(?:^|\n)usage: git backfill(?: |\n)/u.test(output)) {
-    throw toolingBlocked("git backfill --sparse is required");
   }
 }
 
@@ -291,8 +280,6 @@ async function initializeBareRepository(state, gitDirectory, repositoryUri) {
     "\tbare = true",
     "\thooksPath = /dev/null",
     "\tattributesFile = /dev/null",
-    "\tsparseCheckout = true",
-    "\tsparseCheckoutCone = false",
     "[credential]",
     "\thelper =",
     "\tinteractive = never",
@@ -319,7 +306,6 @@ async function initializeBareRepository(state, gitDirectory, repositoryUri) {
     ""
   ].join("\n");
   try {
-    await fs.promises.mkdir(path.join(gitDirectory, "info"), { recursive: true, mode: 0o700 });
     await fs.promises.writeFile(path.join(gitDirectory, "config"), config, { encoding: "utf8", mode: 0o600 });
   } catch (error) {
     throw toolingBlocked("cannot configure the isolated bare repository", error);
@@ -412,32 +398,27 @@ async function resolveTreeRecords(state, gitDirectory, treeObjectId, requestedPa
   return parseTreeRecords(result.stdout, requestedPaths);
 }
 
-async function writeSparseSelection(gitDirectory, paths) {
-  const contents = `${paths.map((entry) => `/${escapeSparsePattern(entry)}`).join("\n")}\n`;
-  try {
-    await fs.promises.writeFile(path.join(gitDirectory, "info", "sparse-checkout"), contents, {
-      encoding: "utf8",
-      mode: 0o600
-    });
-  } catch (error) {
-    throw toolingBlocked("cannot create the literal sparse object selection", error);
-  }
-}
-
-async function backfillSparseBlobs(state, gitDirectory) {
-  const result = await invokeRepositoryGit(state, gitDirectory, ["backfill", "--sparse"], {
+async function fetchExactBlobObjects(state, gitDirectory, treeRecords) {
+  const objectIds = uniqueObjectIds(treeRecords);
+  const result = await invokeRepositoryGit(state, gitDirectory, [
+    "fetch",
+    "--quiet",
+    "--no-tags",
+    "--no-write-fetch-head",
+    "--recurse-submodules=no",
+    "--filter=blob:none",
+    "--stdin",
+    "origin"
+  ], {
+    input: Buffer.from(`${objectIds.join("\n")}\n`, "ascii"),
     maximumOutputBytes: SMALL_COMMAND_OUTPUT_BYTES,
-    phase: "backfill",
+    phase: "blob-fetch",
     monitoredDirectory: gitDirectory
   });
   if (result.status !== 0) {
-    const output = Buffer.concat([result.stdout, result.stderr]).toString("utf8");
-    if (/not a git command|unknown (?:command|option)|usage: git backfill/iu.test(output)) {
-      throw toolingBlocked("git backfill --sparse is required");
-    }
     throw new GitHubPublicSourceError(
       "GITHUB_UPSTREAM_REJECTED",
-      "GitHub did not provide the declared blobs through anonymous sparse backfill",
+      "GitHub did not provide the tree-derived blobs through anonymous exact-object fetch",
       { retryable: true }
     );
   }
@@ -454,7 +435,7 @@ async function readObjectSizes(state, gitDirectory, treeRecords) {
     phase: "blob-sizes",
     disableLazyFetch: true
   });
-  requireSuccess(result, "cannot inspect the backfilled blob objects");
+  requireSuccess(result, "cannot inspect the explicitly fetched blob objects");
   return parseBatchCheck(result.stdout, objectIds);
 }
 
@@ -466,7 +447,7 @@ async function readBlobObjects(state, gitDirectory, treeRecords, maximumTotalByt
     phase: "blobs",
     disableLazyFetch: true
   });
-  requireSuccess(result, "cannot read the backfilled blob objects");
+  requireSuccess(result, "cannot read the explicitly fetched blob objects");
   const objects = parseBatchObjects(result.stdout, objectIds);
   for (const [objectId, object] of objects) {
     if (object.type !== "blob") {

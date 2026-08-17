@@ -1,15 +1,15 @@
 {
   "schemaVersion": "1.0.0",
-  "candidateId": "programmable-v4-builder-v0.10.2-local-20260816",
+  "candidateId": "programmable-v4-builder-v0.10.3-local-20260817",
   "privateCandidate": true,
   "publicState": "not-published",
-  "releaseVersion": "0.10.2",
+  "releaseVersion": "0.10.3",
   "channel": "canary",
   "releaseKind": "normal",
   "plannedRelease": {
     "builder": {
-      "fromVersion": "0.10.1",
-      "toVersion": "0.10.2",
+      "fromVersion": "0.10.2",
+      "toVersion": "0.10.3",
       "semanticClassification": "patch"
     },
     "submissionStandard": {
@@ -34,14 +34,14 @@
       "sha256": null
     }
   },
-  "preparedAt": "2026-08-16T00:00:00Z",
-  "requestedReleaseAt": "2026-08-16T00:00:00Z",
+  "preparedAt": "2026-08-17T00:00:00Z",
+  "requestedReleaseAt": "2026-08-17T00:00:00Z",
   "changeSetComplete": true,
   "changes": [
     {
-      "id": "policy-neutral-proposal-draft-fix",
+      "id": "tree-derived-blob-fetch-fix",
       "kind": "bug-fix",
-      "summary": "Allow an exactly valid policy-neutral Submission V2 proposal to materialize an unreviewed Application V3.1 Applicant package without inventing prototype, trade-capability, or legacy Fee V2 evidence."
+      "summary": "Fetch every tree-derived declared blob object ID in one bounded anonymous batch so manifest-based Applicant source verification cannot silently lose objects after a successful sparse backfill."
     }
   ],
   "unbundledChangeIds": [],
