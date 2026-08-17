@@ -6,6 +6,8 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { runSubmitProjectJourney } from "../../skills/programmable-v4-hook-builder/scripts/submit-project.mjs";
+
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "..", "..", "skills", "programmable-v4-hook-builder");
 const cli = path.join(skillRoot, "scripts", "cli.mjs");
@@ -52,7 +54,7 @@ test("legacy and advanced namespaces retain compatibility", () => {
   assert.match(advanced.stdout, /Usage:/u);
 });
 
-test("submit-project persists an exact outside-source workspace and consolidates a missing package", () => {
+test("submit-project consolidates a missing package without creating a workspace", () => {
   const fixture = createRepository();
   const workspace = path.join(fixture.root, "workspace");
   try {
@@ -68,16 +70,12 @@ test("submit-project persists an exact outside-source workspace and consolidates
       "causeClass", "code", "repair", "safeNextCommand", "summary", "writePerformed"
     ]);
     assert.equal(payload.result.diagnostics[0].code, "PROJECT_PACKAGE_NOT_FOUND");
-    assert.equal(payload.result.workspace.root, fs.realpathSync(workspace));
-    assert.equal(payload.result.workspace.statePersisted, true);
+    assert.equal(payload.result.workspace.root, path.join(fs.realpathSync(fixture.root), "workspace"));
+    assert.equal(payload.result.workspace.statePersisted, false);
     assert.match(payload.result.safeNextCommand, /submit-project/u);
-    const statePath = path.join(workspace, "applicant-workspace.v1.json");
-    const state = JSON.parse(fs.readFileSync(statePath, "utf8"));
-    assert.equal(state.kind, "programmable-applicant-workspace");
-    assert.equal(state.source.commit, fixture.commit);
-    assert.equal(state.source.tree, fixture.tree);
-    assert.equal(state.paths.applicationPackage, path.join(fs.realpathSync(workspace), "application-package"));
-    assert.equal(fs.statSync(statePath).mode & 0o777, 0o600);
+    assert.equal(payload.result.workspace.sourceCommit, fixture.commit);
+    assert.equal(payload.result.workspace.sourceTree, fixture.tree);
+    assert.equal(fs.existsSync(workspace), false);
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
@@ -119,7 +117,8 @@ test("one closed tracked pointer selects one Submission V2 subject without absol
     const output = JSON.parse(result.stdout).result;
     assert.equal(output.state, "NEEDS_PROJECT_PACKAGE");
     assert.notEqual(output.diagnostics[0].code, "PROJECT_PACKAGE_AMBIGUOUS");
-    assert.equal(JSON.parse(fs.readFileSync(path.join(workspace, "applicant-workspace.v1.json"), "utf8")).paths.submissionV2, path.join(fixture.repository, "b/submission.v2.json"));
+    assert.equal(output.workspace.statePersisted, false);
+    assert.equal(fs.existsSync(workspace), false);
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
@@ -162,6 +161,71 @@ test("resume fails closed when no persistent workspace state exists", () => {
   }
 });
 
+test("actual submit-project compatibility preflight runs before creating a workspace", async () => {
+  const fixture = createRepository({ validSubmissionPackage: true });
+  const workspace = path.join(fixture.root, "workspace");
+  let compatibilityCalls = 0;
+  try {
+    const outcome = await runSubmitProjectJourney({
+      repositoryInput: fixture.repository,
+      workspaceRoot: workspace,
+      confirmation: null,
+      resume: false,
+      verbose: false
+    }, {
+      async compatibilityPreflight() {
+        compatibilityCalls += 1;
+        return {
+          ok: false,
+          code: "BUILDER_CENTRAL_COMPATIBILITY_MISMATCH",
+          summary: "The exact contracts differ.",
+          repair: "Update and resume."
+        };
+      },
+      atomicWorkspaceWrite() {
+        assert.fail("compatibility mismatch must not persist workspace state");
+      }
+    });
+    assert.equal(outcome.exitCode, 1);
+    assert.equal(outcome.result.state, "INTEGRATION_PENDING");
+    assert.equal(outcome.result.workspace.statePersisted, false);
+    assert.equal(outcome.result.writePerformed, false);
+    assert.equal(compatibilityCalls, 1);
+    assert.equal(fs.existsSync(workspace), false);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("successful compatibility creates one private persistent workspace before preparation", async () => {
+  const fixture = createRepository({ validSubmissionPackage: true });
+  const workspace = path.join(fixture.root, "workspace");
+  try {
+    const outcome = await runSubmitProjectJourney({
+      repositoryInput: fixture.repository,
+      workspaceRoot: workspace,
+      confirmation: null,
+      resume: false,
+      verbose: false
+    }, {
+      async compatibilityPreflight() {
+        return { ok: true, binding: { centralBaseCommit: "a".repeat(40), centralBaseTree: "b".repeat(40) } };
+      }
+    });
+    assert.equal(outcome.exitCode, 1);
+    assert.equal(outcome.result.state, "NEEDS_PROJECT_PACKAGE");
+    assert.equal(outcome.result.diagnostics[0].code, "APPLICATION_PACKAGE_INPUTS_REQUIRED");
+    assert.equal(outcome.result.workspace.statePersisted, true);
+    const realWorkspace = fs.realpathSync(workspace);
+    assert.equal(outcome.result.workspace.root, realWorkspace);
+    assert.equal(fs.statSync(realWorkspace).mode & 0o777, 0o700);
+    const state = JSON.parse(fs.readFileSync(path.join(realWorkspace, "applicant-workspace.v1.json"), "utf8"));
+    assert.deepEqual(state.compatibility, { centralBaseCommit: "a".repeat(40), centralBaseTree: "b".repeat(40) });
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("repository prose stays inert when no exact Git package exists", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-submit-project-inert-"));
   const workspace = path.join(root, "workspace");
@@ -183,12 +247,15 @@ test("repository prose stays inert when no exact Git package exists", () => {
   }
 });
 
-function createRepository({ submissionPaths = [], pointer = null } = {}) {
+function createRepository({ submissionPaths = [], pointer = null, validSubmissionPackage = false } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-submit-project-"));
   const repository = path.join(root, "project");
   fs.mkdirSync(repository);
   git(repository, ["init", "--quiet", "--initial-branch=main"]);
   fs.writeFileSync(path.join(repository, "README.md"), "fixture\n");
+  if (validSubmissionPackage) {
+    fs.cpSync(path.join(skillRoot, "assets", "templates", "open-world-v2", "new-idea"), path.join(repository, "submission"), { recursive: true });
+  }
   for (const submissionPath of submissionPaths) {
     const target = path.join(repository, submissionPath);
     fs.mkdirSync(path.dirname(target), { recursive: true });

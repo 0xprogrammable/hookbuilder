@@ -20,7 +20,7 @@ const catalog = {
     1,
     "The protected transport incorrectly requires prototype evidence for a proposal stage Applicant Draft.",
     "Keep the proposal truthful and report the protected run URL. Do not invent prototype, trade, or fee evidence.",
-    "programmable status --json"
+    "programmable submit-project --resume --verbose"
   ),
   SUBMISSION_V2_PACKAGE_MISSING: entry(
     "PROJECT",
@@ -83,7 +83,7 @@ const catalog = {
     23,
     "The Applicant denied the external GitHub writes in the current transport plan.",
     "Keep the local workspace and plan unchanged, or rerun later when Draft creation is explicitly authorized.",
-    "programmable status --json"
+    "programmable submit-project --resume"
   ),
   MUTATION_RECEIPT_RECONCILIATION_REQUIRED: entry(
     "AUTHORITY",
@@ -111,14 +111,14 @@ const catalog = {
     32,
     "The protected validator failed before it could classify the Applicant package.",
     "Preserve the package and report the protected run URL so the platform failure can be reproduced independently.",
-    "programmable status --json"
+    "programmable submit-project --resume --verbose"
   ),
   CHECKS_RUNNING: entry(
     "PLATFORM",
     40,
     "The Draft exists and its protected checks have not reached a terminal result.",
     "Wait for the current checks and read their status without opening or updating another Draft.",
-    "programmable status"
+    "programmable submit-project --resume"
   ),
   CHANGES_REQUESTED: entry(
     "PROJECT",
@@ -132,7 +132,7 @@ const catalog = {
     90,
     "The Applicant workflow returned a code that this Builder does not yet classify.",
     "Preserve the exact package, workspace, code, and run URL, then inspect structured status before any retry.",
-    "programmable status --json"
+    "programmable submit-project --resume --verbose"
   )
 };
 

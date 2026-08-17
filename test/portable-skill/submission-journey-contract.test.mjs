@@ -264,7 +264,7 @@ test("normal help centers doctor and submit-project and hides internal choreogra
     "prepare-canary",
     "launch-bundle-v2"
   ]) {
-    assert.doesNotMatch(result.stdout, new RegExp(`^  ${escapeRegExp(internal)}\\b`, "mu"), internal);
+    assert.doesNotMatch(result.stdout, new RegExp(`^  ${escapeRegExp(internal)}(?:\\s|$)`, "mu"), internal);
   }
 });
 

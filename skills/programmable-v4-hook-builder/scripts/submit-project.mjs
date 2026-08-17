@@ -7,6 +7,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 import { parseCli, renderHelp } from "./cli-args.mjs";
+import { preflightProtectedApplicantCompatibility } from "./applicant-compatibility-github.mjs";
 import { CliFailure, emitFailure, emitSuccess, requireJsonResult, runBundledCommand } from "./cli-runtime.mjs";
 import { inspectCleanProjectSource } from "./project-command-executor-core.mjs";
 import { createOpenWorldRuntime } from "./open-world-runtime.mjs";
@@ -61,7 +62,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
     }),
     atomicWorkspaceWrite: persistWorkspaceState,
     runTransport: runOpenWorld,
-    compatibilityPreflight: async () => ({ ok: true }),
+    compatibilityPreflight: preflightProtectedApplicantCompatibility,
     ...adapters
   };
   const repositoryRoot = resolveRepository(repositoryInput);
@@ -115,8 +116,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
       "Prepare or regenerate the project package for the new exact revision. The prior Draft plan is not reused.",
       command
     );
-    const state = createState({ repositoryRoot, workspace, source, previous, currentState: "NEEDS_PROJECT_PACKAGE", diagnostics: [diagnostic] });
-    runtime.atomicWorkspaceWrite(statePath, state);
+    const state = createState({ repositoryRoot, workspace, source, previous, currentState: "NEEDS_PROJECT_PACKAGE", diagnostics: [diagnostic], workspacePersisted: false });
     return blockedResult(state, [diagnostic], command, verbose);
   }
 
@@ -136,8 +136,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
         "Repair the closed pointer without adding absolute, traversal, Git-control, or non-workspace semantic input paths.",
         command
       );
-      const state = createState({ repositoryRoot, workspace, source, previous, submissionPaths, currentState: "NEEDS_PROJECT_PACKAGE", diagnostics: [diagnostic] });
-      runtime.atomicWorkspaceWrite(statePath, state);
+      const state = createState({ repositoryRoot, workspace, source, previous, submissionPaths, currentState: "NEEDS_PROJECT_PACKAGE", diagnostics: [diagnostic], workspacePersisted: false });
       return blockedResult(state, [diagnostic], command, verbose);
     }
   }
@@ -166,9 +165,9 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
       previous,
       submissionPaths,
       currentState: "NEEDS_PROJECT_PACKAGE",
-      diagnostics: [diagnostic]
+      diagnostics: [diagnostic],
+      workspacePersisted: false
     });
-    runtime.atomicWorkspaceWrite(statePath, state);
     return blockedResult(state, [diagnostic], command, verbose);
   }
 
@@ -189,11 +188,35 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
       previous,
       submissionPaths,
       currentState: "NEEDS_PROJECT_PACKAGE",
-      diagnostics: [diagnostic]
+      diagnostics: [diagnostic],
+      workspacePersisted: false
     });
-    runtime.atomicWorkspaceWrite(statePath, state);
     return blockedResult(state, [diagnostic], command, verbose);
   }
+
+  const compatibility = await runtime.compatibilityPreflight({ repositoryRoot, source });
+  if (compatibility?.ok !== true) {
+    const diagnostic = finding(
+      compatibility?.code ?? "APPLICANT_COMPATIBILITY_PENDING",
+      "INTEGRATION",
+      compatibility?.summary ?? "The protected central compatibility contract could not be bound exactly.",
+      compatibility?.repair ?? "Resume after the exact Builder and protected Submit Launch contract binding is available.",
+      command
+    );
+    const state = createState({
+      repositoryRoot,
+      workspace,
+      source,
+      previous,
+      submissionPaths,
+      currentState: "INTEGRATION_PENDING",
+      diagnostics: [diagnostic],
+      workspacePersisted: false
+    });
+    return blockedResult(state, [diagnostic], command, verbose, { validation, compatibility });
+  }
+  ensureWorkspaceDirectory(repositoryRoot, workspace);
+  const compatibilityBinding = compatibility.binding ?? null;
 
   const applicationPackage = path.join(workspace, "application-package");
   if (!isRealDirectoryWithFile(applicationPackage, "application.v3.json")) {
@@ -219,7 +242,8 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
       previous,
       submissionPaths,
       currentState: "NEEDS_PROJECT_PACKAGE",
-      diagnostics: [diagnostic]
+      diagnostics: [diagnostic],
+      compatibility: compatibilityBinding
     });
     runtime.atomicWorkspaceWrite(statePath, state);
     return blockedResult(state, [diagnostic], command, verbose, { validation });
@@ -244,7 +268,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
       command
     );
     const currentState = missingRoots ? "NEEDS_PUBLIC_SOURCE" : "NEEDS_PROJECT_PACKAGE";
-    const state = createState({ repositoryRoot, workspace, source, previous, submissionPaths, currentState, diagnostics: [diagnostic] });
+    const state = createState({ repositoryRoot, workspace, source, previous, submissionPaths, currentState, diagnostics: [diagnostic], compatibility: compatibilityBinding });
     runtime.atomicWorkspaceWrite(statePath, state);
     return blockedResult(state, [diagnostic], command, verbose);
   }
@@ -257,35 +281,15 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
       applicationValidation.repair,
       command
     );
-    const state = createState({ repositoryRoot, workspace, source, previous, submissionPaths, currentState: applicationValidation.state, diagnostics: [diagnostic] });
+    const state = createState({ repositoryRoot, workspace, source, previous, submissionPaths, currentState: applicationValidation.state, diagnostics: [diagnostic], compatibility: compatibilityBinding });
     runtime.atomicWorkspaceWrite(statePath, state);
     return blockedResult(state, [diagnostic], command, verbose, { validation, applicationValidation });
-  }
-
-  const compatibility = await runtime.compatibilityPreflight({
-    repositoryRoot,
-    workspace,
-    source,
-    applicationPackage: applicationSnapshot,
-    sourceRoots
-  });
-  if (compatibility?.ok !== true) {
-    const diagnostic = finding(
-      compatibility?.code ?? "APPLICANT_COMPATIBILITY_PENDING",
-      "INTEGRATION",
-      compatibility?.summary ?? "The protected central compatibility contract could not be bound exactly.",
-      compatibility?.repair ?? "Resume after the exact Builder and protected Submit Launch contract binding is available.",
-      command
-    );
-    const state = createState({ repositoryRoot, workspace, source, previous, submissionPaths, currentState: "INTEGRATION_PENDING", diagnostics: [diagnostic] });
-    runtime.atomicWorkspaceWrite(statePath, state);
-    return blockedResult(state, [diagnostic], command, verbose, { validation, applicationValidation, compatibility });
   }
 
   const pullRequest = previous?.transport?.pullRequest ?? null;
   if (pullRequest !== null && confirmation === null) {
     const status = runtime.runTransport(["status", applicationPackage, "--pull-request", String(pullRequest), ...sourceRootArgs(sourceRoots)], repositoryRoot);
-    if (!status.ok) return transportFailure({ status, repositoryRoot, workspace, source, previous, submissionPaths, statePath, command, verbose });
+    if (!status.ok) return transportFailure({ status, repositoryRoot, workspace, source, previous, submissionPaths, statePath, command, verbose, compatibility: compatibilityBinding });
     const currentState = projectRemoteState(status.result);
     const state = createState({
       repositoryRoot,
@@ -295,6 +299,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
       submissionPaths,
       currentState,
       diagnostics: [],
+      compatibility: compatibilityBinding,
       transport: { ...previous.transport, lastStatus: status.result }
     });
     runtime.atomicWorkspaceWrite(statePath, state);
@@ -306,7 +311,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
   if (pullRequest !== null) operationArgs.push("--pull-request", String(pullRequest));
   operationArgs.push(...sourceRootArgs(sourceRoots), "--dry-run");
   const plan = runtime.runTransport(operationArgs, repositoryRoot);
-  if (!plan.ok) return transportFailure({ status: plan, repositoryRoot, workspace, source, previous, submissionPaths, statePath, command, verbose });
+  if (!plan.ok) return transportFailure({ status: plan, repositoryRoot, workspace, source, previous, submissionPaths, statePath, command, verbose, compatibility: compatibilityBinding });
   const confirmationDigest = plan.result?.confirmationDigest;
   if (!SHA256_PATTERN.test(confirmationDigest)) {
     throw new CliFailure("SUBMISSION_PLAN_INVALID", "the protected transport returned no canonical confirmation digest", { exitCode: 2 });
@@ -322,6 +327,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
       submissionPaths,
       currentState: "READY_FOR_CONFIRMATION",
       diagnostics: [],
+      compatibility: compatibilityBinding,
       transport: { operation, pullRequest, confirmationDigest, plan: compactPlan(plan.result) }
     });
     runtime.atomicWorkspaceWrite(statePath, state);
@@ -344,6 +350,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
       submissionPaths,
       currentState: "READY_FOR_CONFIRMATION",
       diagnostics: [diagnostic],
+      compatibility: compatibilityBinding,
       transport: { operation, pullRequest, confirmationDigest, plan: compactPlan(plan.result) }
     });
     runtime.atomicWorkspaceWrite(statePath, state);
@@ -357,13 +364,13 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
   if (resume || fs.existsSync(receipt)) mutationArgs.push("--resume");
   mutationArgs.push("--confirm-external-write", confirmation);
   const mutation = runtime.runTransport(mutationArgs, repositoryRoot);
-  if (!mutation.ok) return transportFailure({ status: mutation, repositoryRoot, workspace, source, previous, submissionPaths, statePath, command, verbose });
+  if (!mutation.ok) return transportFailure({ status: mutation, repositoryRoot, workspace, source, previous, submissionPaths, statePath, command, verbose, compatibility: compatibilityBinding });
   const newPullRequest = mutation.result?.target?.pullRequestNumber ?? pullRequest;
   if (!Number.isSafeInteger(newPullRequest) || newPullRequest < 1) {
     throw new CliFailure("SUBMISSION_READBACK_INVALID", "the confirmed Draft transport returned no exact pull request identity", { exitCode: 2 });
   }
   const status = runtime.runTransport(["status", applicationPackage, "--pull-request", String(newPullRequest), ...sourceRootArgs(sourceRoots)], repositoryRoot);
-  if (!status.ok) return transportFailure({ status, repositoryRoot, workspace, source, previous, submissionPaths, statePath, command, verbose, writePerformed: true });
+  if (!status.ok) return transportFailure({ status, repositoryRoot, workspace, source, previous, submissionPaths, statePath, command, verbose, writePerformed: true, compatibility: compatibilityBinding });
   const currentState = projectRemoteState(status.result);
   const state = createState({
     repositoryRoot,
@@ -373,6 +380,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
     submissionPaths,
     currentState,
     diagnostics: [],
+    compatibility: compatibilityBinding,
     transport: { operation, pullRequest: newPullRequest, confirmationDigest: confirmation, lastStatus: status.result }
   });
   runtime.atomicWorkspaceWrite(statePath, state);
@@ -427,10 +435,48 @@ function resolveWorkspace(repositoryRoot, input) {
   if (pathsOverlap(repositoryRoot, rebuilt)) {
     throw new CliFailure("WORKSPACE_PATH_INVALID", "Applicant workspace resolves inside the source repository", { exitCode: 2 });
   }
-  fs.mkdirSync(rebuilt, { recursive: true, mode: 0o700 });
-  const stat = fs.lstatSync(rebuilt);
-  if (!stat.isDirectory() || stat.isSymbolicLink()) throw new CliFailure("WORKSPACE_PATH_INVALID", "Applicant workspace could not be created safely", { exitCode: 2 });
-  return fs.realpathSync(rebuilt);
+  return rebuilt;
+}
+
+function ensureWorkspaceDirectory(repositoryRoot, workspace) {
+  if (fs.existsSync(workspace)) {
+    const stat = fs.lstatSync(workspace);
+    if (!stat.isDirectory() || stat.isSymbolicLink()) {
+      throw new CliFailure("WORKSPACE_PATH_INVALID", "Applicant workspace must be one real non-symlink directory", { exitCode: 2 });
+    }
+    const realWorkspace = fs.realpathSync(workspace);
+    if (realWorkspace !== workspace || pathsOverlap(repositoryRoot, realWorkspace)) {
+      throw new CliFailure("WORKSPACE_PATH_INVALID", "Applicant workspace identity changed before creation", { exitCode: 2 });
+    }
+    return;
+  }
+  const parent = nearestExisting(path.dirname(workspace));
+  const realParent = fs.realpathSync(parent);
+  const relative = path.relative(realParent, workspace);
+  if (relative === "" || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new CliFailure("WORKSPACE_PATH_INVALID", "Applicant workspace parent binding is invalid", { exitCode: 2 });
+  }
+  let cursor = realParent;
+  for (const segment of relative.split(path.sep)) {
+    const candidate = path.join(cursor, segment);
+    try {
+      fs.mkdirSync(candidate, { mode: 0o700 });
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+    }
+    const stat = fs.lstatSync(candidate);
+    if (!stat.isDirectory() || stat.isSymbolicLink()) {
+      throw new CliFailure("WORKSPACE_PATH_INVALID", "Applicant workspace creation encountered a non-directory or symlink", { exitCode: 2 });
+    }
+    const realCandidate = fs.realpathSync(candidate);
+    if (realCandidate !== candidate || pathsOverlap(repositoryRoot, realCandidate)) {
+      throw new CliFailure("WORKSPACE_PATH_INVALID", "Applicant workspace creation changed identity", { exitCode: 2 });
+    }
+    cursor = realCandidate;
+  }
+  if (cursor !== workspace) {
+    throw new CliFailure("WORKSPACE_PATH_INVALID", "Applicant workspace was not created at the exact requested path", { exitCode: 2 });
+  }
 }
 
 function defaultWorkspacePath(repositoryRoot) {
@@ -638,7 +684,7 @@ function runOpenWorld(args, repositoryRoot) {
   }
 }
 
-function transportFailure({ status, repositoryRoot, workspace, source, previous, submissionPaths, statePath, command, verbose, writePerformed = false }) {
+function transportFailure({ status, repositoryRoot, workspace, source, previous, submissionPaths, statePath, command, verbose, writePerformed = false, compatibility = null }) {
   const code = status.code;
   const causeClass = classifyTransportCause(code);
   const currentState = causeClass === "AUTHORITY"
@@ -652,13 +698,13 @@ function transportFailure({ status, repositoryRoot, workspace, source, previous,
     command,
     writePerformed
   );
-  const state = createState({ repositoryRoot, workspace, source, previous, submissionPaths, currentState, diagnostics: [diagnostic] });
+  const state = createState({ repositoryRoot, workspace, source, previous, submissionPaths, currentState, diagnostics: [diagnostic], compatibility });
   persistWorkspaceState(statePath, state);
   return blockedResult(state, [diagnostic], command, verbose, status.details, writePerformed);
 }
 
-function createState({ repositoryRoot, workspace, source, previous, submissionPaths = [], currentState, diagnostics, transport = null }) {
-  return {
+function createState({ repositoryRoot, workspace, source, previous, submissionPaths = [], currentState, diagnostics, transport = null, compatibility = null, workspacePersisted = true }) {
+  const state = {
     schemaVersion: "1.0.0",
     kind: "programmable-applicant-workspace",
     state: currentState,
@@ -675,6 +721,7 @@ function createState({ repositoryRoot, workspace, source, previous, submissionPa
       mutationReceipt: path.join(workspace, "application-v3-mutation-receipt.json")
     },
     diagnostics: diagnostics.slice(0, 3),
+    compatibility: compatibility ?? previous?.compatibility ?? null,
     transport: transport ?? previous?.transport ?? null,
     authority: {
       reviewGranted: false,
@@ -683,6 +730,8 @@ function createState({ repositoryRoot, workspace, source, previous, submissionPa
       launchGranted: false
     }
   };
+  Object.defineProperty(state, "workspacePersisted", { value: workspacePersisted, enumerable: false });
+  return state;
 }
 
 function loadWorkspaceState(statePath, repositoryRoot, workspace) {
@@ -752,7 +801,7 @@ function renderResult(state, diagnostics, safeNextCommand, verbose, details, wri
     workspace: {
       root: path.dirname(state.paths.applicationPackage),
       stateFile: path.join(path.dirname(state.paths.applicationPackage), WORKSPACE_FILE),
-      statePersisted: true,
+      statePersisted: state.workspacePersisted !== false,
       sourceCommit: state.source.commit,
       sourceTree: state.source.tree,
       confirmationDigest: state.transport?.confirmationDigest ?? null,

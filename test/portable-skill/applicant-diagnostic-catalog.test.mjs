@@ -59,7 +59,7 @@ test("known and unknown failures project to the exact six-field public record", 
   assert.deepEqual(Object.keys(unknown).sort(), exactDiagnosticKeys);
   assert.equal(unknown.code, "FUTURE_VALIDATOR_FAILURE");
   assert.equal(unknown.causeClass, "INTEGRATION");
-  assert.equal(unknown.safeNextCommand, "programmable status --json");
+  assert.equal(unknown.safeNextCommand, "programmable submit-project --resume --verbose");
   assert.equal(unknown.writePerformed, true);
   assert.equal(JSON.stringify(unknown).includes("attacker"), false);
   assert.equal(JSON.stringify(unknown).includes("secrets"), false);
