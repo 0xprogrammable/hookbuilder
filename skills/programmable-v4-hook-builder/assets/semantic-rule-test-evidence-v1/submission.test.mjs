@@ -33,6 +33,7 @@ import {
   PROTECTED_PROVIDER_KEYS,
   publicIdentityKey
 } from "../../skills/programmable-v4-hook-builder/scripts/metadata-core.mjs";
+import { makeSubmitLaunchPolicyFixture } from "./submit-launch-policy-fixture.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "..", "..", "skills", "programmable-v4-hook-builder");
@@ -3620,12 +3621,15 @@ test("prototype authority roundtrip survives packaging and fails closed on every
     assert.equal(packageReport.sandboxVerification.state, "NOT_RUN");
     const currentHead = runGit(temporaryRepository, ["rev-parse", "HEAD"]);
     assert.notEqual(gateStatus.gates[0].evidence[0].commit, currentHead);
+    const centralFixture = createSubmissionCentralFetch();
 
     let publicBoundaryReached = false;
     await assert.rejects(
       () => preparePullRequest({
         repositoryRoot: temporaryRepository,
         packageInput: modelRoot,
+        fetchImplementation: centralFixture.fetch,
+        sleepImplementation: async () => {},
         publicSourceResolver: async ({ sourcePaths }) => {
           publicBoundaryReached = true;
           assert.ok(sourcePaths.includes(gateStatusPath));
@@ -3669,6 +3673,8 @@ test("prototype authority roundtrip survives packaging and fails closed on every
         () => preparePullRequest({
           repositoryRoot: temporaryRepository,
           packageInput: modelRoot,
+          fetchImplementation: centralFixture.fetch,
+          sleepImplementation: async () => {},
           publicSourceResolver: async () => {
             reachedNetwork = true;
             throw new Error("network must not run");
@@ -3686,6 +3692,8 @@ test("prototype authority roundtrip survives packaging and fails closed on every
       () => preparePullRequest({
         repositoryRoot: temporaryRepository,
         packageInput: modelRoot,
+        fetchImplementation: centralFixture.fetch,
+        sleepImplementation: async () => {},
         publicSourceResolver: async ({ owner, repository, commit, tree, sourcePaths, contractPaths }) => {
           raced = true;
           runGit(temporaryRepository, ["update-index", "--assume-unchanged", gateStatusPath]);
@@ -3727,6 +3735,12 @@ test("prototype authority roundtrip survives packaging and fails closed on every
       (error) => error instanceof CliFailure && error.code === "WORKTREE_NOT_HEAD"
     );
     assert.equal(raced, true);
+    assert.equal(centralFixture.calls.length, 10);
+    for (const { options } of centralFixture.calls) {
+      assert.equal(options.method, "GET");
+      assert.equal(options.redirect, "error");
+      assert.equal(options.headers.Authorization, undefined);
+    }
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
     assert.deepEqual(captureRepositoryIdentity(productWorktree), productStateBefore);
@@ -5376,6 +5390,73 @@ function requiredSdkDependencies() {
 
 function writeJson(target, value) {
   fs.writeFileSync(target, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function createSubmissionCentralFetch() {
+  const baseCommit = "a".repeat(40);
+  const baseTree = "b".repeat(40);
+  const policyFixture = makeSubmitLaunchPolicyFixture({ baseTree });
+  const prefix = "https://api.github.com/repos/0xprogrammable/submit-launch";
+  const calls = [];
+  const fetch = async (url, options) => {
+    calls.push({ url, options });
+    if (url === prefix) {
+      return submissionCentralResponse({
+        id: 1320171831,
+        private: false,
+        visibility: "public",
+        full_name: "0xprogrammable/submit-launch",
+        default_branch: "main",
+        html_url: "https://github.com/0xprogrammable/submit-launch"
+      });
+    }
+    if (url === `${prefix}/git/ref/heads/main`) {
+      return submissionCentralResponse({
+        ref: "refs/heads/main",
+        object: { type: "commit", sha: baseCommit }
+      });
+    }
+    if (url === `${prefix}/git/commits/${baseCommit}`) {
+      return submissionCentralResponse({ sha: baseCommit, tree: { sha: baseTree } });
+    }
+    const treePrefix = `${prefix}/git/trees/`;
+    if (url.startsWith(treePrefix)) {
+      const sha = url.slice(treePrefix.length);
+      const tree = policyFixture.trees.get(sha);
+      if (tree !== undefined) {
+        return submissionCentralResponse({ sha, truncated: false, tree: structuredClone(tree) });
+      }
+    }
+    const blobPrefix = `${prefix}/git/blobs/`;
+    if (url.startsWith(blobPrefix)) {
+      const sha = url.slice(blobPrefix.length);
+      const bytes = policyFixture.blobs.get(sha);
+      if (bytes !== undefined) {
+        return submissionCentralResponse({ sha, encoding: "base64", content: bytes.toString("base64") });
+      }
+    }
+    throw new Error(`unexpected central fixture URL: ${url}`);
+  };
+  return { calls, fetch };
+}
+
+function submissionCentralResponse(value) {
+  const source = canonicalJson(value);
+  return {
+    status: 200,
+    redirected: false,
+    url: "",
+    headers: {
+      get(name) {
+        if (name.toLowerCase() === "content-length") return String(Buffer.byteLength(source));
+        if (name.toLowerCase() === "content-type") return "application/json";
+        return null;
+      }
+    },
+    async arrayBuffer() {
+      return Buffer.from(source);
+    }
+  };
 }
 
 function dynamicLiquidityFeeSubmission(observationMode) {
