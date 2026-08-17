@@ -13,10 +13,10 @@ and a real host invocation are different evidence levels.
   checks.
 
 Do not turn format or placement evidence into a host-exercised or behavior-evidenced claim.
-The bundled v0.10.2 identity reports `publicationStateVerified: false`; this document alone does not prove that the tag,
+The bundled v0.10.3 identity reports `publicationStateVerified: false`; this document alone does not prove that the tag,
 release, marketplace, or installed bytes are public or live.
 
-## Host matrix for the v0.10.2 release package
+## Host matrix for the v0.10.3 release package
 
 | Host | Package path | Current evidence | Current claim |
 | --- | --- | --- | --- |
@@ -40,9 +40,9 @@ ChatGPT are not part of that rehearsal.
 | Local package validation | 22+ | Only for repository-bound checks | No | No | Locally exercised | Node 22 portable lane; full repository gate on Node 24 | Not exercised |
 | Bundled Registry snapshot | 22+ | No | No | No | Locally exercised | Node 22 portable lane; full repository gate on Node 24 | Not exercised |
 | Live Registry discovery | 22+ | No | No | Yes | Locally exercised only where explicitly run | Portable shape runs on Node 22; live behavior remains separately evidenced | Not exercised |
-| Application V3 exact revision | 22+ | 2.49+ with `git backfill --sparse` | No | Yes | Declared supported when doctor gates pass | Declared supported when doctor gates pass | Unsupported; fails closed |
+| Application V3 exact revision | 22+ | 2.49+ with bounded `git fetch --stdin` | No | Yes | Declared supported when doctor gates pass | Declared supported when doctor gates pass | Unsupported; fails closed |
 | GitHub status | 22+ | Depends on selected status path | Usually yes | Yes | Declared supported when doctor gates pass | Declared supported when doctor gates pass | Not supported for exact-revision flow |
-| GitHub submit/update | 22+ | 2.49+ with `git backfill --sparse` | Authenticated | Yes | Declared supported after explicit authorization | Declared supported after explicit authorization | Unsupported for exact-revision flow |
+| GitHub submit/update | 22+ | 2.49+ with bounded `git fetch --stdin` | Authenticated | Yes | Declared supported after explicit authorization | Declared supported after explicit authorization | Unsupported for exact-revision flow |
 
 Without `--repository-root`, `doctor` resolves the canonical installed plugin root when the Codex wrapper is present and
 otherwise the canonical installed Skill root. A non-Git plugin cache remains a valid package context: Git-worktree-only
@@ -61,7 +61,7 @@ After independently confirming the exact public tag and GitHub release, preview 
 
 ```bash
 gh skill preview 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.10.2
+  programmable-v4-hook-builder@v0.10.3
 ```
 
 Install it for one host and scope:
@@ -71,7 +71,7 @@ gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.10.2
+  --pin v0.10.3
 ```
 
 Replace `codex` only with a destination listed by `gh skill install --help`. A destination name proves placement support,
@@ -128,7 +128,7 @@ codex plugin add programmable-v4-builder@programmable
 To roll back, remove this plugin, repoint the marketplace to the previously reviewed immutable tag, and reinstall it.
 Removing and re-adding the marketplace is appropriate only when no other installed plugin depends on that marketplace;
 otherwise use a separately reviewed marketplace snapshot. Re-run the plugin validator and `doctor` after rollback.
-The v0.10.2 release package contains the versioned Codex marketplace and payload. A rollback still requires an exact previously
+The v0.10.3 release package contains the versioned Codex marketplace and payload. A rollback still requires an exact previously
 reviewed tag and a fresh plugin validation; never repoint to a mutable branch.
 
 ```bash

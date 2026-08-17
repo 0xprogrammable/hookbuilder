@@ -460,17 +460,19 @@ never marks the pull request ready for review. See
 [github-application-journey.md](github-application-journey.md) for status, recovery, identity, and intake-state rules.
 
 Large declared path sets are not verified with one anonymous REST request per file. The resolver keeps GitHub REST as
-the bounded repository/commit/tree control plane. The central intake reads exact declared objects through one anonymous
-HTTPS Git smart-protocol batch per repository; `prepare-pr` may instead bind the clean local primary HEAD bytes against
-complete REST tree metadata. Evidence blobs are declared primary-source paths, so central intake retains only those
+the bounded repository/commit/tree control plane. The central intake reads exact declared objects through bounded
+anonymous HTTPS Git smart-protocol batches per resolver request; `prepare-pr` may instead bind the clean local primary
+HEAD bytes against complete REST tree metadata. Evidence blobs are declared primary-source paths, so central intake
+retains only those
 exact source bytes and reuses them for evidence binding without another REST tree walk or smart-Git fetch. The remote
-path uses a blobless partial fetch, a sparse `git backfill` and raw `git cat-file` object reads. It
+path uses a blobless partial fetch, one bounded `git fetch --stdin` batch for the tree-derived blob object IDs and raw
+`git cat-file` object reads. It
 never checks out project files, recurses into submodules, runs project hooks, loads project or user Git config, supplies
 credentials, or executes candidate code. Every returned path must still be a regular blob under the exact requested
 commit and root tree; its raw object id, two-megabyte file ceiling, twenty-megabyte aggregate ceiling and non-LFS bytes
 are checked.
 GitHub recursive-tree truncation is never treated as evidence: the same exact-object path proof is required instead.
-Git 2.49.0 or newer is required and the `git backfill` capability is probed before any repository fetch. If the
+Git 2.49.0 or newer is required and its version is checked before any repository fetch. If the
 installed Git cannot provide this no-checkout flow, the result is `TOOLING_BLOCKED`, not an unsafe rejection.
 The central source control plane admits at most 48 REST requests and reserves 12 additional physical request slots for
 bounded transport retries. At 125 ms pacing, all admitted pacing plus worst-case retry delay is 19.375 seconds inside

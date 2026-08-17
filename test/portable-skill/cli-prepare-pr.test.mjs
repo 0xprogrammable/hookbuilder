@@ -118,14 +118,15 @@ function trustedHostSubtest(context, name, implementation) {
 }
 
 test("doctor reports exact-object Git capability before prepare-pr", () => {
-  const ready = inspectExactObjectGitTooling((args) => {
-    if (args[0] === "--version") return { status: 0, stdout: "git version 2.50.1\n", stderr: "" };
-    return { status: 129, stdout: "", stderr: "usage: git backfill [--sparse]\n" };
-  });
+  const ready = inspectExactObjectGitTooling(() => ({
+    status: 0,
+    stdout: "git version 2.50.1\n",
+    stderr: ""
+  }));
   assert.deepEqual(ready, {
     status: "ready",
     version: "2.50.1",
-    capability: "git backfill --sparse"
+    capability: "bounded git fetch --stdin"
   });
 
   const old = inspectExactObjectGitTooling((args) => ({
@@ -139,16 +140,6 @@ test("doctor reports exact-object Git capability before prepare-pr", () => {
     reason: "Git 2.49.0 or newer is required for exact public-source verification"
   });
 
-  const missingBackfill = inspectExactObjectGitTooling((args) => ({
-    status: args[0] === "--version" ? 0 : 1,
-    stdout: args[0] === "--version" ? "git version 2.50.1\n" : "",
-    stderr: args[0] === "--version" ? "" : "git: 'backfill' is not a git command\n"
-  }));
-  assert.deepEqual(missingBackfill, {
-    status: "toolingBlocked",
-    version: "2.50.1",
-    reason: "git backfill --sparse is required for exact public-source verification"
-  });
 });
 
 test("prepare-pr rejects a non-main base before repository or network I/O", async () => {
@@ -1434,7 +1425,7 @@ test("prepare-pr reports missing exact Git capability as tooling-blocked without
         exactObjectResolver: async () => {
           throw new GitHubPublicSourceError(
             "GITHUB_UPSTREAM_REJECTED",
-            "Exact Git object tooling is unavailable: git backfill --sparse is required"
+            "Exact Git object tooling is unavailable: Git 2.49.0 or newer is required"
           );
         },
         fetchImplementation: async (url) => {
