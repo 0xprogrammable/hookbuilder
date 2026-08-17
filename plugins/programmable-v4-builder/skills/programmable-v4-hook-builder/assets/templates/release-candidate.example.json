@@ -1,16 +1,16 @@
 {
   "schemaVersion": "1.0.0",
-  "candidateId": "programmable-v4-builder-v0.11.0-local-20260817",
+  "candidateId": "programmable-v4-builder-v0.11.1-local-20260817",
   "privateCandidate": true,
   "publicState": "not-published",
-  "releaseVersion": "0.11.0",
+  "releaseVersion": "0.11.1",
   "channel": "canary",
   "releaseKind": "normal",
   "plannedRelease": {
     "builder": {
-      "fromVersion": "0.10.3",
-      "toVersion": "0.11.0",
-      "semanticClassification": "minor"
+      "fromVersion": "0.11.0",
+      "toVersion": "0.11.1",
+      "semanticClassification": "patch"
     },
     "submissionStandard": {
       "fromVersion": "1.6.0",
@@ -39,19 +39,9 @@
   "changeSetComplete": true,
   "changes": [
     {
-      "id": "one-command-applicant-journey",
-      "kind": "feature",
-      "summary": "Add one persistent submit-project journey that discovers, validates, plans, confirms, submits, resumes, and reads one unreviewed Applicant Draft without exposing internal choreography."
-    },
-    {
-      "id": "protected-applicant-compatibility",
-      "kind": "security-fix",
-      "summary": "Bind the exact protected Submit Launch compatibility contract before any workspace or GitHub write and preserve a strict released active-contract fallback."
-    },
-    {
-      "id": "compact-applicant-validator-package",
-      "kind": "feature",
-      "summary": "Generate and verify one descriptor-hardened minimal public Applicant validator package for protected central reuse."
+      "id": "existing-applicant-draft-recovery",
+      "kind": "bug-fix",
+      "summary": "Recover one unique exact pre-workspace Applicant Draft through bounded read-only GitHub verification before requesting missing local Application inputs; do not invent evidence or grant review authority."
     }
   ],
   "unbundledChangeIds": [],

@@ -1,17 +1,15 @@
 #!/usr/bin/env node
-
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-
 import { parseCli, renderHelp } from "./cli-args.mjs";
 import { preflightProtectedApplicantCompatibility } from "./applicant-compatibility-github.mjs";
 import { CliFailure, emitFailure, emitSuccess, requireJsonResult, runBundledCommand } from "./cli-runtime.mjs";
 import { canonicalJson } from "./submission-core.mjs";
-import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
 import { discoverExistingDraft, planSubmitOrAdoptExistingDraft } from "./submit-project-draft-adoption.mjs";
+import { PREPARATION_HELP_COMMAND, recoverExistingDraftPackageForProject } from "./submit-project-existing-draft-package.mjs";
 import {
   applicantSourceRootArgs as sourceRootArgs,
   bindApplicantApplicationSources as bindApplicationSources,
@@ -74,6 +72,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
     }),
     atomicWorkspaceWrite: persistWorkspaceState,
     adoptExistingDraft: discoverExistingDraft,
+    recoverExistingDraftPackage: recoverExistingDraftPackageForProject,
     runTransport: runOpenWorld,
     compatibilityPreflight: preflightProtectedApplicantCompatibility,
     ...adapters
@@ -206,7 +205,6 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
     });
     return blockedResult(state, [diagnostic], command, verbose);
   }
-
   const compatibility = await runtime.compatibilityPreflight({ repositoryRoot, source });
   if (compatibility?.ok !== true) {
     const diagnostic = finding(
@@ -233,6 +231,9 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
 
   const applicationPackage = path.join(workspace, "application-package");
   if (!isRealDirectoryWithFile(applicationPackage, "application.v3.json")) {
+    const recovery = pointer === null ? await runtime.recoverExistingDraftPackage({ applicationPackagePath: applicationPackage, repositoryRoot, source, submissionPath }) : null;
+    if (recovery?.status) return transportFailure({ status: recovery.status, repositoryRoot, workspace, source, previous, submissionPaths, statePath, command, verbose, compatibility: compatibilityBinding });
+    if (recovery?.found === true && recovery.materialized !== true) throw new CliFailure("APPLICATION_DRAFT_ADOPTION_FAILED", "existing Draft recovery returned no closed Application package", { exitCode: 2 });
     const prepared = pointer === null
       ? { ok: false, missing: ["tracked applicant-package.v1.json pointer"] }
       : prepareApplicationPackage({ pointer, repositoryRoot, workspace, applicationPackage, runTransport: runtime.runTransport });
@@ -246,7 +247,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
       "PROJECT",
       "Submission V2 is valid, but the closed Application V3.1 package has not been prepared in this workspace.",
       "Prepare the exact revision, review package, security inputs, and source bindings in the workspace. Missing evidence remains missing and is never synthesized.",
-      command
+      PREPARATION_HELP_COMMAND
     );
     const state = createState({
       repositoryRoot,
@@ -259,7 +260,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
       compatibility: compatibilityBinding
     });
     runtime.atomicWorkspaceWrite(statePath, state);
-    return blockedResult(state, [diagnostic], command, verbose, { validation });
+    return blockedResult(state, [diagnostic], diagnostic.safeNextCommand, verbose, { validation });
   }
 
   let applicationSnapshot;
@@ -738,8 +739,6 @@ function normalizeFailure(error) {
 function shellQuote(value) {
   return `'${String(value).replaceAll("'", `'"'"'`)}'`;
 }
-
-
 function isMainModule() {
   if (typeof process.argv[1] !== "string") return false;
   try {

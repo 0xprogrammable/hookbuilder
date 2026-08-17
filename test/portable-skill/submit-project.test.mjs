@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import childProcess from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -13,6 +14,8 @@ import {
 } from "../../skills/programmable-v4-hook-builder/scripts/submit-project.mjs";
 import { planSubmitOrAdoptExistingDraft } from "../../skills/programmable-v4-hook-builder/scripts/submit-project-draft-adoption.mjs";
 import { selectExactApplicationV3DraftCandidate } from "../../skills/programmable-v4-hook-builder/scripts/open-world-github-draft-adoption.mjs";
+import { recoverExistingDraftPackageFromBoundSource, selectUniqueDraftSearchCandidate } from "../../skills/programmable-v4-hook-builder/scripts/submit-project-existing-draft-package.mjs";
+import { canonicalJson } from "../../skills/programmable-v4-hook-builder/scripts/submission-core.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "..", "..", "skills", "programmable-v4-hook-builder");
@@ -236,6 +239,7 @@ test("actual submit-project compatibility preflight runs before creating a works
 test("successful compatibility creates one private persistent workspace before preparation", async () => {
   const fixture = createRepository({ validSubmissionPackage: true });
   const workspace = path.join(fixture.root, "workspace");
+  let recoveryCalls = 0;
   try {
     const outcome = await runSubmitProjectJourney({
       repositoryInput: fixture.repository,
@@ -246,6 +250,12 @@ test("successful compatibility creates one private persistent workspace before p
     }, {
       async compatibilityPreflight() {
         return { ok: true, binding: { centralBaseCommit: "a".repeat(40), centralBaseTree: "b".repeat(40) } };
+      },
+      async recoverExistingDraftPackage(input) {
+        recoveryCalls += 1;
+        assert.equal(input.submissionPath, "submission/submission.v2.json");
+        assert.equal(input.writePerformed, undefined);
+        return { found: false, materialized: false };
       }
     });
     assert.equal(outcome.exitCode, 1);
@@ -255,11 +265,141 @@ test("successful compatibility creates one private persistent workspace before p
     const realWorkspace = fs.realpathSync(workspace);
     assert.equal(outcome.result.workspace.root, realWorkspace);
     assert.equal(fs.statSync(realWorkspace).mode & 0o777, 0o700);
+    assert.equal(recoveryCalls, 1);
     const state = JSON.parse(fs.readFileSync(path.join(realWorkspace, "applicant-workspace.v1.json"), "utf8"));
     assert.deepEqual(state.compatibility, { centralBaseCommit: "a".repeat(40), centralBaseTree: "b".repeat(40) });
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
+});
+
+test("prior Draft discovery accepts only one exact Applicant title and identity", () => {
+  const selected = selectUniqueDraftSearchCandidate({
+    search: {
+      total_count: 1,
+      items: [{ number: 40, title: "[Application V3] fade-v1 revision 1", user: { id: "258789013" } }]
+    },
+    applicationId: "fade-v1",
+    viewerId: "258789013"
+  });
+  assert.deepEqual(selected, { number: 40 });
+  assert.equal(selectUniqueDraftSearchCandidate({
+    search: { total_count: 0, items: [] },
+    applicationId: "fade-v1",
+    viewerId: "258789013"
+  }), null);
+  assert.throws(
+    () => selectUniqueDraftSearchCandidate({
+      search: {
+        total_count: 2,
+        items: [
+          { number: 40, title: "[Application V3] fade-v1 revision 1", user: { id: "258789013" } },
+          { number: 41, title: "[Application V3] fade-v1 revision 2", user: { id: "258789013" } }
+        ]
+      },
+      applicationId: "fade-v1",
+      viewerId: "258789013"
+    }),
+    (error) => error?.code === "APPLICATION_DRAFT_ADOPTION_AMBIGUOUS"
+  );
+});
+
+test("prior Draft recovery materializes only the exact bound remote Application package", async () => {
+  const applicationId = "fade-v1";
+  const revision = "1";
+  const targetDirectory = `submissions/${applicationId}/v3/revisions/${revision}`;
+  const submissionBytes = Buffer.from("{\"applicationId\":\"fade-v1\"}\n", "utf8");
+  const proposalBytes = Buffer.from("# Proposal\n", "utf8");
+  const application = {
+    applicationId,
+    applicationRevision: revision,
+    builder: { githubUserId: "258789013" },
+    policyBindings: {
+      submissionPath: "open-world-v2/submission.v2.json",
+      submissionSha256: sha256(submissionBytes)
+    },
+    reviewPackage: {
+      records: [{
+        source: "application-package",
+        path: "PROPOSAL.md",
+        byteLength: proposalBytes.length,
+        sha256: sha256(proposalBytes)
+      }]
+    },
+    source: { primary: { revisionObjectId: "a".repeat(40), treeObjectId: "b".repeat(40) } }
+  };
+  const applicationBytes = Buffer.from(`${canonicalJson(application)}\n`, "utf8");
+  const contents = new Map([
+    [`${targetDirectory}/application.v3.json`, applicationBytes],
+    [`${targetDirectory}/PROPOSAL.md`, proposalBytes]
+  ]);
+  let materialized = null;
+  const runtime = {
+    normalizeGitHubViewer: (value) => value,
+    normalizeGitHubRepository: (value) => value,
+    normalizeApplicationV3Pull: (value) => value,
+    normalizeGitHubRef: (value) => value,
+    assertApplicationV3ReviewBranch() {},
+    readBoundedApplicationV3PullFiles: async () => [...contents.keys()].map((filename) => ({ filename, status: "added", previousFilename: null })),
+    decodeGitHubContent(value, expectedPath) {
+      assert.equal(value.path, expectedPath);
+      return Buffer.from(value.content, "base64");
+    },
+    parseStrictCliJson: JSON.parse,
+    assertSafeApplicationPackagePath() {},
+    planNewExternalOutputDirectory: () => ({ target: "/workspace/application-package" }),
+    materializePackage(_plan, records) {
+      materialized = records.map((record) => ({ path: record.path, bytes: Buffer.from(record.bytes) }));
+    }
+  };
+  const transport = {
+    async getViewer() { return { id: "258789013", login: "hazarxyz" }; },
+    async getRepository(slug) {
+      if (slug === "0xprogrammable/submit-launch") {
+        return { id: "1320171831", fullName: slug, private: false, fork: false, owner: { id: "1", login: "0xprogrammable" }, parentId: null, permissions: { push: false } };
+      }
+      return { id: "7", fullName: slug, private: false, fork: true, owner: { id: "258789013", login: "hazarxyz" }, parentId: "1320171831", permissions: { push: true } };
+    },
+    async searchOpenPulls() {
+      return { total_count: 1, items: [{ number: 40, title: "[Application V3] fade-v1 revision 1", user: { id: "258789013" } }] };
+    },
+    async getPull() {
+      return {
+        number: 40,
+        title: "[Application V3] fade-v1 revision 1",
+        user: { id: "258789013" },
+        state: "open",
+        draft: true,
+        maintainerCanModify: false,
+        base: { ref: "main", repositoryId: "1320171831", repositorySlug: "0xprogrammable/submit-launch" },
+        head: { repositorySlug: "hazarxyz/submit-launch", repositoryId: "7", ref: "open-world-v3/thread-".concat("c".repeat(64)), sha: "c".repeat(40) },
+        changedFiles: 2
+      };
+    },
+    async getRef() { return { commit: "c".repeat(40) }; },
+    async getContent(_slug, remotePath) {
+      const bytes = contents.get(remotePath);
+      assert.ok(bytes, remotePath);
+      return { type: "file", path: remotePath, encoding: "base64", content: bytes.toString("base64") };
+    }
+  };
+  const result = await recoverExistingDraftPackageFromBoundSource({
+    applicationId,
+    applicationPackagePath: "/workspace/application-package",
+    repositoryRoot: "/project",
+    source: { headCommit: "a".repeat(40), tree: "b".repeat(40) },
+    submissionBytes,
+    submissionPath: "open-world-v2/submission.v2.json",
+    runtime,
+    transport
+  });
+  assert.equal(result.found, true);
+  assert.equal(result.pullRequest, 40);
+  assert.equal(result.readOnly, true);
+  assert.equal(result.writePerformed, false);
+  assert.equal(result.approvalGranted, false);
+  assert.deepEqual(materialized.map((record) => record.path), ["application.v3.json", "PROPOSAL.md"]);
+  assert.deepEqual(materialized.find((record) => record.path === "PROPOSAL.md").bytes, proposalBytes);
 });
 
 test("submit-project adopts one exact existing Draft after the protected submit conflict", async () => {
@@ -493,4 +633,8 @@ function run(args) {
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+}
+
+function sha256(bytes) {
+  return `sha256:${crypto.createHash("sha256").update(bytes).digest("hex")}`;
 }
