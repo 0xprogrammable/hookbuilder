@@ -138,7 +138,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
   let pointer = null;
   if (pointerPaths.length === 1) {
     try {
-      pointer = loadApplicantPackagePointer(repositoryRoot, pointerPaths[0], workspace);
+      pointer = loadApplicantPackagePointer(repositoryRoot, pointerPaths[0], workspace, submissionPaths);
     } catch (error) {
       const diagnostic = finding(
         error?.code ?? "PROJECT_PACKAGE_POINTER_INVALID",

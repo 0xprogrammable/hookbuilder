@@ -55,6 +55,9 @@ test("legacy and advanced namespaces retain compatibility", () => {
   const advanced = run(["advanced", "context", "--help"]);
   assert.equal(advanced.status, 0, advanced.stdout || advanced.stderr);
   assert.match(advanced.stdout, /Usage:/u);
+  const openWorld = run(["advanced", "open-world", "--help"]);
+  assert.equal(openWorld.status, 0, openWorld.stdout || openWorld.stderr);
+  assert.match(openWorld.stdout, /Usage:/u);
 });
 
 test("submit-project consolidates a missing package without creating a workspace", () => {
@@ -121,6 +124,33 @@ test("one closed tracked pointer selects one Submission V2 subject without absol
     assert.equal(output.state, "NEEDS_PROJECT_PACKAGE");
     assert.notEqual(output.diagnostics[0].code, "PROJECT_PACKAGE_AMBIGUOUS");
     assert.equal(output.workspace.statePersisted, false);
+    assert.equal(fs.existsSync(workspace), false);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("tracked pointer rejects a Submission V2 path outside exact discovery", () => {
+  const fixture = createRepository({
+    submissionPaths: ["submission/submission.v2.json"],
+    pointer: {
+      applicationDraft: "inputs/application-draft.v3.json",
+      kind: "programmable-applicant-package-pointer",
+      reviewPackage: "inputs/review-package",
+      schemaVersion: "1.0.0",
+      securityAssessment: "inputs/security-assessment.v1.json",
+      securityEvidenceBindings: "inputs/security-evidence-bindings.v1.json",
+      submissionV2: "submission/not-the-tracked-submission.json"
+    }
+  });
+  const workspace = path.join(fixture.root, "workspace");
+  try {
+    const result = run(["submit-project", fixture.repository, "--workspace-root", workspace]);
+    assert.equal(result.status, 1, result.stdout || result.stderr);
+    const output = JSON.parse(result.stdout).result;
+    assert.equal(output.state, "NEEDS_PROJECT_PACKAGE");
+    assert.equal(output.diagnostics[0].code, "PROJECT_PACKAGE_POINTER_INVALID");
+    assert.equal(output.writePerformed, false);
     assert.equal(fs.existsSync(workspace), false);
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });

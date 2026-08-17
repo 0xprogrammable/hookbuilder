@@ -481,7 +481,7 @@ export function discoverTrackedApplicantFiles(repositoryRoot, commit, basename) 
     .sort(compareUtf8);
 }
 
-export function loadApplicantPackagePointer(repositoryRoot, pointerPath, workspace) {
+export function loadApplicantPackagePointer(repositoryRoot, pointerPath, workspace, trackedSubmissionPaths) {
   const absolute = path.join(repositoryRoot, pointerPath);
   const stat = fs.lstatSync(absolute);
   if (!stat.isFile() || stat.isSymbolicLink() || stat.size < 2 || stat.size > 64 * 1024) {
@@ -509,6 +509,9 @@ export function loadApplicantPackagePointer(repositoryRoot, pointerPath, workspa
   }
   if (!safeRepositoryPath(value.submissionV2)) {
     throw new CliFailure("PROJECT_PACKAGE_POINTER_INVALID", "submissionV2 must be one safe repository-relative tracked path", { exitCode: 1 });
+  }
+  if (!Array.isArray(trackedSubmissionPaths) || !trackedSubmissionPaths.includes(value.submissionV2)) {
+    throw new CliFailure("PROJECT_PACKAGE_POINTER_INVALID", "submissionV2 must select one discovered tracked submission.v2.json", { exitCode: 1 });
   }
   const semantic = {};
   for (const field of ["applicationDraft", "reviewPackage", "securityAssessment", "securityEvidenceBindings"]) {

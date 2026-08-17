@@ -126,7 +126,7 @@
         {
           "path": "skills/programmable-v4-hook-builder/scripts/cli.mjs",
           "observedLines": 582,
-          "observedBytes": 28082,
+          "observedBytes": 28099,
           "observedComplexityScore": 114,
           "observedMaxBlockDepth": 5,
           "reviewRef": "v0.11.0 reviewed one-command Applicant dispatch and advanced/legacy namespace routing"
@@ -383,7 +383,7 @@
   "portablePackage": {
     "path": "skills/programmable-v4-hook-builder",
     "observedFiles": 627,
-    "observedBytes": 8797069,
+    "observedBytes": 8797567,
     "maxFiles": 630,
     "maxBytes": 8900000
   }

@@ -479,7 +479,7 @@ test("v0.9.3 quantitative docs retain their exact inventories and one hash-bound
     { files: 686, bytes: 10_722_006 }
   );
   assert.equal(sizeReport.portablePackage.files, 627);
-  assert.equal(sizeReport.portablePackage.bytes, 8_797_069);
+  assert.equal(sizeReport.portablePackage.bytes, 8_797_567);
 
   for (const document of [maturity]) {
     assert.match(document, new RegExp(`${historicalProductionModuleCount} production`, "u"));

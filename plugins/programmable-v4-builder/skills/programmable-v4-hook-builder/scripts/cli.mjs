@@ -547,7 +547,7 @@ function runDelegatedCommand(command, args) {
 
 function resolveNamespacedCommand(namespace, args) {
   const groups = {
-    advanced: new Set(["context", "policy", "project", "handoff", "templates", "start", "profile", "resolve-contract"]),
+    advanced: new Set(["context", "policy", "project", "handoff", "open-world", "templates", "start", "profile", "resolve-contract"]),
     legacy: new Set(["application-recheck", "fee", "launch-bundle", "launch-bundle-v2", "package", "prepare-pr", "scaffold", "status", "submit", "update"])
   };
   const allowed = groups[namespace];
@@ -572,7 +572,7 @@ function runNamespacedCommand(namespace, selection) {
       env: process.env,
       maxBuffer: 32_000_000,
       shell: false,
-      timeout: 120_000
+      timeout: 2 * 60_000
     }
   );
   if (result.error) return emitFailure(namespace, new CliFailure("DELEGATED_COMMAND_FAILED", result.error.message));
