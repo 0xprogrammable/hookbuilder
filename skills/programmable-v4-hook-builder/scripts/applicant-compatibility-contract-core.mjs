@@ -14,7 +14,7 @@ export const LOCAL_APPLICANT_VALIDATOR_PACKAGE = Object.freeze({
   rootPath: "vendor/programmable-applicant-validator",
   entrypointPath: "vendor/programmable-applicant-validator/scripts/public-applicant-validator.mjs",
   receiptPath: "vendor/programmable-applicant-validator/validator-package-receipt.v1.json",
-  closureSha256: "sha256:f79a7ae1333e1e9e8f368f170ad58d2ab1d759fce059635838c63b17e33323bd"
+  closureSha256: "sha256:3ba5ac5639cd7b813f713b321a430cb1b510128011bed845b4e276534255df77"
 });
 
 export class ApplicantCompatibilityError extends Error {
