@@ -1,0 +1,98 @@
+{
+  "contract": "programmable-applicant-journey",
+  "schemaVersion": "1.0.0",
+  "releaseIntent": {
+    "hookbuilder": "0.11.0",
+    "submitLaunch": "1.7.0"
+  },
+  "primaryJob": "Turn one complete source-bound Programmable project into one protected unreviewed Application V3.1 Draft or an exact actionable blocker without exposing internal package choreography.",
+  "primaryCommand": {
+    "name": "submit-project",
+    "entrypoint": "scripts/cli.mjs",
+    "requiredUserInputs": [
+      "repository root"
+    ],
+    "optionalUserInputs": [
+      "persistent workspace root",
+      "exact confirmation digest"
+    ],
+    "internalPhases": [
+      "compatibility",
+      "project package validation",
+      "revision discovery",
+      "application package preparation",
+      "closed package validation",
+      "read only GitHub plan",
+      "confirmation gated Draft mutation",
+      "remote status readback"
+    ],
+    "externalWriteBoundary": "No fork, branch, commit, pull request, update, approval, merge, deployment, signing, launch, account change or funds action without the exact freshly recomputed confirmation digest.",
+    "resume": "The persistent workspace binds every local artifact, source commit and tree, central base, plan, receipt and safe next action. Reinvocation resumes idempotently from the last complete phase.",
+    "status": [
+      "NEEDS_PROJECT_PACKAGE",
+      "NEEDS_PUBLIC_SOURCE",
+      "NEEDS_GITHUB_AUTH",
+      "INTEGRATION_PENDING",
+      "READY_FOR_CONFIRMATION",
+      "DRAFT_OPEN",
+      "CHECKS_RUNNING",
+      "REVIEW_REQUIRED",
+      "CHANGES_REQUESTED"
+    ]
+  },
+  "diagnostics": {
+    "maximumPrimaryFindings": 3,
+    "requiredFields": [
+      "code",
+      "causeClass",
+      "summary",
+      "repair",
+      "safeNextCommand",
+      "writePerformed"
+    ],
+    "causeClasses": [
+      "PROJECT",
+      "PLATFORM",
+      "INTEGRATION",
+      "AUTHORITY"
+    ],
+    "fullDetails": "Available only in structured JSON or explicit verbose output. Unknown codes remain stable and actionable, never a generic inspect package message."
+  },
+  "compatibility": {
+    "protectedPath": ".programmable/applicant-compatibility.v1.json",
+    "bindAtExactBase": true,
+    "requiredBindings": [
+      "Application contract and schema digest",
+      "validator package path and digest",
+      "supported closure and Draft transport capabilities",
+      "minimum compatible Builder protocol",
+      "trusted repository numeric identity and default branch"
+    ],
+    "legacyFallback": "Released Submit Launch bases without the compatibility file remain usable only when their existing active contract and schema digest exactly match the Builder fallback contract."
+  },
+  "validatorPackage": {
+    "owner": "Hookbuilder",
+    "goal": "Generate one minimal immutable dependency closure containing only the public Applicant validator modules, schemas and receipt instead of mirroring the entire installed skill into protected Submit Launch.",
+    "centralExecution": "Submit Launch executes only the vendored package from the protected base under pull_request_target and never installs, checks out or executes candidate bytes."
+  },
+  "help": {
+    "defaultCommands": [
+      "doctor",
+      "submit-project"
+    ],
+    "advancedNamespace": "advanced",
+    "legacyNamespace": "legacy",
+    "rule": "V1, canary, migration, Fee V2 replay and package-internal commands stay compatible but disappear from the normal Applicant help surface."
+  },
+  "releaseCanaries": [
+    "policy neutral custom tradable proposal",
+    "custom tradable prototype",
+    "no market project",
+    "multi repository manifest closure",
+    "existing Draft update",
+    "missing Git object recovery",
+    "denied external write",
+    "ambiguous mutation reconciliation"
+  ],
+  "nonAuthority": "Submission remains unreviewed and grants no review disposition, Registry acceptance, approval, deployment, discovery, routing, Website availability, signing, launch or funds authority."
+}

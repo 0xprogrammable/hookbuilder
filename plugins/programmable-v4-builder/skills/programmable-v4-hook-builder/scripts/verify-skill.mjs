@@ -23,7 +23,7 @@ if (!Number.isInteger(nodeMajor) || nodeMajor < 22) {
   console.error("verify-skill.mjs: NODE_22_OR_NEWER_REQUIRED");
   process.exit(1);
 }
-const MAX_PORTABLE_BYTES = 8_750_000;
+const MAX_PORTABLE_BYTES = 8_900_000;
 const MAX_PORTABLE_FILE_BYTES = 1_000_000;
 const utf8Decoder = new TextDecoder("utf-8", { fatal: true });
 const errors = [];

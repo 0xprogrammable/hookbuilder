@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "1.0.0",
+  "base": {
+    "commit": "7869f44aa8dcc7cefeb379b76118407d53384558",
+    "tree": "62a275ac288cf5b1754affe39189745dd79586dc"
+  },
+  "strategy": "Reuse immutable development fixtures and named regression cases. Do not duplicate their source or run their broad owner suites from this focused contract suite.",
+  "cases": [
+    {
+      "id": "custom-tradable-proposal",
+      "sourcePath": "test/portable-skill/open-world-v2.test.mjs",
+      "sourceSha256": "d0821bdebe3c04fccc2bdd021777e4a2253f1f9e32899e971ac36562edba143c",
+      "selector": "proposal markets can remain explicitly unknown without fabricating fee coverage",
+      "expectedState": "READY_FOR_CONFIRMATION"
+    },
+    {
+      "id": "custom-tradable-prototype",
+      "sourcePath": "test/portable-skill/open-world-v2-prototype-fixture.mjs",
+      "sourceSha256": "211538f32ca8d55b35803cdff3509fcfda4ff0ff83a8fa76f2b1a321babd2396",
+      "selector": "createApplicableOpenWorldV2PrototypeFixture",
+      "expectedState": "READY_FOR_CONFIRMATION"
+    },
+    {
+      "id": "no-market-project",
+      "sourcePath": "test/portable-skill/open-world-v2-prototype-fixture.mjs",
+      "sourceSha256": "211538f32ca8d55b35803cdff3509fcfda4ff0ff83a8fa76f2b1a321babd2396",
+      "selector": "createNoMarketOpenWorldV2PrototypeFixture",
+      "expectedState": "READY_FOR_CONFIRMATION"
+    },
+    {
+      "id": "multi-repository-manifest-closure",
+      "sourcePath": "evals/forward-tests/cases/wild-multi-repo-game.json",
+      "sourceSha256": "17c0bef38bfbffb049b2162e21d50c91342140e32b71f77a9dfb544ce5a9749f",
+      "selector": "multi-repo-closure-required",
+      "expectedState": "NEEDS_PROJECT_PACKAGE"
+    },
+    {
+      "id": "existing-draft-update",
+      "sourcePath": "test/portable-skill/github-application.test.mjs",
+      "sourceSha256": "77a120066b225b4123d4f0f1fdc90f52680767fa08ac1631853c9b2286b41148",
+      "selector": "update is idempotent and never opens a second pull request",
+      "expectedState": "DRAFT_OPEN"
+    },
+    {
+      "id": "missing-git-object-recovery",
+      "sourcePath": "test/portable-skill/github-exact-object-resolver.test.mjs",
+      "sourceSha256": "f95a1acac3a0bbbe4defe1ce98e534a17dc6f78e849a5d763ebd0ae6806d1e65",
+      "selector": "fetches every tree-derived blob object id in one bounded stdin batch",
+      "expectedState": "READY_FOR_CONFIRMATION"
+    },
+    {
+      "id": "denied-external-write",
+      "sourcePath": "test/portable-skill/github-application.test.mjs",
+      "sourceSha256": "77a120066b225b4123d4f0f1fdc90f52680767fa08ac1631853c9b2286b41148",
+      "selector": "confirmation digest",
+      "expectedState": "READY_FOR_CONFIRMATION"
+    },
+    {
+      "id": "ambiguous-mutation-reconciliation",
+      "sourcePath": "test/portable-skill/github-application.test.mjs",
+      "sourceSha256": "77a120066b225b4123d4f0f1fdc90f52680767fa08ac1631853c9b2286b41148",
+      "selector": "an ambiguous draft-pull 404 adopts the exact discovered PR without a duplicate POST",
+      "expectedState": "DRAFT_OPEN"
+    }
+  ]
+}

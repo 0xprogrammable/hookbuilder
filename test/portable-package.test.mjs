@@ -46,18 +46,18 @@ test("canonical inclusion manifest owns the lean installed package boundary", ()
     repositoryPath: "test/portable-skill",
     repositoryDigestAlgorithm: "sha256-path-nul-size-nul-content-nul-v1"
   });
-  assert.equal(repositoryTests.repositoryFiles, 98);
+  assert.equal(repositoryTests.repositoryFiles, 105);
   assert.ok(repositoryTests.repositoryBytes > 2_500_000);
   assert.match(repositoryTests.repositorySha256, /^[0-9a-f]{64}$/u);
   assert.equal(inventory.packageFiles.some(({ path: relativePath }) => relativePath.startsWith("scripts/test/")), false);
   assert.equal(inventory.packageFiles.some(({ path: relativePath }) => relativePath.endsWith(".test.mjs")), true,
     "frozen reference-kernel replay tests remain portable");
-  assert.equal(inventory.repositoryOnly.files, 98);
+  assert.equal(inventory.repositoryOnly.files, 105);
   assert.equal(inventory.repositoryOnly.bytes, repositoryTests.repositoryBytes);
   assert.equal(inventory.repositoryOnly.sourcesVerified, true);
   assert.equal(inventory.repositoryOnly.sources[0].sha256, repositoryTests.repositorySha256);
-  assert.ok(inventory.packageFiles.length <= 620);
-  assert.ok(inventory.packageBytes <= 8_750_000);
+  assert.ok(inventory.packageFiles.length <= 630);
+  assert.ok(inventory.packageBytes <= 8_900_000);
 });
 
 test("manifest rejects executable-mode drift before publication", (t) => {

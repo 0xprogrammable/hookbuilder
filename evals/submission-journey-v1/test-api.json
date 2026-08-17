@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0.0",
+  "module": "skills/programmable-v4-hook-builder/scripts/submit-project-core.mjs",
+  "export": "runSubmitProjectJourney",
+  "signature": "runSubmitProjectJourney(input, adapters) -> Promise<{ exitCode, result }>",
+  "input": {
+    "required": [
+      "repositoryRoot",
+      "workspaceRoot"
+    ],
+    "optional": [
+      "confirmExternalWrite",
+      "resume",
+      "verbose"
+    ]
+  },
+  "resultFields": [
+    "state",
+    "diagnostics",
+    "writePerformed",
+    "safeNextCommand",
+    "workspace"
+  ],
+  "workspaceFields": [
+    "root",
+    "stateFile",
+    "statePersisted",
+    "sourceCommit",
+    "sourceTree",
+    "confirmationDigest",
+    "pullRequest"
+  ],
+  "adapters": [
+    "readWorkspace",
+    "writeWorkspaceAtomically",
+    "resolveCompatibility",
+    "validateProjectPackage",
+    "discoverPublicSource",
+    "prepareApplicationPackage",
+    "validateClosedPackage",
+    "readGithubAuth",
+    "planDraft",
+    "mutateDraft",
+    "reconcileRemoteStatus"
+  ],
+  "rule": "The core receives every filesystem, network and mutation effect through an explicit adapter. Core tests never use hidden global filesystem or network state."
+}

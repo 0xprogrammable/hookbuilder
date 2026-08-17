@@ -1,0 +1,81 @@
+{
+  "schemaVersion": "1.0.0",
+  "subject": {
+    "commit": "7869f44aa8dcc7cefeb379b76118407d53384558",
+    "tree": "62a275ac288cf5b1754affe39189745dd79586dc",
+    "release": "0.10.3"
+  },
+  "environment": {
+    "runtime": "Node.js",
+    "platform": "darwin",
+    "telemetry": "single local spawnSync observation; elapsed values are informational and not a release comparison median"
+  },
+  "measurements": {
+    "defaultHelp": {
+      "command": "node skills/programmable-v4-hook-builder/scripts/cli.mjs --help",
+      "exitCode": 0,
+      "stdoutBytes": 491,
+      "stdoutSha256": "596d33d3e636f4043edb024772a1b4b8a3da5e8ec21ffe26aad7425fceb19b94",
+      "stderrBytes": 0,
+      "elapsedMs": 101.574,
+      "missingRequiredCommand": "submit-project"
+    },
+    "openWorldHelp": {
+      "command": "node skills/programmable-v4-hook-builder/scripts/open-world.mjs --help",
+      "exitCode": 0,
+      "stdoutBytes": 1456,
+      "stdoutSha256": "d5231c6a407efc1c30c33a7f19515772feb6dc163c75a750032187e781efc60e",
+      "stderrBytes": 0,
+      "elapsedMs": 101.442,
+      "visibleInternalCommands": 11
+    },
+    "submitContext": {
+      "command": "node skills/programmable-v4-hook-builder/scripts/cli.mjs context --mode submit --brief",
+      "exitCode": 0,
+      "stdoutBytes": 1134,
+      "stdoutSha256": "2b319f11d46fc1a96d7055b21bfb86ff2efd4d360f569f02ac04968ff70cec2f",
+      "stderrBytes": 0,
+      "elapsedMs": 182.247,
+      "loadedReference": {
+        "path": "references/open-world-v2-workflow.md",
+        "bytes": 20126,
+        "sha256": "7531aa642bc608d3d1f4722164ce6718c8bd7d79ef0cb68b6d07a7ad75b032d1"
+      },
+      "contentBytes": 26291,
+      "contentEstimatedTokens": 6574,
+      "totalEstimatedTokens": 6858,
+      "targetEstimatedTokens": 4000
+    },
+    "submitProjectAbsent": {
+      "command": "node skills/programmable-v4-hook-builder/scripts/cli.mjs submit-project <empty-repository> --workspace-root <workspace>",
+      "exitCode": 2,
+      "stdoutBytes": 142,
+      "stdoutSha256": "377fa47a274d044222e1fb7645c8fa12ddc1fb01d8d77a61d6c06997cfc48814",
+      "stderrBytes": 0,
+      "elapsedMs": 103.277,
+      "observedCode": "UNKNOWN_COMMAND",
+      "expectedExitCode": 1,
+      "expectedState": "NEEDS_PROJECT_PACKAGE"
+    },
+    "focusedContractSuite": {
+      "command": "node --test test/portable-skill/submission-journey-contract.test.mjs",
+      "exitCode": 1,
+      "tests": 13,
+      "passed": 2,
+      "failed": 11,
+      "durationMs": 664.364,
+      "failureClasses": [
+        "submit-project command absent",
+        "legacy and advanced namespaces absent",
+        "submit context over target",
+        "submit-project core module absent"
+      ]
+    }
+  },
+  "candidateRuntimeBudget": {
+    "focusedContractSuiteMs": 5000,
+    "staticFixtureIndexMs": 500,
+    "networkRequests": 0,
+    "externalWrites": 0
+  }
+}

@@ -77,8 +77,7 @@ Do not require `PROJECT_PREFLIGHT_VALID` or a trusted external sandbox to create
 Local or applicant-supplied test evidence remains unverified until independent review.
 `proposal` Drafts require exact source, Fee V2 `not-selected`, `unreviewed`, unresolved trade capability and no invented
 prototype or route evidence.
-Valid public source and V2/V3.1 packages use [V3.1](references/github-application-v3.md):
-`prepare-revision -> application -> submit`. Confirm its digest; the Draft stays `NOT_APPROVED`.
+Valid public source and V2/V3.1 packages use `submit-project`. Confirm its one digest; the Draft stays `NOT_APPROVED`.
 
 ## Specialist invariants
 

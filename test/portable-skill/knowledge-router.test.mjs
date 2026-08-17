@@ -106,7 +106,7 @@ test("Applicant Draft eligibility is independent from trusted sandbox completion
   ));
   const publicBeta = fs.readFileSync(path.resolve(skillRoot, "..", "..", "docs", "PUBLIC_GITHUB_PR_BETA.md"), "utf8");
 
-  assert.deepEqual(routing.modes.submit.initial, ["open-world-v2-workflow.md"]);
+  assert.deepEqual(routing.modes.submit.initial, ["applicant-journey.md"]);
   for (const source of [skill, application, publicBeta, ...initialSubmitReferences]) {
     assert.match(source, /Do not require `PROJECT_PREFLIGHT_VALID` or a trusted external sandbox to create an unreviewed Applicant Draft/u);
     assert.match(source, /Local or applicant-supplied test evidence remains unverified until independent review/u);
@@ -140,7 +140,7 @@ test("user-facing result modes defer the layered response contract without spend
       true,
       mode
     );
-    const coldMode = mode === "explore" || mode === "autopilot" || mode === "repair";
+    const coldMode = mode === "explore" || mode === "autopilot" || mode === "repair" || mode === "submit";
     assert.equal(
       result.contextBudget.status,
       coldMode ? "within-target" : "expanded-required-context",
@@ -324,7 +324,7 @@ test("open-world v2 modes never route through the historical six-file transport"
     assert.equal(routed.some((reference) => historical.has(reference)), false, `${mode}: ${JSON.stringify(routed)}`);
   }
   assert.deepEqual(paths(planKnowledge({ mode: "submit", skillRoot })), [
-    "references/open-world-v2-workflow.md"
+    "references/applicant-journey.md"
   ]);
   assert.deepEqual(paths(planKnowledge({ mode: "handoff", skillRoot })), [
     "references/open-world-v2-workflow.md"
@@ -1013,8 +1013,8 @@ test("submit defers unrelated capability chapters while preserving their route",
     skillRoot
   });
   assert.equal(result.reviewRoute, "architecture-review-required");
-  assert.equal(result.contextBudget.status, "expanded-required-context");
-  assert.ok(result.contextBudget.estimatedTokens <= 8000);
+  assert.equal(result.contextBudget.status, "within-target");
+  assert.ok(result.contextBudget.estimatedTokens <= 4000);
   assert.equal(paths(result).includes("references/security-and-evidence.md"), false);
   assert.equal(
     result.loadLater.some(({ path: deferred, reasons }) =>

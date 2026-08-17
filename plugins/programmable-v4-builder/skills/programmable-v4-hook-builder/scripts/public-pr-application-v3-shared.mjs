@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { TextDecoder } from "node:util";
-import { canonicalJson } from "./submission-core.mjs";
+import { canonicalJson } from "./submission-value-core.mjs";
 
 export const PUBLIC_PR_APPLICATION_V3_REPORT_VERSION = "1.0.0";
 export const PUBLIC_PR_APPLICATION_V3_BASE_REQUIRED_REVIEW_KINDS = Object.freeze([

@@ -92,8 +92,8 @@ test("source verification partitions every repository test exactly once with bou
     .filter((name) => name.endsWith(".test.mjs"))
     .sort();
   const batches = createDeterministicTestBatches(testFiles);
-  assert.equal(testFiles.length, 88);
-  assert.deepEqual(batches.map((batch) => batch.length), [44, 44]);
+  assert.equal(testFiles.length, 95);
+  assert.deepEqual(batches.map((batch) => batch.length), [48, 47]);
   assert.deepEqual(batches[0], testFiles.filter((_, index) => index % 2 === 0));
   assert.deepEqual(batches[1], testFiles.filter((_, index) => index % 2 === 1));
   assert.deepEqual([...batches.flat()].sort(), testFiles);
@@ -470,7 +470,7 @@ test("source verifier declares every repository test exactly once", () => {
     .sort()
     .map((name) => `test/portable-skill/${name}`);
 
-  assert.equal(repositoryTestPaths.length, 88);
+  assert.equal(repositoryTestPaths.length, 95);
   assert.equal(new Set(repositoryTestPaths).size, repositoryTestPaths.length);
   assert.deepEqual([...repositoryTestPaths].sort(), discovered);
 });
@@ -774,7 +774,7 @@ test("trusted verifier rejects an oversized package before scanning its text", (
     const result = runUntrustedVerifier(candidateRoot);
 
     assert.notEqual(result.status, 0, result.stdout);
-    assert.match(result.stderr, /portable package is \d+ bytes; keep it at or below 8750000/);
+    assert.match(result.stderr, /portable package is \d+ bytes; keep it at or below 8900000/);
     assert.doesNotMatch(result.stderr, /local filesystem path/);
   } finally {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
@@ -795,7 +795,7 @@ test("trusted verifier rejects excessive file count before checking candidate sc
     const result = runUntrustedVerifier(candidateRoot);
 
     assert.notEqual(result.status, 0, result.stdout);
-    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 620/);
+    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 630/);
     assert.doesNotMatch(result.stderr, /invalid-syntax|SyntaxError/);
   } finally {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });

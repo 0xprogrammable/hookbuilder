@@ -19,6 +19,7 @@ import { SUBMIT_LAUNCH_INTAKE_CONTRACT as INTAKE } from "./registry-intake-contr
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const launchTarget = INTAKE.repository;
 const delegatedCommands = new Map([
+  ["submit-project", { script: "submit-project.mjs", prefix: [] }],
   ["open-world", { script: "open-world.mjs", prefix: [] }],
   ["application-recheck", { script: "application-recheck.mjs", prefix: [] }],
   ["context", { script: "knowledge-router.mjs", prefix: [] }],
@@ -121,6 +122,7 @@ if (argv.length === 0 || argv[0] === "--help" || argv[0] === "-h") {
   process.exit(0);
 }
 const command = argv[0];
+const namespaced = resolveNamespacedCommand(command, argv.slice(1));
 const nodeMajor = Number.parseInt(process.versions.node.split(".", 1)[0], 10);
 const nodeRuntimeSupported = Number.isInteger(nodeMajor) && nodeMajor >= 22;
 if (command !== "doctor" && !nodeRuntimeSupported) {
@@ -128,6 +130,8 @@ if (command !== "doctor" && !nodeRuntimeSupported) {
     "NODE_22_OR_NEWER_REQUIRED",
     "Programmable v4 Builder requires Node.js 22 or newer"
   ));
+} else if (namespaced !== null) {
+  process.exitCode = runNamespacedCommand(command, namespaced);
 } else if (command === "start" && (argv.slice(1).includes("--help") || argv.slice(1).includes("-h"))) {
   process.stdout.write(`${startHelp()}\n`);
 } else if (command === "launch-bundle-v2") {
@@ -449,21 +453,24 @@ function globalHelp() {
     "",
     "Programmable v4 Builder. Local checks are not approval.",
     "",
-    "Golden path:",
-    "  doctor        Check local readiness.",
-    "  policy        Read current launch requirements.",
-    "  context       Route the confirmed task.",
-    "  project       Materialize and verify output.",
-    "  handoff       Preview bound handoff; no writes",
-    "Start: doctor -> policy -> context --mode autopilot -> project --help -> handoff --help",
-    "Templates: cli.mjs templates list",
-    "All commands: cli.mjs --help --json"
+    "Commands:",
+    "  doctor          Check local readiness.",
+    "  submit-project  Prepare, resume, submit, or read one Applicant Draft.",
+    "Advanced tools: cli.mjs advanced context --help",
+    "Legacy compatibility: cli.mjs legacy submit --help",
+    "Machine-readable catalog: cli.mjs --help --json"
   ].join("\n");
 }
 function globalHelpJson() {
   const commands = [...new Set(["launch-bundle-v2", ...delegatedCommands.keys(), ...commandSpecs.keys()])]
     .sort().map((id) => ({ id, help: `cli.mjs ${id} --help` }));
-  return canonicalJson({ schemaVersion: "1.0.0", ok: true, command: "help", result: { goldenPath: ["doctor", "policy", "context", "project", "handoff"], frozenLegacyCommands: ["application-recheck", "fee", "launch-bundle", "launch-bundle-v2", "package", "prepare-pr", "scaffold", "submit", "status", "update"], commands } });
+  return canonicalJson({ schemaVersion: "1.0.0", ok: true, command: "help", result: {
+    goldenPath: ["doctor", "submit-project"],
+    defaultCommands: ["doctor", "submit-project"],
+    advancedCommands: ["context", "policy", "project", "handoff", "templates", "start", "profile", "resolve-contract"],
+    frozenLegacyCommands: ["application-recheck", "fee", "launch-bundle", "launch-bundle-v2", "package", "prepare-pr", "scaffold", "status", "submit", "update"],
+    commands
+  } });
 }
 function startHelp() {
   return [
@@ -533,6 +540,42 @@ function runDelegatedCommand(command, args) {
       new CliFailure("DELEGATED_COMMAND_FAILED", `${command} could not complete: ${result.error.message}`)
     );
   }
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  return Number.isInteger(result.status) ? result.status : 1;
+}
+
+function resolveNamespacedCommand(namespace, args) {
+  const groups = {
+    advanced: new Set(["context", "policy", "project", "handoff", "open-world", "templates", "start", "profile", "resolve-contract"]),
+    legacy: new Set(["application-recheck", "fee", "launch-bundle", "launch-bundle-v2", "package", "prepare-pr", "scaffold", "status", "submit", "update"])
+  };
+  const allowed = groups[namespace];
+  if (allowed === undefined) return null;
+  const [subcommand, ...rest] = args;
+  return allowed.has(subcommand)
+    ? { command: subcommand, args: rest, valid: true }
+    : { command: subcommand ?? null, args: rest, valid: false };
+}
+
+function runNamespacedCommand(namespace, selection) {
+  if (!selection.valid) {
+    return emitFailure(namespace, new CliFailure("UNKNOWN_COMMAND", `unknown ${namespace} command ${selection.command ?? ""}`));
+  }
+  if (delegatedCommands.has(selection.command)) return runDelegatedCommand(selection.command, selection.args);
+  const result = childProcess.spawnSync(
+    process.execPath,
+    [fileURLToPath(import.meta.url), selection.command, ...selection.args],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: process.env,
+      maxBuffer: 32_000_000,
+      shell: false,
+      timeout: 2 * 60_000
+    }
+  );
+  if (result.error) return emitFailure(namespace, new CliFailure("DELEGATED_COMMAND_FAILED", result.error.message));
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);
   return Number.isInteger(result.status) ? result.status : 1;

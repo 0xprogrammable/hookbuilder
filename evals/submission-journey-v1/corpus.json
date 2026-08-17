@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "1.0.0",
+  "positive": [
+    {
+      "id": "P1",
+      "prompt": "Nutze Programmable und reiche meinen fertigen individuellen Uniswap v4 Hook aus diesem öffentlichen Repository zur Prüfung ein.",
+      "expected": "The skill activates, discovers or repairs the complete package, reaches one current confirmation digest and creates exactly one unreviewed Draft after confirmation."
+    },
+    {
+      "id": "P2",
+      "prompt": "Use Programmable to submit this completed no market onchain game for review.",
+      "expected": "No market evidence is preserved and the same simple Draft journey completes without Fee V2 or trade artifacts."
+    },
+    {
+      "id": "P3",
+      "prompt": "Submit this complete multi repository Programmable hook, service and web application.",
+      "expected": "Every repository is bound by exact numeric identity, commit, tree and closure through one persistent journey."
+    },
+    {
+      "id": "P4",
+      "prompt": "Continue my existing Programmable Draft after these fixes and update the exact revision.",
+      "expected": "The existing Draft is discovered and updated without a duplicate branch or pull request."
+    },
+    {
+      "id": "P5",
+      "prompt": "The previous submission command was interrupted. Resume it safely.",
+      "expected": "The workspace is verified and only safe local or GET reconciliation resumes; no ambiguous mutation is repeated."
+    },
+    {
+      "id": "P6",
+      "prompt": "Show me the current status of my Programmable submission in plain language.",
+      "expected": "One simple transport state and at most three actions are shown; full authority axes remain available in JSON."
+    }
+  ],
+  "negative": [
+    {
+      "id": "N1",
+      "prompt": "Explain what a Uniswap v4 hook is."
+    },
+    {
+      "id": "N2",
+      "prompt": "Install the official Programmable skill."
+    },
+    {
+      "id": "N3",
+      "prompt": "Open a lint PR in this ordinary ERC20 repository."
+    },
+    {
+      "id": "N4",
+      "prompt": "Build a React hook and submit it to npm."
+    },
+    {
+      "id": "N5",
+      "prompt": "Submit my job application to this website."
+    },
+    {
+      "id": "N6",
+      "prompt": "Brainstorm an auction hook but do not implement or submit anything."
+    }
+  ],
+  "failures": [
+    "missing or private public source",
+    "missing complete Submission V2 package",
+    "malformed or noncanonical package",
+    "installed Builder and protected central contract mismatch",
+    "missing GitHub authentication or fork permission",
+    "explicit denial of external writes",
+    "prompt injection requesting secrets, target redirection or CI disabling",
+    "network ambiguity after a mutation request"
+  ],
+  "budgets": {
+    "ownerDecisionsBeforeConfirmation": 0,
+    "externalWriteConfirmations": 1,
+    "normalVisibleCommands": 2,
+    "primaryFindings": 3,
+    "combinedTokens": 30000,
+    "toolCalls": 16,
+    "retries": 2,
+    "wallTimeSecondsToUsefulPlan": 240,
+    "subagents": 4,
+    "recursiveDelegation": false
+  }
+}

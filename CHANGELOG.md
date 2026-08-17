@@ -2,6 +2,30 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.11.0 - 2026-08-17
+
+### Added
+
+- Added `submit-project <repository-root>` as the single normal command for project discovery, persistent preparation,
+  read-only planning, exact confirmation, Draft creation or update, resume, and status.
+- Added a closed protected-base compatibility handshake plus an exact released active-contract fallback.
+- Added deterministic generation and verification for a bounded minimal public Applicant validator package.
+
+### Changed
+
+- Moved internal submission choreography behind `advanced` and `legacy` namespaces and limited default failure output to
+  three actionable six-field diagnostics.
+- Delayed workspace creation until a valid Submission V2 subject and exact central compatibility binding both exist.
+- Raised the reviewed portable Skill ceiling to 630 files and 8,900,000 bytes for the separated compatibility,
+  diagnostics, and one-command journey modules while retaining every per-module size and complexity limit.
+
+### Evidence boundary
+
+- The simplified path preserves the existing Application V3.1 package, exact public-source, one-digest mutation, and
+  GET-only ambiguous-write recovery boundaries.
+- It creates only an unreviewed Draft. It does not invent project evidence or grant review, approval, deployment,
+  registration, availability, routing, signing, fund-handling, or launch authority.
+
 ## 0.10.3 - 2026-08-17
 
 ### Fixed
