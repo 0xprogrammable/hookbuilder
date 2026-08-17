@@ -1,5 +1,5 @@
-import { canonicalJson } from "./submission-core.mjs";
-import { sha256Bytes } from "./open-world-v2-core.mjs";
+import { canonicalJson } from "./submission-value-core.mjs";
+import { sha256Bytes } from "./open-world-v2-primitives.mjs";
 import {
   SOURCE_CLOSURE_MANIFEST_SCHEMA_ID,
   SOURCE_CLOSURE_MANIFEST_VERSION,

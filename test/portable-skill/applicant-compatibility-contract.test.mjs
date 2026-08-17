@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   APPLICANT_COMPATIBILITY_PATH,
   ApplicantCompatibilityError,
+  LOCAL_APPLICANT_VALIDATOR_PACKAGE,
   parseApplicantCompatibilityContract,
   resolveApplicantCompatibilityContract
 } from "../../skills/programmable-v4-hook-builder/scripts/applicant-compatibility-contract-core.mjs";
@@ -17,7 +18,11 @@ const expected = Object.freeze({
   applicationSchemaPath: "intake/schemas/public-pr-application-v3.schema.json",
   applicationSchemaSha256: schemaSha256,
   builderProtocolVersion: "1.2.0",
-  legacyActiveContractId: "submit-launch"
+  legacyActiveContractId: "submit-launch",
+  validatorPackage: {
+    ...LOCAL_APPLICANT_VALIDATOR_PACKAGE,
+    closureSha256
+  }
 });
 
 function compatibilityContract(overrides = {}) {
@@ -143,5 +148,11 @@ test("malformed, duplicate-key, drifted and too-new contracts fail closed", () =
       trustedRepository: { numericId: "1", defaultBranch: "main" }
     })), expected),
     (error) => error.code === "TRUSTED_REPOSITORY_BINDING_MISMATCH"
+  );
+  assert.throws(
+    () => parseApplicantCompatibilityContract(bytes(compatibilityContract({
+      validatorPackage: { ...expected.validatorPackage, closureSha256: `sha256:${"9".repeat(64)}` }
+    })), expected),
+    (error) => error.code === "VALIDATOR_PACKAGE_BINDING_MISMATCH"
   );
 });

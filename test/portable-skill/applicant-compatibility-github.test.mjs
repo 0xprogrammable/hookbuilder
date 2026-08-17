@@ -9,6 +9,7 @@ import {
   preflightProtectedApplicantCompatibility,
   resolveProtectedApplicantCompatibility
 } from "../../skills/programmable-v4-hook-builder/scripts/applicant-compatibility-github.mjs";
+import { LOCAL_APPLICANT_VALIDATOR_PACKAGE } from "../../skills/programmable-v4-hook-builder/scripts/applicant-compatibility-contract-core.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "..", "..", "skills", "programmable-v4-hook-builder");
@@ -37,12 +38,7 @@ test("protected Applicant compatibility binds one exact stable central contract"
     applicationContractId: "public-pr-application-v3.1",
     applicationSchemaPath: SCHEMA_PATH,
     applicationSchemaSha256: "sha256:2d51837bbbfe52672ecca334596243bebcec78e8e0a885d67084dfd98955bcb7",
-    validatorPackage: {
-      rootPath: "vendor/programmable-applicant-validator",
-      entrypointPath: "vendor/programmable-applicant-validator/scripts/public-applicant-validator.mjs",
-      receiptPath: "vendor/programmable-applicant-validator/validator-package-receipt.v1.json",
-      closureSha256: `sha256:${"e".repeat(64)}`
-    },
+    validatorPackage: LOCAL_APPLICANT_VALIDATOR_PACKAGE,
     capabilities: {
       sourceClosureModes: ["inline", "manifest"],
       draftTransportOperations: ["create", "update"],
@@ -86,7 +82,7 @@ function createFixture({ changeHead = false } = {}) {
       rootPath: "vendor/programmable-applicant-validator",
       entrypointPath: "vendor/programmable-applicant-validator/scripts/public-applicant-validator.mjs",
       receiptPath: "vendor/programmable-applicant-validator/validator-package-receipt.v1.json",
-      closureSha256: `sha256:${"e".repeat(64)}`
+      closureSha256: LOCAL_APPLICANT_VALIDATOR_PACKAGE.closureSha256
     }
   })}\n`, "utf8");
   const blobs = new Map([

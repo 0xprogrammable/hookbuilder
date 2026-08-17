@@ -1,16 +1,16 @@
 {
   "schemaVersion": "1.0.0",
-  "candidateId": "programmable-v4-builder-v0.10.3-local-20260817",
+  "candidateId": "programmable-v4-builder-v0.11.0-local-20260817",
   "privateCandidate": true,
   "publicState": "not-published",
-  "releaseVersion": "0.10.3",
+  "releaseVersion": "0.11.0",
   "channel": "canary",
   "releaseKind": "normal",
   "plannedRelease": {
     "builder": {
-      "fromVersion": "0.10.2",
-      "toVersion": "0.10.3",
-      "semanticClassification": "patch"
+      "fromVersion": "0.10.3",
+      "toVersion": "0.11.0",
+      "semanticClassification": "minor"
     },
     "submissionStandard": {
       "fromVersion": "1.6.0",
@@ -39,9 +39,19 @@
   "changeSetComplete": true,
   "changes": [
     {
-      "id": "tree-derived-blob-fetch-fix",
-      "kind": "bug-fix",
-      "summary": "Fetch every tree-derived declared blob object ID in one bounded anonymous batch so manifest-based Applicant source verification cannot silently lose objects after a successful sparse backfill."
+      "id": "one-command-applicant-journey",
+      "kind": "feature",
+      "summary": "Add one persistent submit-project journey that discovers, validates, plans, confirms, submits, resumes, and reads one unreviewed Applicant Draft without exposing internal choreography."
+    },
+    {
+      "id": "protected-applicant-compatibility",
+      "kind": "security-fix",
+      "summary": "Bind the exact protected Submit Launch compatibility contract before any workspace or GitHub write and preserve a strict released active-contract fallback."
+    },
+    {
+      "id": "compact-applicant-validator-package",
+      "kind": "feature",
+      "summary": "Generate and verify one descriptor-hardened minimal public Applicant validator package for protected central reuse."
     }
   ],
   "unbundledChangeIds": [],

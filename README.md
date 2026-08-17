@@ -16,7 +16,7 @@
   <a href="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-F8F0E9?labelColor=010103"></a>
   <a href="https://agentskills.io/specification"><img alt="Agent Skills compatible" src="https://img.shields.io/badge/Agent%20Skills-compatible-F8F0E9?labelColor=010103"></a>
-  <a href="CHANGELOG.md"><img alt="Release package 0.10.3" src="https://img.shields.io/badge/release-v0.10.3-F8F0E9?labelColor=010103"></a>
+  <a href="CHANGELOG.md"><img alt="Release package 0.11.0" src="https://img.shields.io/badge/release-v0.11.0-F8F0E9?labelColor=010103"></a>
 </p>
 
 <p align="center">
@@ -29,7 +29,7 @@
 > [!IMPORTANT]
 > **Release status**
 >
-> Release package `v0.10.3` supports Node.js 22+ for the portable Skill; source and release gates require Node.js 24+. Its bundled status retains
+> Release package `v0.11.0` supports Node.js 22+ for the portable Skill; source and release gates require Node.js 24+. Its bundled status retains
 > `publicationStateVerified: false`; verify the public tag, GitHub release, and installed bytes before treating it as
 > published or live. Package checks and public CI do not establish model behavior, an independent audit, project approval,
 > deployment, routing, registration, or launch authority.
@@ -44,11 +44,11 @@ authority, deployment, provider support, and public availability.
 
 ## Install the immutable release
 
-After confirming that GitHub exposes the immutable `v0.10.3` release, preview that exact Skill before installing it:
+After confirming that GitHub exposes the immutable `v0.11.0` release, preview that exact Skill before installing it:
 
 ```bash
 gh skill preview 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.10.3
+  programmable-v4-hook-builder@v0.11.0
 ```
 
 Install the same immutable release for Codex:
@@ -58,7 +58,7 @@ gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.10.3
+  --pin v0.11.0
 ```
 
 GitHub's `gh skill` commands are in preview. Clean package placement has been checked for Codex, Claude Code, and
@@ -127,9 +127,16 @@ Fee V2 contract was selected, the package declares `feeApplicability: "not-selec
 Fee V2 records. The no-write handoff preview and local validator remain available for inspecting the exact bytes. See
 the [generic handoff contract](skills/programmable-v4-hook-builder/references/application-handoff.md).
 
-The namespaced `open-world submit`, `update`, and `status` commands read the protected base active-contract manifest
-and the accepted V3 schema at that exact commit. A submit or update first returns a read-only plan bound to those
-bytes, the source closure, and the intended draft pull request. It never means reviewed, approved, deployed, or live.
+For the normal Applicant journey, run one command and follow only the returned safe next action:
+
+```bash
+node "$SKILL_ROOT/scripts/cli.mjs" submit-project "$REPOSITORY_ROOT"
+```
+
+It discovers one tracked Submission V2 subject, resumes one outside-source workspace, binds the protected compatibility
+contract, and returns a read-only plan before requesting one exact confirmation digest. Reinvoke the same command for
+status. The internal namespaced `open-world` commands remain available under `advanced` for diagnosis, not as the
+normal user journey. A Draft never means reviewed, approved, deployed, or live.
 
 The top-level `prepare-pr`, `submit`, `update`, and `status` commands preserve the historical six-file transport only.
 Do not use them for a new project. New submissions use the namespaced Application V3.1 commands above, and no

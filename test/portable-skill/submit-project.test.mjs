@@ -6,7 +6,10 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { runSubmitProjectJourney } from "../../skills/programmable-v4-hook-builder/scripts/submit-project.mjs";
+import {
+  projectTrustedTransportFailureEffects,
+  runSubmitProjectJourney
+} from "../../skills/programmable-v4-hook-builder/scripts/submit-project.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "..", "..", "skills", "programmable-v4-hook-builder");
@@ -224,6 +227,47 @@ test("successful compatibility creates one private persistent workspace before p
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
+});
+
+test("concrete submit-project failure projection preserves recorded partial GitHub writes", () => {
+  const receiptDigest = `sha256:${"f".repeat(64)}`;
+  const projected = projectTrustedTransportFailureEffects({
+    ok: false,
+    code: "PARTIAL_EXTERNAL_WRITE",
+    details: {
+      schemaVersion: "1.0.0",
+      command: "open-world",
+      ok: false,
+      error: {
+        code: "PARTIAL_EXTERNAL_WRITE",
+        details: {
+          partialExternalWrite: true,
+          writePerformed: true,
+          recoveryStatus: "MANUAL_RECONCILIATION_REQUIRED",
+          mutationReceipt: {
+            path: "/workspace/application-v3-mutation-receipt.json",
+            state: "RECONCILIATION_REQUIRED",
+            receiptDigest
+          }
+        }
+      }
+    }
+  });
+  assert.equal(projected.writePerformed, true);
+  assert.deepEqual(projected.partialWrite, {
+    code: "PARTIAL_EXTERNAL_WRITE",
+    writePerformed: true,
+    recoveryStatus: "MANUAL_RECONCILIATION_REQUIRED",
+    mutationReceipt: {
+      path: "/workspace/application-v3-mutation-receipt.json",
+      state: "RECONCILIATION_REQUIRED",
+      receiptDigest
+    }
+  });
+  assert.equal(projectTrustedTransportFailureEffects({
+    code: "APPLICATION_TRANSPORT_FAILED",
+    details: { writePerformed: true }
+  }).writePerformed, false);
 });
 
 test("repository prose stays inert when no exact Git package exists", () => {

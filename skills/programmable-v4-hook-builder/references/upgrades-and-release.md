@@ -57,9 +57,9 @@ Report the installed version and exact standards:
 node "$SKILL_ROOT/scripts/builder-lifecycle.mjs" version
 ```
 
-This default reports the constants bundled with the checked-out Builder. The v0.10.3 release package reports
+This default reports the constants bundled with the checked-out Builder. The v0.11.0 release package reports
 `channel: stable`, `publicationState: release-package`, and `publicationStateVerified: false`; these bundled constants
-do not resolve or authenticate a public tag. Release installation guidance is pinned to v0.10.3. To inspect
+do not resolve or authenticate a public tag. Release installation guidance is pinned to v0.11.0. To inspect
 an explicit pinned installed-state record instead, add
 `--state path/to/installed-state.json`; the JSON output marks that source as an installed-state override and keeps
 publication state `not-verified`. Neither path establishes update trust or public release state.
@@ -112,11 +112,11 @@ objects from source code or tests:
 | Current migration document | `assets/templates/lifecycle/migration-current-document.example.json` | Small inert example whose digest matches the proposal |
 | Migration proposal | `assets/templates/lifecycle/migration-proposal.example.json` | Changes only the standard version and preserves economics, wallet, authority, risk, and evidence values |
 | Release history | `assets/templates/lifecycle/release-history.caller-declared.example.json` | Demonstrates version/provenance shape; `releasedAt` is not authenticated history and creates no waiting period |
-| Release candidate | `assets/templates/release-candidate.example.json` | Binds the planned 0.10.3 transition but deliberately leaves source and release-artifact coordinates incomplete |
+| Release candidate | `assets/templates/release-candidate.example.json` | Binds the planned 0.11.0 transition but deliberately leaves source and release-artifact coordinates incomplete |
 | Critical-hotfix candidate | `assets/templates/lifecycle/release-candidate.critical-hotfix.caller-declared.example.json` | Closed critical-hotfix draft with security-only change kinds; all placeholder incident, owner, source, and artifact data remains unverified and incomplete |
 
 The three filenames containing `TEST-ONLY` form one internally consistent historical `0.3.0` / submission `1.4.0`
-fixture set. It tests generic update and migration behavior; it is not the current `0.10.3` candidate record. Never copy their trust key, pin
+fixture set. It tests generic update and migration behavior; it is not the current `0.11.0` candidate record. Never copy their trust key, pin
 digest, signature, artifact hashes, or evidence paths into production state. `update-check` reports
 `verification.fixtureOnly: true` and `productionTrustEstablishedByThisCommand: false` for this pin. The packaged fixture
 public-key id remains test-only even if an input relabels the pin id. Non-fixture updates can authenticate to a supplied
@@ -219,9 +219,9 @@ earlier, W5 records that earliest independently verified public exposure. The pl
 that exposure; its `releasedAt` remains a caller declaration.
 
 The example candidate's closed `plannedRelease` object binds the intended identity. For the packaged local unpublished
-0.10.3 planning example it declares:
+0.11.0 planning example it declares:
 
-- Builder `0.10.2 -> 0.10.3` with semantic classification `patch`;
+- Builder `0.10.3 -> 0.11.0` with semantic classification `minor`;
 - submission standard `1.6.0 -> 1.6.0`;
 - fee policy `1.1.0 -> 1.1.0`;
 - one full 40-hex Git commit, full 40-hex tree, and planned tag name; and
