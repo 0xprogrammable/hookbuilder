@@ -42,8 +42,8 @@
     {
       "repositoryPath": "test/portable-skill/submission.test.mjs",
       "portablePath": "assets/semantic-rule-test-evidence-v1/submission.test.mjs",
-      "bytes": 287188,
-      "sha256": "ee74d625dead76c8c86ce0e2f5d80ff5e761230ae6fc9fa44f7a95f22519d5ad"
+      "bytes": 290118,
+      "sha256": "816fc06d6d2498df36b7ddaed8bb51d4be76b6716224bdaba3d98b689b2ee4a7"
     },
     {
       "repositoryPath": "test/portable-skill/v4-hook-semantic-contract.test.mjs",
