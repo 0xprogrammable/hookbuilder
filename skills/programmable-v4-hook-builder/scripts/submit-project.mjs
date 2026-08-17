@@ -11,6 +11,7 @@ import { preflightProtectedApplicantCompatibility } from "./applicant-compatibil
 import { CliFailure, emitFailure, emitSuccess, requireJsonResult, runBundledCommand } from "./cli-runtime.mjs";
 import { canonicalJson } from "./submission-core.mjs";
 import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
+import { discoverExistingDraft, planSubmitOrAdoptExistingDraft } from "./submit-project-draft-adoption.mjs";
 import {
   applicantSourceRootArgs as sourceRootArgs,
   bindApplicantApplicationSources as bindApplicationSources,
@@ -72,6 +73,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
       pointerPaths: discoverTrackedFiles(repositoryRoot, commit, "applicant-package.v1.json")
     }),
     atomicWorkspaceWrite: persistWorkspaceState,
+    adoptExistingDraft: discoverExistingDraft,
     runTransport: runOpenWorld,
     compatibilityPreflight: preflightProtectedApplicantCompatibility,
     ...adapters
@@ -297,7 +299,14 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
     return blockedResult(state, [diagnostic], command, verbose, { validation, applicationValidation });
   }
 
-  const pullRequest = previous?.transport?.pullRequest ?? null;
+  let pullRequest = previous?.transport?.pullRequest ?? null;
+  let initialPlan = null;
+  if (pullRequest === null) {
+    const selection = await planSubmitOrAdoptExistingDraft({ applicationPackage: applicationSnapshot, applicationPackagePath: applicationPackage, repositoryRoot, sourceRoots, runTransport: runtime.runTransport, adoptExistingDraft: runtime.adoptExistingDraft });
+    if (selection.status?.ok === false) return transportFailure({ status: selection.status, repositoryRoot, workspace, source, previous, submissionPaths, statePath, command, verbose, compatibility: compatibilityBinding });
+    pullRequest = selection.pullRequest;
+    initialPlan = selection.status;
+  }
   if (pullRequest !== null && confirmation === null) {
     const status = runtime.runTransport(["status", applicationPackage, "--pull-request", String(pullRequest), ...sourceRootArgs(sourceRoots)], repositoryRoot);
     if (!status.ok) return transportFailure({ status, repositoryRoot, workspace, source, previous, submissionPaths, statePath, command, verbose, compatibility: compatibilityBinding });
@@ -311,7 +320,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
       currentState,
       diagnostics: [],
       compatibility: compatibilityBinding,
-      transport: { ...previous.transport, lastStatus: status.result }
+      transport: projectAdoptedDraftTransport(previous?.transport, pullRequest, status.result)
     });
     runtime.atomicWorkspaceWrite(statePath, state);
     return usefulResult(state, command, verbose, { validation, applicationValidation, remoteStatus: status.result });
@@ -321,7 +330,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
   const operationArgs = [operation, applicationPackage];
   if (pullRequest !== null) operationArgs.push("--pull-request", String(pullRequest));
   operationArgs.push(...sourceRootArgs(sourceRoots), "--dry-run");
-  const plan = runtime.runTransport(operationArgs, repositoryRoot);
+  const plan = initialPlan ?? runtime.runTransport(operationArgs, repositoryRoot);
   if (!plan.ok) return transportFailure({ status: plan, repositoryRoot, workspace, source, previous, submissionPaths, statePath, command, verbose, compatibility: compatibilityBinding });
   const confirmationDigest = plan.result?.confirmationDigest;
   if (!SHA256_PATTERN.test(confirmationDigest)) {
@@ -398,6 +407,9 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
   return usefulResult(state, command, verbose, { validation, applicationValidation, mutation: mutation.result, remoteStatus: status.result }, true);
 }
 
+export function projectAdoptedDraftTransport(previousTransport, pullRequest, lastStatus) {
+  return { ...(previousTransport ?? {}), operation: "update", pullRequest, confirmationDigest: null, lastStatus };
+}
 
 function prepareApplicationPackage({ pointer, repositoryRoot, workspace, applicationPackage, runTransport }) {
   const required = [

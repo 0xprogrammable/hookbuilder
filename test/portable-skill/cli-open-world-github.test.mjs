@@ -20,6 +20,7 @@ import {
 } from "../../skills/programmable-v4-hook-builder/scripts/source-manifest.mjs";
 import { buildExampleBaseline } from "../../skills/programmable-v4-hook-builder/scripts/example-materializer-core.mjs";
 import { canonicalJson } from "../../skills/programmable-v4-hook-builder/scripts/submission-core.mjs";
+import { createOpenWorldRuntime } from "../../skills/programmable-v4-hook-builder/scripts/open-world-runtime.mjs";
 import {
   createApplicableOpenWorldV2PrototypeFixture,
   createFeeUnselectedOpenWorldV2PrototypeFixture
@@ -100,6 +101,43 @@ test("Application V3 transport rejects maintainer_can_modify substitution before
   ], fixture);
   assert.equal(result.status, 1, result.stdout || result.stderr);
   assert.equal(JSON.parse(result.stdout).error.code, "APPLICATION_PULL_REQUEST_MISMATCH");
+  assert.deepEqual(mutatingCalls(fixture), []);
+});
+
+test("existing Applicant Draft discovery adopts only the exact read-only remote package", async (t) => {
+  const fixture = createTransportFixture(t, { mode: "status", feeV2Selected: false });
+  const application = readFixtureApplication(fixture);
+  const projection = projectFixturePackage(fixture.packageRoot, application);
+  const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+  const title = `[Application V3] ${application.applicationId} revision ${application.applicationRevision}`;
+  const branch = deriveFixtureReviewBranch(application, projection.packageSha256);
+  state.branch = branch;
+  state.pull.title = title;
+  state.pull.head.ref = branch;
+  state.prepareSearch = {
+    total_count: 1,
+    items: [{ number: state.pull.number, title, user: state.viewer }]
+  };
+  fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
+
+  const runtime = createOpenWorldRuntime();
+  const applicationPackage = runtime.loadApplicationV3TransportPackage(fixture.packageRoot);
+  const result = await runtime.discoverApplicationV3OpenDraft({
+    applicationPackage,
+    transport: fixtureGhTransport(fixture),
+    localSourceReplay: null
+  });
+  assert.equal(result.action, "adopt-draft");
+  assert.equal(result.adopted, true);
+  assert.equal(result.applicationId, application.applicationId);
+  assert.equal(result.target.pullRequestNumber, 7);
+  assert.equal(result.package.packageSha256, projection.packageSha256);
+  assert.equal(result.package.matchesRemote, true);
+  assert.equal(result.readOnly, true);
+  assert.equal(result.writePerformed, false);
+  assert.equal(result.approvalGranted, false);
+  assert.equal(result.launchAuthorizationGranted, false);
+  assert.ok(allCalls(fixture).every(({ method }) => method === "GET"));
   assert.deepEqual(mutatingCalls(fixture), []);
 });
 
@@ -5147,6 +5185,28 @@ function run(argumentsList, fixture, { allowWrites = false, usePreload = true } 
     env: fixtureCliEnvironment(fixture, { allowWrites, usePreload }),
     timeout: 30_000,
     maxBuffer: 16_000_000
+  });
+}
+
+function fixtureGhTransport(fixture) {
+  return createGhTransport({
+    getAttempts: 1,
+    runner: async ({ command, args, stdin, timeoutMs, maxOutputBytes }) => {
+      const result = childProcess.spawnSync(command, args, {
+        cwd: fixture.root,
+        encoding: "utf8",
+        env: fixtureCliEnvironment(fixture, { allowWrites: false, usePreload: true }),
+        input: stdin,
+        maxBuffer: maxOutputBytes,
+        shell: false,
+        timeout: timeoutMs
+      });
+      return {
+        status: result.status,
+        stdout: result.stdout,
+        stderr: result.stderr
+      };
+    }
   });
 }
 
