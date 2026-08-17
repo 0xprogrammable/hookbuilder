@@ -54,19 +54,21 @@ test("installed semantic registry is self-contained and fails on evidence-manife
   assert.equal(tampered.stdout, "");
 });
 
-test("host-neutral help leads with one golden path and keeps every command in opt-in JSON", () => {
+test("host-neutral help leads with one Applicant path and keeps every command in opt-in JSON", () => {
   const result = run("cli.mjs", ["--help"]);
   assert.equal(result.status, 0, result.stderr);
   assert.ok(Buffer.byteLength(result.stdout) < 600);
-  for (const command of ["doctor", "policy", "context", "project", "handoff"]) {
+  for (const command of ["doctor", "submit-project"]) {
     assert.match(result.stdout, new RegExp(`^  ${escapeRegExp(command)}\\b`, "m"));
   }
-  assert.doesNotMatch(result.stdout, /^  submit\b/mu);
+  for (const hidden of ["policy", "context", "project", "handoff", "submit", "status"]) {
+    assert.doesNotMatch(result.stdout, new RegExp(`^  ${escapeRegExp(hidden)}(?:\\s|$)`, "m"));
+  }
 
   const detail = run("cli.mjs", ["--help", "--json"]);
   assert.equal(detail.status, 0, detail.stderr);
   const payload = JSON.parse(detail.stdout);
-  assert.deepEqual(payload.result.goldenPath, ["doctor", "policy", "context", "project", "handoff"]);
+  assert.deepEqual(payload.result.goldenPath, ["doctor", "submit-project"]);
   for (const commandId of ["fee", "launch-bundle", "launch-bundle-v2", "package", "prepare-pr"]) {
     assert.equal(payload.result.frozenLegacyCommands.includes(commandId), true, commandId);
   }
@@ -79,6 +81,7 @@ test("host-neutral help leads with one golden path and keeps every command in op
     "start",
     "profile",
     "doctor",
+    "submit-project",
     "scaffold",
     "check",
     "fee",
