@@ -6,7 +6,7 @@ import { createOpenWorldRuntime } from "../../skills/programmable-v4-hook-builde
 test("the decomposed open-world runtime installs every historical command function exactly once", () => {
   const runtime = createOpenWorldRuntime();
   assert.equal(Object.getPrototypeOf(runtime), null);
-  assert.equal(Object.keys(runtime).length, 203);
+  assert.equal(Object.keys(runtime).length, 204);
   assert.ok(Object.values(runtime).every((value) => typeof value === "function"));
   for (const name of [
     "executeInit",
@@ -18,6 +18,7 @@ test("the decomposed open-world runtime installs every historical command functi
     "executePrepareRevision",
     "executeGitHubTransport",
     "executeGitHubStatus",
+    "discoverApplicationV3OpenDraft",
     "verifyApplicationV3LocalTransportSources",
     "verifyRemoteApplicationV3SourceBindings",
     "executeConfirmedApplicationV3GitHubTransport",

@@ -294,7 +294,7 @@ test("plugin manifests are generated from canonical metadata and package version
     files: 629,
     bytes: 8_816_187,
     repositoryOnlyFiles: 105,
-    repositoryOnlyBytes: 3_126_087,
+    repositoryOnlyBytes: 3_126_125,
     repositorySourcesVerified: true
   });
 });
