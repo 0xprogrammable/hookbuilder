@@ -298,7 +298,6 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
     runtime.atomicWorkspaceWrite(statePath, state);
     return blockedResult(state, [diagnostic], command, verbose, { validation, applicationValidation });
   }
-
   let pullRequest = previous?.transport?.pullRequest ?? null;
   let initialPlan = null;
   if (pullRequest === null) {
@@ -325,7 +324,6 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
     runtime.atomicWorkspaceWrite(statePath, state);
     return usefulResult(state, command, verbose, { validation, applicationValidation, remoteStatus: status.result });
   }
-
   const operation = pullRequest === null ? "submit" : "update";
   const operationArgs = [operation, applicationPackage];
   if (pullRequest !== null) operationArgs.push("--pull-request", String(pullRequest));
@@ -336,7 +334,6 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
   if (!SHA256_PATTERN.test(confirmationDigest)) {
     throw new CliFailure("SUBMISSION_PLAN_INVALID", "the protected transport returned no canonical confirmation digest", { exitCode: 2 });
   }
-
   if (confirmation === null) {
     const next = safeCommand(repositoryRoot, workspace, { confirmation: confirmationDigest });
     const state = createState({
@@ -376,7 +373,6 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
     runtime.atomicWorkspaceWrite(statePath, state);
     return blockedResult(state, [diagnostic], diagnostic.safeNextCommand, verbose, { validation, applicationValidation });
   }
-
   const receipt = path.join(workspace, "application-v3-mutation-receipt.json");
   const mutationArgs = [operation, applicationPackage];
   if (pullRequest !== null) mutationArgs.push("--pull-request", String(pullRequest));
@@ -406,11 +402,9 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
   runtime.atomicWorkspaceWrite(statePath, state);
   return usefulResult(state, command, verbose, { validation, applicationValidation, mutation: mutation.result, remoteStatus: status.result }, true);
 }
-
 export function projectAdoptedDraftTransport(previousTransport, pullRequest, lastStatus) {
   return { ...(previousTransport ?? {}), operation: "update", pullRequest, confirmationDigest: null, lastStatus };
 }
-
 function prepareApplicationPackage({ pointer, repositoryRoot, workspace, applicationPackage, runTransport }) {
   const required = [
     [pointer.applicationDraft, "file"],
@@ -459,7 +453,6 @@ function prepareApplicationPackage({ pointer, repositoryRoot, workspace, applica
   }
   return { ok: true };
 }
-
 function validateSubmissionV2(repositoryRoot, submissionPath) {
   const packageDirectory = path.dirname(path.join(repositoryRoot, submissionPath));
   try {
@@ -489,7 +482,6 @@ function validateApplication(applicationPackage, sourceRoots, repositoryRoot, ru
     repair: repairForCode(code)
   };
 }
-
 
 function runOpenWorld(args, repositoryRoot) {
   try {
@@ -708,7 +700,6 @@ function safeCommand(repositoryRoot, workspace, { confirmation = null, resume = 
   return parts.join(" ");
 }
 
-
 function classifyTransportCause(code) {
   if (/AUTH|LOGIN|PERMISSION|FORK_AUTHORITY/iu.test(code)) return "AUTHORITY";
   if (/PACKAGE|SOURCE|APPLICATION_V3_MATERIALIZATION/iu.test(code)) return "PROJECT";
@@ -736,7 +727,6 @@ function nestedErrorCode(error) {
   return error?.details?.error?.code ?? error?.details?.result?.error?.code ?? error?.code ?? null;
 }
 
-
 function normalizeFailure(error) {
   if (error instanceof CliFailure) return error;
   if (error?.code === "MULTI_REPOSITORY_WORKSPACE_INCOMPLETE" || error?.code === "PROJECT_SOURCE_CHANGED") {
@@ -744,7 +734,6 @@ function normalizeFailure(error) {
   }
   return new CliFailure("SUBMIT_PROJECT_FAILED", "the Applicant journey failed without a safe diagnostic", { exitCode: 2 });
 }
-
 
 function shellQuote(value) {
   return `'${String(value).replaceAll("'", `'"'"'`)}'`;
