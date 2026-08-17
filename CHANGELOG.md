@@ -2,6 +2,23 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.11.1 - 2026-08-17
+
+### Fixed
+
+- A normal Applicant with one exact pre-workspace Draft can now recover that closed Application V3.1 package through
+  bounded read-only GitHub verification before the journey asks for missing local Application inputs.
+- The recovery binds the public source repository, commit, tree, Submission V2 path and bytes, Applicant account,
+  public fork, Draft state, immutable package records and exact remote status before it records the existing Draft.
+- A project with no recoverable Draft no longer recommends the same `--resume` command after missing Application inputs.
+  It points to the advanced Application-input help instead.
+
+### Evidence boundary
+
+- Recovery copies only verified public package data into the private Applicant workspace. It does not execute candidate
+  code, create GitHub writes, synthesize security, review, prototype, trade, Fee V2, test or source evidence, or grant
+  review, approval, deployment, registration, availability, routing, signing, funds, or launch authority.
+
 ## 0.11.0 - 2026-08-17
 
 ### Added
