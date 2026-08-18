@@ -265,8 +265,8 @@ test("explicit queue binds the protected disabled contract and performs no write
             evidence: {
               repository: "0xprogrammable/submit-launch",
               repositoryId: "1320171831",
-              centralBaseCommit: "13ad2a45554320e345409bbfe263c76de84ef73c",
-              centralBaseTree: "72d877ea19f763e04973948cb697ce9a35550737",
+              centralBaseCommit: "5a150612203b836e62cbc954a3fdef30e30546ca",
+              centralBaseTree: "193a6d15f830c2ca24213ab1283c2bec3fc22510",
               contractPath: ".programmable/universal-admission-contract.v1.json",
               contractSha256: "sha256:6e7a274a2d4a14376937ab49a7d1462cb2456035139dbcd8417b59226967ce32"
             }

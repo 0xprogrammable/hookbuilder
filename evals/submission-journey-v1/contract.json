@@ -2,8 +2,8 @@
   "contract": "programmable-applicant-journey",
   "schemaVersion": "1.0.0",
   "releaseIntent": {
-    "hookbuilder": "0.11.1",
-    "submitLaunch": "1.7.0"
+    "hookbuilder": "0.11.2",
+    "submitLaunch": "1.8.0"
   },
   "primaryJob": "Turn one complete source-bound Programmable project into one protected unreviewed Application V3.1 Draft or an exact actionable blocker without exposing internal package choreography.",
   "primaryCommand": {
