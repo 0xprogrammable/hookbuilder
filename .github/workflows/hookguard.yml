@@ -1,0 +1,57 @@
+name: HookGuard
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/hookguard.yml"
+      - "skills/programmable-v4-hook-builder/assets/**/*.sol"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/hookguard.yml"
+      - "skills/programmable-v4-hook-builder/assets/**/*.sol"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hookguard-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    name: Uniswap v4 risk advisory
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact Hookbuilder revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Verify exact Hookbuilder revision
+        env:
+          EXPECTED_REVISION: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_REVISION"
+
+      - name: Fetch reviewed HookGuard source
+        env:
+          HOOKGUARD_COMMIT: d5bcad4fea720e1f33f4240785e0255bacab927c
+        run: |
+          HOOKGUARD_ROOT="$RUNNER_TEMP/hookguard"
+          git init "$HOOKGUARD_ROOT"
+          git -C "$HOOKGUARD_ROOT" remote add origin https://github.com/chaosxcode/hookguard.git
+          git -C "$HOOKGUARD_ROOT" fetch --depth=1 origin "$HOOKGUARD_COMMIT"
+          git -C "$HOOKGUARD_ROOT" checkout --detach FETCH_HEAD
+          test "$(git -C "$HOOKGUARD_ROOT" rev-parse HEAD)" = "$HOOKGUARD_COMMIT"
+
+      - name: Scan canonical Hookbuilder Solidity assets
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: >-
+          python3 "$RUNNER_TEMP/hookguard/src/ci.py"
+          skills/programmable-v4-hook-builder/assets
+          --comment false
+          --fail-on never
