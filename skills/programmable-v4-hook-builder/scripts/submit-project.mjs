@@ -6,6 +6,11 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { parseCli, renderHelp } from "./cli-args.mjs";
 import { preflightProtectedApplicantCompatibility } from "./applicant-compatibility-github.mjs";
+import {
+  SUBMIT_PROJECT_TRANSPORT_OPTION,
+  normalizeSubmitProjectTransport,
+  runSubmitProjectQueuePreflight
+} from "./submit-project-queue.mjs";
 import { CliFailure, emitFailure, emitSuccess, requireJsonResult, runBundledCommand } from "./cli-runtime.mjs";
 import { canonicalJson } from "./submission-core.mjs";
 import { discoverExistingDraft, planSubmitOrAdoptExistingDraft } from "./submit-project-draft-adoption.mjs";
@@ -22,10 +27,13 @@ import {
   loadApplicantApplicationDraftSource as loadApplicationDraftSource,
   loadApplicantApplicationPackageSnapshot as loadApplicationPackageSnapshot,
   loadApplicantPackagePointer,
+  projectTrustedTransportFailureEffects,
   resolveApplicantRepository as resolveRepository,
   resolveApplicantWorkspace as resolveWorkspace,
   sameApplicantSource as sameSource
 } from "./submit-project-core.mjs";
+
+export { projectTrustedTransportFailureEffects };
 
 const WORKSPACE_FILE = "applicant-workspace.v1.json";
 const MAX_STATE_BYTES = 256 * 1024;
@@ -33,10 +41,11 @@ const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/u;
 
 const spec = {
   command: "submit-project",
-  usage: "cli.mjs submit-project <repository-root> [--workspace-root <absolute-dir>] [--confirm-external-write <sha256:...>] [--resume] [--verbose]",
-  summary: "Validate, resume, plan, submit, or read the status of one protected unreviewed Application V3.1 Draft. Only an exact fresh confirmation digest permits the existing trusted GitHub transport to write.",
+  usage: "cli.mjs submit-project <repository-root> [--transport <auto|queue|github-draft>] [--workspace-root <absolute-dir>] [--confirm-external-write <sha256:...>] [--resume] [--verbose]",
+  summary: "Validate, plan, submit, or read one Applicant transport. Auto keeps the protected GitHub Draft V3.1 path; queue is selectable only through its exact protected deployment contract.",
   positionals: { min: 1, max: 1, names: ["repository-root"] },
   options: [
+    SUBMIT_PROJECT_TRANSPORT_OPTION,
     { name: "--workspace-root", key: "workspaceRoot", type: "value", valueName: "absolute-dir", description: "Use one persistent outside-source workspace; the default is a repository-adjacent content-bound directory." },
     { name: "--confirm-external-write", key: "confirmation", type: "value", valueName: "sha256:...", description: "Authorize only the exact freshly recomputed Draft mutation plan." },
     { name: "--resume", key: "resume", type: "boolean", description: "Resume the exact persisted workspace and reconcile any mutation receipt before continuing." },
@@ -56,6 +65,7 @@ async function main() {
     if (options.confirmation !== null && !SHA256_PATTERN.test(options.confirmation)) {
       throw new CliFailure("USAGE_ERROR", "--confirm-external-write must be one canonical sha256 digest", { exitCode: 2 });
     }
+    normalizeSubmitProjectTransport(options.transport);
     const outcome = await runSubmitProjectJourney({ repositoryInput: positionals[0], ...options });
     emitSuccess("submit-project", outcome.result);
     process.exitCode = outcome.exitCode;
@@ -64,7 +74,8 @@ async function main() {
   }
 }
 
-export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, confirmation, resume, verbose }, adapters = {}) {
+export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, confirmation, resume, verbose, transport = null }, adapters = {}) {
+  const selectedTransport = normalizeSubmitProjectTransport(transport);
   const runtime = {
     readProjectDiscovery: ({ repositoryRoot, commit }) => ({
       submissionPaths: discoverTrackedFiles(repositoryRoot, commit, "submission.v2.json"),
@@ -85,7 +96,10 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
     const unboundWorkspace = workspaceRoot === null
       ? defaultWorkspacePath(repositoryRoot)
       : path.resolve(workspaceRoot);
-    const command = safeCommand(repositoryRoot, unboundWorkspace, { resume: true });
+    const command = safeCommand(repositoryRoot, unboundWorkspace, {
+      resume: selectedTransport !== "queue",
+      transport: selectedTransport
+    });
     const diagnostic = finding(
       "PROJECT_PACKAGE_NOT_FOUND",
       "PROJECT",
@@ -114,12 +128,19 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
   }
   const workspace = resolveWorkspace(repositoryRoot, workspaceRoot);
   const statePath = path.join(workspace, WORKSPACE_FILE);
-  const previous = fs.existsSync(statePath) ? loadWorkspaceState(statePath, repositoryRoot, workspace) : null;
-  if (resume && previous === null) {
+  const previous = selectedTransport === "queue"
+    ? null
+    : fs.existsSync(statePath)
+      ? loadWorkspaceState(statePath, repositoryRoot, workspace)
+      : null;
+  if (selectedTransport !== "queue" && resume && previous === null) {
     throw new CliFailure("WORKSPACE_STATE_NOT_FOUND", "--resume requires an existing exact applicant workspace state", { exitCode: 1 });
   }
 
-  const command = safeCommand(repositoryRoot, workspace, { resume: true });
+  const command = safeCommand(repositoryRoot, workspace, {
+    resume: selectedTransport !== "queue",
+    transport: selectedTransport
+  });
   if (previous !== null && !sameSource(previous.source, source)) {
     const diagnostic = finding(
       "PROJECT_SOURCE_CHANGED",
@@ -204,6 +225,16 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
       workspacePersisted: false
     });
     return blockedResult(state, [diagnostic], command, verbose);
+  }
+  if (selectedTransport === "queue") {
+    return runSubmitProjectQueuePreflight({
+      contractPreflight: runtime.queueContractPreflight,
+      repositoryRoot,
+      source,
+      validation,
+      verbose,
+      workspace
+    });
   }
   const compatibility = await runtime.compatibilityPreflight({ repositoryRoot, source });
   if (compatibility?.ok !== true) {
@@ -336,7 +367,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
     throw new CliFailure("SUBMISSION_PLAN_INVALID", "the protected transport returned no canonical confirmation digest", { exitCode: 2 });
   }
   if (confirmation === null) {
-    const next = safeCommand(repositoryRoot, workspace, { confirmation: confirmationDigest });
+    const next = safeCommand(repositoryRoot, workspace, { confirmation: confirmationDigest, transport: selectedTransport });
     const state = createState({
       repositoryRoot,
       workspace,
@@ -358,7 +389,7 @@ export async function runSubmitProjectJourney({ repositoryInput, workspaceRoot, 
       "AUTHORITY",
       "The supplied confirmation digest does not match the exact freshly recomputed Draft plan.",
       "Review and confirm only the new current digest. No external write was attempted.",
-      safeCommand(repositoryRoot, workspace, { confirmation: confirmationDigest })
+      safeCommand(repositoryRoot, workspace, { confirmation: confirmationDigest, transport: selectedTransport })
     );
     const state = createState({
       repositoryRoot,
@@ -524,42 +555,6 @@ function transportFailure({ status, repositoryRoot, workspace, source, previous,
   return blockedResult(state, [diagnostic], command, verbose, status.details, effectiveWritePerformed);
 }
 
-export function projectTrustedTransportFailureEffects(status) {
-  if (status?.code !== "PARTIAL_EXTERNAL_WRITE") {
-    return Object.freeze({ writePerformed: false, partialWrite: null });
-  }
-  const details = status?.details?.error?.details
-    ?? status?.details?.result?.error?.details
-    ?? status?.details;
-  if (details?.partialExternalWrite !== true || details?.writePerformed !== true) {
-    return Object.freeze({ writePerformed: false, partialWrite: null });
-  }
-  const mutationReceipt = details.mutationReceipt;
-  const receipt = mutationReceipt !== null
-    && typeof mutationReceipt === "object"
-    && !Array.isArray(mutationReceipt)
-    && typeof mutationReceipt.path === "string"
-    && mutationReceipt.state === "RECONCILIATION_REQUIRED"
-    && SHA256_PATTERN.test(mutationReceipt.receiptDigest ?? "")
-      ? Object.freeze({
-          path: mutationReceipt.path,
-          state: mutationReceipt.state,
-          receiptDigest: mutationReceipt.receiptDigest
-        })
-      : null;
-  return Object.freeze({
-    writePerformed: true,
-    partialWrite: Object.freeze({
-      code: "PARTIAL_EXTERNAL_WRITE",
-      writePerformed: true,
-      recoveryStatus: details.recoveryStatus === "MANUAL_RECONCILIATION_REQUIRED"
-        ? details.recoveryStatus
-        : "MANUAL_RECONCILIATION_REQUIRED",
-      mutationReceipt: receipt
-    })
-  });
-}
-
 function createState({ repositoryRoot, workspace, source, previous, submissionPaths = [], currentState, diagnostics, transport = null, compatibility = null, workspacePersisted = true }) {
   const state = {
     schemaVersion: "1.0.0",
@@ -692,11 +687,12 @@ function compactPlan(plan) {
   };
 }
 
-function safeCommand(repositoryRoot, workspace, { confirmation = null, resume = false } = {}) {
+function safeCommand(repositoryRoot, workspace, { confirmation = null, resume = false, transport = "auto" } = {}) {
   const parts = [
     "node", "\"$BUILDER_CLI\"", "submit-project", shellQuote(repositoryRoot),
     "--workspace-root", shellQuote(workspace)
   ];
+  if (transport !== "auto") parts.push("--transport", transport);
   if (resume) parts.push("--resume");
   if (confirmation !== null) parts.push("--confirm-external-write", confirmation);
   return parts.join(" ");

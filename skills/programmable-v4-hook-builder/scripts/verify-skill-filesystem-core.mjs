@@ -3,7 +3,7 @@ import path from "node:path";
 
 // The portable package excludes repository-only development tests. Runtime,
 // installed verification and frozen compatibility assets remain in the Skill.
-export const MAX_PORTABLE_FILES = 630;
+export const MAX_PORTABLE_FILES = 633;
 
 export function createPortableFilesystem(skillRoot) {
   function relative(target) {

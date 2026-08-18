@@ -378,7 +378,7 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
   const feeReference = "references/programmable-fee-policy-v2.md";
   const applicationReference = "references/github-application-v3.md";
   assert.equal(Buffer.byteLength(readText(`skills/programmable-v4-hook-builder/${feeReference}`), "utf8"), 16_731);
-  assert.equal(Buffer.byteLength(readText(`skills/programmable-v4-hook-builder/${applicationReference}`), "utf8"), 21_977);
+  assert.equal(Buffer.byteLength(readText(`skills/programmable-v4-hook-builder/${applicationReference}`), "utf8"), 22_414);
   assert.ok(contextProfiles["legacy-fee-v2"].includes(feeReference));
   for (const profile of ["architecture", "autopilot", "claims", "authority"]) {
     assert.equal(contextProfiles[profile].includes(feeReference), false, profile);
@@ -471,7 +471,7 @@ test("v0.9.3 quantitative docs retain their exact inventories and one hash-bound
   const priorPortableSkill = portableBaselines.baselines[0].inventory;
 
   assert.equal(sizeReport.status, "SIZE_BUDGET_PASSED");
-  assert.equal(currentProductionModuleCount, 353);
+  assert.equal(currentProductionModuleCount, 356);
   assert.deepEqual(v2Inventory, { unit: 54, fuzz: 1, invariant: 3, invariantPolicy: "required-and-present" });
   assert.equal(registry.inventory.contractCount, 55);
   assert.equal(registry.inventory.validatorClosureCount, 28);
@@ -482,8 +482,8 @@ test("v0.9.3 quantitative docs retain their exact inventories and one hash-bound
     { files: priorPortableSkill.files, bytes: priorPortableSkill.bytes },
     { files: 686, bytes: 10_722_006 }
   );
-  assert.equal(sizeReport.portablePackage.files, 630);
-  assert.equal(sizeReport.portablePackage.bytes, 8_842_788);
+  assert.equal(sizeReport.portablePackage.files, 633);
+  assert.equal(sizeReport.portablePackage.bytes, 8_874_010);
 
   for (const document of [maturity]) {
     assert.match(document, new RegExp(`${historicalProductionModuleCount} production`, "u"));

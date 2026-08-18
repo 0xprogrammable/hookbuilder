@@ -16,6 +16,7 @@ import { planSubmitOrAdoptExistingDraft } from "../../skills/programmable-v4-hoo
 import { selectExactApplicationV3DraftCandidate } from "../../skills/programmable-v4-hook-builder/scripts/open-world-github-draft-adoption.mjs";
 import { recoverExistingDraftPackageFromBoundSource, selectUniqueDraftSearchCandidate } from "../../skills/programmable-v4-hook-builder/scripts/submit-project-existing-draft-package.mjs";
 import { canonicalJson } from "../../skills/programmable-v4-hook-builder/scripts/submission-core.mjs";
+import { UNIVERSAL_ADMISSION_AUTHORITY_KEYS } from "../../skills/programmable-v4-hook-builder/scripts/universal-admission-contract-core.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "..", "..", "skills", "programmable-v4-hook-builder");
@@ -34,15 +35,21 @@ test("default help exposes the one-command Applicant journey and hides internal 
   assert.match(result.stdout, /legacy/u);
 });
 
-test("submit-project exposes the frozen one-command API", () => {
+test("submit-project exposes one transport-selectable command while auto remains GitHub Draft V3.1", () => {
   const result = run(["submit-project", "--help"]);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /submit-project <repository-root>/u);
-  for (const option of ["--workspace-root <absolute-dir>", "--confirm-external-write <sha256:...>", "--resume", "--verbose"]) {
+  for (const option of ["--transport <auto|queue|github-draft>", "--workspace-root <absolute-dir>", "--confirm-external-write <sha256:...>", "--resume", "--verbose"]) {
     assert.match(result.stdout, new RegExp(escapeRegExp(option), "u"), option);
   }
   assert.doesNotMatch(result.stdout, /--application-package/u);
   assert.doesNotMatch(result.stdout, /--pull-request/u);
+});
+
+test("submit-project rejects an unknown transport before project or network work", () => {
+  const result = run(["submit-project", "/not-read", "--transport", "other"]);
+  assert.equal(result.status, 2, result.stdout || result.stderr);
+  assert.equal(JSON.parse(result.stdout).error.code, "USAGE_ERROR");
 });
 
 test("submit context routes directly through the compact Applicant reference", () => {
@@ -236,6 +243,77 @@ test("actual submit-project compatibility preflight runs before creating a works
   }
 });
 
+test("explicit queue binds the protected disabled contract and performs no write, confirmation, V3, envelope, or fallback work", async () => {
+  const fixture = createRepository({ validSubmissionPackage: true });
+  const workspace = path.join(fixture.root, "queue-workspace");
+  let contractReads = 0;
+  try {
+    const outcome = await runSubmitProjectJourney({
+      repositoryInput: fixture.repository,
+      workspaceRoot: workspace,
+      confirmation: `sha256:${"f".repeat(64)}`,
+      resume: true,
+      transport: "queue",
+      verbose: true
+    }, {
+      async queueContractPreflight() {
+        contractReads += 1;
+        return {
+          ok: true,
+          binding: {
+            contract: { deployment: { state: "reference-only-disabled" } },
+            evidence: {
+              repository: "0xprogrammable/submit-launch",
+              repositoryId: "1320171831",
+              centralBaseCommit: "13ad2a45554320e345409bbfe263c76de84ef73c",
+              centralBaseTree: "72d877ea19f763e04973948cb697ce9a35550737",
+              contractPath: ".programmable/universal-admission-contract.v1.json",
+              contractSha256: "sha256:6e7a274a2d4a14376937ab49a7d1462cb2456035139dbcd8417b59226967ce32"
+            }
+          }
+        };
+      },
+      async compatibilityPreflight() {
+        assert.fail("queue must not fall back to Applicant Compatibility or GitHub Draft");
+      },
+      atomicWorkspaceWrite() {
+        assert.fail("disabled queue must not persist a workspace");
+      },
+      async recoverExistingDraftPackage() {
+        assert.fail("disabled queue must not prepare or recover Application V3");
+      },
+      runTransport() {
+        assert.fail("disabled queue must not invoke Application V3 or GitHub transport");
+      }
+    });
+    assert.equal(contractReads, 1);
+    assert.equal(outcome.exitCode, 1);
+    assert.equal(outcome.result.state, "INTEGRATION_PENDING");
+    assert.equal(outcome.result.diagnostics[0].code, "QUEUE_TRANSPORT_DISABLED");
+    assert.equal(outcome.result.writePerformed, false);
+    assert.equal(outcome.result.queueUsable, false);
+    assert.equal(outcome.result.transport.queueUsable, false);
+    assert.equal(outcome.result.transport.fallbackPerformed, false);
+    assert.equal(outcome.result.transport.planCreated, false);
+    assert.equal(outcome.result.queue.effects.confirmationRequested, false);
+    assert.equal(outcome.result.queue.effects.externalWriteAttempted, false);
+    assert.equal(outcome.result.queue.effects.networkMutationAttempted, false);
+    assert.equal(outcome.result.queue.effects.fallbackAttempted, false);
+    assert.equal(outcome.result.queue.applicationV3.bytesMutated, false);
+    assert.equal(outcome.result.queue.applicationV3.admissionEnvelopeMaterialized, false);
+    assert.equal(outcome.result.queue.applicationV3.admissionBinding, null);
+    assert.deepEqual(Object.keys(outcome.result.authority).sort(), [...UNIVERSAL_ADMISSION_AUTHORITY_KEYS].sort());
+    assert.ok(Object.values(outcome.result.authority).every((value) => value === false));
+    assert.match(outcome.result.safeNextCommand, /--transport queue/u);
+    assert.doesNotMatch(outcome.result.safeNextCommand, /github-draft/u);
+    assert.equal(outcome.result.workspace.statePersisted, false);
+    assert.equal(outcome.result.workspace.confirmationDigest, null);
+    assert.equal(fs.existsSync(workspace), false);
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
 test("successful compatibility creates one private persistent workspace before preparation", async () => {
   const fixture = createRepository({ validSubmissionPackage: true });
   const workspace = path.join(fixture.root, "workspace");
@@ -250,6 +328,9 @@ test("successful compatibility creates one private persistent workspace before p
     }, {
       async compatibilityPreflight() {
         return { ok: true, binding: { centralBaseCommit: "a".repeat(40), centralBaseTree: "b".repeat(40) } };
+      },
+      async queueContractPreflight() {
+        assert.fail("default auto transport must remain the existing GitHub Draft path");
       },
       async recoverExistingDraftPackage(input) {
         recoveryCalls += 1;

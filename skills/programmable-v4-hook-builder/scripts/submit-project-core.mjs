@@ -577,6 +577,42 @@ export function sameApplicantSource(left, right) {
   return left?.commit === right.headCommit && left?.tree === right.tree && left?.branch === right.branch;
 }
 
+export function projectTrustedTransportFailureEffects(status) {
+  if (status?.code !== "PARTIAL_EXTERNAL_WRITE") {
+    return Object.freeze({ writePerformed: false, partialWrite: null });
+  }
+  const details = status?.details?.error?.details
+    ?? status?.details?.result?.error?.details
+    ?? status?.details;
+  if (details?.partialExternalWrite !== true || details?.writePerformed !== true) {
+    return Object.freeze({ writePerformed: false, partialWrite: null });
+  }
+  const mutationReceipt = details.mutationReceipt;
+  const receipt = mutationReceipt !== null
+    && typeof mutationReceipt === "object"
+    && !Array.isArray(mutationReceipt)
+    && typeof mutationReceipt.path === "string"
+    && mutationReceipt.state === "RECONCILIATION_REQUIRED"
+    && /^sha256:[0-9a-f]{64}$/u.test(mutationReceipt.receiptDigest ?? "")
+      ? Object.freeze({
+          path: mutationReceipt.path,
+          state: mutationReceipt.state,
+          receiptDigest: mutationReceipt.receiptDigest
+        })
+      : null;
+  return Object.freeze({
+    writePerformed: true,
+    partialWrite: Object.freeze({
+      code: "PARTIAL_EXTERNAL_WRITE",
+      writePerformed: true,
+      recoveryStatus: details.recoveryStatus === "MANUAL_RECONCILIATION_REQUIRED"
+        ? details.recoveryStatus
+        : "MANUAL_RECONCILIATION_REQUIRED",
+      mutationReceipt: receipt
+    })
+  });
+}
+
 export function isRealDirectoryWithFile(directory, filename) {
   try {
     const directoryStat = fs.lstatSync(directory);

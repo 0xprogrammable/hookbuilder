@@ -398,9 +398,9 @@
   },
   "portablePackage": {
     "path": "skills/programmable-v4-hook-builder",
-    "observedFiles": 630,
-    "observedBytes": 8842788,
-    "maxFiles": 630,
+    "observedFiles": 633,
+    "observedBytes": 8874010,
+    "maxFiles": 633,
     "maxBytes": 8900000
   }
 }

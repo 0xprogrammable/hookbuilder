@@ -29,6 +29,11 @@ repository, ZIP, pasted source, upload form or email is not an alternate V3 tran
 contract and threat model. Keep the idea `ELIGIBLE_FOR_REVIEW`, report `INTEGRATION_PENDING`, and materialize or write
 no public Application V3 package for that source.
 
+The separate Universal Admission queue discovery preflight does not widen or rewrite Application V3.1. Its currently
+published protected contract is disabled, so explicit `submit-project --transport queue` performs exact readback only
+and stops before V3 preparation, envelope materialization, confirmation or transport mutation. GitHub Draft remains an
+explicit low-volume adapter; it is never a silent fallback after a queue request.
+
 ## Contents
 
 1. [Application contract](#application-contract)

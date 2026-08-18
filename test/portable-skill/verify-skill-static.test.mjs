@@ -795,7 +795,7 @@ test("trusted verifier rejects excessive file count before checking candidate sc
     const result = runUntrustedVerifier(candidateRoot);
 
     assert.notEqual(result.status, 0, result.stdout);
-    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 630/);
+    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 633/);
     assert.doesNotMatch(result.stderr, /invalid-syntax|SyntaxError/);
   } finally {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });

@@ -308,7 +308,7 @@ test("all canonical production modules and the portable package stay inside revi
   assert.equal(report.machineDebt.importCycles.cycleCount, 0);
   assert.equal(report.machineDebt.importCycles.unresolvedRelativeImportCount, 0);
   assert.equal(report.portablePackage.inventoryProfile, "canonical-portable-package-inclusion-manifest-v1");
-  assert.equal(report.portablePackage.maxFiles, 630);
+  assert.equal(report.portablePackage.maxFiles, 633);
   assert.equal(report.portablePackage.maxBytes, 8_900_000);
   assert.ok(report.portablePackage.files <= report.portablePackage.maxFiles);
   assert.ok(report.portablePackage.bytes <= report.portablePackage.maxBytes);

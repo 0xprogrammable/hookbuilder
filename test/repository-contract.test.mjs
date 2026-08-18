@@ -291,10 +291,10 @@ test("plugin manifests are generated from canonical metadata and package version
   assert.equal(report.payload.sourceByteVerified, true);
   assert.equal(report.payload.sourceModeVerified, true);
   assert.deepEqual(report.payload.portableSkill, {
-    files: 630,
-    bytes: 8_842_788,
+    files: 633,
+    bytes: 8_874_010,
     repositoryOnlyFiles: 105,
-    repositoryOnlyBytes: 3_150_822,
+    repositoryOnlyBytes: 3_167_802,
     repositorySourcesVerified: true
   });
 });
