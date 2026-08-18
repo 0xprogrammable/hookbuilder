@@ -19,6 +19,8 @@ export const APPLICANT_REQUESTED_ROUTE = Object.freeze({
   chainId: "1"
 });
 export const MAXIMUM_APPLICANT_SUBMISSION_BYTES = 64 * 1024;
+export const MAXIMUM_APPLICANT_REQUEST_FILES = 32;
+export const MAXIMUM_APPLICANT_REQUEST_BYTES = MAXIMUM_APPLICANT_REQUEST_FILES * MAXIMUM_APPLICANT_SUBMISSION_BYTES;
 export const APPLICANT_MANIFEST_CANONICALIZATION = CANONICAL_JSON_V2_PROFILE.id;
 const CANONICAL_SEMVER = /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/u;
 const MAXIMUM_UINT256 = (1n << 256n) - 1n;
@@ -69,21 +71,108 @@ export function permissionMask(permissions) {
 }
 
 export function listApplicantRequestFiles(requestsRoot) {
-  const entries = fs.readdirSync(requestsRoot, { withFileTypes: true });
+  const directory = fs.opendirSync(requestsRoot);
   let readmeFound = false;
   const files = [];
-  for (const entry of entries) {
-    if (entry.name === "README.md" && entry.isFile()) {
-      readmeFound = true;
-      continue;
+  try {
+    let entry;
+    while ((entry = directory.readSync()) !== null) {
+      if (entry.name === "README.md" && entry.isFile()) {
+        readmeFound = true;
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.endsWith(".json")) {
+        throw new Error("submissions/requests may contain only README.md and direct JSON request files");
+      }
+      if (files.length >= MAXIMUM_APPLICANT_REQUEST_FILES) {
+        throw new Error(
+          `applicant request intake may contain at most ${MAXIMUM_APPLICANT_REQUEST_FILES} files`
+        );
+      }
+      files.push(path.join(requestsRoot, entry.name));
     }
-    if (!entry.isFile() || !entry.name.endsWith(".json")) {
-      throw new Error("submissions/requests may contain only README.md and direct JSON request files");
-    }
-    files.push(path.join(requestsRoot, entry.name));
+  } finally {
+    directory.closeSync();
   }
   if (!readmeFound) throw new Error("submissions/requests/README.md is required");
-  return files.sort((left, right) => left.localeCompare(right));
+  return assertApplicantRequestBounds(files.sort((left, right) => left.localeCompare(right)));
+}
+
+export function assertApplicantRequestBounds(files) {
+  if (!Array.isArray(files)) throw new TypeError("applicant request files must be an array");
+  if (files.length > MAXIMUM_APPLICANT_REQUEST_FILES) {
+    throw new Error(
+      `applicant request intake may contain at most ${MAXIMUM_APPLICANT_REQUEST_FILES} files`
+    );
+  }
+  let totalBytes = 0n;
+  for (const file of files) {
+    const stat = fs.lstatSync(file, { bigint: true });
+    if (!stat.isFile() || stat.isSymbolicLink()) {
+      throw new Error("applicant request intake accepts only regular files without symbolic links");
+    }
+    totalBytes += stat.size;
+  }
+  if (totalBytes > BigInt(MAXIMUM_APPLICANT_REQUEST_BYTES)) {
+    throw new Error(
+      `applicant request intake may contain at most ${MAXIMUM_APPLICANT_REQUEST_BYTES} aggregate bytes`
+    );
+  }
+  return files;
+}
+
+export function readApplicantRequestFile(file) {
+  let descriptor = null;
+  try {
+    const initial = fs.lstatSync(file, { bigint: true });
+    if (!isBoundedApplicantFile(initial)) throw new Error("applicant request must be one bounded regular file");
+    descriptor = fs.openSync(
+      file,
+      fs.constants.O_RDONLY | optionalFileFlag("O_NOFOLLOW") | optionalFileFlag("O_NONBLOCK") | optionalFileFlag("O_CLOEXEC")
+    );
+    const before = fs.fstatSync(descriptor, { bigint: true });
+    if (!sameApplicantFile(initial, before) || !isBoundedApplicantFile(before)) {
+      throw new Error("applicant request changed before its bounded read");
+    }
+    const buffer = Buffer.allocUnsafe(MAXIMUM_APPLICANT_SUBMISSION_BYTES + 1);
+    let offset = 0;
+    while (offset < buffer.length) {
+      const count = fs.readSync(descriptor, buffer, offset, buffer.length - offset, null);
+      if (count === 0) break;
+      offset += count;
+    }
+    if (offset > MAXIMUM_APPLICANT_SUBMISSION_BYTES) {
+      throw new Error(`applicant submission must contain 1 to ${MAXIMUM_APPLICANT_SUBMISSION_BYTES} bytes`);
+    }
+    const after = fs.fstatSync(descriptor, { bigint: true });
+    if (!sameApplicantFile(before, after) || !isBoundedApplicantFile(after) || after.size !== BigInt(offset)) {
+      throw new Error("applicant request changed during its bounded read");
+    }
+    return buffer.subarray(0, offset);
+  } finally {
+    if (descriptor !== null) fs.closeSync(descriptor);
+  }
+}
+
+function isBoundedApplicantFile(stat) {
+  return stat.isFile()
+    && !stat.isSymbolicLink()
+    && stat.size >= 1n
+    && stat.size <= BigInt(MAXIMUM_APPLICANT_SUBMISSION_BYTES);
+}
+
+function sameApplicantFile(left, right) {
+  return left.dev === right.dev
+    && left.ino === right.ino
+    && left.mode === right.mode
+    && left.nlink === right.nlink
+    && left.size === right.size
+    && left.mtimeNs === right.mtimeNs
+    && left.ctimeNs === right.ctimeNs;
+}
+
+function optionalFileFlag(name) {
+  return Number.isInteger(fs.constants[name]) ? fs.constants[name] : 0;
 }
 
 export function validateApplicantSubmission(value, schema, { relativePath = null } = {}) {

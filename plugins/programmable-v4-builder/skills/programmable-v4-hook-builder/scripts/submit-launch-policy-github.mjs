@@ -61,6 +61,64 @@ export async function resolveSubmitLaunchPolicyFromVerifiedGitObjects(options) {
   ) {
     fail("SUBMIT_LAUNCH_POLICY_ARGUMENTS_INVALID", "Exact base Git identity and bounded object readers are required.");
   }
+  const [policyArtifact, schemaArtifact] = await resolveSubmitLaunchProtectedArtifactsFromVerifiedGitObjects({
+    baseTree,
+    requests: [
+      { filePath: SUBMIT_LAUNCH_POLICY_PATH, maximumBytes: MAX_SUBMIT_LAUNCH_POLICY_BYTES },
+      { filePath: SUBMIT_LAUNCH_POLICY_SCHEMA_PATH, maximumBytes: MAX_SUBMIT_LAUNCH_POLICY_SCHEMA_BYTES }
+    ],
+    readTree,
+    readBlob
+  });
+  return parseAndBindSubmitLaunchPolicyContract({
+    baseCommit,
+    baseTree,
+    policyBytes: policyArtifact.bytes,
+    policyGitBlobOid: policyArtifact.gitBlobOid,
+    schemaBytes: schemaArtifact.bytes,
+    schemaGitBlobOid: schemaArtifact.gitBlobOid
+  });
+}
+
+export async function resolveSubmitLaunchProtectedArtifactsFromVerifiedGitObjects(options) {
+  requireExactOptions(options, ["baseTree", "requests", "readTree", "readBlob"]);
+  const { baseTree, requests, readTree, readBlob } = options;
+  if (
+    !OBJECT_ID.test(baseTree ?? "")
+    || !Array.isArray(requests)
+    || requests.length < 1
+    || requests.length > 8
+    || typeof readTree !== "function"
+    || typeof readBlob !== "function"
+  ) {
+    fail("SUBMIT_LAUNCH_POLICY_ARGUMENTS_INVALID", "Exact protected-tree artifact readers are required.");
+  }
+  const normalizedRequests = requests.map((request) => {
+    requireExactOptions(request, ["filePath", "maximumBytes"]);
+    const { filePath, maximumBytes } = request;
+    const segments = typeof filePath === "string" ? filePath.split("/") : [];
+    if (
+      typeof filePath !== "string"
+      || filePath.length < 1
+      || filePath.length > 1024
+      || Buffer.byteLength(filePath, "utf8") > 4096
+      || filePath.startsWith("/")
+      || filePath.endsWith("/")
+      || filePath.includes("\\")
+      || filePath.normalize("NFC") !== filePath
+      || hasForbiddenInvisibleOrBidi(filePath)
+      || segments.some((segment) => segment.length < 1 || segment === "." || segment === "..")
+      || !Number.isSafeInteger(maximumBytes)
+      || maximumBytes < 2
+      || maximumBytes > 16 * 1024 * 1024
+    ) {
+      fail("SUBMIT_LAUNCH_POLICY_ARGUMENTS_INVALID", "Protected-tree artifact requests are invalid.");
+    }
+    return Object.freeze({ filePath, maximumBytes });
+  });
+  if (new Set(normalizedRequests.map(({ filePath }) => filePath)).size !== normalizedRequests.length) {
+    fail("SUBMIT_LAUNCH_POLICY_ARGUMENTS_INVALID", "Protected-tree artifact paths must be unique.");
+  }
   const treeCache = new Map();
   const loadTree = async (treeObjectId) => {
     if (treeCache.has(treeObjectId)) return treeCache.get(treeObjectId);
@@ -68,28 +126,13 @@ export async function resolveSubmitLaunchPolicyFromVerifiedGitObjects(options) {
     treeCache.set(treeObjectId, tree);
     return tree;
   };
-  const policyEntry = await resolvePath({ baseTree, filePath: SUBMIT_LAUNCH_POLICY_PATH, loadTree });
-  const schemaEntry = await resolvePath({ baseTree, filePath: SUBMIT_LAUNCH_POLICY_SCHEMA_PATH, loadTree });
-  const policyBytes = await readExactBlob({
-    entry: policyEntry,
-    filePath: SUBMIT_LAUNCH_POLICY_PATH,
-    maximumBytes: MAX_SUBMIT_LAUNCH_POLICY_BYTES,
-    readBlob
-  });
-  const schemaBytes = await readExactBlob({
-    entry: schemaEntry,
-    filePath: SUBMIT_LAUNCH_POLICY_SCHEMA_PATH,
-    maximumBytes: MAX_SUBMIT_LAUNCH_POLICY_SCHEMA_BYTES,
-    readBlob
-  });
-  return parseAndBindSubmitLaunchPolicyContract({
-    baseCommit,
-    baseTree,
-    policyBytes,
-    policyGitBlobOid: policyEntry.sha,
-    schemaBytes,
-    schemaGitBlobOid: schemaEntry.sha
-  });
+  const artifacts = [];
+  for (const { filePath, maximumBytes } of normalizedRequests) {
+    const entry = await resolvePath({ baseTree, filePath, loadTree });
+    const bytes = await readExactBlob({ entry, filePath, maximumBytes, readBlob });
+    artifacts.push(Object.freeze({ filePath, gitBlobOid: entry.sha, bytes }));
+  }
+  return Object.freeze(artifacts);
 }
 
 export async function resolveSubmitLaunchPolicyWithTransport(options) {

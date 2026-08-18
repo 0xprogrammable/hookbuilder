@@ -44,7 +44,7 @@
     {
       "id": "missing-git-object-recovery",
       "sourcePath": "test/portable-skill/github-exact-object-resolver.test.mjs",
-      "sourceSha256": "f95a1acac3a0bbbe4defe1ce98e534a17dc6f78e849a5d763ebd0ae6806d1e65",
+      "sourceSha256": "275c7181fccbcec6549d873b4a24f51c67146de642ded1e090c9e0b9e704809b",
       "selector": "fetches every tree-derived blob object id in one bounded stdin batch",
       "expectedState": "READY_FOR_CONFIRMATION"
     },

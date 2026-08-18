@@ -13,6 +13,8 @@ import {
   APPLICANT_MANIFEST_CANONICALIZATION,
   APPLICANT_REQUESTED_ROUTE,
   APPLICANT_SUBMISSION_SCHEMA_VERSION,
+  MAXIMUM_APPLICANT_REQUEST_BYTES,
+  MAXIMUM_APPLICANT_REQUEST_FILES,
   MAXIMUM_APPLICANT_SUBMISSION_BYTES,
   applicantSubmissionEvidence,
   canonicalApplicantRequestPath,
@@ -54,12 +56,27 @@ function createApplicantCliFixture(t) {
   return fixtureRoot;
 }
 
-function runApplicantCli(fixtureRoot, input) {
+function runApplicantCli(fixtureRoot, input, { timeout = 10_000 } = {}) {
+  const inputs = Array.isArray(input) ? input : [input];
   return childProcess.spawnSync(
     process.execPath,
-    [path.join(fixtureRoot, "scripts", "validate-applicant-submission.mjs"), input],
-    { cwd: fixtureRoot, encoding: "utf8", shell: false }
+    [path.join(fixtureRoot, "scripts", "validate-applicant-submission.mjs"), ...inputs],
+    { cwd: fixtureRoot, encoding: "utf8", shell: false, timeout }
   );
+}
+
+function applicantRequestBytes(index, targetBytes = null) {
+  const value = structuredClone(example);
+  value.source.repositoryId += index;
+  value.identifiers.hookId = `example-fee-hook-${index}`;
+  const bytes = Buffer.from(`${JSON.stringify(value)}\n`, "utf8");
+  if (targetBytes === null) return bytes;
+  assert.ok(bytes.length <= targetBytes);
+  return Buffer.concat([bytes, Buffer.alloc(targetBytes - bytes.length, 0x20)]);
+}
+
+function applicantRequestPath(index) {
+  return `submissions/requests/${123456789 + index}-example-fee-hook-${index}.json`;
 }
 
 test("legacy example keeps its frozen Hookbuilder intake and passes schema plus semantic validation", () => {
@@ -382,6 +399,105 @@ test("CLI all-mode discovers and validates canonical requests in its repository"
     ...applicantSubmissionEvidence(example, exampleBytes, canonicalPath),
     findings: []
   }]);
+});
+
+test("bounded request intake accepts 32 files and rejects a 33rd in all and explicit modes", (t) => {
+  const fixtureRoot = createApplicantCliFixture(t);
+  const requestPaths = [];
+  for (let index = 0; index < MAXIMUM_APPLICANT_REQUEST_FILES; index += 1) {
+    const relativePath = applicantRequestPath(index);
+    requestPaths.push(relativePath);
+    fs.writeFileSync(path.join(fixtureRoot, relativePath), applicantRequestBytes(index));
+  }
+  const listed = listApplicantRequestFiles(path.join(fixtureRoot, "submissions", "requests"));
+  assert.equal(listed.length, MAXIMUM_APPLICANT_REQUEST_FILES);
+
+  for (const input of ["--all", requestPaths]) {
+    const accepted = runApplicantCli(fixtureRoot, input);
+    assert.equal(accepted.status, 0, accepted.stderr);
+    const report = JSON.parse(accepted.stdout);
+    assert.equal(report.status, "APPLICANT_SUBMISSIONS_VALID");
+    assert.equal(report.networkAccessed, false);
+    assert.deepEqual(report.externalActionsPerformed, []);
+    assert.equal(report.files.length, MAXIMUM_APPLICANT_REQUEST_FILES);
+  }
+
+  const extraPath = applicantRequestPath(MAXIMUM_APPLICANT_REQUEST_FILES);
+  fs.writeFileSync(path.join(fixtureRoot, extraPath), applicantRequestBytes(MAXIMUM_APPLICANT_REQUEST_FILES));
+  for (const input of ["--all", [...requestPaths, extraPath]]) {
+    const rejected = runApplicantCli(fixtureRoot, input);
+    assert.equal(rejected.status, 2, rejected.stderr);
+    assert.equal(rejected.stdout, "");
+    assert.match(
+      rejected.stderr,
+      new RegExp(`at most ${MAXIMUM_APPLICANT_REQUEST_FILES} files`, "u")
+    );
+  }
+});
+
+test("bounded request intake accepts the 2 MiB aggregate boundary and rejects one extra byte", (t) => {
+  const fixtureRoot = createApplicantCliFixture(t);
+  const requestPaths = [];
+  for (let index = 0; index < MAXIMUM_APPLICANT_REQUEST_FILES; index += 1) {
+    const relativePath = applicantRequestPath(index);
+    requestPaths.push(relativePath);
+    fs.writeFileSync(
+      path.join(fixtureRoot, relativePath),
+      applicantRequestBytes(index, MAXIMUM_APPLICANT_SUBMISSION_BYTES)
+    );
+  }
+  assert.equal(
+    MAXIMUM_APPLICANT_REQUEST_BYTES,
+    MAXIMUM_APPLICANT_REQUEST_FILES * MAXIMUM_APPLICANT_SUBMISSION_BYTES
+  );
+  assert.equal(
+    requestPaths.reduce(
+      (total, relativePath) => total + fs.statSync(path.join(fixtureRoot, relativePath)).size,
+      0
+    ),
+    MAXIMUM_APPLICANT_REQUEST_BYTES
+  );
+
+  for (const input of ["--all", requestPaths]) {
+    const accepted = runApplicantCli(fixtureRoot, input);
+    assert.equal(accepted.status, 0, accepted.stderr);
+    assert.equal(JSON.parse(accepted.stdout).status, "APPLICANT_SUBMISSIONS_VALID");
+  }
+
+  fs.appendFileSync(path.join(fixtureRoot, requestPaths[0]), " ");
+  for (const input of ["--all", requestPaths]) {
+    const rejected = runApplicantCli(fixtureRoot, input);
+    assert.equal(rejected.status, 2, rejected.stderr);
+    assert.equal(rejected.stdout, "");
+    assert.match(rejected.stderr, new RegExp(`${MAXIMUM_APPLICANT_REQUEST_BYTES} aggregate bytes`, "u"));
+  }
+});
+
+test("explicit request intake rejects directories and FIFOs before reading them", (t) => {
+  const fixtureRoot = createApplicantCliFixture(t);
+  const directoryPath = "submissions/requests/not-a-file.json";
+  fs.mkdirSync(path.join(fixtureRoot, directoryPath));
+  const directoryResult = runApplicantCli(fixtureRoot, directoryPath);
+  assert.equal(directoryResult.status, 2, directoryResult.stderr);
+  assert.match(directoryResult.stderr, /only regular files/u);
+
+  if (process.platform === "win32") return;
+  const fifoPath = "submissions/requests/nonblocking.json";
+  const fifoResult = childProcess.spawnSync("mkfifo", [path.join(fixtureRoot, fifoPath)], {
+    encoding: "utf8",
+    shell: false,
+    timeout: 2_000
+  });
+  if (fifoResult.status !== 0) {
+    t.diagnostic("mkfifo is unavailable; FIFO regression skipped");
+    return;
+  }
+  const startedAt = Date.now();
+  const result = runApplicantCli(fixtureRoot, fifoPath, { timeout: 2_000 });
+  assert.notEqual(result.error?.code, "ETIMEDOUT", "FIFO probe must fail instead of hanging");
+  assert.equal(result.status, 2, result.stderr);
+  assert.match(result.stderr, /only regular files/u);
+  assert.ok(Date.now() - startedAt < 2_000, "FIFO must be rejected without a blocking read");
 });
 
 test("CLI accepts only the exact canonical request path without path substitution", (t) => {

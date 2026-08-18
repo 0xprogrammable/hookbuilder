@@ -378,7 +378,7 @@ test("v0.9.0 performance claims remain exact fixture and eval-profile byte measu
   const feeReference = "references/programmable-fee-policy-v2.md";
   const applicationReference = "references/github-application-v3.md";
   assert.equal(Buffer.byteLength(readText(`skills/programmable-v4-hook-builder/${feeReference}`), "utf8"), 16_731);
-  assert.equal(Buffer.byteLength(readText(`skills/programmable-v4-hook-builder/${applicationReference}`), "utf8"), 21_789);
+  assert.equal(Buffer.byteLength(readText(`skills/programmable-v4-hook-builder/${applicationReference}`), "utf8"), 21_977);
   assert.ok(contextProfiles["legacy-fee-v2"].includes(feeReference));
   for (const profile of ["architecture", "autopilot", "claims", "authority"]) {
     assert.equal(contextProfiles[profile].includes(feeReference), false, profile);
@@ -475,7 +475,7 @@ test("v0.9.3 quantitative docs retain their exact inventories and one hash-bound
   assert.deepEqual(v2Inventory, { unit: 54, fuzz: 1, invariant: 3, invariantPolicy: "required-and-present" });
   assert.equal(registry.inventory.contractCount, 55);
   assert.equal(registry.inventory.validatorClosureCount, 28);
-  assert.equal(registry.inventory.validatorClosureModuleBindingCount, 1060);
+  assert.equal(registry.inventory.validatorClosureModuleBindingCount, 1061);
   assert.equal(registry.inventory.validatorClosureDistinctModuleCount, 187);
   assert.equal(evalTestCount, 10);
   assert.deepEqual(
@@ -483,13 +483,13 @@ test("v0.9.3 quantitative docs retain their exact inventories and one hash-bound
     { files: 686, bytes: 10_722_006 }
   );
   assert.equal(sizeReport.portablePackage.files, 630);
-  assert.equal(sizeReport.portablePackage.bytes, 8_830_007);
+  assert.equal(sizeReport.portablePackage.bytes, 8_842_788);
 
   for (const document of [maturity]) {
     assert.match(document, new RegExp(`${historicalProductionModuleCount} production`, "u"));
     assert.match(document, new RegExp(`${registry.inventory.contractCount} (?:portable\\s+contracts|schema\\s+contracts)`, "u"));
     assert.match(document, new RegExp(`${registry.inventory.validatorClosureCount} validator closures`, "u"));
-    assert.match(document, /1,060 transitive\s+(?:module\s+)?bindings/u);
+    assert.match(document, /1,061 transitive\s+(?:module\s+)?bindings/u);
     assert.match(document, new RegExp(`${registry.inventory.validatorClosureDistinctModuleCount} distinct modules`, "u"));
   }
   assert.match(candidateNotes, new RegExp(`${historicalProductionModuleCount} production`, "u"));

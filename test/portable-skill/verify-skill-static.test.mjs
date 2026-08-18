@@ -836,9 +836,13 @@ test("candidate schema regex is parsed as data and never executed", () => {
   try {
     fs.cpSync(skillRoot, candidateRoot, { recursive: true });
     const schemaPath = path.join(candidateRoot, "references", "submission.schema.json");
-    const schema = JSON.parse(fs.readFileSync(schemaPath, "utf8"));
-    schema.properties.model.properties.id.pattern = "(";
-    fs.writeFileSync(schemaPath, `${JSON.stringify(schema, null, 2)}\n`);
+    const schema = fs.readFileSync(schemaPath, "utf8");
+    const mutatedSchema = schema.replace(
+      '"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"',
+      '"pattern": "("'
+    );
+    assert.notEqual(mutatedSchema, schema);
+    fs.writeFileSync(schemaPath, mutatedSchema);
 
     const result = runUntrustedVerifier(candidateRoot);
 

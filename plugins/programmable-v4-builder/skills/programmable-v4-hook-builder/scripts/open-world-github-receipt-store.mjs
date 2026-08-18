@@ -528,6 +528,7 @@ export function installOpenWorldGitHubReceiptStore(runtime) {
         && expectedFork?.toLowerCase() !== `${plan.activeAccount?.login}/${CENTRAL_GITHUB_REPOSITORY_NAME}`.toLowerCase()
       )
       || !isPlainObject(plan.intake)
+      || !isPlainObject(plan.intakeBinding)
       || !Array.isArray(plan.sources)
       || canonicalJson(plan.localSourceReplay) !== canonicalJson(localSourceReplay)
       || canonicalJson(plan.package) !== canonicalJson({

@@ -6,7 +6,9 @@ export function makeSubmitLaunchPolicyFixture({
   baseTree = "2".repeat(40),
   policyTree = "3".repeat(40),
   schemasTree = "4".repeat(40),
-  policyVersion = "1.0.0"
+  policyVersion = "1.0.0",
+  ruleProfiles = ["build", "production-launch"],
+  enforcementOwner = "applicant"
 } = {}) {
   const authority = {
     checkerOnly: true,
@@ -50,7 +52,7 @@ export function makeSubmitLaunchPolicyFixture({
     },
     rules: [{
       applicability: { mode: "always" },
-      enforcement: { handlerId: "ethereum-treasury-10-bps-v1", mode: "deterministic", owner: "applicant" },
+      enforcement: { handlerId: "ethereum-treasury-10-bps-v1", mode: "deterministic", owner: enforcementOwner },
       evidence: ["programmable-launch-requirement"],
       id: "LAUNCH.ETHEREUM_AND_TREASURY_10_BPS",
       introducedIn: "1.2.0",
@@ -61,7 +63,7 @@ export function makeSubmitLaunchPolicyFixture({
         network: "ethereum-mainnet",
         treasury: "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c"
       },
-      profiles: ["build", "production-launch"],
+      profiles: ruleProfiles,
       requirement: "A launch must be on Ethereum and route 10 bps of trading volume to the Programmable treasury.",
       retiredIn: null,
       severity: "blocker",

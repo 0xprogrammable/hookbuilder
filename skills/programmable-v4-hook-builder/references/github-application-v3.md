@@ -210,11 +210,10 @@ Keep GitHub preparation and GitHub mutation separate. Use only namespaced `cli.m
 a read-only plan
 that reports:
 
-- target repository, base revision, application id and revision;
-- exact branch/pull-request action;
-- every external write;
-- the bytes/digests being sent; and
-- one current confirmation digest.
+- target repository, protected base commit/tree, application id/revision, branch/pull-request action and every write;
+- the exact protected active-contract, Application schema, central policy/schema and their digests;
+- active build and production Rule IDs without treating either set as approval or launch authority; and
+- payload bytes/digests plus one current confirmation digest.
 
 The fixed public target is
 [`0xprogrammable/submit-launch:main`](https://github.com/0xprogrammable/submit-launch), immutable GitHub repository ID

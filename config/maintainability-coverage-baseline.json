@@ -81,13 +81,13 @@
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/github-application-transport-core.mjs",
-          "sourceSha256": "sha256:7dde5214b53ed8fc6734c9f94feecff5421a9bbcd910a1b7005821a760e2351b"
+          "sourceSha256": "sha256:e32d029a96e2e4840cb0c6f0613393cec5071939f7d59c74756cc3a0b1032a85"
         }
       ],
       "observed": {
         "lines": {
           "covered": 2895,
-          "found": 3396
+          "found": 3394
         },
         "functions": {
           "covered": 178,

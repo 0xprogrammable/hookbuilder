@@ -58,8 +58,8 @@
       "repositoryPath": "test/portable-skill",
       "repositoryDigestAlgorithm": "sha256-path-nul-size-nul-content-nul-v1",
       "repositoryFiles": 105,
-      "repositoryBytes": 3132325,
-      "repositorySha256": "35fc6d483adb23b839054ac229c8c50f6d793cdf02fc7c77ad5c85da9d736b18"
+      "repositoryBytes": 3150822,
+      "repositorySha256": "d37fb0817331ad4c50312edc514308c952dca1191f3ed79fdd14379c7cb7d35c"
     }
   ]
 }

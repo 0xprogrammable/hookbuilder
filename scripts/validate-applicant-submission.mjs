@@ -7,9 +7,11 @@ import { fileURLToPath } from "node:url";
 
 import {
   applicantSubmissionEvidence,
+  assertApplicantRequestBounds,
   listApplicantRequestFiles,
   loadApplicantSubmissionSchema,
   parseApplicantSubmission,
+  readApplicantRequestFile,
   validateApplicantSubmission
 } from "./applicant-submission-core.mjs";
 
@@ -41,7 +43,9 @@ function resolveFiles(args) {
   if (args.length === 0 || args.some((argument) => argument.startsWith("--"))) {
     throw new Error("usage: validate-applicant-submission.mjs --all | <submission.json> [...]");
   }
-  return [...new Set(args.map(resolveInsideRepository))].sort((left, right) => left.localeCompare(right));
+  return assertApplicantRequestBounds(
+    [...new Set(args.map(resolveInsideRepository))].sort((left, right) => left.localeCompare(right))
+  );
 }
 
 function resolveInsideRepository(input) {
@@ -75,7 +79,7 @@ function resolveInsideRepository(input) {
 
 function validateFile(file, schema) {
   const relativePath = path.relative(repositoryRoot, file).split(path.sep).join("/");
-  const bytes = fs.readFileSync(file);
+  const bytes = readApplicantRequestFile(file);
   const value = parseApplicantSubmission(bytes);
   const findings = validateApplicantSubmission(value, schema, { relativePath });
   return {

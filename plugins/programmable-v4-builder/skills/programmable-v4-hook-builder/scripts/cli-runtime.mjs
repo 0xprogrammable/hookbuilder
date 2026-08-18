@@ -11,6 +11,20 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const MAX_CHILD_OUTPUT_BYTES = 32_000_000;
 const MAX_CHILD_RUNTIME_MS = 120_000;
 const strictUtf8 = new TextDecoder("utf-8", { fatal: true });
+const SAFE_CHILD_ENVIRONMENT_NAMES = [
+  "PATH", "HOME", "TMPDIR", "TMP", "TEMP", "LANG", "LC_ALL", "LC_CTYPE",
+  "SYSTEMROOT", "COMSPEC", "PATHEXT", "CI", "NO_COLOR", "SVM_HOME", "XDG_CACHE_HOME", "XDG_CONFIG_HOME"
+];
+const SAFE_GITHUB_TRANSPORT_ENVIRONMENT_NAMES = [
+  "GH_CONFIG_DIR",
+  "APPDATA", "LOCALAPPDATA", "USERPROFILE", "HOMEDRIVE", "HOMEPATH",
+  "DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR"
+];
+const SAFE_NETWORK_TRUST_ENVIRONMENT_NAMES = [
+  "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "ALL_PROXY",
+  "http_proxy", "https_proxy", "no_proxy", "all_proxy",
+  "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS", "NODE_USE_ENV_PROXY"
+];
 
 export class CliFailure extends Error {
   constructor(code, message, { exitCode = 2, details = null } = {}) {
@@ -54,7 +68,11 @@ export function normalizeFailure(error) {
   });
 }
 
-export function runBundledCommand(script, args, { cwd, failureCode = "COMMAND_FAILED" } = {}) {
+export function runBundledCommand(script, args, {
+  cwd,
+  failureCode = "COMMAND_FAILED",
+  githubTransport = false
+} = {}) {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*\.mjs$/.test(script)) {
     throw new CliFailure("INTERNAL_ERROR", "invalid bundled command identity");
   }
@@ -64,7 +82,7 @@ export function runBundledCommand(script, args, { cwd, failureCode = "COMMAND_FA
     {
       cwd,
       shell: false,
-      env: safeChildEnvironment(),
+      env: githubTransport ? safeGitHubTransportEnvironment() : safeChildEnvironment(),
       timeout: MAX_CHILD_RUNTIME_MS,
       maxBuffer: MAX_CHILD_OUTPUT_BYTES
     }
@@ -122,12 +140,39 @@ function decodeChildOutput(output) {
   }
 }
 
-function safeChildEnvironment() {
-  const environment = { ...process.env };
-  for (const name of Object.keys(environment)) {
-    if (/^(?:GIT|SSH)_/iu.test(name) || ["NODE_OPTIONS", "NODE_PATH"].includes(name.toUpperCase())) {
-      delete environment[name];
-    }
+export function safeChildEnvironment({ includeGitHubAuth = false } = {}) {
+  const names = includeGitHubAuth
+    ? [...SAFE_CHILD_ENVIRONMENT_NAMES, ...selectedGitHubDotComAuthEnvironmentNames()]
+    : SAFE_CHILD_ENVIRONMENT_NAMES;
+  return buildSafeEnvironment(names);
+}
+
+export function safeGitHubTransportEnvironment() {
+  return buildSafeEnvironment([
+    ...SAFE_CHILD_ENVIRONMENT_NAMES,
+    ...selectedGitHubDotComAuthEnvironmentNames(),
+    ...SAFE_GITHUB_TRANSPORT_ENVIRONMENT_NAMES,
+    ...SAFE_NETWORK_TRUST_ENVIRONMENT_NAMES
+  ]);
+}
+
+function selectedGitHubDotComAuthEnvironmentNames() {
+  if (typeof process.env.GH_TOKEN === "string" && process.env.GH_TOKEN.length > 0) return ["GH_TOKEN"];
+  if (typeof process.env.GITHUB_TOKEN === "string" && process.env.GITHUB_TOKEN.length > 0) return ["GITHUB_TOKEN"];
+  return [];
+}
+
+export function safeNetworkEnvironment() {
+  return buildSafeEnvironment([
+    ...SAFE_CHILD_ENVIRONMENT_NAMES,
+    ...SAFE_NETWORK_TRUST_ENVIRONMENT_NAMES
+  ]);
+}
+
+function buildSafeEnvironment(names) {
+  const environment = Object.create(null);
+  for (const name of names) {
+    if (typeof process.env[name] === "string") environment[name] = process.env[name];
   }
   const nullDevice = process.platform === "win32" ? "NUL" : "/dev/null";
   environment.GIT_CONFIG_NOSYSTEM = "1";
@@ -141,7 +186,6 @@ function safeChildEnvironment() {
   environment.GIT_CONFIG_VALUE_2 = "false";
   environment.GIT_TERMINAL_PROMPT = "0";
   environment.GIT_OPTIONAL_LOCKS = "0";
-  environment.GIT_LITERAL_PATHSPECS = "1";
   environment.GIT_LFS_SKIP_SMUDGE = "1";
   environment.GIT_NO_REPLACE_OBJECTS = "1";
   environment.GIT_PAGER = "cat";

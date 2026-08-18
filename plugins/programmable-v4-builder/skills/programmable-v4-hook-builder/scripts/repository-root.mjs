@@ -38,7 +38,11 @@ export function safeGitArguments(args) {
 export function safeGitEnvironment(inheritedEnvironment = process.env) {
   const environment = { ...inheritedEnvironment };
   for (const name of Object.keys(environment)) {
-    if (/^(?:GIT|SSH)_/iu.test(name)) delete environment[name];
+    if (
+      /^(?:GIT|SSH|GH|GITHUB)_/iu.test(name)
+      || /^(?:ALL|HTTP|HTTPS|NO)_PROXY$/iu.test(name)
+      || /^(?:NODE_OPTIONS|NODE_PATH|NODE_EXTRA_CA_CERTS|NODE_USE_ENV_PROXY|SSL_CERT_FILE|SSL_CERT_DIR|DBUS_SESSION_BUS_ADDRESS)$/iu.test(name)
+    ) delete environment[name];
   }
   const nullDevice = gitNullDevice();
   environment.LANG = "C";

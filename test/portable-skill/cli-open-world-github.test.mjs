@@ -25,6 +25,11 @@ import {
   createApplicableOpenWorldV2PrototypeFixture,
   createFeeUnselectedOpenWorldV2PrototypeFixture
 } from "./open-world-v2-prototype-fixture.mjs";
+import {
+  gitBlob,
+  makeSubmitLaunchPolicyFixture,
+  treeEntry
+} from "./submit-launch-policy-fixture.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "..", "..", "skills", "programmable-v4-hook-builder");
@@ -156,14 +161,46 @@ test("generic complete project plans the same protected draft transport without 
   const payload = JSON.parse(result.stdout).result;
   assert.equal(payload.action, "submit-plan");
   assert.equal(payload.applicationId, "generic-no-fee-example");
-  assert.deepEqual(payload.centralContract, {
-    activeContractManifestPath: ".programmable/active-contract.json",
-    activeContractManifestSha256: payload.centralContract.activeContractManifestSha256,
-    contractId: "submit-launch",
-    schemaPath: "intake/schemas/public-pr-application-v3.schema.json",
-    schemaSha256: "sha256:2d51837bbbfe52672ecca334596243bebcec78e8e0a885d67084dfd98955bcb7"
-  });
+  assert.equal(payload.centralContract.activeContractManifestPath, ".programmable/active-contract.json");
+  assert.equal(payload.centralContract.contractId, "submit-launch");
+  assert.equal(payload.centralContract.schemaPath, "intake/schemas/public-pr-application-v3.schema.json");
+  assert.equal(payload.centralContract.schemaSha256, "sha256:2d51837bbbfe52672ecca334596243bebcec78e8e0a885d67084dfd98955bcb7");
   assert.match(payload.centralContract.activeContractManifestSha256, /^sha256:[0-9a-f]{64}$/u);
+  assert.equal(payload.centralContract.activeContractManifestGitBlobOid, fixture.centralContractBlobs.manifest);
+  assert.equal(payload.centralContract.schemaGitBlobOid, fixture.centralContractBlobs.applicationSchema);
+  assert.equal(payload.intakeBinding.path, "docs/builder/intake-status.json");
+  assert.equal(payload.intakeBinding.gitBlobOid, fixture.centralContractBlobs.intakeStatus);
+  assert.match(payload.intakeBinding.sha256, /^sha256:[0-9a-f]{64}$/u);
+  assert.deepEqual(
+    {
+      path: payload.centralContract.policy.path,
+      schemaPath: payload.centralContract.policy.schemaPath,
+      policyId: payload.centralContract.policy.policyId,
+      policyVersion: payload.centralContract.policy.policyVersion,
+      activeBuildRuleIds: payload.centralContract.policy.activeBuildRuleIds,
+      activeProductionRuleIds: payload.centralContract.policy.activeProductionRuleIds,
+      buildProfileEnabled: payload.centralContract.policy.buildProfileEnabled,
+      productionProfileEnabled: payload.centralContract.policy.productionProfileEnabled
+    },
+    {
+      path: "policy/launch-policy.v1.json",
+      schemaPath: "policy/schemas/launch-policy.v1.schema.json",
+      policyId: "programmable-central-launch-policy",
+      policyVersion: "1.3.0",
+      activeBuildRuleIds: [],
+      activeProductionRuleIds: ["LAUNCH.ETHEREUM_AND_TREASURY_10_BPS"],
+      buildProfileEnabled: true,
+      productionProfileEnabled: false
+    }
+  );
+  assert.equal(payload.centralContract.policy.policyBinding.baseCommit, centralCommit);
+  assert.equal(payload.centralContract.policy.policyBinding.baseTree, centralTree);
+  assert.equal(payload.centralContract.policy.policyBinding.profileId, "workflow-canary");
+  assert.equal(payload.centralContract.policy.policyBinding.gitBlobOid, fixture.centralPolicy.policyBlob);
+  assert.equal(payload.centralContract.policy.policyBinding.sha256, sha256(fixture.centralPolicy.policyBytes));
+  assert.equal(payload.centralContract.policy.buildPolicyBinding.profileId, "build");
+  assert.equal(payload.centralContract.policy.buildPolicyBinding.gitBlobOid, fixture.centralPolicy.policyBlob);
+  assert.equal(payload.centralContract.policy.policySchemaBinding.gitBlobOid, fixture.centralPolicy.schemaBlob);
   assert.ok(payload.externalWrites.includes("open-draft-pull-request"));
   assert.match(payload.confirmationDigest, /^sha256:[0-9a-f]{64}$/u);
   assert.ok(allCalls(fixture).every(({ method }) => method === "GET"));
@@ -196,6 +233,46 @@ test("Application V3 submit rejects protected-base active-contract or schema sub
     assert.equal(JSON.parse(result.stdout).error.code, "APPLICATION_V3_CENTRAL_CONTRACT_INVALID", substitution);
     assert.deepEqual(mutatingCalls(fixture), [], substitution);
   }
+});
+
+test("Application V3 submit rejects an active-contract policy hash substitution before any write", (t) => {
+  const fixture = createTransportFixture(t, { feeV2Selected: false });
+  const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+  const manifestPath = ".programmable/active-contract.json";
+  const manifest = JSON.parse(Buffer.from(state.centralContractContents[manifestPath], "base64").toString("utf8"));
+  manifest.artifacts.policy[0].sha256 = `sha256:${"e".repeat(64)}`;
+  state.centralContractContents[manifestPath] = Buffer.from(`${canonicalJson(manifest)}\n`, "utf8").toString("base64");
+  fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
+
+  const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+  assert.equal(result.status, 1, result.stdout || result.stderr);
+  assert.equal(JSON.parse(result.stdout).error.code, "APPLICATION_V3_CENTRAL_CONTRACT_INVALID");
+  assert.deepEqual(mutatingCalls(fixture), []);
+});
+
+test("Application V3 submit rejects active-contract tree substitution before any write", (t) => {
+  const fixture = createTransportFixture(t, { feeV2Selected: false });
+  const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+  const rootEntries = state.centralPolicyTrees[state.centralTree];
+  rootEntries.find(({ path: entryPath }) => entryPath === ".programmable").sha = "f".repeat(40);
+  fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
+
+  const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+  assert.equal(result.status, 1, result.stdout || result.stderr);
+  assert.equal(JSON.parse(result.stdout).error.code, "APPLICATION_V3_CENTRAL_CONTRACT_INVALID");
+  assert.deepEqual(mutatingCalls(fixture), []);
+});
+
+test("Application V3 submit rejects a protected ref and commit response mismatch before any write", (t) => {
+  const fixture = createTransportFixture(t, { feeV2Selected: false });
+  const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+  state.centralCommitResponseSha = "f".repeat(40);
+  fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
+
+  const result = run(["open-world", "submit", fixture.packageRoot], fixture);
+  assert.equal(result.status, 1, result.stdout || result.stderr);
+  assert.equal(JSON.parse(result.stdout).error.code, "CENTRAL_REPOSITORY_CHANGED");
+  assert.deepEqual(mutatingCalls(fixture), []);
 });
 
 test("validate-application checks the closed V3 package locally from a non-Git directory", (t) => {
@@ -622,7 +699,11 @@ test("transport binds every declared source CI run to the exact head SHA, workfl
 });
 
 test("confirmed transport rereads both exact CI and intake state immediately before its first mutation", (t) => {
-  for (const raceMode of ["intake-pause-before-write", "source-ci-fail-before-write"]) {
+  for (const raceMode of [
+    "central-contract-change-before-write",
+    "intake-pause-before-write",
+    "source-ci-fail-before-write"
+  ]) {
     const fixture = createTransportFixture(t, { mode: raceMode === "source-ci-fail-before-write" ? "update" : "submit" });
     const command = raceMode === "source-ci-fail-before-write"
       ? ["open-world", "update", fixture.packageRoot, "--pull-request", "7"]
@@ -636,14 +717,18 @@ test("confirmed transport rereads both exact CI and intake state immediately bef
       state.workflowRunReads = 0;
     } else {
       state.raceMode = raceMode;
-      state.intakeReads = 0;
+      state.centralCommitReads = 0;
     }
     fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
     const result = run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
     assert.equal(result.status, 1, `${raceMode}: ${result.stdout || result.stderr}`);
     assert.equal(
       JSON.parse(result.stdout).error.code,
-      raceMode === "source-ci-fail-before-write" ? "APPLICATION_SOURCE_CI_MISMATCH" : "INTAKE_PAUSED_ALL"
+      raceMode === "source-ci-fail-before-write"
+        ? "APPLICATION_SOURCE_CI_MISMATCH"
+        : raceMode === "intake-pause-before-write"
+          ? "INTAKE_PAUSED_ALL"
+          : "CONFIRMED_PLAN_CHANGED"
     );
     assert.deepEqual(mutatingCalls(fixture), []);
     const receipt = JSON.parse(fs.readFileSync(path.join(fixture.root, "application-v3-mutation-receipt.json"), "utf8"));
@@ -1778,6 +1863,7 @@ test("central target absence treats only an exact 404 as absent", (t) => {
     const fixture = createTransportFixture(t);
     const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
     state.centralContentFailure = failure;
+    state.centralContentFailurePath = Object.keys(state.packageContents).sort()[0];
     fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
     const result = run(["open-world", "submit", fixture.packageRoot], fixture);
     assert.equal(result.status, 1, `${failure}: ${result.stdout || result.stderr}`);
@@ -3005,11 +3091,17 @@ function createTransportFixture(t, {
     path.join(skillRoot, "references", "public-pr-application-v3.schema.json")
   );
   const centralApplicationV3SchemaSha256 = sha256(centralApplicationV3SchemaBytes);
+  const centralPolicyFixture = makeSubmitLaunchPolicyFixture({
+    baseTree: centralTree,
+    policyVersion: "1.3.0",
+    ruleProfiles: ["production-launch"],
+    enforcementOwner: "platform"
+  });
   const centralActiveContractBytes = Buffer.from(`${canonicalJson({
     $schema: "urn:programmable:active-contract-manifest:1.0.0",
     artifacts: {
       package: [{ path: centralApplicationV3SchemaPath, sha256: centralApplicationV3SchemaSha256 }],
-      policy: [{ path: "policy/launch-policy.v1.json", sha256: `sha256:${"a".repeat(64)}` }],
+      policy: [{ path: "policy/launch-policy.v1.json", sha256: sha256(centralPolicyFixture.policyBytes) }],
       validator: [{ path: "scripts/verify-public-application-v3.mjs", sha256: `sha256:${"b".repeat(64)}` }],
       workflow: [{ path: ".github/workflows/verify-hook-builder.yml", sha256: `sha256:${"c".repeat(64)}` }]
     },
@@ -3018,6 +3110,19 @@ function createTransportFixture(t, {
     kind: "programmable-active-contract",
     schemaVersion: "1.0.0"
   })}\n`, "utf8");
+  const centralProgrammableTree = "a".repeat(40);
+  const centralIntakeTree = "b".repeat(40);
+  const centralIntakeSchemasTree = "e".repeat(40);
+  const centralDocsTree = `${"0".repeat(39)}1`;
+  const centralBuilderDocsTree = `${"0".repeat(39)}2`;
+  const centralActiveContractBlob = gitBlob(centralActiveContractBytes);
+  const centralApplicationV3SchemaBlob = gitBlob(centralApplicationV3SchemaBytes);
+  const centralIntakeStatusBytes = Buffer.from(`${canonicalJson({
+    continuingPullRequests: [],
+    schemaVersion: 2,
+    state: "open"
+  })}\n`, "utf8");
+  const centralIntakeStatusBlob = gitBlob(centralIntakeStatusBytes);
   fs.writeFileSync(statePath, `${canonicalJson({
     viewer,
     centralRepository,
@@ -3052,15 +3157,44 @@ function createTransportFixture(t, {
     centralContents: priorIsMerged ? priorProjection.contents : {},
     centralContractContents: {
       ".programmable/active-contract.json": centralActiveContractBytes.toString("base64"),
-      [centralApplicationV3SchemaPath]: centralApplicationV3SchemaBytes.toString("base64")
+      [centralApplicationV3SchemaPath]: centralApplicationV3SchemaBytes.toString("base64"),
+      "policy/launch-policy.v1.json": centralPolicyFixture.policyBytes.toString("base64"),
+      "policy/schemas/launch-policy.v1.schema.json": centralPolicyFixture.schemaBytes.toString("base64")
     },
     centralTreeEntries: [],
-    intakeStatus: Buffer.from(`${canonicalJson({
-      continuingPullRequests: [],
-      schemaVersion: 2,
-      state: "open"
-    })}\n`, "utf8").toString("base64"),
+    centralPolicyTrees: {
+      [centralTree]: [
+        treeEntry(".programmable", "040000", "tree", centralProgrammableTree),
+        treeEntry("docs", "040000", "tree", centralDocsTree),
+        treeEntry("intake", "040000", "tree", centralIntakeTree),
+        treeEntry("policy", "040000", "tree", centralPolicyFixture.policyTree)
+      ],
+      [centralProgrammableTree]: [
+        treeEntry("active-contract.json", "100644", "blob", centralActiveContractBlob)
+      ],
+      [centralIntakeTree]: [
+        treeEntry("schemas", "040000", "tree", centralIntakeSchemasTree)
+      ],
+      [centralIntakeSchemasTree]: [
+        treeEntry("public-pr-application-v3.schema.json", "100644", "blob", centralApplicationV3SchemaBlob)
+      ],
+      [centralDocsTree]: [
+        treeEntry("builder", "040000", "tree", centralBuilderDocsTree)
+      ],
+      [centralBuilderDocsTree]: [
+        treeEntry("intake-status.json", "100644", "blob", centralIntakeStatusBlob)
+      ],
+      [centralPolicyFixture.policyTree]: [
+        treeEntry("launch-policy.v1.json", "100644", "blob", centralPolicyFixture.policyBlob),
+        treeEntry("schemas", "040000", "tree", centralPolicyFixture.schemasTree)
+      ],
+      [centralPolicyFixture.schemasTree]: [
+        treeEntry("launch-policy.v1.schema.json", "100644", "blob", centralPolicyFixture.schemaBlob)
+      ]
+    },
+    intakeStatus: centralIntakeStatusBytes.toString("base64"),
     centralContentFailure: null,
+    centralContentFailurePath: null,
     workflowRunMode: null,
     raceMode: null,
     paginationMode: null,
@@ -3069,7 +3203,7 @@ function createTransportFixture(t, {
     checks: { total_count: 0, check_runs: [] }
   })}\n`);
   const fakeGh = path.join(fakeBin, "gh");
-  fs.writeFileSync(fakeGh, fakeGhProgram(), { mode: 0o755 });
+  fs.writeFileSync(fakeGh, fakeGhProgram({ callLog, statePath }), { mode: 0o755 });
   const fakeGhPreloadCandidate = path.join(fakeBin, "fake-gh-preload.cjs");
   const fakeGhFixtureSentinel = sha256(Buffer.from(root, "utf8"));
   fs.writeFileSync(fakeGhPreloadCandidate, fakeGhPreloadProgram({
@@ -3089,7 +3223,13 @@ function createTransportFixture(t, {
     fakeGhPreload,
     callLog,
     statePath,
-    applicationRevision: String(application.applicationRevision)
+    applicationRevision: String(application.applicationRevision),
+    centralPolicy: centralPolicyFixture,
+    centralContractBlobs: {
+      manifest: centralActiveContractBlob,
+      applicationSchema: centralApplicationV3SchemaBlob,
+      intakeStatus: centralIntakeStatusBlob
+    }
   };
 }
 
@@ -4545,21 +4685,23 @@ function deriveFixtureReviewBranch(application, packageSha256) {
   return `open-world-v3/thread-${digest}`;
 }
 
-function fakeGhProgram() {
+function fakeGhProgram({ callLog, statePath }) {
   return `#!/usr/bin/env node
 const fs = require("node:fs");
 const crypto = require("node:crypto");
-const state = JSON.parse(fs.readFileSync(process.env.FAKE_GH_STATE, "utf8"));
+const statePath = ${JSON.stringify(statePath)};
+const callLog = ${JSON.stringify(callLog)};
+const state = JSON.parse(fs.readFileSync(statePath, "utf8"));
 const args = process.argv.slice(2);
 const method = args[args.indexOf("--method") + 1];
 const versionHeader = args.indexOf("X-GitHub-Api-Version: 2022-11-28");
 const endpoint = args[versionHeader + 1];
 const stdin = method === "GET" ? "" : fs.readFileSync(0, "utf8");
 const body = stdin.length === 0 ? null : JSON.parse(stdin);
-fs.appendFileSync(process.env.FAKE_GH_CALL_LOG, JSON.stringify({ method, endpoint, body }) + "\\n");
+fs.appendFileSync(callLog, JSON.stringify({ method, endpoint, body }) + "\\n");
 function output(value) { fs.writeFileSync(1, JSON.stringify(value)); process.exit(0); }
 function missing() { process.stderr.write("gh: Not Found (HTTP 404)\\n"); process.exit(1); }
-function persist() { fs.writeFileSync(process.env.FAKE_GH_STATE, JSON.stringify(state) + "\\n"); }
+function persist() { fs.writeFileSync(statePath, JSON.stringify(state) + "\\n"); }
 function treeEntriesForContents(contents) {
   return Object.entries(contents ?? {}).map(([repositoryPath, content]) => {
     const bytes = Buffer.from(content, "base64");
@@ -4593,7 +4735,7 @@ function sourceMetadata(repositorySlug) {
   if (repositorySlug === state.sourceRepository.full_name) return state.sourceRepository;
   return state.sourceArchives?.[repositorySlug]?.metadata ?? null;
 }
-if (method !== "GET" && process.env.FAKE_GH_ALLOW_WRITES !== "1") { process.stderr.write("unexpected mutation\\n"); process.exit(9); }
+if (method !== "GET" && process.env.GH_TOKEN !== "fixture-write-token") { process.stderr.write("unexpected mutation\\n"); process.exit(9); }
 if (method === "POST" && endpoint === "repos/0xprogrammable/submit-launch/forks") {
   state.forkRepository = {
     id: 666,
@@ -4814,7 +4956,47 @@ if (endpoint === "repos/0xprogrammable/submit-launch/git/ref/heads/main") {
   output({ ref: "refs/heads/main", object: { sha: state.centralCommit } });
 }
 if (endpoint === "repos/0xprogrammable/submit-launch/git/commits/" + state.centralCommit) {
-  output({ sha: state.centralCommit, tree: { sha: state.centralTree } });
+  if (new Set(["central-contract-change-before-write", "intake-pause-before-write"]).has(state.raceMode)) {
+    state.centralCommitReads = (state.centralCommitReads ?? 0) + 1;
+    if (state.centralCommitReads >= 2) {
+      if (state.raceMode === "intake-pause-before-write") {
+        const intake = JSON.parse(Buffer.from(state.intakeStatus, "base64").toString("utf8"));
+        intake.state = "paused-all";
+        const intakeBytes = Buffer.from(JSON.stringify(intake) + "\\n", "utf8");
+        state.intakeStatus = intakeBytes.toString("base64");
+        const docsTree = state.centralPolicyTrees[state.centralTree].find((entry) => entry.path === "docs").sha;
+        const builderTree = state.centralPolicyTrees[docsTree].find((entry) => entry.path === "builder").sha;
+        state.centralPolicyTrees[builderTree].find((entry) => entry.path === "intake-status.json").sha = crypto
+          .createHash("sha1")
+          .update(Buffer.from("blob " + intakeBytes.length + "\\0", "utf8"))
+          .update(intakeBytes)
+          .digest("hex");
+      } else {
+        const manifestPath = ".programmable/active-contract.json";
+        const manifest = JSON.parse(Buffer.from(state.centralContractContents[manifestPath], "base64").toString("utf8"));
+        manifest.artifacts.validator[0].sha256 = "sha256:" + "d".repeat(64);
+        const manifestBytes = Buffer.from(JSON.stringify(manifest) + "\\n", "utf8");
+        state.centralContractContents[manifestPath] = manifestBytes.toString("base64");
+        const programmableTree = state.centralPolicyTrees[state.centralTree].find((entry) => entry.path === ".programmable").sha;
+        state.centralPolicyTrees[programmableTree].find((entry) => entry.path === "active-contract.json").sha = crypto
+          .createHash("sha1")
+          .update(Buffer.from("blob " + manifestBytes.length + "\\0", "utf8"))
+          .update(manifestBytes)
+          .digest("hex");
+      }
+    }
+    persist();
+  }
+  output({ sha: state.centralCommitResponseSha ?? state.centralCommit, tree: { sha: state.centralTree } });
+}
+const centralDirectTreeMatch = /^repos\\/0xprogrammable\\/submit-launch\\/git\\/trees\\/([0-9a-f]{40})$/.exec(endpoint);
+if (centralDirectTreeMatch !== null) {
+  const treeObjectId = centralDirectTreeMatch[1];
+  output({
+    sha: treeObjectId,
+    truncated: false,
+    tree: state.centralPolicyTrees?.[treeObjectId] ?? []
+  });
 }
 if (endpoint === "repos/0xprogrammable/submit-launch/git/trees/" + state.centralTree + "?recursive=1") {
   output({ sha: state.centralTree, truncated: false, tree: [...(state.centralTreeEntries ?? []), ...treeEntriesForContents(centralBaseContents())] });
@@ -4911,26 +5093,18 @@ if (endpoint.startsWith("repos/example-builder/submit-launch/contents/")) {
   output({ type: "file", path: repositoryPath, encoding: "base64", content, sha: crypto.createHash("sha1").update(Buffer.from("blob " + bytes.length + "\\0", "utf8")).update(bytes).digest("hex") });
 }
 if (endpoint.startsWith("repos/0xprogrammable/submit-launch/contents/")) {
-  if (state.centralContentFailure === "403") { process.stderr.write("HTTP 403 Forbidden\\n"); process.exit(1); }
-  if (state.centralContentFailure === "500") { process.stderr.write("HTTP 500 Internal Server Error\\n"); process.exit(1); }
-  if (state.centralContentFailure === "malformed") { process.stdout.write("{"); process.exit(0); }
   const suffix = endpoint.slice("repos/0xprogrammable/submit-launch/contents/".length);
   const query = suffix.indexOf("?ref=");
   const encodedPath = query === -1 ? suffix : suffix.slice(0, query);
   const repositoryPath = encodedPath.split("/").map(decodeURIComponent).join("/");
-  let content = repositoryPath === "docs/builder/intake-status.json"
+  if (repositoryPath === state.centralContentFailurePath) {
+    if (state.centralContentFailure === "403") { process.stderr.write("HTTP 403 Forbidden\\n"); process.exit(1); }
+    if (state.centralContentFailure === "500") { process.stderr.write("HTTP 500 Internal Server Error\\n"); process.exit(1); }
+    if (state.centralContentFailure === "malformed") { process.stdout.write("{"); process.exit(0); }
+  }
+  const content = repositoryPath === "docs/builder/intake-status.json"
     ? state.intakeStatus
     : state.centralContractContents?.[repositoryPath] ?? state.centralContents[repositoryPath];
-  if (repositoryPath === "docs/builder/intake-status.json" && state.raceMode === "intake-pause-before-write") {
-    state.intakeReads = (state.intakeReads ?? 0) + 1;
-    if (state.intakeReads >= 2) {
-      const intake = JSON.parse(Buffer.from(state.intakeStatus, "base64").toString("utf8"));
-      intake.state = "paused-all";
-      state.intakeStatus = Buffer.from(JSON.stringify(intake) + "\\n", "utf8").toString("base64");
-      content = state.intakeStatus;
-    }
-    persist();
-  }
   if (typeof content !== "string") missing();
   const bytes = Buffer.from(content, "base64");
   output({ type: "file", path: repositoryPath, encoding: "base64", content, sha: crypto.createHash("sha1").update(Buffer.from("blob " + bytes.length + "\\0", "utf8")).update(bytes).digest("hex") });
@@ -4988,14 +5162,14 @@ function exactFixtureEnvironment(environment) {
   if (environment === null || typeof environment !== "object") return false;
   const firstPathEntry = String(environment.PATH || "").split(path.delimiter)[0];
   return (
-    environment.FAKE_GH_PRELOAD_SENTINEL === fixture.sentinel
-    && environment.FAKE_GH_PRELOAD_PATH === __filename
-    && environment.FAKE_GH_EXECUTABLE === fixture.fakeGh
-    && environment.FAKE_GH_STATE === fixture.statePath
-    && environment.FAKE_GH_CALL_LOG === fixture.callLog
-    && (environment.FAKE_GH_ALLOW_WRITES === "0" || environment.FAKE_GH_ALLOW_WRITES === "1")
-    && firstPathEntry === fixture.fakeBin
-    && environment.NODE_OPTIONS === exactNodeOptions
+    firstPathEntry === fixture.fakeBin
+    && environment.NODE_OPTIONS === undefined
+    && environment.NODE_PATH === undefined
+    && environment.FAKE_GH_STATE === undefined
+    && environment.FAKE_GH_CALL_LOG === undefined
+    && environment.FAKE_GH_PRELOAD_PATH === undefined
+    && environment.FAKE_GH_EXECUTABLE === undefined
+    && !Object.keys(environment).some((name) => /^(?:GIT|SSH)_/iu.test(name))
     && environment.GH_PROMPT_DISABLED === "1"
     && environment.GH_PAGER === "cat"
     && environment.PAGER === "cat"
@@ -5099,7 +5273,14 @@ function runFakeGh(args, options) {
   });
   const fakeProcess = {
     argv: [process.execPath, fixture.fakeGh, ...args],
-    env: options.env,
+    env: {
+      ...options.env,
+      FAKE_GH_PRELOAD_SENTINEL: fixture.sentinel,
+      FAKE_GH_PRELOAD_PATH: __filename,
+      FAKE_GH_EXECUTABLE: fixture.fakeGh,
+      FAKE_GH_STATE: fixture.statePath,
+      FAKE_GH_CALL_LOG: fixture.callLog
+    },
     exit(status = 0) {
       const signal = { marker: exitMarker, status };
       throw signal;
@@ -5154,9 +5335,7 @@ function fixtureCliEnvironment(fixture, { allowWrites, usePreload }) {
   const environment = {
     ...process.env,
     PATH: `${fixture.fakeBin}:${process.env.PATH ?? ""}`,
-    FAKE_GH_STATE: fixture.statePath,
-    FAKE_GH_CALL_LOG: fixture.callLog,
-    FAKE_GH_ALLOW_WRITES: allowWrites ? "1" : "0"
+    GH_TOKEN: allowWrites ? "fixture-write-token" : "fixture-read-token"
   };
   if (usePreload) {
     environment.NODE_OPTIONS = `--require=${fixture.fakeGhPreload}`;

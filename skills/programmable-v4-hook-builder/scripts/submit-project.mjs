@@ -488,7 +488,8 @@ function runOpenWorld(args, repositoryRoot) {
   try {
     const payload = requireJsonResult(runBundledCommand("open-world.mjs", args, {
       cwd: repositoryRoot,
-      failureCode: "APPLICATION_TRANSPORT_FAILED"
+      failureCode: "APPLICATION_TRANSPORT_FAILED",
+      githubTransport: new Set(["prepare-revision", "status", "submit", "update"]).has(args[0])
     }), "open-world.mjs");
     return { ok: true, result: payload.result ?? payload };
   } catch (error) {

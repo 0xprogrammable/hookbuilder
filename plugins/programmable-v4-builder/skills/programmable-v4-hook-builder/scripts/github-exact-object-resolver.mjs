@@ -66,6 +66,11 @@ const SMALL_COMMAND_OUTPUT_BYTES = 65_536;
 const COMMIT_OUTPUT_BYTES = 1_048_576;
 const TREE_LIST_OUTPUT_BYTES = 1_048_576;
 const BATCH_PROTOCOL_OVERHEAD_BYTES = 1_048_576;
+const NETWORK_TRUST_ENVIRONMENT_NAMES = Object.freeze([
+  "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "ALL_PROXY",
+  "http_proxy", "https_proxy", "no_proxy", "all_proxy",
+  "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS", "NODE_USE_ENV_PROXY"
+]);
 const SAFE_GIT_CONFIG = Object.freeze([
   "-c", "credential.helper=",
   "-c", "credential.interactive=never",
@@ -326,7 +331,8 @@ async function fetchExactCommit(state, gitDirectory, revisionObjectId) {
   ], {
     maximumOutputBytes: SMALL_COMMAND_OUTPUT_BYTES,
     phase: "fetch",
-    monitoredDirectory: gitDirectory
+    monitoredDirectory: gitDirectory,
+    inheritNetworkTrust: true
   });
   if (result.status !== 0) {
     throw new GitHubPublicSourceError(
@@ -413,7 +419,8 @@ async function fetchExactBlobObjects(state, gitDirectory, treeRecords) {
     input: Buffer.from(`${objectIds.join("\n")}\n`, "ascii"),
     maximumOutputBytes: SMALL_COMMAND_OUTPUT_BYTES,
     phase: "blob-fetch",
-    monitoredDirectory: gitDirectory
+    monitoredDirectory: gitDirectory,
+    inheritNetworkTrust: true
   });
   if (result.status !== 0) {
     throw new GitHubPublicSourceError(
@@ -481,7 +488,10 @@ async function invokeGit(state, args, options) {
       gitExecutable: state.gitExecutable,
       args: [...SAFE_GIT_CONFIG, ...args],
       cwd: null,
-      env: safeGitEnvironment(options.disableLazyFetch === true),
+      env: safeGitEnvironment({
+        disableLazyFetch: options.disableLazyFetch === true,
+        inheritNetworkTrust: options.inheritNetworkTrust === true
+      }),
       input: options.input ?? null,
       timeoutMs: remainingMs,
       maximumOutputBytes: options.maximumOutputBytes,
@@ -539,9 +549,12 @@ function requireSuccess(result, message) {
   if (result.status !== 0) throw toolingBlocked(message);
 }
 
-function safeGitEnvironment(disableLazyFetch) {
+function safeGitEnvironment({ disableLazyFetch, inheritNetworkTrust }) {
   const environment = Object.create(null);
-  for (const name of ["PATH", "TMPDIR", "TMP", "TEMP"]) {
+  const inheritedNames = inheritNetworkTrust
+    ? ["PATH", "TMPDIR", "TMP", "TEMP", ...NETWORK_TRUST_ENVIRONMENT_NAMES]
+    : ["PATH", "TMPDIR", "TMP", "TEMP"];
+  for (const name of inheritedNames) {
     if (typeof process.env[name] === "string") environment[name] = process.env[name];
   }
   environment.LANG = "C";

@@ -21,6 +21,8 @@ export function installOpenWorldGitHubMutationPrimitives(runtime) {
       || observed.baseCommit !== plan.target.baseCommit
       || observed.baseTree !== plan.target.baseTree
       || canonicalJson(observed.intake) !== canonicalJson(plan.intake)
+      || canonicalJson(observed.intakeBinding) !== canonicalJson(plan.intakeBinding)
+      || canonicalJson(observed.centralContract) !== canonicalJson(plan.centralContract)
       || canonicalJson(observed.sources) !== canonicalJson(plan.sources)
       || observedFork?.toLowerCase() !== expectedForkRepository?.toLowerCase()
       || observed.branch !== plan.target.branch
@@ -485,15 +487,22 @@ export function installOpenWorldGitHubMutationPrimitives(runtime) {
       await transport.getGitCommit(CENTRAL_GITHUB_REPOSITORY, baseRef.commit),
       "central base"
     );
-    const intake = await readApplicationV3IntakeStatus({ transport, commit: base.sha });
+    const intakeSnapshot = await readApplicationV3IntakeStatus({
+      transport,
+      commit: base.sha,
+      tree: base.tree
+    });
+    const { intake, binding: intakeBinding } = intakeSnapshot;
     if (
       central.id !== plan.target.repositoryId
       || central.fullName.toLowerCase() !== CENTRAL_GITHUB_REPOSITORY
       || central.private
       || central.fork
+      || base.sha !== baseRef.commit
       || base.sha !== plan.target.baseCommit
       || base.tree !== plan.target.baseTree
       || canonicalJson(intake) !== canonicalJson(plan.intake)
+      || canonicalJson(intakeBinding) !== canonicalJson(plan.intakeBinding)
     ) {
       throw new CliFailure("CONFIRMED_PLAN_CHANGED", "the exact Registry base changed after confirmation", { exitCode: 1 });
     }

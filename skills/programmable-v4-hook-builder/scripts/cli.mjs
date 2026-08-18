@@ -11,7 +11,16 @@ import { compactDoctorReport } from "./cli-prepare-pr-readiness.mjs";
 import { runLaunchBundleV2Cli } from "./launch-bundle-v2.mjs";
 import { detectOpenWorldV2Submission, executeOpenWorldV2Check } from "./open-world-v2-validation-core.mjs";
 import { assertInsideRepository, resolveInstalledPackageRoot, resolveRepositoryRoot } from "./repository-root.mjs";
-import { CliFailure, emitFailure, emitSuccess, requireJsonResult, runBundledCommand } from "./cli-runtime.mjs";
+import {
+  CliFailure,
+  emitFailure,
+  emitSuccess,
+  requireJsonResult,
+  runBundledCommand,
+  safeChildEnvironment,
+  safeGitHubTransportEnvironment,
+  safeNetworkEnvironment
+} from "./cli-runtime.mjs";
 import { canonicalJson } from "./submission-core.mjs";
 import { summarizeV1Check, summarizeV2Check } from "./submission-report-core.mjs";
 import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
@@ -529,7 +538,7 @@ function runDelegatedCommand(command, args) {
   const result = childProcess.spawnSync(process.execPath, [scriptPath, ...delegated.prefix, ...args], {
       cwd: process.cwd(),
       encoding: "utf8",
-      env: process.env,
+      env: delegatedCommandEnvironment(command, args),
       maxBuffer: 32_000_000,
       shell: false,
       timeout:120_000+2_580_000*+(command+args[0]+args.includes("--write")==="projectmaterializetrue")
@@ -569,7 +578,7 @@ function runNamespacedCommand(namespace, selection) {
     {
       cwd: process.cwd(),
       encoding: "utf8",
-      env: process.env,
+      env: delegatedCommandEnvironment(selection.command, selection.args),
       maxBuffer: 32_000_000,
       shell: false,
       timeout: 2 * 60_000
@@ -579,4 +588,27 @@ function runNamespacedCommand(namespace, selection) {
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);
   return Number.isInteger(result.status) ? result.status : 1;
+}
+
+function delegatedCommandNeedsGitHubTransport(command, args) {
+  if (command === "open-world") {
+    return new Set(["prepare-revision", "status", "submit", "update"]).has(args[0]);
+  }
+  return new Set([
+    "policy",
+    "prepare-canary",
+    "status",
+    "submit",
+    "submit-project",
+    "update"
+  ]).has(command);
+}
+
+function delegatedCommandEnvironment(command, args) {
+  if (delegatedCommandNeedsGitHubTransport(command, args)) return safeGitHubTransportEnvironment();
+  if (
+    new Set(["discover", "prepare-pr"]).has(command)
+    || (command === "resolve-contract" && args.includes("--network"))
+  ) return safeNetworkEnvironment();
+  return safeChildEnvironment();
 }

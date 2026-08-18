@@ -124,12 +124,20 @@
           "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
         },
         {
+          "path": "skills/programmable-v4-hook-builder/scripts/cli-runtime.mjs",
+          "observedLines": 193,
+          "observedBytes": 6437,
+          "observedComplexityScore": 29,
+          "observedMaxBlockDepth": 3,
+          "reviewRef": "reviewed route-scoped child, GitHub authentication, and network trust environment boundary"
+        },
+        {
           "path": "skills/programmable-v4-hook-builder/scripts/cli.mjs",
-          "observedLines": 582,
-          "observedBytes": 28099,
-          "observedComplexityScore": 114,
+          "observedLines": 614,
+          "observedBytes": 28958,
+          "observedComplexityScore": 119,
           "observedMaxBlockDepth": 5,
-          "reviewRef": "v0.11.0 reviewed one-command Applicant dispatch and advanced/legacy namespace routing"
+          "reviewRef": "reviewed one-command Applicant dispatch with route-scoped delegated subprocess environments"
         },
         {
           "path": "skills/programmable-v4-hook-builder/scripts/companion-manifest-contract.mjs",
@@ -308,6 +316,14 @@
           "reviewRef": "v0.5.1 behavior-preserving production module decomposition review"
         },
         {
+          "path": "skills/programmable-v4-hook-builder/scripts/repository-root.mjs",
+          "observedLines": 372,
+          "observedBytes": 14594,
+          "observedComplexityScore": 124,
+          "observedMaxBlockDepth": 4,
+          "reviewRef": "reviewed local Git subprocess credential and network environment isolation"
+        },
+        {
           "path": "skills/programmable-v4-hook-builder/scripts/resolve-contract-core.mjs",
           "observedLines": 154,
           "observedBytes": 5570,
@@ -383,7 +399,7 @@
   "portablePackage": {
     "path": "skills/programmable-v4-hook-builder",
     "observedFiles": 630,
-    "observedBytes": 8830007,
+    "observedBytes": 8842788,
     "maxFiles": 630,
     "maxBytes": 8900000
   }

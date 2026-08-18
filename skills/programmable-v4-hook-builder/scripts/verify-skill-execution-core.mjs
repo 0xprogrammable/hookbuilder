@@ -5,6 +5,7 @@ import process from "node:process";
 import vm from "node:vm";
 import { isMainThread, parentPort, Worker, workerData } from "node:worker_threads";
 import { runBoundedChildProcess } from "./bounded-child-process-core.mjs";
+import { safeChildEnvironment } from "./cli-runtime.mjs";
 
 const MODULE_SYNTAX_TIMEOUT_MS = 60_000;
 const MODULE_SYNTAX_OUTPUT_BYTES = 4 * 1024 * 1024;
@@ -237,7 +238,7 @@ export async function validateScriptsAndTests({
     const tests = await runDeterministicTestBatches({
       command: process.execPath,
       cwd: skillRoot,
-      env: process.env,
+      env: safeChildEnvironment({ includeGitHubAuth: false }),
       testFiles
     });
     if (tests.failure) {
