@@ -1,15 +1,15 @@
 {
   "schemaVersion": "1.0.0",
-  "candidateId": "programmable-v4-builder-v0.11.1-local-20260817",
+  "candidateId": "programmable-v4-builder-v0.11.2-local-20260818",
   "privateCandidate": true,
   "publicState": "not-published",
-  "releaseVersion": "0.11.1",
+  "releaseVersion": "0.11.2",
   "channel": "canary",
   "releaseKind": "normal",
   "plannedRelease": {
     "builder": {
-      "fromVersion": "0.11.0",
-      "toVersion": "0.11.1",
+      "fromVersion": "0.11.1",
+      "toVersion": "0.11.2",
       "semanticClassification": "patch"
     },
     "submissionStandard": {
@@ -34,14 +34,19 @@
       "sha256": null
     }
   },
-  "preparedAt": "2026-08-17T00:00:00Z",
-  "requestedReleaseAt": "2026-08-17T00:00:00Z",
+  "preparedAt": "2026-08-18T00:00:00Z",
+  "requestedReleaseAt": "2026-08-18T00:00:00Z",
   "changeSetComplete": true,
   "changes": [
     {
-      "id": "existing-applicant-draft-recovery",
-      "kind": "bug-fix",
-      "summary": "Recover one unique exact pre-workspace Applicant Draft through bounded read-only GitHub verification before requesting missing local Application inputs; do not invent evidence or grant review authority."
+      "id": "protected-submit-contract-binding",
+      "kind": "security-fix",
+      "summary": "Bind Applicant Draft writes to one fresh protected Submit base and fail closed when policy or contract identity drifts without granting review or release authority."
+    },
+    {
+      "id": "universal-admission-queue-preflight",
+      "kind": "feature",
+      "summary": "Resolve and validate the immutable Universal Admission V1 discovery contract before exposing a queue handoff, while the reference queue remains disabled and non-authoritative."
     }
   ],
   "unbundledChangeIds": [],

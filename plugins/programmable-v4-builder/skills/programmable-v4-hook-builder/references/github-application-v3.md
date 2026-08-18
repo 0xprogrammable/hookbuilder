@@ -29,6 +29,11 @@ repository, ZIP, pasted source, upload form or email is not an alternate V3 tran
 contract and threat model. Keep the idea `ELIGIBLE_FOR_REVIEW`, report `INTEGRATION_PENDING`, and materialize or write
 no public Application V3 package for that source.
 
+The separate Universal Admission queue discovery preflight does not widen or rewrite Application V3.1. Its currently
+published protected contract is disabled, so explicit `submit-project --transport queue` performs exact readback only
+and stops before V3 preparation, envelope materialization, confirmation or transport mutation. GitHub Draft remains an
+explicit low-volume adapter; it is never a silent fallback after a queue request.
+
 ## Contents
 
 1. [Application contract](#application-contract)
@@ -210,11 +215,10 @@ Keep GitHub preparation and GitHub mutation separate. Use only namespaced `cli.m
 a read-only plan
 that reports:
 
-- target repository, base revision, application id and revision;
-- exact branch/pull-request action;
-- every external write;
-- the bytes/digests being sent; and
-- one current confirmation digest.
+- target repository, protected base commit/tree, application id/revision, branch/pull-request action and every write;
+- the exact protected active-contract, Application schema, central policy/schema and their digests;
+- active build and production Rule IDs without treating either set as approval or launch authority; and
+- payload bytes/digests plus one current confirmation digest.
 
 The fixed public target is
 [`0xprogrammable/submit-launch:main`](https://github.com/0xprogrammable/submit-launch), immutable GitHub repository ID

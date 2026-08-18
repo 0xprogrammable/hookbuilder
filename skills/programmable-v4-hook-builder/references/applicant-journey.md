@@ -11,6 +11,11 @@ Submission V2 subject, prepares or resumes one closed Application V3.1 package, 
 persists the exact safe next action. Reinvoke the same command for status. Never expose the internal phase sequence as
 the normal user journey.
 
+`auto` (default) and `github-draft` use Draft V3.1. Explicit `queue` verifies the frozen exact commit/tree/blob closure,
+then returns `QUEUE_TRANSPORT_DISABLED`, `queueUsable: false` and all authority false before workspace, V3.1/envelope,
+confirmation or write; V3.1 stays unchanged. Never fall back silently: after a future queue POST, reconcile its
+idempotency key and receipt before an explicit adapter switch.
+
 Do not require `PROJECT_PREFLIGHT_VALID` or a trusted external sandbox to create an unreviewed Applicant Draft.
 Local or applicant-supplied test evidence remains unverified until independent review: an existing completed project may create or repair its complete
 `submission.v2.json`, then continue through `prepare-revision`, `application`, and the confirmation-gated Draft transport behind this one command.

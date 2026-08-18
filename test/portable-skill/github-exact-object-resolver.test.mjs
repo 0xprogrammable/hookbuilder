@@ -242,6 +242,69 @@ test("resolves exact regular blobs through bounded exact-object fetch and raw ba
   assert.equal(fs.existsSync(path.dirname(fake.gitDirectory)), false);
 });
 
+test("anonymous fetches retain only bounded enterprise network trust from the inherited environment", async () => {
+  const inherited = {
+    HTTP_PROXY: "http://proxy.example:8080",
+    HTTPS_PROXY: "https://proxy.example:8443",
+    NO_PROXY: "localhost,127.0.0.1",
+    ALL_PROXY: "socks5://proxy.example:1080",
+    http_proxy: "http://lower-proxy.example:8080",
+    https_proxy: "https://lower-proxy.example:8443",
+    no_proxy: "example.invalid",
+    all_proxy: "socks5://lower-proxy.example:1080",
+    SSL_CERT_FILE: "/tmp/corporate-ca.pem",
+    SSL_CERT_DIR: "/tmp/corporate-certs",
+    NODE_EXTRA_CA_CERTS: "/tmp/node-corporate-ca.pem",
+    NODE_USE_ENV_PROXY: "1",
+    GH_TOKEN: "must-not-cross",
+    GITHUB_TOKEN: "must-not-cross",
+    AWS_SECRET_ACCESS_KEY: "must-not-cross",
+    SSH_AUTH_SOCK: "/tmp/must-not-cross",
+    GIT_CONFIG: "/tmp/must-not-cross",
+    GIT_ASKPASS: "/tmp/must-not-cross",
+    NODE_OPTIONS: "--require=/tmp/must-not-cross.cjs"
+  };
+  const prior = Object.fromEntries(Object.keys(inherited).map((name) => [name, process.env[name]]));
+  try {
+    Object.assign(process.env, inherited);
+    const fixture = makeFixture();
+    const fake = createFakeGit(fixture);
+    const resolver = createAnonymousGitHubExactObjectResolverV1({ runGit: fake.runGit });
+
+    await resolver(fixture.request);
+
+    const fetchCalls = fake.calls.filter((call) => parseGitInvocation(call.args).command === "fetch");
+    assert.equal(fetchCalls.length, 2);
+    for (const call of fetchCalls) {
+      for (const [name, value] of Object.entries(inherited).filter(([name]) => (
+        /^(?:(?:ALL|HTTP|HTTPS|NO)_PROXY|(?:all|http|https|no)_proxy)$/u.test(name)
+        || ["SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS", "NODE_USE_ENV_PROXY"].includes(name)
+      ))) {
+        assert.equal(call.env[name], value, name);
+      }
+      for (const name of [
+        "GH_TOKEN", "GITHUB_TOKEN", "AWS_SECRET_ACCESS_KEY", "SSH_AUTH_SOCK",
+        "GIT_CONFIG", "GIT_ASKPASS", "NODE_OPTIONS"
+      ]) {
+        assert.equal(Object.hasOwn(call.env, name), false, name);
+      }
+    }
+
+    const localCalls = fake.calls.filter((call) => parseGitInvocation(call.args).command !== "fetch");
+    assert.ok(localCalls.length > 0);
+    for (const call of localCalls) {
+      for (const name of Object.keys(inherited)) {
+        assert.equal(Object.hasOwn(call.env, name), false, name);
+      }
+    }
+  } finally {
+    for (const [name, value] of Object.entries(prior)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+});
+
 test("fetches every tree-derived blob object id in one bounded stdin batch", async () => {
   const fixture = makeFixture({
     files: [

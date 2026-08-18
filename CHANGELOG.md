@@ -2,6 +2,30 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.11.2 - 2026-08-18
+
+### Added
+
+- The normal Applicant journey can preflight the public Universal Admission V1 discovery contract before it exposes a
+  queue handoff. The contract is bound to Submit a Launch `v1.8.0`, commit
+  `5a150612203b836e62cbc954a3fdef30e30546ca`, tree
+  `193a6d15f830c2ca24213ab1283c2bec3fc22510`, and contract SHA-256
+  `6e7a274a2d4a14376937ab49a7d1462cb2456035139dbcd8417b59226967ce32`.
+
+### Security
+
+- Applicant Draft writes now bind the exact protected Submit base, policy and active-contract observations carried by
+  the fresh confirmation plan. Destination, source, base, head and contract drift fail closed before a write.
+- Queue discovery verifies the immutable contract bytes, declared digest, Git object identities, repository identity,
+  path and release binding before returning any transport coordinates.
+
+### Evidence boundary
+
+- The public queue contract remains `reference-only-disabled`, with no endpoint, audience or trust snapshot and every
+  authority flag set to `false`. The Builder does not enqueue, deliver or retry an Application automatically.
+- Draft and queue preflight do not grant review, acceptance, approval, audit, deployment, Registry, discovery,
+  routing, signing, funds, safety or launch authority.
+
 ## 0.11.1 - 2026-08-17
 
 ### Fixed

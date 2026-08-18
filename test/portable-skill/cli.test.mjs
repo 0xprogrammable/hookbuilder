@@ -5,6 +5,12 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  safeChildEnvironment,
+  safeGitHubTransportEnvironment,
+  safeNetworkEnvironment
+} from "../../skills/programmable-v4-hook-builder/scripts/cli-runtime.mjs";
+import { safeGitEnvironment } from "../../skills/programmable-v4-hook-builder/scripts/repository-root.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(testDirectory, "..", "..", "skills", "programmable-v4-hook-builder");
@@ -28,6 +34,113 @@ const commands = [
   "build-review-target.mjs",
   "template-catalog.mjs"
 ];
+
+test("safe child environments isolate credentials while the GitHub transport keeps bounded host auth discovery", () => {
+  const names = [
+    "NODE_OPTIONS", "NODE_PATH", "GH_HOST", "GH_REPO", "GIT_CONFIG", "SSH_AUTH_SOCK",
+    "GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GH_CONFIG_DIR", "APPDATA", "USERPROFILE",
+    "DBUS_SESSION_BUS_ADDRESS", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "SSL_CERT_FILE", "SSL_CERT_DIR",
+    "NODE_EXTRA_CA_CERTS", "NODE_USE_ENV_PROXY",
+    "SAFE_CHILD_TEST_SENTINEL"
+  ];
+  const prior = Object.fromEntries(names.map((name) => [name, process.env[name]]));
+  try {
+    process.env.NODE_OPTIONS = "--require=/tmp/untrusted.cjs";
+    process.env.NODE_PATH = "/tmp/untrusted-modules";
+    process.env.GH_HOST = "evil.example";
+    process.env.GH_REPO = "evil/repo";
+    process.env.GIT_CONFIG = "/tmp/untrusted-git-config";
+    process.env.SSH_AUTH_SOCK = "/tmp/untrusted-agent";
+    process.env.GH_TOKEN = "gh-token-fixture";
+    process.env.GITHUB_TOKEN = "github-token-fixture";
+    process.env.GH_ENTERPRISE_TOKEN = "enterprise-token-fixture";
+    process.env.GH_CONFIG_DIR = "/tmp/gh-config-fixture";
+    process.env.APPDATA = "C:\\Users\\fixture\\AppData\\Roaming";
+    process.env.USERPROFILE = "C:\\Users\\fixture";
+    process.env.DBUS_SESSION_BUS_ADDRESS = "unix:path=/tmp/dbus-fixture";
+    process.env.HTTP_PROXY = "http://proxy.example:8080";
+    process.env.HTTPS_PROXY = "https://proxy.example:8443";
+    process.env.NO_PROXY = "localhost,127.0.0.1";
+    process.env.SSL_CERT_FILE = "/tmp/corporate-ca.pem";
+    process.env.SSL_CERT_DIR = "/tmp/corporate-certs";
+    process.env.NODE_EXTRA_CA_CERTS = "/tmp/node-corporate-ca.pem";
+    process.env.NODE_USE_ENV_PROXY = "1";
+    process.env.SAFE_CHILD_TEST_SENTINEL = "must-not-cross";
+
+    const environment = safeChildEnvironment();
+    for (const name of [
+      "NODE_OPTIONS", "NODE_PATH", "GH_HOST", "GH_REPO", "GIT_CONFIG", "SSH_AUTH_SOCK",
+      "GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GH_CONFIG_DIR", "APPDATA", "USERPROFILE",
+      "DBUS_SESSION_BUS_ADDRESS", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "SSL_CERT_FILE", "SSL_CERT_DIR",
+      "NODE_EXTRA_CA_CERTS", "NODE_USE_ENV_PROXY",
+      "SAFE_CHILD_TEST_SENTINEL"
+    ]) {
+      assert.equal(Object.hasOwn(environment, name), false, name);
+    }
+    const authenticatedChildEnvironment = safeChildEnvironment({ includeGitHubAuth: true });
+    assert.equal(authenticatedChildEnvironment.GH_TOKEN, "gh-token-fixture");
+    assert.equal(Object.hasOwn(authenticatedChildEnvironment, "GITHUB_TOKEN"), false);
+    assert.equal(Object.hasOwn(authenticatedChildEnvironment, "GH_ENTERPRISE_TOKEN"), false);
+    assert.equal(Object.hasOwn(authenticatedChildEnvironment, "GH_CONFIG_DIR"), false);
+
+    const githubEnvironment = safeGitHubTransportEnvironment();
+    for (const [name, value] of [
+      ["GH_TOKEN", "gh-token-fixture"],
+      ["GH_CONFIG_DIR", "/tmp/gh-config-fixture"],
+      ["APPDATA", "C:\\Users\\fixture\\AppData\\Roaming"],
+      ["USERPROFILE", "C:\\Users\\fixture"],
+      ["DBUS_SESSION_BUS_ADDRESS", "unix:path=/tmp/dbus-fixture"],
+      ["HTTP_PROXY", "http://proxy.example:8080"],
+      ["HTTPS_PROXY", "https://proxy.example:8443"],
+      ["NO_PROXY", "localhost,127.0.0.1"],
+      ["SSL_CERT_FILE", "/tmp/corporate-ca.pem"],
+      ["SSL_CERT_DIR", "/tmp/corporate-certs"],
+      ["NODE_EXTRA_CA_CERTS", "/tmp/node-corporate-ca.pem"],
+      ["NODE_USE_ENV_PROXY", "1"]
+    ]) {
+      assert.equal(githubEnvironment[name], value, name);
+    }
+    for (const name of ["NODE_OPTIONS", "NODE_PATH", "GH_HOST", "GH_REPO", "GIT_CONFIG", "SSH_AUTH_SOCK", "SAFE_CHILD_TEST_SENTINEL"]) {
+      assert.equal(Object.hasOwn(githubEnvironment, name), false, name);
+    }
+    assert.equal(Object.hasOwn(githubEnvironment, "GITHUB_TOKEN"), false);
+    assert.equal(Object.hasOwn(githubEnvironment, "GH_ENTERPRISE_TOKEN"), false);
+    delete process.env.GH_TOKEN;
+    const githubFallbackEnvironment = safeGitHubTransportEnvironment();
+    assert.equal(githubFallbackEnvironment.GITHUB_TOKEN, "github-token-fixture");
+    assert.equal(Object.hasOwn(githubFallbackEnvironment, "GH_ENTERPRISE_TOKEN"), false);
+    process.env.GH_TOKEN = "gh-token-fixture";
+    assert.equal(githubEnvironment.GIT_CONFIG_NOSYSTEM, "1");
+    assert.equal(githubEnvironment.GIT_CONFIG_GLOBAL, process.platform === "win32" ? "NUL" : "/dev/null");
+    assert.equal(githubEnvironment.GIT_CONFIG_KEY_1, "core.hooksPath");
+    assert.equal(githubEnvironment.GIT_TERMINAL_PROMPT, "0");
+
+    const networkEnvironment = safeNetworkEnvironment();
+    assert.equal(networkEnvironment.HTTPS_PROXY, "https://proxy.example:8443");
+    assert.equal(networkEnvironment.NODE_EXTRA_CA_CERTS, "/tmp/node-corporate-ca.pem");
+    assert.equal(networkEnvironment.NODE_USE_ENV_PROXY, "1");
+    for (const name of ["GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GH_CONFIG_DIR", "DBUS_SESSION_BUS_ADDRESS"]) {
+      assert.equal(Object.hasOwn(networkEnvironment, name), false, name);
+    }
+
+    const gitEnvironment = safeGitEnvironment(githubEnvironment);
+    for (const name of [
+      "GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GH_CONFIG_DIR",
+      "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "SSL_CERT_FILE", "SSL_CERT_DIR",
+      "NODE_EXTRA_CA_CERTS", "NODE_USE_ENV_PROXY", "DBUS_SESSION_BUS_ADDRESS"
+    ]) {
+      assert.equal(Object.hasOwn(gitEnvironment, name), false, name);
+    }
+
+    const cliSource = fs.readFileSync(path.join(scriptsRoot, "cli.mjs"), "utf8");
+    assert.match(cliSource, /command === "resolve-contract" && args\.includes\("--network"\)/u);
+  } finally {
+    for (const [name, value] of Object.entries(prior)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+});
 
 test("host-neutral help leads with one Applicant path and keeps every command in opt-in JSON", () => {
   const result = run("cli.mjs", ["--help"]);
@@ -121,7 +234,7 @@ test("host-neutral version reports the bundled standalone release without state"
   const result = run("cli.mjs", ["version"]);
   assert.equal(result.status, 0, result.stdout || result.stderr);
   const output = JSON.parse(result.stdout);
-  assert.equal(output.result.installed.releaseVersion, "0.11.1");
+  assert.equal(output.result.installed.releaseVersion, "0.11.2");
   assert.equal(output.result.installed.publicationState, "release-package");
   assert.equal(output.result.versionSource, "bundled-code-constants");
   assert.equal(output.result.installedStateOverrideUsed, false);

@@ -9,6 +9,12 @@ export const SUBMIT_LAUNCH_INTAKE_CONTRACT = Object.freeze({
     intakeDirectory: "submissions",
     intakeStatusPath: "docs/builder/intake-status.json",
     activeContractManifestPath: ".programmable/active-contract.json",
+    universalAdmissionContract: Object.freeze({
+      path: ".programmable/universal-admission-contract.v1.json",
+      sha256: "sha256:6e7a274a2d4a14376937ab49a7d1462cb2456035139dbcd8417b59226967ce32",
+      revisionObjectId: "5a150612203b836e62cbc954a3fdef30e30546ca",
+      treeObjectId: "193a6d15f830c2ca24213ab1283c2bec3fc22510"
+    }),
     applicationV3SchemaPath: "intake/schemas/public-pr-application-v3.schema.json",
     applicationV3SchemaSha256: "sha256:2d51837bbbfe52672ecca334596243bebcec78e8e0a885d67084dfd98955bcb7",
     launchPolicyPath: "policy/launch-policy.v1.json",
@@ -46,6 +52,8 @@ export const SUBMIT_LAUNCH_INTAKE_DIRECTORY = SUBMIT_LAUNCH_INTAKE_CONTRACT.repo
 export const SUBMIT_LAUNCH_INTAKE_STATUS_PATH = SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.intakeStatusPath;
 export const SUBMIT_LAUNCH_ACTIVE_CONTRACT_MANIFEST_PATH =
   SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.activeContractManifestPath;
+export const SUBMIT_LAUNCH_UNIVERSAL_ADMISSION_CONTRACT =
+  SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.universalAdmissionContract;
 export const SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_PATH =
   SUBMIT_LAUNCH_INTAKE_CONTRACT.repository.applicationV3SchemaPath;
 export const SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_SHA256 =

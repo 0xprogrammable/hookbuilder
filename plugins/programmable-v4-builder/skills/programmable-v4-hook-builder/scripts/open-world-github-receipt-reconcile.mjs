@@ -23,6 +23,7 @@ export function installOpenWorldGitHubReceiptReconcile(runtime) {
   const normalizeOpenWorldFailure = (...args) => runtime.normalizeOpenWorldFailure(...args);
   const persistApplicationV3MutationReceipt = (...args) => runtime.persistApplicationV3MutationReceipt(...args);
   const publicGitHubMutationLedger = (...args) => runtime.publicGitHubMutationLedger(...args);
+  const readApplicationV3CentralContract = (...args) => runtime.readApplicationV3CentralContract(...args);
   const reconcileCreatedApplicationV3Pull = (...args) => runtime.reconcileCreatedApplicationV3Pull(...args);
   const verifyRemoteApplicationV3SourceBindings = (...args) => runtime.verifyRemoteApplicationV3SourceBindings(...args);
   const verifyRemoteApplicationV3V2PolicyBindings = (...args) => runtime.verifyRemoteApplicationV3V2PolicyBindings(...args);
@@ -520,6 +521,14 @@ export function installOpenWorldGitHubReceiptReconcile(runtime) {
       throw new CliFailure("CONFIRMED_PLAN_CHANGED", "the exact source or CI evidence changed after confirmation", { exitCode: 1 });
     }
     await assertConfirmedCentralSnapshot({ applicationPackage, transport, plan });
+    const centralContract = await readApplicationV3CentralContract({
+      transport,
+      commit: plan.target.baseCommit,
+      tree: plan.target.baseTree
+    });
+    if (canonicalJson(centralContract) !== canonicalJson(plan.centralContract)) {
+      throw new CliFailure("CONFIRMED_PLAN_CHANGED", "the exact protected Application V3 contract changed after confirmation", { exitCode: 1 });
+    }
     return { viewer, sources };
   }
 

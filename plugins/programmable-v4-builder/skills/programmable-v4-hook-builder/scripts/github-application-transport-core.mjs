@@ -1,7 +1,7 @@
 import childProcess from "node:child_process";
-import process from "node:process";
 
 import { canonicalJson } from "./submission-core.mjs";
+import { safeGitHubTransportEnvironment } from "./cli-runtime.mjs";
 import { hasForbiddenInvisibleOrBidi } from "./metadata-core.mjs";
 import { parseBoundedStrictJson } from "./strict-json-core.mjs";
 
@@ -565,9 +565,7 @@ function githubTransportFailureDetails({ method, failure, attempt, maximumAttemp
 
 function defaultCommandRunner({ command, args, stdin, timeoutMs, maxOutputBytes }) {
   if (command !== "gh" || !Array.isArray(args)) throw new TypeError("unsupported command runner input");
-  const environment = { ...process.env };
-  delete environment.GH_HOST;
-  delete environment.GH_REPO;
+  const environment = safeGitHubTransportEnvironment();
   environment.GH_PROMPT_DISABLED = "1";
   environment.GH_PAGER = "cat";
   environment.PAGER = "cat";

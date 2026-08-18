@@ -56,7 +56,7 @@ test("canonical inclusion manifest owns the lean installed package boundary", ()
   assert.equal(inventory.repositoryOnly.bytes, repositoryTests.repositoryBytes);
   assert.equal(inventory.repositoryOnly.sourcesVerified, true);
   assert.equal(inventory.repositoryOnly.sources[0].sha256, repositoryTests.repositorySha256);
-  assert.ok(inventory.packageFiles.length <= 630);
+  assert.ok(inventory.packageFiles.length <= 633);
   assert.ok(inventory.packageBytes <= 8_900_000);
 });
 
