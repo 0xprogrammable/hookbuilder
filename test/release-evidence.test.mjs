@@ -5,12 +5,14 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import zlib from "node:zlib";
 import {
   evaluateSizeBudget,
   loadSizeBudget
 } from "../scripts/quality/size-budget.mjs";
 import {
   buildReleaseSpdx,
+  createDeterministicGzipArchive,
   createLogRecord,
   inventorySolidityTests,
   RELEASE_KERNEL_CHECKS,
@@ -93,6 +95,14 @@ function continuedCommands(source, prefix) {
   }
   return commands;
 }
+
+test("release gzip archives use a platform-neutral header", () => {
+  const sourceBytes = Buffer.from("portable release archive\n", "utf8");
+  const archive = createDeterministicGzipArchive(sourceBytes);
+
+  assert.equal(archive.subarray(0, 10).toString("hex"), "1f8b08000000000002ff");
+  assert.deepEqual(zlib.gunzipSync(archive), sourceBytes);
+});
 
 test("active Markdown installs stay pinned to the latest verified public v0.11.0 release", () => {
   const documents = markdownFiles(repositoryRoot).map((absolutePath) => ({

@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import zlib from "node:zlib";
 
 export const RELEASE_KERNEL_EVIDENCE_SCHEMA_VERSION = "1.0.0";
 export const RELEASE_KERNEL_EVIDENCE_KIND = "programmable-reference-kernel-release-evidence";
@@ -72,6 +73,15 @@ export const RELEASE_TOOL_VERSIONS = Object.freeze([
 
 export function sha256(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+export function createDeterministicGzipArchive(value) {
+  const archive = zlib.gzipSync(value, { level: 9, mtime: 0 });
+  if (archive.length < 10 || archive[0] !== 0x1f || archive[1] !== 0x8b || archive[2] !== 0x08) {
+    throw new Error("release archive compressor returned an invalid gzip header");
+  }
+  archive[9] = 0xff;
+  return archive;
 }
 
 export function createLogRecord(value) {
