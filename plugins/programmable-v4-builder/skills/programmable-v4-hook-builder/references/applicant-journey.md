@@ -1,74 +1,67 @@
 # Applicant journey
 
-Use one visible command for a completed Programmable project:
+Use one visible command for a completed project with exact public GitHub source:
 
 ```bash
 node "$SKILL_ROOT/scripts/cli.mjs" submit-project "$REPOSITORY_ROOT"
 ```
 
-It binds a clean public Git revision, resolves the protected Submit Launch compatibility contract, validates one
-Submission V2 subject, prepares or resumes one closed Application V3.1 package, returns one read-only Draft plan, and
-persists the exact safe next action. Reinvoke the same command for status. Never expose the internal phase sequence as
-the normal user journey.
+The command resolves one Current Contract Snapshot, applies the `submit` Stage Plan, selects the current accepted
+Application contract and returns one repair or one safe next action. Reinvoke the same command for status. Do not expose
+internal package assembly, queue experiments or legacy transport as the normal journey.
 
-`auto` (default) and `github-draft` use Draft V3.1. Explicit `queue` verifies the frozen exact commit/tree/blob closure,
-then returns `QUEUE_TRANSPORT_DISABLED`, `queueUsable: false` and all authority false before workspace, V3.1/envelope,
-confirmation or write; V3.1 stays unchanged. Never fall back silently: after a future queue POST, reconcile its
-idempotency key and receipt before an explicit adapter switch.
+## Preconditions
 
-Do not require `PROJECT_PREFLIGHT_VALID` or a trusted external sandbox to create an unreviewed Applicant Draft.
-Local or applicant-supplied test evidence remains unverified until independent review: an existing completed project may create or repair its complete
-`submission.v2.json`, then continue through `prepare-revision`, `application`, and the confirmation-gated Draft transport behind this one command.
+Require:
 
-The persistent workspace is outside every source repository. Its canonical state is
-`applicant-workspace.v1.json`; the Application package, exact confirmation digest, mutation receipt, central base,
-source commit and tree, Draft identity, and safe next action stay bound there. An interrupted confirmed mutation must
-resume from that receipt through GET-only reconciliation. Never repeat an ambiguous write.
+- one clean source commit and tree;
+- one complete tracked project package;
+- exact public GitHub source for every repository in the review target; and
+- only the tests and evidence that actually exist.
 
-## Project discovery
+Do not require `PROJECT_PREFLIGHT_VALID` or a trusted external sandbox to create an unreviewed Applicant Draft. Both are
+optional stronger evidence. Local or applicant-supplied test evidence remains unverified until independent review.
 
-Search only tracked files at the exact source commit. Auto-select exactly one `submission.v2.json`. If several exist,
-use exactly one tracked `applicant-package.v1.json` pointer with this closed shape:
+## Current contract
 
-```json
-{
-  "applicationDraft": "inputs/application-draft.v3.json",
-  "kind": "programmable-applicant-package-pointer",
-  "reviewPackage": "inputs/review-package",
-  "schemaVersion": "1.0.0",
-  "securityAssessment": "inputs/security-assessment.v1.json",
-  "securityEvidenceBindings": "inputs/security-evidence-bindings.v1.json",
-  "submissionV2": "submission/submission.v2.json"
-}
-```
+Use only the manifest-bound snapshot returned by the resolver. Never combine policy, compatibility, schema or
+application artifacts from different commits or trees. Never substitute bundled or remembered requirements.
 
-`submissionV2` is repository-relative and tracked. Every other pointer path is below the outside-source workspace
-`inputs/` directory. The command may call the existing deterministic `prepare-revision`, `application`, and
-`validate-application` implementations when all exact inputs exist. Missing review or security semantics become one
-`NEEDS_PROJECT_PACKAGE` blocker. Do not invent evidence, Fee V2 selection, prototype state, trade capability, source
-roots, repository identities, or test results.
+The `submit` Stage Plan uses the current application contract plus any applicable build requirements. It is not a
+separate policy profile. If the snapshot changes before the Draft plan or write, discard the old plan and resolve again.
 
-The primary source maps to the given repository only when commit and tree match. Each companion maps to
-`$WORKSPACE_ROOT/sources/<repository-ref>` and must independently match its declared commit and tree. A missing mapping
-is one consolidated blocker; it is never a reason to omit that repository.
+The current official-route path uses Application V3.2 with Submission 2.1. A V3.1 package remains a legacy compatibility
+input; it cannot establish the current official route or launch readiness. Continue it through a new linked V3.2
+revision without changing old bytes.
+
+## Results
+
+Return one concise state and its next action:
+
+| State | Next action |
+| --- | --- |
+| `NEEDS_PROJECT_PACKAGE` | Complete the named project or application input. |
+| `POLICY_UNRESOLVED` | Retry after the current contract can be resolved; do not use stale policy. |
+| `INTEGRATION_PENDING` | Add support for the named contract or handler; unrelated stages may continue. |
+| `READY_FOR_CONFIRMATION` | Review the exact plan and authorize only its fresh digest. |
+| `CHECKS_RUNNING` | Wait for the protected checks on the existing Draft. |
+| `REVIEW_REQUIRED` | Wait for independent review of the exact revision. |
+| `CHANGES_REQUESTED` | Repair the named issue and prepare a new bound plan. |
+
+Show at most three root diagnostics. Each diagnostic states what failed, how to repair it, whether a write occurred and
+the safe next command. Keep complete bindings in the machine-readable workspace rather than the visible response.
 
 ## Confirmation boundary
 
-Before any external write, recompute the protected-base compatibility binding and read-only GitHub plan. Show at most
-three diagnostics. Every diagnostic includes `code`, `causeClass`, `summary`, `repair`, `safeNextCommand`, and
-`writePerformed`. Full detail is opt-in with `--verbose`.
+Before any GitHub write, recompute the Current Contract Snapshot, exact source and read-only Draft plan. Require the
+owner to authorize the freshly returned confirmation digest.
 
-Only repeat the command with the exact returned digest:
+The confirmed path may create or update one Draft pull request. It cannot review, approve, mark ready, merge, deploy,
+sign, route, register, promote, launch or move funds. An interrupted or ambiguous write must reconcile its stored receipt
+through read-only observations before any retry.
 
-```bash
-node "$SKILL_ROOT/scripts/cli.mjs" submit-project "$REPOSITORY_ROOT" \
-  --workspace-root "$WORKSPACE_ROOT" \
-  --confirm-external-write "sha256:<exact-current-digest>"
-```
+## Detailed contracts
 
-The confirmed path may create or update one Draft PR. It cannot review, approve, mark ready, merge, deploy, sign,
-launch, route, list, or move funds. `READY_FOR_CONFIRMATION`, `DRAFT_OPEN`, `CHECKS_RUNNING`, `REVIEW_REQUIRED`, and
-`CHANGES_REQUESTED` describe transport only.
-
-Use `advanced` or `legacy` only to diagnose a specific internal failure or reproduce an old contract. They remain
-callable but do not belong in normal Applicant instructions.
+Load [submit-launch-resolver.md](submit-launch-resolver.md) only for snapshot, drift or unsupported-contract diagnosis.
+Load [application-compatibility-and-migration.md](application-compatibility-and-migration.md) only for application-version
+selection or migration. Internal transport details remain in [github-application-v3.md](github-application-v3.md).

@@ -35,13 +35,14 @@ test("default help exposes the one-command Applicant journey and hides internal 
   assert.match(result.stdout, /legacy/u);
 });
 
-test("submit-project exposes one transport-selectable command while auto remains GitHub Draft V3.1", () => {
+test("submit-project keeps queue out of the default transport surface", () => {
   const result = run(["submit-project", "--help"]);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /submit-project <repository-root>/u);
-  for (const option of ["--transport <auto|queue|github-draft>", "--workspace-root <absolute-dir>", "--confirm-external-write <sha256:...>", "--resume", "--verbose"]) {
+  for (const option of ["--transport <auto|github-draft>", "--workspace-root <absolute-dir>", "--confirm-external-write <sha256:...>", "--resume", "--verbose"]) {
     assert.match(result.stdout, new RegExp(escapeRegExp(option), "u"), option);
   }
+  assert.doesNotMatch(result.stdout, /auto\|queue\|github-draft/u);
   assert.doesNotMatch(result.stdout, /--application-package/u);
   assert.doesNotMatch(result.stdout, /--pull-request/u);
 });
@@ -207,37 +208,126 @@ test("resume fails closed when no persistent workspace state exists", () => {
   }
 });
 
-test("actual submit-project compatibility preflight runs before creating a workspace", async () => {
+test("actual submit-project binds one resolver snapshot and blocks confirmed drift before transport mutation", async () => {
   const fixture = createRepository({ validSubmissionPackage: true });
   const workspace = path.join(fixture.root, "workspace");
-  let compatibilityCalls = 0;
+  const snapshot = currentContractSnapshot();
+  let resolverCalls = 0;
+  let planCalls = 0;
+  let recheckCalls = 0;
+  let mutationCalls = 0;
   try {
+    const adapters = {
+      async recoverExistingDraftPackage({ applicationPackagePath }) {
+        fs.mkdirSync(applicationPackagePath, { recursive: true });
+        fs.writeFileSync(path.join(applicationPackagePath, "application.v3.json"), "{}\n");
+        return { found: true, materialized: true };
+      },
+      loadApplicationPackageSnapshot() {
+        return {
+          application: { applicationId: "fixture" },
+          applicationId: "fixture",
+          packageSha256: `sha256:${"1".repeat(64)}`
+        };
+      },
+      bindApplicationSources() { return []; },
+      loadSubmissionDocument() { return {}; },
+      projectRouteState() { return "unresolved"; },
+      async resolveCurrentContract(options) {
+        resolverCalls += 1;
+        assert.equal(options.stage, "submit");
+        assert.equal(options.routeState, "unresolved");
+        return snapshot;
+      },
+      parseApplicationContract(value) {
+        assert.equal(value, snapshot);
+        return { current: true };
+      },
+      validateApplicationContract() { return { valid: true, findings: [] }; },
+      async assertCurrentContract(snapshotBinding) {
+        recheckCalls += 1;
+        assert.deepEqual(snapshotBinding, snapshot.snapshotBinding);
+        throw Object.assign(new Error("protected main moved"), { code: "SUBMIT_LAUNCH_CONTRACT_DRIFT" });
+      },
+      runTransport(args) {
+        if (args[0] === "validate-application") return { ok: true, result: { valid: true } };
+        if (args[0] === "submit" && args.includes("--dry-run")) {
+          planCalls += 1;
+          return {
+            ok: true,
+            result: {
+              action: "submit-plan",
+              applicationId: "fixture",
+              applicationRevision: "1",
+              confirmationDigest: `sha256:${"2".repeat(64)}`,
+              submitLaunchContract: {
+                snapshotSha256: snapshot.snapshotBinding.snapshotSha256,
+                stageSha256: snapshot.projectStage.stageSha256
+              },
+              target: { repository: "0xprogrammable/submit-launch" },
+              externalWrites: []
+            }
+          };
+        }
+        if ((args[0] === "submit" || args[0] === "update") && !args.includes("--dry-run")) {
+          mutationCalls += 1;
+          assert.fail("drift must stop before the transport mutation");
+        }
+        assert.fail(`unexpected transport command ${args.join(" ")}`);
+      }
+    };
     const outcome = await runSubmitProjectJourney({
       repositoryInput: fixture.repository,
       workspaceRoot: workspace,
       confirmation: null,
       resume: false,
       verbose: false
-    }, {
-      async compatibilityPreflight() {
-        compatibilityCalls += 1;
-        return {
-          ok: false,
-          code: "BUILDER_CENTRAL_COMPATIBILITY_MISMATCH",
-          summary: "The exact contracts differ.",
-          repair: "Update and resume."
-        };
-      },
-      atomicWorkspaceWrite() {
-        assert.fail("compatibility mismatch must not persist workspace state");
-      }
-    });
-    assert.equal(outcome.exitCode, 1);
-    assert.equal(outcome.result.state, "INTEGRATION_PENDING");
-    assert.equal(outcome.result.workspace.statePersisted, false);
+    }, adapters);
+    assert.equal(outcome.exitCode, 0);
+    assert.equal(outcome.result.state, "READY_FOR_CONFIRMATION");
     assert.equal(outcome.result.writePerformed, false);
-    assert.equal(compatibilityCalls, 1);
-    assert.equal(fs.existsSync(workspace), false);
+    assert.equal(resolverCalls, 1);
+    assert.equal(planCalls, 1);
+    const state = JSON.parse(fs.readFileSync(path.join(workspace, "applicant-workspace.v1.json"), "utf8"));
+    assert.equal(state.submitLaunch.activeSnapshotSha256, snapshot.snapshotBinding.snapshotSha256);
+    assert.equal(state.submitLaunch.activeStageSha256, snapshot.projectStage.stageSha256);
+    assert.equal(state.transport.plan.submitLaunchContract.snapshotSha256, snapshot.snapshotBinding.snapshotSha256);
+    assert.equal(fs.existsSync(state.submitLaunch.snapshots[0].path), true);
+    assert.equal(fs.existsSync(state.submitLaunch.evaluationHead.path), true);
+    assert.equal(outcome.result.nextAction, outcome.result.safeNextCommand);
+
+    const firstHead = structuredClone(state.submitLaunch.evaluationHead);
+    const firstReceiptBytes = fs.readFileSync(firstHead.path);
+    const drift = await runSubmitProjectJourney({
+      repositoryInput: fixture.repository,
+      workspaceRoot: workspace,
+      confirmation: `sha256:${"2".repeat(64)}`,
+      resume: true,
+      verbose: false
+    }, adapters);
+    assert.equal(drift.exitCode, 1);
+    assert.equal(drift.result.state, "INTEGRATION_PENDING");
+    assert.equal(drift.result.writePerformed, false);
+    assert.equal(drift.result.diagnostics[0].code, "SUBMIT_LAUNCH_CONTRACT_DRIFT");
+    assert.equal(resolverCalls, 2);
+    assert.equal(planCalls, 2);
+    assert.equal(recheckCalls, 1);
+    assert.equal(mutationCalls, 0);
+    assert.deepEqual(fs.readFileSync(firstHead.path), firstReceiptBytes);
+
+    const driftState = JSON.parse(fs.readFileSync(path.join(workspace, "applicant-workspace.v1.json"), "utf8"));
+    const driftHead = driftState.submitLaunch.evaluationHead;
+    assert.equal(driftHead.status, "DRIFT");
+    assert.equal(driftHead.code, "SUBMIT_LAUNCH_CONTRACT_DRIFT");
+    assert.equal(driftHead.sequence, 3);
+    const evaluationDirectory = path.dirname(driftHead.path);
+    const resolvedAgainPath = path.join(
+      evaluationDirectory,
+      `${driftHead.previousEvaluationSha256.slice("sha256:".length)}.json`
+    );
+    const resolvedAgain = JSON.parse(fs.readFileSync(resolvedAgainPath, "utf8"));
+    assert.equal(resolvedAgain.sequence, 2);
+    assert.equal(resolvedAgain.previousEvaluationSha256, firstHead.evaluationSha256);
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
@@ -273,7 +363,7 @@ test("explicit queue binds the protected disabled contract and performs no write
           }
         };
       },
-      async compatibilityPreflight() {
+      async resolveCurrentContract() {
         assert.fail("queue must not fall back to Applicant Compatibility or GitHub Draft");
       },
       atomicWorkspaceWrite() {
@@ -314,7 +404,7 @@ test("explicit queue binds the protected disabled contract and performs no write
   }
 });
 
-test("successful compatibility creates one private persistent workspace before preparation", async () => {
+test("offline package preparation remains available without resolving submit policy", async () => {
   const fixture = createRepository({ validSubmissionPackage: true });
   const workspace = path.join(fixture.root, "workspace");
   let recoveryCalls = 0;
@@ -326,8 +416,8 @@ test("successful compatibility creates one private persistent workspace before p
       resume: false,
       verbose: false
     }, {
-      async compatibilityPreflight() {
-        return { ok: true, binding: { centralBaseCommit: "a".repeat(40), centralBaseTree: "b".repeat(40) } };
+      async resolveCurrentContract() {
+        assert.fail("missing local Application inputs must stop before submit-stage policy resolution");
       },
       async queueContractPreflight() {
         assert.fail("default auto transport must remain the existing GitHub Draft path");
@@ -348,7 +438,8 @@ test("successful compatibility creates one private persistent workspace before p
     assert.equal(fs.statSync(realWorkspace).mode & 0o777, 0o700);
     assert.equal(recoveryCalls, 1);
     const state = JSON.parse(fs.readFileSync(path.join(realWorkspace, "applicant-workspace.v1.json"), "utf8"));
-    assert.deepEqual(state.compatibility, { centralBaseCommit: "a".repeat(40), centralBaseTree: "b".repeat(40) });
+    assert.equal(state.compatibility, null);
+    assert.equal(state.submitLaunch, null);
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
@@ -655,6 +746,52 @@ test("repository prose stays inert when no exact Git package exists", () => {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+function currentContractSnapshot() {
+  return {
+    schemaVersion: "programmable.submit-launch-contract-snapshot.v1",
+    snapshotBinding: {
+      repository: "0xprogrammable/submit-launch",
+      numericRepositoryId: "1320171831",
+      branch: "main",
+      baseCommit: "a".repeat(40),
+      baseTree: "b".repeat(40),
+      compatibility: { path: ".programmable/applicant-compatibility.v2.json" },
+      snapshotSha256: `sha256:${"3".repeat(64)}`
+    },
+    currentness: {
+      status: "CURRENT",
+      refCheckedBefore: true,
+      refCheckedAfter: true,
+      retryCount: 0,
+      cacheStatus: "MISS"
+    },
+    applicationContract: {
+      current: { contractId: "public-pr-application-v3.2" },
+      legacy: [{ contractId: "public-pr-application-v3.1" }],
+      supportingContracts: {},
+      minimumBuilderProtocolVersion: "1.0.0"
+    },
+    projectStage: {
+      schemaVersion: "programmable.submit-launch-stage-plan.v1",
+      stage: "submit",
+      profileId: "build",
+      profileEnabled: true,
+      routeState: "unresolved",
+      status: "INTEGRATION_PENDING",
+      requirementIds: [],
+      requirements: [],
+      unknownHandlerIds: [],
+      stageSha256: `sha256:${"4".repeat(64)}`
+    },
+    authority: {
+      approvalGranted: false,
+      launchAuthorized: false,
+      promotionAuthorized: false,
+      reviewAuthorized: false
+    }
+  };
+}
 
 function createRepository({ submissionPaths = [], pointer = null, validSubmissionPackage = false } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "programmable-submit-project-"));

@@ -4,10 +4,29 @@
   "canonicalJsonProfile": "urn:programmable:canonical-json:2.0.0",
   "source": {
     "path": "references/contract-registry-source-v1.json",
-    "byteLength": 24983,
-    "sha256": "sha256:1742c4a6a7c0fa21c2d30c0a4330b597cd89432c1830dc743ea64d2112f3e1bb"
+    "byteLength": 26904,
+    "sha256": "sha256:dbf56674309d6d346ae7e6a121a53aba97280829c6b1bed12714b0babd835a23"
   },
   "contracts": [
+    {
+      "contractId": "applicant-compatibility-v2",
+      "lifecycle": "active",
+      "payloadDigestProfile": "contract-defined",
+      "schema": {
+        "id": "urn:programmable:applicant-compatibility:2.0.0",
+        "path": "references/applicant-compatibility-v2.schema.json",
+        "byteLength": 7579,
+        "sha256": "sha256:01de8cd2e99c1e7d76b701377b42ee33df492bcebdb869d6d71a3d2a148a9df8"
+      },
+      "validator": {
+        "modulePath": "scripts/applicant-compatibility-contract-core.mjs",
+        "exportName": "parseApplicantCompatibilityContract",
+        "mode": "package-semantic",
+        "moduleByteLength": 17702,
+        "moduleSha256": "sha256:76834b3a8d86c979f5d5b9c3bc707c3f8ffe267bf32e14385f572a814d238795",
+        "closureSha256": "sha256:1eeb203182465cefedf6142996e2d64fd26f89573e1169f5d619fae3f46045f2"
+      }
+    },
     {
       "contractId": "application-api-v1",
       "lifecycle": "active",
@@ -43,7 +62,7 @@
         "mode": "direct",
         "moduleByteLength": 18569,
         "moduleSha256": "sha256:9bbef0b3c9428dd66e584da7fe28a0ee6ae0e3249af4e94cc659cd9a50ebdcfe",
-        "closureSha256": "sha256:0806976f22c887d7875ad115926dc99529595e269090ea708353109c1e7d1f73"
+        "closureSha256": "sha256:b925cb2aaba50b267fa934228a44d48e5b6a7755a4d88c63eacc0217b3e2a9dc"
       }
     },
     {
@@ -522,6 +541,25 @@
       }
     },
     {
+      "contractId": "open-world-submission-v2-1",
+      "lifecycle": "active",
+      "payloadDigestProfile": "contract-defined",
+      "schema": {
+        "id": "urn:programmable:v4-hook-submission:2.1.0",
+        "path": "references/open-world-submission-v2.1.schema.json",
+        "byteLength": 32125,
+        "sha256": "sha256:fb30065f906903530ba74cb0a20cd398d36bb387143cb0bae30326450e88ea23"
+      },
+      "validator": {
+        "modulePath": "scripts/open-world-v2-contract-adapter.mjs",
+        "exportName": "validateOpenWorldSubmissionContract",
+        "mode": "package-semantic",
+        "moduleByteLength": 13989,
+        "moduleSha256": "sha256:3b14d900b1c4ef9db41eedbeec5276fc4e6fc88c139d24f41402c676889f380f",
+        "closureSha256": "sha256:cbdafb0340c8c8b1fbe89a3676f10565ca6cdae058dc38e571772433fa1d2fd9"
+      }
+    },
+    {
       "contractId": "permit2-launch-witness-v1",
       "lifecycle": "active",
       "payloadDigestProfile": "contract-defined",
@@ -731,6 +769,25 @@
       }
     },
     {
+      "contractId": "public-pr-application-v3-2",
+      "lifecycle": "active",
+      "payloadDigestProfile": "contract-defined",
+      "schema": {
+        "id": "https://programmable.money/schemas/public-pr-application-v3.2.json",
+        "path": "references/public-pr-application-v3.2.schema.json",
+        "byteLength": 43241,
+        "sha256": "sha256:69fd860c82c0426d853f96fbf8df53c70de0e824a258da940a5ef09a68c72988"
+      },
+      "validator": {
+        "modulePath": "scripts/application-v3-contract-adapter.mjs",
+        "exportName": "validateApplicationContractDocument",
+        "mode": "package-semantic",
+        "moduleByteLength": 18969,
+        "moduleSha256": "sha256:950300a2ba1835b1be2a9ff3d0a33a2ada0dfdbeea340a6b106e358cc5911378",
+        "closureSha256": "sha256:61e5c38e4ae769f516a9f36c1af4a8a0c2517aae3f503456b4de5acd0d71e116"
+      }
+    },
+    {
       "contractId": "public-pr-application-v3",
       "lifecycle": "frozen",
       "payloadDigestProfile": "contract-defined",
@@ -765,7 +822,7 @@
         "mode": "direct",
         "moduleByteLength": 1070,
         "moduleSha256": "sha256:c4561640a691f3cf383ad5b5dd04d58bd9a809e93a3a462e36e8cfe564f5d6c4",
-        "closureSha256": "sha256:968690bf3e6c5cff0c349a2b3ce903685435ea1bd86326460f9692477c1605af"
+        "closureSha256": "sha256:48e8842e7f4f8f6b24da2dae9464daef02979087302983d8e94a5626964d1820"
       }
     },
     {
@@ -879,7 +936,7 @@
         "mode": "direct",
         "moduleByteLength": 41278,
         "moduleSha256": "sha256:223f46d7423bb3507e53b3950e9e384c710d386f6d4c16221e7543c20fbb9f17",
-        "closureSha256": "sha256:712ca7b39c909635d08a16fcb9e9897d1da86b5f94bf770c22c816e84b40f41b"
+        "closureSha256": "sha256:77b8f80260a239238ca4604c0dd59c28fbfaa2b1851eb89c82b54ee1a92e8674"
       }
     },
     {
@@ -997,6 +1054,25 @@
       }
     },
     {
+      "contractId": "trade-capability-manifest-v2",
+      "lifecycle": "active",
+      "payloadDigestProfile": "contract-defined",
+      "schema": {
+        "id": "urn:programmable:trade-capability-manifest:2.0.0",
+        "path": "references/trade-capability-manifest-v2.schema.json",
+        "byteLength": 45531,
+        "sha256": "sha256:a466baae3111a33cc33a2651b13f37da7dcc2d13d2cedce993896d289a82950f"
+      },
+      "validator": {
+        "modulePath": "scripts/open-world-v2-contract-adapter.mjs",
+        "exportName": "validateTradeCapabilityManifestV2",
+        "mode": "direct",
+        "moduleByteLength": 13989,
+        "moduleSha256": "sha256:3b14d900b1c4ef9db41eedbeec5276fc4e6fc88c139d24f41402c676889f380f",
+        "closureSha256": "sha256:cbdafb0340c8c8b1fbe89a3676f10565ca6cdae058dc38e571772433fa1d2fd9"
+      }
+    },
+    {
       "contractId": "upstream-reviewed-drift-v1",
       "lifecycle": "active",
       "payloadDigestProfile": "contract-defined",
@@ -1057,9 +1133,32 @@
   "validatorClosures": [
     {
       "profile": "static-local-esm-import-closure-v1",
+      "rootModulePath": "scripts/applicant-compatibility-contract-core.mjs",
+      "moduleCount": 2,
+      "totalByteLength": 25348,
+      "modules": [
+        {
+          "path": "scripts/applicant-compatibility-contract-core.mjs",
+          "byteLength": 17702,
+          "sha256": "sha256:76834b3a8d86c979f5d5b9c3bc707c3f8ffe267bf32e14385f572a814d238795",
+          "localImports": [
+            "scripts/strict-json-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/strict-json-core.mjs",
+          "byteLength": 7646,
+          "sha256": "sha256:b8f6cef52c8c9c6bb1e61331095c12bf69bd4a0b60ff0612c93331be9d6d5478",
+          "localImports": []
+        }
+      ],
+      "closureSha256": "sha256:1eeb203182465cefedf6142996e2d64fd26f89573e1169f5d619fae3f46045f2"
+    },
+    {
+      "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/application-handoff-core.mjs",
       "moduleCount": 10,
-      "totalByteLength": 97038,
+      "totalByteLength": 98543,
       "modules": [
         {
           "path": "scripts/application-handoff-core.mjs",
@@ -1128,8 +1227,8 @@
         },
         {
           "path": "scripts/submit-launch-policy-contract.mjs",
-          "byteLength": 15176,
-          "sha256": "sha256:0b588c0770dfe9de8a64213f20f83bd13a7952862ac67f3a739007ce1280ef7f",
+          "byteLength": 16681,
+          "sha256": "sha256:9f94ca7e8baf636010db619123ce3e5ee9ed4ef22525cfd6fea9a8d171fe533c",
           "localImports": [
             "scripts/registry-intake-contract.mjs",
             "scripts/restricted-json-schema-core.mjs",
@@ -1137,7 +1236,1070 @@
           ]
         }
       ],
-      "closureSha256": "sha256:0806976f22c887d7875ad115926dc99529595e269090ea708353109c1e7d1f73"
+      "closureSha256": "sha256:b925cb2aaba50b267fa934228a44d48e5b6a7755a4d88c63eacc0217b3e2a9dc"
+    },
+    {
+      "profile": "static-local-esm-import-closure-v1",
+      "rootModulePath": "scripts/application-v3-contract-adapter.mjs",
+      "moduleCount": 111,
+      "totalByteLength": 1664828,
+      "modules": [
+        {
+          "path": "scripts/application-dependency-core.mjs",
+          "byteLength": 9348,
+          "sha256": "sha256:665b12134edf84385bcc32156b98a88c1f49ee884353458e81cad78ab76c6839",
+          "localImports": []
+        },
+        {
+          "path": "scripts/application-v3-contract-adapter.mjs",
+          "byteLength": 18969,
+          "sha256": "sha256:950300a2ba1835b1be2a9ff3d0a33a2ada0dfdbeea340a6b106e358cc5911378",
+          "localImports": [
+            "scripts/public-pr-application-v3-core.mjs",
+            "scripts/submission-core.mjs",
+            "scripts/submit-launch-contract-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/builder-template-contract.mjs",
+          "byteLength": 24610,
+          "sha256": "sha256:609c7542c2ae1c1efba076b256feaecbf54192866b2ce521fd201a0c440fd7ff",
+          "localImports": [
+            "scripts/metadata-core.mjs",
+            "scripts/template-catalog-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/canonical-json-core.mjs",
+          "byteLength": 6347,
+          "sha256": "sha256:b51c529d7777876ecd88bfd70e721b805dcf4c17944b45659e0a218f8dcc1cde",
+          "localImports": []
+        },
+        {
+          "path": "scripts/canonical-json-legacy-adapters.mjs",
+          "byteLength": 1891,
+          "sha256": "sha256:d8db558bf1300fe9953319e01699875adc34c4c4b683f03595abc1074c8186d7",
+          "localImports": []
+        },
+        {
+          "path": "scripts/cli-args.mjs",
+          "byteLength": 4027,
+          "sha256": "sha256:6f2aa7dc35426ed77759aac21553f3965b4ff60c40fec5d884e07eb4e6f48df1",
+          "localImports": []
+        },
+        {
+          "path": "scripts/cli-runtime.mjs",
+          "byteLength": 6437,
+          "sha256": "sha256:6c3adbaa5536e94219900b51d913f659bb780be83fbb52272f4537c5515ab272",
+          "localImports": [
+            "scripts/strict-json-core.mjs",
+            "scripts/submission-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/dependency-pointer-core.mjs",
+          "byteLength": 22365,
+          "sha256": "sha256:3e896e084728ea15b364e0af38a805bddce93ba57aae8782647dc43b013ddf4f",
+          "localImports": []
+        },
+        {
+          "path": "scripts/evm-encoding-core.mjs",
+          "byteLength": 19788,
+          "sha256": "sha256:2b50e7dd5bf9e0377fbd4905e81af36ad1c5ab442869cc775f5fec5751f0d692",
+          "localImports": []
+        },
+        {
+          "path": "scripts/fee-conformance-core.mjs",
+          "byteLength": 20230,
+          "sha256": "sha256:3ee922153f273418cc0c0ef6276ab3e6d365bd3047cbc2e2076aab2491dc4b2f",
+          "localImports": [
+            "scripts/canonical-json-core.mjs",
+            "scripts/fee-conformance-validation-core.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/strict-json-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/fee-conformance-receipt-v1-core.mjs",
+          "byteLength": 27989,
+          "sha256": "sha256:d80e7a9321521d0df9ad914cdfc1203dbb3fc6042fcb492ce3e931e4acfbe861",
+          "localImports": [
+            "scripts/canonical-json-legacy-adapters.mjs",
+            "scripts/fee-conformance-v1-constants.mjs",
+            "scripts/fee-conformance-vector-set-v1-core.mjs",
+            "scripts/fee-policy-v2-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/fee-conformance-v1-constants.mjs",
+          "byteLength": 2930,
+          "sha256": "sha256:c3cb4814e15f0a8f3e4018ba9ae6cf81ca8e28be9d2a1880b00c678c2ed9c95d",
+          "localImports": []
+        },
+        {
+          "path": "scripts/fee-conformance-validation-core.mjs",
+          "byteLength": 23337,
+          "sha256": "sha256:ab3f9e845f2fa0d38047ef26a262f541a0b3bd9945714474aa963e547050e113",
+          "localImports": []
+        },
+        {
+          "path": "scripts/fee-conformance-vector-set-v1-core.mjs",
+          "byteLength": 29995,
+          "sha256": "sha256:471a73b5077addc26e2f3f3c4fa23a978936596f802624045afe8c0e1652c90e",
+          "localImports": [
+            "scripts/canonical-json-legacy-adapters.mjs",
+            "scripts/fee-conformance-v1-constants.mjs",
+            "scripts/fee-policy-v2-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/fee-policy-v2-contract.mjs",
+          "byteLength": 10652,
+          "sha256": "sha256:223997d9ee4bde30bd4ab3d341da648b6ae69774f367bb00b65453262969c107",
+          "localImports": []
+        },
+        {
+          "path": "scripts/fee-policy-v2-core.mjs",
+          "byteLength": 22671,
+          "sha256": "sha256:b340fce7b6d74a92684511f8704be388042d9ed35715017119dc1bc45ee429ef",
+          "localImports": [
+            "scripts/fee-policy-v2-contract.mjs"
+          ]
+        },
+        {
+          "path": "scripts/json-schema-keyword-contract.mjs",
+          "byteLength": 3616,
+          "sha256": "sha256:64244b924f1fd9421c6997d83f7ac2877028caee47744d97dc37a04465a617d9",
+          "localImports": []
+        },
+        {
+          "path": "scripts/metadata-core.mjs",
+          "byteLength": 3928,
+          "sha256": "sha256:6751e83b8587851201318a0d314515c685851104f9335e946d235027f459437f",
+          "localImports": []
+        },
+        {
+          "path": "scripts/no-custom-hook-route-core.mjs",
+          "byteLength": 5617,
+          "sha256": "sha256:b106fe16deb711d07f9d6b00af24af7b4ce491cfcd451eb303d2463022c97e18",
+          "localImports": [
+            "scripts/submission-value-core.mjs",
+            "scripts/token-mechanics-policy-core.mjs",
+            "scripts/token-mechanics-resolution-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/normative-policy-core.mjs",
+          "byteLength": 4265,
+          "sha256": "sha256:df90ab9d9e544320cb6d39e14c3a501ee2818c1d504292a68711241466c41f92",
+          "localImports": []
+        },
+        {
+          "path": "scripts/official-launchpad-core.mjs",
+          "byteLength": 21044,
+          "sha256": "sha256:6a9c32bafc2da12a461bbd3754d3fb4e87d17b46644ec58f611190a354038a3d",
+          "localImports": []
+        },
+        {
+          "path": "scripts/open-world-security-assessment.mjs",
+          "byteLength": 10281,
+          "sha256": "sha256:fec85d7733cee92d543ba1c0471f2f558234692645298a14b636ff5c3a695186",
+          "localImports": [
+            "scripts/open-world-security-constants.mjs",
+            "scripts/open-world-security-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-automated.mjs",
+          "byteLength": 10698,
+          "sha256": "sha256:64a369fb0faccbd8a001d607a5865cb314f0907107273cad2e6b48d6b2af047d",
+          "localImports": [
+            "scripts/open-world-security-constants.mjs",
+            "scripts/open-world-security-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-constants.mjs",
+          "byteLength": 8472,
+          "sha256": "sha256:1c48e5b3e01e4ee978fd84ba246f74ac26103b23963d1aced044cb480c5d9081",
+          "localImports": []
+        },
+        {
+          "path": "scripts/open-world-security-core.mjs",
+          "byteLength": 6992,
+          "sha256": "sha256:9a19c057d6a81eacdbfa402ca88e5ecdc5d6b49a1f8cc5154dd61678b03b241d",
+          "localImports": [
+            "scripts/open-world-security-assessment.mjs",
+            "scripts/open-world-security-automated.mjs",
+            "scripts/open-world-security-constants.mjs",
+            "scripts/open-world-security-exit-liveness.mjs",
+            "scripts/open-world-security-privileged-value.mjs",
+            "scripts/open-world-security-randomness-game.mjs",
+            "scripts/open-world-security-shared.mjs",
+            "scripts/open-world-security-solvency.mjs",
+            "scripts/open-world-security-v4.mjs",
+            "scripts/open-world-security-validation.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-exit-liveness.mjs",
+          "byteLength": 21852,
+          "sha256": "sha256:89a7e3d53bb081f0c1c1a5819a7b83e73e8bf1436039ce287fefd09b357274b2",
+          "localImports": [
+            "scripts/open-world-security-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-privileged-value.mjs",
+          "byteLength": 10075,
+          "sha256": "sha256:6b7912a72aaae6186763548829a4baa488d2dbc9d3d99e0f714c75dfc703f855",
+          "localImports": [
+            "scripts/open-world-security-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-randomness-game.mjs",
+          "byteLength": 17150,
+          "sha256": "sha256:5bee6d8f71c070ed16ea78ac6898fc90cb27e652e3388936dbbc2ae9f6aa7d60",
+          "localImports": [
+            "scripts/open-world-security-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-shared.mjs",
+          "byteLength": 6366,
+          "sha256": "sha256:87c5e29fbd6cc41d2d9ec6e7cb5d2a1c6a539b836e4ed6d5a489812eb0d37857",
+          "localImports": [
+            "scripts/open-world-security-constants.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-solvency.mjs",
+          "byteLength": 10213,
+          "sha256": "sha256:b384d30aceae9c13800b0bc63e502cc781d60f51b41df9054d4bbf415e9b285d",
+          "localImports": [
+            "scripts/open-world-security-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-v4.mjs",
+          "byteLength": 9303,
+          "sha256": "sha256:9e433ded4b9719cbf898a5ee996df3646746fcec4fad2af3cf6b1e6f37b8e2a7",
+          "localImports": [
+            "scripts/open-world-security-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-validation.mjs",
+          "byteLength": 22360,
+          "sha256": "sha256:5153c754900b235cbd9fd3ede13efde28d45ec9e4e4930f11f090c0967ab7033",
+          "localImports": [
+            "scripts/open-world-security-automated.mjs",
+            "scripts/open-world-security-constants.mjs",
+            "scripts/open-world-security-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-contracts.mjs",
+          "byteLength": 12582,
+          "sha256": "sha256:7a70598779db1f26cc34c5fcdd6d9fb76fc06ca8dc77492a6e17c40766ecdee5",
+          "localImports": [
+            "scripts/fee-conformance-v1-constants.mjs",
+            "scripts/fee-policy-v2-contract.mjs",
+            "scripts/open-world-v2-primitives.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-core.mjs",
+          "byteLength": 1046,
+          "sha256": "sha256:9a2045be9c3cdb73cb4ba3a17ce8d3d60bce1a8836ad069a7b6ef55e38cca492",
+          "localImports": [
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-draft-core.mjs",
+            "scripts/open-world-v2-package-io.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/open-world-v2-validation-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-draft-core.mjs",
+          "byteLength": 49345,
+          "sha256": "sha256:08c241c487678189af173507c1da76fb00cf87298195c95aac0868275ef2a79d",
+          "localImports": [
+            "scripts/canonical-json-core.mjs",
+            "scripts/evm-encoding-core.mjs",
+            "scripts/fee-conformance-receipt-v1-core.mjs",
+            "scripts/fee-conformance-vector-set-v1-core.mjs",
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/open-world-v2-validation-core.mjs",
+            "scripts/trade-capability-manifest-core.mjs",
+            "scripts/v4-hook-semantic-contract-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-extension-schema-core.mjs",
+          "byteLength": 10806,
+          "sha256": "sha256:0959308729990c74c99dca5da429c8c6ed3a59696f698ddca5a55044ceaae7b4",
+          "localImports": [
+            "scripts/open-world-v2-extension-schema-inspection.mjs",
+            "scripts/open-world-v2-primitives.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-extension-schema-inspection.mjs",
+          "byteLength": 12259,
+          "sha256": "sha256:a4f0804ee0027203e7259cac5d61647430f01cfe40587aa17a82fe426497b66f",
+          "localImports": [
+            "scripts/json-schema-keyword-contract.mjs",
+            "scripts/open-world-v2-primitives.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-package-io.mjs",
+          "byteLength": 14930,
+          "sha256": "sha256:f5ea1dde75abf607bde3d4f09de74b0cd237927cff36e8b5de28762e16407994",
+          "localImports": [
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/strict-json-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-primitives.mjs",
+          "byteLength": 12203,
+          "sha256": "sha256:f0216c4f0cbfc256669ed8ebbcc61e90ab8b07d632389c203d293f496fd6394a",
+          "localImports": []
+        },
+        {
+          "path": "scripts/open-world-v2-privacy-core.mjs",
+          "byteLength": 3235,
+          "sha256": "sha256:3e796952f333044d0ee463fbf2ef63b53456dc164598416c5d65fe98c84004e2",
+          "localImports": [
+            "scripts/open-world-v2-primitives.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-validation-core.mjs",
+          "byteLength": 5895,
+          "sha256": "sha256:d7b4db697607b5f32ac0950d26954ae125ad68f931630f5442013dfbc3d3dfa7",
+          "localImports": [
+            "scripts/cli-runtime.mjs",
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-package-io.mjs",
+            "scripts/open-world-v2-validation-fee.mjs",
+            "scripts/open-world-v2-validation-graph.mjs",
+            "scripts/open-world-v2-validation-intake.mjs",
+            "scripts/open-world-v2-validation-intent.mjs",
+            "scripts/open-world-v2-validation-report.mjs",
+            "scripts/open-world-v2-validation-runtime.mjs",
+            "scripts/strict-json-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-validation-fee.mjs",
+          "byteLength": 18051,
+          "sha256": "sha256:a60f0eaba8417cfc28204272007803225f4eb808a04f6e8a3f81a3ace20524d6",
+          "localImports": [
+            "scripts/fee-conformance-receipt-v1-core.mjs",
+            "scripts/fee-policy-v2-core.mjs",
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-primitives.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-validation-graph.mjs",
+          "byteLength": 26967,
+          "sha256": "sha256:78c89a76fe1cfb827d3db032ac3c51a35ad740845190199e4e143a9eb3300956",
+          "localImports": [
+            "scripts/fee-policy-v2-core.mjs",
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/v4-hook-semantic-contract-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-validation-intake.mjs",
+          "byteLength": 36464,
+          "sha256": "sha256:dfbce567aa40df3da7df2ba350af18bd079e2325d51ed4112940479ff48da1e3",
+          "localImports": [
+            "scripts/open-world-security-core.mjs",
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-extension-schema-core.mjs",
+            "scripts/open-world-v2-package-io.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/trade-capability-manifest-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-validation-intent.mjs",
+          "byteLength": 22259,
+          "sha256": "sha256:b47777e964c37cca42400817256f97a2db6ee69fb8458690a58e71752bf14a66",
+          "localImports": [
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-extension-schema-core.mjs",
+            "scripts/open-world-v2-package-io.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/open-world-v2-privacy-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-validation-report.mjs",
+          "byteLength": 11622,
+          "sha256": "sha256:f0805cc9e1bbd12ac8027ba9a17d24d5fa7853f77bb85c10316b59abfe7f62e7",
+          "localImports": [
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-primitives.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-validation-runtime.mjs",
+          "byteLength": 10448,
+          "sha256": "sha256:83cec59217d5aff23c39494046160be2a829e66c32bef60bd70dcf5cf08b53af",
+          "localImports": [
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-extension-schema-core.mjs",
+            "scripts/open-world-v2-package-io.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/strict-json-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/package-dependency-contract.mjs",
+          "byteLength": 5747,
+          "sha256": "sha256:089604bf1321732b3e647b7ef7de521e4fac8e5d087a7e4ecb09cd9c56bce628",
+          "localImports": []
+        },
+        {
+          "path": "scripts/project-surfaces-core.mjs",
+          "byteLength": 28647,
+          "sha256": "sha256:f9aceaf431d309846e066ee334415174a50ccac55669d5186ddbc46dd3a52922",
+          "localImports": []
+        },
+        {
+          "path": "scripts/public-claims-analysis-primitives.mjs",
+          "byteLength": 642,
+          "sha256": "sha256:158c6f41e56fc194e87536cd5faff387519c3ebc88cd3bafdf7a94f870c13d06",
+          "localImports": []
+        },
+        {
+          "path": "scripts/public-claims-core.mjs",
+          "byteLength": 181,
+          "sha256": "sha256:fcc910fd0b7d8178fab244e8651403f146c5aab7ab31ce8d0c4b75fd19927d0f",
+          "localImports": [
+            "scripts/public-claims-rules.mjs",
+            "scripts/public-claims-source-analysis.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-claims-format-extractors.mjs",
+          "byteLength": 8958,
+          "sha256": "sha256:8005e5c6bb9cef35d2be960a924460648f62818a5b84ae3258435f088c1d1c82",
+          "localImports": [
+            "scripts/strict-json-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-claims-javascript-core.mjs",
+          "byteLength": 5371,
+          "sha256": "sha256:8fa28ff59c63564fc4c8aaf065b34f248c5dc08c7401f92d60c95eb688a07929",
+          "localImports": [
+            "scripts/public-claims-analysis-primitives.mjs",
+            "scripts/public-claims-javascript-evaluator.mjs",
+            "scripts/public-claims-javascript-primitives.mjs",
+            "scripts/public-claims-javascript-tokenizer.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-claims-javascript-evaluator.mjs",
+          "byteLength": 9471,
+          "sha256": "sha256:4a3d40a30425f071f83320ba7497275fe8933aa91dd1f93c821e5eea79f6e4ec",
+          "localImports": [
+            "scripts/public-claims-javascript-primitives.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-claims-javascript-primitives.mjs",
+          "byteLength": 1335,
+          "sha256": "sha256:f4b890af857171f4e461d704d255cc8c02e9c2a35179d8abd7dc5a27c8d55be6",
+          "localImports": []
+        },
+        {
+          "path": "scripts/public-claims-javascript-tokenizer.mjs",
+          "byteLength": 8458,
+          "sha256": "sha256:c4f88c2073cacf6118fcd327a99e34830aa5b81b566e58657d57158d8cdbdf5f",
+          "localImports": [
+            "scripts/public-claims-javascript-evaluator.mjs",
+            "scripts/public-claims-javascript-primitives.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-claims-rules.mjs",
+          "byteLength": 11950,
+          "sha256": "sha256:1895a37c9f14ba002b6e66c26d8accd37d30de7714dde9c2188a0918a8d7c8b4",
+          "localImports": [
+            "scripts/metadata-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-claims-source-analysis.mjs",
+          "byteLength": 1724,
+          "sha256": "sha256:e1c6dd1627fbbf761bc56b7238a8a0d0ac33c81a41888ec3a49795407717343a",
+          "localImports": [
+            "scripts/public-claims-analysis-primitives.mjs",
+            "scripts/public-claims-format-extractors.mjs",
+            "scripts/public-claims-javascript-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-core.mjs",
+          "byteLength": 1117,
+          "sha256": "sha256:c63c5abcec5282b6f9d7728396f58a0b553234f88b7e10041dda218a087a5ed0",
+          "localImports": [
+            "scripts/public-pr-application-v3-generation.mjs",
+            "scripts/public-pr-application-v3-local-source.mjs",
+            "scripts/public-pr-application-v3-privacy.mjs",
+            "scripts/public-pr-application-v3-shared.mjs",
+            "scripts/public-pr-application-v3-source-contract.mjs",
+            "scripts/public-pr-application-v3-validation.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-generation.mjs",
+          "byteLength": 39074,
+          "sha256": "sha256:74827138085409d71952ab0c293fdefeb551bec69e126821848960bb98ea3076",
+          "localImports": [
+            "scripts/application-dependency-core.mjs",
+            "scripts/open-world-security-core.mjs",
+            "scripts/open-world-v2-core.mjs",
+            "scripts/public-pr-application-v3-privacy.mjs",
+            "scripts/public-pr-application-v3-shared.mjs",
+            "scripts/public-pr-application-v3-source-validation.mjs",
+            "scripts/public-pr-application-v3-validation.mjs",
+            "scripts/submission-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-local-source.mjs",
+          "byteLength": 33016,
+          "sha256": "sha256:6e682bbdb357592112c81d085f624b12ef42f3e755746d08b743dbe5c83ec283",
+          "localImports": [
+            "scripts/dependency-pointer-core.mjs",
+            "scripts/public-pr-application-v3-shared.mjs",
+            "scripts/public-pr-application-v3-source-contract.mjs",
+            "scripts/public-pr-application-v3-source-git.mjs",
+            "scripts/raw-git-integrity-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-privacy.mjs",
+          "byteLength": 18852,
+          "sha256": "sha256:1b3a4d17b45252269a111f4375d1f52d15c7b9ee572844cc9b67b80bd5972fc9",
+          "localImports": [
+            "scripts/dependency-pointer-core.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/public-pr-application-v3-shared.mjs",
+            "scripts/strict-json-core.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-shared.mjs",
+          "byteLength": 6320,
+          "sha256": "sha256:2602f789cc5a769ab397e9176088ef54297307f7b108a91f0fb98e2f3f2fe12e",
+          "localImports": [
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-source-contract.mjs",
+          "byteLength": 8609,
+          "sha256": "sha256:7deec5fda8f1c4edb69f33a59f0466fe9141fe47cee601e1fb3db24a1c2fd07d",
+          "localImports": [
+            "scripts/open-world-v2-core.mjs",
+            "scripts/public-pr-application-v3-shared.mjs",
+            "scripts/public-pr-application-v3-source-git.mjs",
+            "scripts/submission-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-source-git.mjs",
+          "byteLength": 28085,
+          "sha256": "sha256:0ab9dbb23485eabad21312601280a563dead81c5ed1e900912d3c5e2a0b1d945",
+          "localImports": [
+            "scripts/public-pr-application-v3-shared.mjs",
+            "scripts/repository-root.mjs",
+            "scripts/strict-json-core.mjs",
+            "scripts/submission-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-source-validation.mjs",
+          "byteLength": 15908,
+          "sha256": "sha256:5f85ade5b7f04d8d6bba7649001f13c58c88539bee536f84f9c66d1b4426b809",
+          "localImports": [
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/public-pr-application-v3-shared.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-validation.mjs",
+          "byteLength": 28160,
+          "sha256": "sha256:b482d8a2aa4e835d70bb6c0985b9494ad16464300304fc9d165ed1ef774927a0",
+          "localImports": [
+            "scripts/open-world-v2-core.mjs",
+            "scripts/public-pr-application-v3-privacy.mjs",
+            "scripts/public-pr-application-v3-shared.mjs",
+            "scripts/public-pr-application-v3-source-validation.mjs",
+            "scripts/submission-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/raw-git-integrity-core.mjs",
+          "byteLength": 12932,
+          "sha256": "sha256:19a06ce9ccd12f9829edbb6d5c77efaaf2fc439bdf793d2d1348c25eb8fe209d",
+          "localImports": [
+            "scripts/repository-root.mjs"
+          ]
+        },
+        {
+          "path": "scripts/registry-intake-contract.mjs",
+          "byteLength": 6766,
+          "sha256": "sha256:e7dab05c0553d034c604eb3e1b558d696ec5d784e97f1d2ba8c921e12335ddd1",
+          "localImports": []
+        },
+        {
+          "path": "scripts/repository-root.mjs",
+          "byteLength": 14594,
+          "sha256": "sha256:40fdd8cd5107b0b4de77d523453d89c81b8d05471608437d7646af478065d906",
+          "localImports": []
+        },
+        {
+          "path": "scripts/restricted-json-schema-core.mjs",
+          "byteLength": 15352,
+          "sha256": "sha256:f8752a34ad04180c022cef778941c025cfae81df9d52456f7e8c7f1bb9115ebc",
+          "localImports": [
+            "scripts/restricted-json-schema-definition-core.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/restricted-json-schema-definition-core.mjs",
+          "byteLength": 15925,
+          "sha256": "sha256:db6580dd26d4d95e87f9f8c6db56043a7d38b514438dc80382d29d4ee6da66e8",
+          "localImports": [
+            "scripts/json-schema-keyword-contract.mjs",
+            "scripts/package-dependency-contract.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/review-target-contract.mjs",
+          "byteLength": 7795,
+          "sha256": "sha256:237d8be04dc86acb6e0eab81d67d1b967dc29423840091c3e1f74ad45045222f",
+          "localImports": []
+        },
+        {
+          "path": "scripts/settlement-policy-core.mjs",
+          "byteLength": 16341,
+          "sha256": "sha256:2ca6cc8cc241ef4318f26787aa63e866cce5c8a80411dc2a4ffe06695ab2b999",
+          "localImports": [
+            "scripts/submission-analysis-helpers.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/strict-json-core.mjs",
+          "byteLength": 7646,
+          "sha256": "sha256:b8f6cef52c8c9c6bb1e61331095c12bf69bd4a0b60ff0612c93331be9d6d5478",
+          "localImports": []
+        },
+        {
+          "path": "scripts/submission-analysis-helpers.mjs",
+          "byteLength": 3018,
+          "sha256": "sha256:b5b7bffc92c644a18de66b434c96550fb8b5809fc81bac3503867ced2776f6e7",
+          "localImports": [
+            "scripts/review-target-contract.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-assets-launch-analysis.mjs",
+          "byteLength": 27499,
+          "sha256": "sha256:1b6bfe79e9b94612c76f1a26b9c219d2a6b4dc158f73bd3f97938d385845ba57",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs",
+            "scripts/submission-constants-core.mjs",
+            "scripts/submission-target-validation-core.mjs",
+            "scripts/submission-value-core.mjs",
+            "scripts/token-behavior-validation-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-assurance-analysis.mjs",
+          "byteLength": 19408,
+          "sha256": "sha256:f9de836069a517ea2d19cd10f85b6124b4818f06c4d9e059d1e5d0180092983e",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs",
+            "scripts/submission-report-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-capabilities-analysis.mjs",
+          "byteLength": 12802,
+          "sha256": "sha256:1e9b98cdf8f7de26c08322d43c8b4c56edf05d73ebd1278448660e80dfd678a9",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-capability-specialized-analysis.mjs",
+          "byteLength": 3352,
+          "sha256": "sha256:9cb01be7fb4ca619dce5a8e7535f1cf747ec031fc08fdc976f7cbdd61dfea3e8",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-constants-core.mjs",
+          "byteLength": 1538,
+          "sha256": "sha256:8c4fb2d328eaedb224a4e47a693cd37d1dba444a1cfe811f94babe37d9e47d36",
+          "localImports": []
+        },
+        {
+          "path": "scripts/submission-core.mjs",
+          "byteLength": 10526,
+          "sha256": "sha256:1db065089df43cb41915df48544f81e84db7df697574649d4db9bcf2e80c1738",
+          "localImports": [
+            "scripts/builder-template-contract.mjs",
+            "scripts/metadata-core.mjs",
+            "scripts/no-custom-hook-route-core.mjs",
+            "scripts/normative-policy-core.mjs",
+            "scripts/package-dependency-contract.mjs",
+            "scripts/project-surfaces-core.mjs",
+            "scripts/public-claims-core.mjs",
+            "scripts/restricted-json-schema-core.mjs",
+            "scripts/review-target-contract.mjs",
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs",
+            "scripts/submission-assets-launch-analysis.mjs",
+            "scripts/submission-assurance-analysis.mjs",
+            "scripts/submission-capabilities-analysis.mjs",
+            "scripts/submission-capability-specialized-analysis.mjs",
+            "scripts/submission-constants-core.mjs",
+            "scripts/submission-cross-chain-identity-analysis.mjs",
+            "scripts/submission-cross-chain-state-analysis.mjs",
+            "scripts/submission-data-handoff-analysis.mjs",
+            "scripts/submission-hook-accounting-analysis.mjs",
+            "scripts/submission-hook-analysis.mjs",
+            "scripts/submission-integration-client-analysis.mjs",
+            "scripts/submission-model-metadata-analysis.mjs",
+            "scripts/submission-operations-dependencies-analysis.mjs",
+            "scripts/submission-programmable-fee-analysis.mjs",
+            "scripts/submission-provenance-core.mjs",
+            "scripts/submission-report-core.mjs",
+            "scripts/submission-routing-policy-analysis.mjs",
+            "scripts/submission-target-validation-core.mjs",
+            "scripts/submission-value-core.mjs",
+            "scripts/token-behavior-validation-core.mjs",
+            "scripts/token-mechanics-policy-core.mjs",
+            "scripts/token-mechanics-resolution-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-cross-chain-identity-analysis.mjs",
+          "byteLength": 16808,
+          "sha256": "sha256:b0be1b9522d394c3230a8716bebbd920563a58703847a8b031d2c8d2219df527",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-cross-chain-state-analysis.mjs",
+          "byteLength": 11659,
+          "sha256": "sha256:690712f78dc54cca51e0fee41b228140f493cfa34bec5a7fc84b7cee93ffd3ce",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-data-handoff-analysis.mjs",
+          "byteLength": 15080,
+          "sha256": "sha256:82ebae05cdaf848ffea975c83b64fad4f62761fdd6d8183c913a9eb1b121ee28",
+          "localImports": [
+            "scripts/project-surfaces-core.mjs",
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs",
+            "scripts/token-mechanics-policy-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-hook-accounting-analysis.mjs",
+          "byteLength": 19699,
+          "sha256": "sha256:722518111db598293f6b6dbeeae231030d4980edf196d2e3ee2d18e3944e2477",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-hook-analysis.mjs",
+          "byteLength": 23108,
+          "sha256": "sha256:0ef244b45d06f2986c9e572f989dd784706861fe45a31a1e8da3199d5f17ae12",
+          "localImports": [
+            "scripts/no-custom-hook-route-core.mjs",
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs",
+            "scripts/submission-value-core.mjs",
+            "scripts/token-mechanics-resolution-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-integration-client-analysis.mjs",
+          "byteLength": 23639,
+          "sha256": "sha256:0efbdc79420b1cce0e7c19d1ad10141b33329be3cb8f8916790bb3ef3788a4f1",
+          "localImports": [
+            "scripts/package-dependency-contract.mjs",
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-model-metadata-analysis.mjs",
+          "byteLength": 24749,
+          "sha256": "sha256:8111deed0fbec1bd0d5396a7e564c4215858ad530805fd6ba877a55c30e3b926",
+          "localImports": [
+            "scripts/builder-template-contract.mjs",
+            "scripts/metadata-core.mjs",
+            "scripts/public-claims-core.mjs",
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-operations-dependencies-analysis.mjs",
+          "byteLength": 7605,
+          "sha256": "sha256:39de04de031a9476f626aa63589ac3df03d866babbe804ffea80708b62b7b8fc",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-programmable-fee-analysis.mjs",
+          "byteLength": 21352,
+          "sha256": "sha256:135c1320f0a1e70eb7c46a98f04fc86eb2965edcb7a5313075863ab00af3a1f2",
+          "localImports": [
+            "scripts/submission-analysis-helpers.mjs",
+            "scripts/submission-constants-core.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-provenance-core.mjs",
+          "byteLength": 4780,
+          "sha256": "sha256:1c7af73d8df96ac7fa0c6935150e9724e8da345c9b3737fc3e74a5ede2b7d093",
+          "localImports": []
+        },
+        {
+          "path": "scripts/submission-report-core.mjs",
+          "byteLength": 21232,
+          "sha256": "sha256:779d22888b8315e7193283cdc9be5f572addb527585b1bc14f9b767221ecd8fe",
+          "localImports": [
+            "scripts/normative-policy-core.mjs",
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-constants-core.mjs",
+            "scripts/submission-provenance-core.mjs",
+            "scripts/submission-value-core.mjs",
+            "scripts/token-mechanics-resolution-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-routing-policy-analysis.mjs",
+          "byteLength": 15477,
+          "sha256": "sha256:0a5249a44a51586f03d6ae3bb698246feeffe30a163ebc69215ff141410bdf66",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-target-validation-core.mjs",
+          "byteLength": 6161,
+          "sha256": "sha256:55cf72e113a544caeb4fda5397abd80144aa25b0bcba8581d7616a79f3a9e763",
+          "localImports": [
+            "scripts/official-launchpad-core.mjs",
+            "scripts/submission-analysis-helpers.mjs",
+            "scripts/submission-constants-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-value-core.mjs",
+          "byteLength": 1894,
+          "sha256": "sha256:40019bd5038cde48ad5abc50317040bf80690024ec3ee84263b4c1eb0b1791f6",
+          "localImports": []
+        },
+        {
+          "path": "scripts/submit-launch-compatibility-validation.mjs",
+          "byteLength": 6612,
+          "sha256": "sha256:28e2843aad43c3a836c49d5dfae9d80072e2e89b926259e1c86edf088b56ed39",
+          "localImports": [
+            "scripts/metadata-core.mjs",
+            "scripts/registry-intake-contract.mjs",
+            "scripts/submit-launch-policy-contract.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submit-launch-contract-core.mjs",
+          "byteLength": 22286,
+          "sha256": "sha256:caab2114cbf764c529fd6c8bf81d868cbaad87eec7b00c86b339796da0512ec0",
+          "localImports": [
+            "scripts/metadata-core.mjs",
+            "scripts/registry-intake-contract.mjs",
+            "scripts/restricted-json-schema-core.mjs",
+            "scripts/strict-json-core.mjs",
+            "scripts/submit-launch-compatibility-validation.mjs",
+            "scripts/submit-launch-policy-contract.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submit-launch-policy-contract.mjs",
+          "byteLength": 16681,
+          "sha256": "sha256:9f94ca7e8baf636010db619123ce3e5ee9ed4ef22525cfd6fea9a8d171fe533c",
+          "localImports": [
+            "scripts/registry-intake-contract.mjs",
+            "scripts/restricted-json-schema-core.mjs",
+            "scripts/strict-json-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/template-catalog-composition.mjs",
+          "byteLength": 27506,
+          "sha256": "sha256:83f58603b6e9482942cfc92c522b9a884e89528e7207f7cc3f8ac40d82110e8f",
+          "localImports": [
+            "scripts/template-catalog-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/template-catalog-core.mjs",
+          "byteLength": 588,
+          "sha256": "sha256:22bdb2295e263f1626f710bd6c3a3abbb0d602f62316441c3a51e98fa7c77ac3",
+          "localImports": [
+            "scripts/template-catalog-composition.mjs",
+            "scripts/template-catalog-loader.mjs",
+            "scripts/template-catalog-materializer.mjs",
+            "scripts/template-catalog-renderer.mjs",
+            "scripts/template-catalog-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/template-catalog-loader.mjs",
+          "byteLength": 29409,
+          "sha256": "sha256:7fd73f10eb0ba7984cb2ebaaf4e8eaaa50879ad82ef802b6a8a9615423053e31",
+          "localImports": [
+            "scripts/cli-args.mjs",
+            "scripts/template-catalog-composition.mjs",
+            "scripts/template-catalog-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/template-catalog-materializer.mjs",
+          "byteLength": 49981,
+          "sha256": "sha256:9d828e3fe5eca49b655b45488dd2605298a4de59ebaf00db84e8717d827a5e0e",
+          "localImports": [
+            "scripts/canonical-json-core.mjs",
+            "scripts/strict-json-core.mjs",
+            "scripts/template-catalog-composition.mjs",
+            "scripts/template-catalog-renderer.mjs",
+            "scripts/template-catalog-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/template-catalog-renderer.mjs",
+          "byteLength": 17838,
+          "sha256": "sha256:714ac7fa49bbeb696217dc27859138ae121bed368c2e339977d5c3c64b99de02",
+          "localImports": [
+            "scripts/template-catalog-composition.mjs",
+            "scripts/template-catalog-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/template-catalog-shared.mjs",
+          "byteLength": 12602,
+          "sha256": "sha256:e3651dc9dcf4be2580e347f621efc2f7e71121ffbcf690ececd002bb8c75efd0",
+          "localImports": [
+            "scripts/strict-json-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/token-behavior-validation-core.mjs",
+          "byteLength": 11120,
+          "sha256": "sha256:385207972b5fb9e3eda27ca5cc63053f9e7da50ba1f47d15d8372bd98c3f249b",
+          "localImports": [
+            "scripts/project-surfaces-core.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/token-mechanics-policy-core.mjs",
+          "byteLength": 29308,
+          "sha256": "sha256:2a542205e098602cb0981a3335be8a8c1e2d030f5722ab85449b49dd5f3df826",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/token-mechanics-resolution-core.mjs",
+          "byteLength": 9920,
+          "sha256": "sha256:d595df6c197f52ed69de91dbb2a2ddef7ab6c575e0a9a2172bf8747cd6a00d56",
+          "localImports": [
+            "scripts/submission-value-core.mjs",
+            "scripts/token-mechanics-policy-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/trade-capability-manifest-core.mjs",
+          "byteLength": 40000,
+          "sha256": "sha256:4ecff39f351ad4f05cc66580ad8638cd78844e2837929f408f1cc2d7f58b3eec",
+          "localImports": [
+            "scripts/canonical-json-core.mjs",
+            "scripts/evm-encoding-core.mjs",
+            "scripts/fee-conformance-core.mjs",
+            "scripts/restricted-json-schema-core.mjs",
+            "scripts/strict-json-core.mjs",
+            "scripts/v4-deployment-evidence-core.mjs",
+            "scripts/v4-hook-semantic-contract-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/v4-deployment-evidence-core.mjs",
+          "byteLength": 29336,
+          "sha256": "sha256:7dfa69bc3f86eb53b68491033ea13d427dacace69f1b0e5ac84c1691b04ba7e3",
+          "localImports": [
+            "scripts/canonical-json-core.mjs",
+            "scripts/evm-encoding-core.mjs",
+            "scripts/strict-json-core.mjs",
+            "scripts/submission-core.mjs",
+            "scripts/v4-hook-semantic-contract-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/v4-hook-semantic-contract-core.mjs",
+          "byteLength": 39349,
+          "sha256": "sha256:c5dc1dfb427fbe5751e808bf3f3f1657ae37c780d37ba9a044fa22ea2586880c",
+          "localImports": [
+            "scripts/canonical-json-core.mjs"
+          ]
+        }
+      ],
+      "closureSha256": "sha256:61e5c38e4ae769f516a9f36c1af4a8a0c2517aae3f503456b4de5acd0d71e116"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -2038,8 +3200,8 @@
     {
       "profile": "static-local-esm-import-closure-v1",
       "rootModulePath": "scripts/github-application-core.mjs",
-      "moduleCount": 76,
-      "totalByteLength": 951701,
+      "moduleCount": 80,
+      "totalByteLength": 1015516,
       "modules": [
         {
           "path": "scripts/builder-template-contract.mjs",
@@ -2669,9 +3831,38 @@
           "localImports": []
         },
         {
+          "path": "scripts/submit-launch-compatibility-validation.mjs",
+          "byteLength": 6612,
+          "sha256": "sha256:28e2843aad43c3a836c49d5dfae9d80072e2e89b926259e1c86edf088b56ed39",
+          "localImports": [
+            "scripts/metadata-core.mjs",
+            "scripts/registry-intake-contract.mjs",
+            "scripts/submit-launch-policy-contract.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submit-launch-contract-core.mjs",
+          "byteLength": 22286,
+          "sha256": "sha256:caab2114cbf764c529fd6c8bf81d868cbaad87eec7b00c86b339796da0512ec0",
+          "localImports": [
+            "scripts/metadata-core.mjs",
+            "scripts/registry-intake-contract.mjs",
+            "scripts/restricted-json-schema-core.mjs",
+            "scripts/strict-json-core.mjs",
+            "scripts/submit-launch-compatibility-validation.mjs",
+            "scripts/submit-launch-policy-contract.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submit-launch-policy-cache.mjs",
+          "byteLength": 7991,
+          "sha256": "sha256:a7cd4fd3302786bb829639cc5c5f669ed286fc94a8680f3845631edfa6707c87",
+          "localImports": []
+        },
+        {
           "path": "scripts/submit-launch-policy-contract.mjs",
-          "byteLength": 15176,
-          "sha256": "sha256:0b588c0770dfe9de8a64213f20f83bd13a7952862ac67f3a739007ce1280ef7f",
+          "byteLength": 16681,
+          "sha256": "sha256:9f94ca7e8baf636010db619123ce3e5ee9ed4ef22525cfd6fea9a8d171fe533c",
           "localImports": [
             "scripts/registry-intake-contract.mjs",
             "scripts/restricted-json-schema-core.mjs",
@@ -2679,18 +3870,33 @@
           ]
         },
         {
-          "path": "scripts/submit-launch-policy-github.mjs",
-          "byteLength": 17995,
-          "sha256": "sha256:252a85957671b4ec8d51a053e90fd45127b2879d0d5403aa3ba4d0e7efb3773b",
+          "path": "scripts/submit-launch-policy-github-validation.mjs",
+          "byteLength": 16974,
+          "sha256": "sha256:46eae0c4649244877054fa595bff1ba0647dbee3fbe8559b7041d0fb8f58e905",
           "localImports": [
-            "scripts/github-application-normalizers.mjs",
-            "scripts/github-application-transport-core.mjs",
-            "scripts/github-public-source-api.mjs",
             "scripts/github-public-source-core.mjs",
             "scripts/github-public-source-shared.mjs",
             "scripts/metadata-core.mjs",
             "scripts/registry-intake-contract.mjs",
             "scripts/submit-launch-policy-contract.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submit-launch-policy-github.mjs",
+          "byteLength": 26442,
+          "sha256": "sha256:dde460b25aa6b6e729c800266542a55d216e9258582ceece03a57e753e265e6c",
+          "localImports": [
+            "scripts/github-application-normalizers.mjs",
+            "scripts/github-application-transport-core.mjs",
+            "scripts/github-public-source-api.mjs",
+            "scripts/github-public-source-core.mjs",
+            "scripts/metadata-core.mjs",
+            "scripts/registry-intake-contract.mjs",
+            "scripts/strict-json-core.mjs",
+            "scripts/submit-launch-contract-core.mjs",
+            "scripts/submit-launch-policy-cache.mjs",
+            "scripts/submit-launch-policy-contract.mjs",
+            "scripts/submit-launch-policy-github-validation.mjs"
           ]
         },
         {
@@ -2780,7 +3986,7 @@
           ]
         }
       ],
-      "closureSha256": "sha256:968690bf3e6c5cff0c349a2b3ce903685435ea1bd86326460f9692477c1605af"
+      "closureSha256": "sha256:48e8842e7f4f8f6b24da2dae9464daef02979087302983d8e94a5626964d1820"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -5322,6 +6528,1079 @@
         }
       ],
       "closureSha256": "sha256:661467dc25d8f0ecf3ec05be5c0bca46aec927d2bc8e3ede3a6a766cbf2181ad"
+    },
+    {
+      "profile": "static-local-esm-import-closure-v1",
+      "rootModulePath": "scripts/open-world-v2-contract-adapter.mjs",
+      "moduleCount": 112,
+      "totalByteLength": 1678817,
+      "modules": [
+        {
+          "path": "scripts/application-dependency-core.mjs",
+          "byteLength": 9348,
+          "sha256": "sha256:665b12134edf84385bcc32156b98a88c1f49ee884353458e81cad78ab76c6839",
+          "localImports": []
+        },
+        {
+          "path": "scripts/application-v3-contract-adapter.mjs",
+          "byteLength": 18969,
+          "sha256": "sha256:950300a2ba1835b1be2a9ff3d0a33a2ada0dfdbeea340a6b106e358cc5911378",
+          "localImports": [
+            "scripts/public-pr-application-v3-core.mjs",
+            "scripts/submission-core.mjs",
+            "scripts/submit-launch-contract-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/builder-template-contract.mjs",
+          "byteLength": 24610,
+          "sha256": "sha256:609c7542c2ae1c1efba076b256feaecbf54192866b2ce521fd201a0c440fd7ff",
+          "localImports": [
+            "scripts/metadata-core.mjs",
+            "scripts/template-catalog-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/canonical-json-core.mjs",
+          "byteLength": 6347,
+          "sha256": "sha256:b51c529d7777876ecd88bfd70e721b805dcf4c17944b45659e0a218f8dcc1cde",
+          "localImports": []
+        },
+        {
+          "path": "scripts/canonical-json-legacy-adapters.mjs",
+          "byteLength": 1891,
+          "sha256": "sha256:d8db558bf1300fe9953319e01699875adc34c4c4b683f03595abc1074c8186d7",
+          "localImports": []
+        },
+        {
+          "path": "scripts/cli-args.mjs",
+          "byteLength": 4027,
+          "sha256": "sha256:6f2aa7dc35426ed77759aac21553f3965b4ff60c40fec5d884e07eb4e6f48df1",
+          "localImports": []
+        },
+        {
+          "path": "scripts/cli-runtime.mjs",
+          "byteLength": 6437,
+          "sha256": "sha256:6c3adbaa5536e94219900b51d913f659bb780be83fbb52272f4537c5515ab272",
+          "localImports": [
+            "scripts/strict-json-core.mjs",
+            "scripts/submission-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/dependency-pointer-core.mjs",
+          "byteLength": 22365,
+          "sha256": "sha256:3e896e084728ea15b364e0af38a805bddce93ba57aae8782647dc43b013ddf4f",
+          "localImports": []
+        },
+        {
+          "path": "scripts/evm-encoding-core.mjs",
+          "byteLength": 19788,
+          "sha256": "sha256:2b50e7dd5bf9e0377fbd4905e81af36ad1c5ab442869cc775f5fec5751f0d692",
+          "localImports": []
+        },
+        {
+          "path": "scripts/fee-conformance-core.mjs",
+          "byteLength": 20230,
+          "sha256": "sha256:3ee922153f273418cc0c0ef6276ab3e6d365bd3047cbc2e2076aab2491dc4b2f",
+          "localImports": [
+            "scripts/canonical-json-core.mjs",
+            "scripts/fee-conformance-validation-core.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/strict-json-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/fee-conformance-receipt-v1-core.mjs",
+          "byteLength": 27989,
+          "sha256": "sha256:d80e7a9321521d0df9ad914cdfc1203dbb3fc6042fcb492ce3e931e4acfbe861",
+          "localImports": [
+            "scripts/canonical-json-legacy-adapters.mjs",
+            "scripts/fee-conformance-v1-constants.mjs",
+            "scripts/fee-conformance-vector-set-v1-core.mjs",
+            "scripts/fee-policy-v2-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/fee-conformance-v1-constants.mjs",
+          "byteLength": 2930,
+          "sha256": "sha256:c3cb4814e15f0a8f3e4018ba9ae6cf81ca8e28be9d2a1880b00c678c2ed9c95d",
+          "localImports": []
+        },
+        {
+          "path": "scripts/fee-conformance-validation-core.mjs",
+          "byteLength": 23337,
+          "sha256": "sha256:ab3f9e845f2fa0d38047ef26a262f541a0b3bd9945714474aa963e547050e113",
+          "localImports": []
+        },
+        {
+          "path": "scripts/fee-conformance-vector-set-v1-core.mjs",
+          "byteLength": 29995,
+          "sha256": "sha256:471a73b5077addc26e2f3f3c4fa23a978936596f802624045afe8c0e1652c90e",
+          "localImports": [
+            "scripts/canonical-json-legacy-adapters.mjs",
+            "scripts/fee-conformance-v1-constants.mjs",
+            "scripts/fee-policy-v2-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/fee-policy-v2-contract.mjs",
+          "byteLength": 10652,
+          "sha256": "sha256:223997d9ee4bde30bd4ab3d341da648b6ae69774f367bb00b65453262969c107",
+          "localImports": []
+        },
+        {
+          "path": "scripts/fee-policy-v2-core.mjs",
+          "byteLength": 22671,
+          "sha256": "sha256:b340fce7b6d74a92684511f8704be388042d9ed35715017119dc1bc45ee429ef",
+          "localImports": [
+            "scripts/fee-policy-v2-contract.mjs"
+          ]
+        },
+        {
+          "path": "scripts/json-schema-keyword-contract.mjs",
+          "byteLength": 3616,
+          "sha256": "sha256:64244b924f1fd9421c6997d83f7ac2877028caee47744d97dc37a04465a617d9",
+          "localImports": []
+        },
+        {
+          "path": "scripts/metadata-core.mjs",
+          "byteLength": 3928,
+          "sha256": "sha256:6751e83b8587851201318a0d314515c685851104f9335e946d235027f459437f",
+          "localImports": []
+        },
+        {
+          "path": "scripts/no-custom-hook-route-core.mjs",
+          "byteLength": 5617,
+          "sha256": "sha256:b106fe16deb711d07f9d6b00af24af7b4ce491cfcd451eb303d2463022c97e18",
+          "localImports": [
+            "scripts/submission-value-core.mjs",
+            "scripts/token-mechanics-policy-core.mjs",
+            "scripts/token-mechanics-resolution-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/normative-policy-core.mjs",
+          "byteLength": 4265,
+          "sha256": "sha256:df90ab9d9e544320cb6d39e14c3a501ee2818c1d504292a68711241466c41f92",
+          "localImports": []
+        },
+        {
+          "path": "scripts/official-launchpad-core.mjs",
+          "byteLength": 21044,
+          "sha256": "sha256:6a9c32bafc2da12a461bbd3754d3fb4e87d17b46644ec58f611190a354038a3d",
+          "localImports": []
+        },
+        {
+          "path": "scripts/open-world-security-assessment.mjs",
+          "byteLength": 10281,
+          "sha256": "sha256:fec85d7733cee92d543ba1c0471f2f558234692645298a14b636ff5c3a695186",
+          "localImports": [
+            "scripts/open-world-security-constants.mjs",
+            "scripts/open-world-security-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-automated.mjs",
+          "byteLength": 10698,
+          "sha256": "sha256:64a369fb0faccbd8a001d607a5865cb314f0907107273cad2e6b48d6b2af047d",
+          "localImports": [
+            "scripts/open-world-security-constants.mjs",
+            "scripts/open-world-security-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-constants.mjs",
+          "byteLength": 8472,
+          "sha256": "sha256:1c48e5b3e01e4ee978fd84ba246f74ac26103b23963d1aced044cb480c5d9081",
+          "localImports": []
+        },
+        {
+          "path": "scripts/open-world-security-core.mjs",
+          "byteLength": 6992,
+          "sha256": "sha256:9a19c057d6a81eacdbfa402ca88e5ecdc5d6b49a1f8cc5154dd61678b03b241d",
+          "localImports": [
+            "scripts/open-world-security-assessment.mjs",
+            "scripts/open-world-security-automated.mjs",
+            "scripts/open-world-security-constants.mjs",
+            "scripts/open-world-security-exit-liveness.mjs",
+            "scripts/open-world-security-privileged-value.mjs",
+            "scripts/open-world-security-randomness-game.mjs",
+            "scripts/open-world-security-shared.mjs",
+            "scripts/open-world-security-solvency.mjs",
+            "scripts/open-world-security-v4.mjs",
+            "scripts/open-world-security-validation.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-exit-liveness.mjs",
+          "byteLength": 21852,
+          "sha256": "sha256:89a7e3d53bb081f0c1c1a5819a7b83e73e8bf1436039ce287fefd09b357274b2",
+          "localImports": [
+            "scripts/open-world-security-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-privileged-value.mjs",
+          "byteLength": 10075,
+          "sha256": "sha256:6b7912a72aaae6186763548829a4baa488d2dbc9d3d99e0f714c75dfc703f855",
+          "localImports": [
+            "scripts/open-world-security-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-randomness-game.mjs",
+          "byteLength": 17150,
+          "sha256": "sha256:5bee6d8f71c070ed16ea78ac6898fc90cb27e652e3388936dbbc2ae9f6aa7d60",
+          "localImports": [
+            "scripts/open-world-security-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-shared.mjs",
+          "byteLength": 6366,
+          "sha256": "sha256:87c5e29fbd6cc41d2d9ec6e7cb5d2a1c6a539b836e4ed6d5a489812eb0d37857",
+          "localImports": [
+            "scripts/open-world-security-constants.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-solvency.mjs",
+          "byteLength": 10213,
+          "sha256": "sha256:b384d30aceae9c13800b0bc63e502cc781d60f51b41df9054d4bbf415e9b285d",
+          "localImports": [
+            "scripts/open-world-security-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-v4.mjs",
+          "byteLength": 9303,
+          "sha256": "sha256:9e433ded4b9719cbf898a5ee996df3646746fcec4fad2af3cf6b1e6f37b8e2a7",
+          "localImports": [
+            "scripts/open-world-security-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-security-validation.mjs",
+          "byteLength": 22360,
+          "sha256": "sha256:5153c754900b235cbd9fd3ede13efde28d45ec9e4e4930f11f090c0967ab7033",
+          "localImports": [
+            "scripts/open-world-security-automated.mjs",
+            "scripts/open-world-security-constants.mjs",
+            "scripts/open-world-security-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-contract-adapter.mjs",
+          "byteLength": 13989,
+          "sha256": "sha256:3b14d900b1c4ef9db41eedbeec5276fc4e6fc88c139d24f41402c676889f380f",
+          "localImports": [
+            "scripts/application-v3-contract-adapter.mjs",
+            "scripts/strict-json-core.mjs",
+            "scripts/submission-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-contracts.mjs",
+          "byteLength": 12582,
+          "sha256": "sha256:7a70598779db1f26cc34c5fcdd6d9fb76fc06ca8dc77492a6e17c40766ecdee5",
+          "localImports": [
+            "scripts/fee-conformance-v1-constants.mjs",
+            "scripts/fee-policy-v2-contract.mjs",
+            "scripts/open-world-v2-primitives.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-core.mjs",
+          "byteLength": 1046,
+          "sha256": "sha256:9a2045be9c3cdb73cb4ba3a17ce8d3d60bce1a8836ad069a7b6ef55e38cca492",
+          "localImports": [
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-draft-core.mjs",
+            "scripts/open-world-v2-package-io.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/open-world-v2-validation-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-draft-core.mjs",
+          "byteLength": 49345,
+          "sha256": "sha256:08c241c487678189af173507c1da76fb00cf87298195c95aac0868275ef2a79d",
+          "localImports": [
+            "scripts/canonical-json-core.mjs",
+            "scripts/evm-encoding-core.mjs",
+            "scripts/fee-conformance-receipt-v1-core.mjs",
+            "scripts/fee-conformance-vector-set-v1-core.mjs",
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/open-world-v2-validation-core.mjs",
+            "scripts/trade-capability-manifest-core.mjs",
+            "scripts/v4-hook-semantic-contract-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-extension-schema-core.mjs",
+          "byteLength": 10806,
+          "sha256": "sha256:0959308729990c74c99dca5da429c8c6ed3a59696f698ddca5a55044ceaae7b4",
+          "localImports": [
+            "scripts/open-world-v2-extension-schema-inspection.mjs",
+            "scripts/open-world-v2-primitives.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-extension-schema-inspection.mjs",
+          "byteLength": 12259,
+          "sha256": "sha256:a4f0804ee0027203e7259cac5d61647430f01cfe40587aa17a82fe426497b66f",
+          "localImports": [
+            "scripts/json-schema-keyword-contract.mjs",
+            "scripts/open-world-v2-primitives.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-package-io.mjs",
+          "byteLength": 14930,
+          "sha256": "sha256:f5ea1dde75abf607bde3d4f09de74b0cd237927cff36e8b5de28762e16407994",
+          "localImports": [
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/strict-json-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-primitives.mjs",
+          "byteLength": 12203,
+          "sha256": "sha256:f0216c4f0cbfc256669ed8ebbcc61e90ab8b07d632389c203d293f496fd6394a",
+          "localImports": []
+        },
+        {
+          "path": "scripts/open-world-v2-privacy-core.mjs",
+          "byteLength": 3235,
+          "sha256": "sha256:3e796952f333044d0ee463fbf2ef63b53456dc164598416c5d65fe98c84004e2",
+          "localImports": [
+            "scripts/open-world-v2-primitives.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-validation-core.mjs",
+          "byteLength": 5895,
+          "sha256": "sha256:d7b4db697607b5f32ac0950d26954ae125ad68f931630f5442013dfbc3d3dfa7",
+          "localImports": [
+            "scripts/cli-runtime.mjs",
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-package-io.mjs",
+            "scripts/open-world-v2-validation-fee.mjs",
+            "scripts/open-world-v2-validation-graph.mjs",
+            "scripts/open-world-v2-validation-intake.mjs",
+            "scripts/open-world-v2-validation-intent.mjs",
+            "scripts/open-world-v2-validation-report.mjs",
+            "scripts/open-world-v2-validation-runtime.mjs",
+            "scripts/strict-json-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-validation-fee.mjs",
+          "byteLength": 18051,
+          "sha256": "sha256:a60f0eaba8417cfc28204272007803225f4eb808a04f6e8a3f81a3ace20524d6",
+          "localImports": [
+            "scripts/fee-conformance-receipt-v1-core.mjs",
+            "scripts/fee-policy-v2-core.mjs",
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-primitives.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-validation-graph.mjs",
+          "byteLength": 26967,
+          "sha256": "sha256:78c89a76fe1cfb827d3db032ac3c51a35ad740845190199e4e143a9eb3300956",
+          "localImports": [
+            "scripts/fee-policy-v2-core.mjs",
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/v4-hook-semantic-contract-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-validation-intake.mjs",
+          "byteLength": 36464,
+          "sha256": "sha256:dfbce567aa40df3da7df2ba350af18bd079e2325d51ed4112940479ff48da1e3",
+          "localImports": [
+            "scripts/open-world-security-core.mjs",
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-extension-schema-core.mjs",
+            "scripts/open-world-v2-package-io.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/trade-capability-manifest-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-validation-intent.mjs",
+          "byteLength": 22259,
+          "sha256": "sha256:b47777e964c37cca42400817256f97a2db6ee69fb8458690a58e71752bf14a66",
+          "localImports": [
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-extension-schema-core.mjs",
+            "scripts/open-world-v2-package-io.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/open-world-v2-privacy-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-validation-report.mjs",
+          "byteLength": 11622,
+          "sha256": "sha256:f0805cc9e1bbd12ac8027ba9a17d24d5fa7853f77bb85c10316b59abfe7f62e7",
+          "localImports": [
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-primitives.mjs"
+          ]
+        },
+        {
+          "path": "scripts/open-world-v2-validation-runtime.mjs",
+          "byteLength": 10448,
+          "sha256": "sha256:83cec59217d5aff23c39494046160be2a829e66c32bef60bd70dcf5cf08b53af",
+          "localImports": [
+            "scripts/open-world-v2-contracts.mjs",
+            "scripts/open-world-v2-extension-schema-core.mjs",
+            "scripts/open-world-v2-package-io.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/strict-json-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/package-dependency-contract.mjs",
+          "byteLength": 5747,
+          "sha256": "sha256:089604bf1321732b3e647b7ef7de521e4fac8e5d087a7e4ecb09cd9c56bce628",
+          "localImports": []
+        },
+        {
+          "path": "scripts/project-surfaces-core.mjs",
+          "byteLength": 28647,
+          "sha256": "sha256:f9aceaf431d309846e066ee334415174a50ccac55669d5186ddbc46dd3a52922",
+          "localImports": []
+        },
+        {
+          "path": "scripts/public-claims-analysis-primitives.mjs",
+          "byteLength": 642,
+          "sha256": "sha256:158c6f41e56fc194e87536cd5faff387519c3ebc88cd3bafdf7a94f870c13d06",
+          "localImports": []
+        },
+        {
+          "path": "scripts/public-claims-core.mjs",
+          "byteLength": 181,
+          "sha256": "sha256:fcc910fd0b7d8178fab244e8651403f146c5aab7ab31ce8d0c4b75fd19927d0f",
+          "localImports": [
+            "scripts/public-claims-rules.mjs",
+            "scripts/public-claims-source-analysis.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-claims-format-extractors.mjs",
+          "byteLength": 8958,
+          "sha256": "sha256:8005e5c6bb9cef35d2be960a924460648f62818a5b84ae3258435f088c1d1c82",
+          "localImports": [
+            "scripts/strict-json-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-claims-javascript-core.mjs",
+          "byteLength": 5371,
+          "sha256": "sha256:8fa28ff59c63564fc4c8aaf065b34f248c5dc08c7401f92d60c95eb688a07929",
+          "localImports": [
+            "scripts/public-claims-analysis-primitives.mjs",
+            "scripts/public-claims-javascript-evaluator.mjs",
+            "scripts/public-claims-javascript-primitives.mjs",
+            "scripts/public-claims-javascript-tokenizer.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-claims-javascript-evaluator.mjs",
+          "byteLength": 9471,
+          "sha256": "sha256:4a3d40a30425f071f83320ba7497275fe8933aa91dd1f93c821e5eea79f6e4ec",
+          "localImports": [
+            "scripts/public-claims-javascript-primitives.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-claims-javascript-primitives.mjs",
+          "byteLength": 1335,
+          "sha256": "sha256:f4b890af857171f4e461d704d255cc8c02e9c2a35179d8abd7dc5a27c8d55be6",
+          "localImports": []
+        },
+        {
+          "path": "scripts/public-claims-javascript-tokenizer.mjs",
+          "byteLength": 8458,
+          "sha256": "sha256:c4f88c2073cacf6118fcd327a99e34830aa5b81b566e58657d57158d8cdbdf5f",
+          "localImports": [
+            "scripts/public-claims-javascript-evaluator.mjs",
+            "scripts/public-claims-javascript-primitives.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-claims-rules.mjs",
+          "byteLength": 11950,
+          "sha256": "sha256:1895a37c9f14ba002b6e66c26d8accd37d30de7714dde9c2188a0918a8d7c8b4",
+          "localImports": [
+            "scripts/metadata-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-claims-source-analysis.mjs",
+          "byteLength": 1724,
+          "sha256": "sha256:e1c6dd1627fbbf761bc56b7238a8a0d0ac33c81a41888ec3a49795407717343a",
+          "localImports": [
+            "scripts/public-claims-analysis-primitives.mjs",
+            "scripts/public-claims-format-extractors.mjs",
+            "scripts/public-claims-javascript-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-core.mjs",
+          "byteLength": 1117,
+          "sha256": "sha256:c63c5abcec5282b6f9d7728396f58a0b553234f88b7e10041dda218a087a5ed0",
+          "localImports": [
+            "scripts/public-pr-application-v3-generation.mjs",
+            "scripts/public-pr-application-v3-local-source.mjs",
+            "scripts/public-pr-application-v3-privacy.mjs",
+            "scripts/public-pr-application-v3-shared.mjs",
+            "scripts/public-pr-application-v3-source-contract.mjs",
+            "scripts/public-pr-application-v3-validation.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-generation.mjs",
+          "byteLength": 39074,
+          "sha256": "sha256:74827138085409d71952ab0c293fdefeb551bec69e126821848960bb98ea3076",
+          "localImports": [
+            "scripts/application-dependency-core.mjs",
+            "scripts/open-world-security-core.mjs",
+            "scripts/open-world-v2-core.mjs",
+            "scripts/public-pr-application-v3-privacy.mjs",
+            "scripts/public-pr-application-v3-shared.mjs",
+            "scripts/public-pr-application-v3-source-validation.mjs",
+            "scripts/public-pr-application-v3-validation.mjs",
+            "scripts/submission-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-local-source.mjs",
+          "byteLength": 33016,
+          "sha256": "sha256:6e682bbdb357592112c81d085f624b12ef42f3e755746d08b743dbe5c83ec283",
+          "localImports": [
+            "scripts/dependency-pointer-core.mjs",
+            "scripts/public-pr-application-v3-shared.mjs",
+            "scripts/public-pr-application-v3-source-contract.mjs",
+            "scripts/public-pr-application-v3-source-git.mjs",
+            "scripts/raw-git-integrity-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-privacy.mjs",
+          "byteLength": 18852,
+          "sha256": "sha256:1b3a4d17b45252269a111f4375d1f52d15c7b9ee572844cc9b67b80bd5972fc9",
+          "localImports": [
+            "scripts/dependency-pointer-core.mjs",
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/public-pr-application-v3-shared.mjs",
+            "scripts/strict-json-core.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-shared.mjs",
+          "byteLength": 6320,
+          "sha256": "sha256:2602f789cc5a769ab397e9176088ef54297307f7b108a91f0fb98e2f3f2fe12e",
+          "localImports": [
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-source-contract.mjs",
+          "byteLength": 8609,
+          "sha256": "sha256:7deec5fda8f1c4edb69f33a59f0466fe9141fe47cee601e1fb3db24a1c2fd07d",
+          "localImports": [
+            "scripts/open-world-v2-core.mjs",
+            "scripts/public-pr-application-v3-shared.mjs",
+            "scripts/public-pr-application-v3-source-git.mjs",
+            "scripts/submission-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-source-git.mjs",
+          "byteLength": 28085,
+          "sha256": "sha256:0ab9dbb23485eabad21312601280a563dead81c5ed1e900912d3c5e2a0b1d945",
+          "localImports": [
+            "scripts/public-pr-application-v3-shared.mjs",
+            "scripts/repository-root.mjs",
+            "scripts/strict-json-core.mjs",
+            "scripts/submission-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-source-validation.mjs",
+          "byteLength": 15908,
+          "sha256": "sha256:5f85ade5b7f04d8d6bba7649001f13c58c88539bee536f84f9c66d1b4426b809",
+          "localImports": [
+            "scripts/open-world-v2-primitives.mjs",
+            "scripts/public-pr-application-v3-shared.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/public-pr-application-v3-validation.mjs",
+          "byteLength": 28160,
+          "sha256": "sha256:b482d8a2aa4e835d70bb6c0985b9494ad16464300304fc9d165ed1ef774927a0",
+          "localImports": [
+            "scripts/open-world-v2-core.mjs",
+            "scripts/public-pr-application-v3-privacy.mjs",
+            "scripts/public-pr-application-v3-shared.mjs",
+            "scripts/public-pr-application-v3-source-validation.mjs",
+            "scripts/submission-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/raw-git-integrity-core.mjs",
+          "byteLength": 12932,
+          "sha256": "sha256:19a06ce9ccd12f9829edbb6d5c77efaaf2fc439bdf793d2d1348c25eb8fe209d",
+          "localImports": [
+            "scripts/repository-root.mjs"
+          ]
+        },
+        {
+          "path": "scripts/registry-intake-contract.mjs",
+          "byteLength": 6766,
+          "sha256": "sha256:e7dab05c0553d034c604eb3e1b558d696ec5d784e97f1d2ba8c921e12335ddd1",
+          "localImports": []
+        },
+        {
+          "path": "scripts/repository-root.mjs",
+          "byteLength": 14594,
+          "sha256": "sha256:40fdd8cd5107b0b4de77d523453d89c81b8d05471608437d7646af478065d906",
+          "localImports": []
+        },
+        {
+          "path": "scripts/restricted-json-schema-core.mjs",
+          "byteLength": 15352,
+          "sha256": "sha256:f8752a34ad04180c022cef778941c025cfae81df9d52456f7e8c7f1bb9115ebc",
+          "localImports": [
+            "scripts/restricted-json-schema-definition-core.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/restricted-json-schema-definition-core.mjs",
+          "byteLength": 15925,
+          "sha256": "sha256:db6580dd26d4d95e87f9f8c6db56043a7d38b514438dc80382d29d4ee6da66e8",
+          "localImports": [
+            "scripts/json-schema-keyword-contract.mjs",
+            "scripts/package-dependency-contract.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/review-target-contract.mjs",
+          "byteLength": 7795,
+          "sha256": "sha256:237d8be04dc86acb6e0eab81d67d1b967dc29423840091c3e1f74ad45045222f",
+          "localImports": []
+        },
+        {
+          "path": "scripts/settlement-policy-core.mjs",
+          "byteLength": 16341,
+          "sha256": "sha256:2ca6cc8cc241ef4318f26787aa63e866cce5c8a80411dc2a4ffe06695ab2b999",
+          "localImports": [
+            "scripts/submission-analysis-helpers.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/strict-json-core.mjs",
+          "byteLength": 7646,
+          "sha256": "sha256:b8f6cef52c8c9c6bb1e61331095c12bf69bd4a0b60ff0612c93331be9d6d5478",
+          "localImports": []
+        },
+        {
+          "path": "scripts/submission-analysis-helpers.mjs",
+          "byteLength": 3018,
+          "sha256": "sha256:b5b7bffc92c644a18de66b434c96550fb8b5809fc81bac3503867ced2776f6e7",
+          "localImports": [
+            "scripts/review-target-contract.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-assets-launch-analysis.mjs",
+          "byteLength": 27499,
+          "sha256": "sha256:1b6bfe79e9b94612c76f1a26b9c219d2a6b4dc158f73bd3f97938d385845ba57",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs",
+            "scripts/submission-constants-core.mjs",
+            "scripts/submission-target-validation-core.mjs",
+            "scripts/submission-value-core.mjs",
+            "scripts/token-behavior-validation-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-assurance-analysis.mjs",
+          "byteLength": 19408,
+          "sha256": "sha256:f9de836069a517ea2d19cd10f85b6124b4818f06c4d9e059d1e5d0180092983e",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs",
+            "scripts/submission-report-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-capabilities-analysis.mjs",
+          "byteLength": 12802,
+          "sha256": "sha256:1e9b98cdf8f7de26c08322d43c8b4c56edf05d73ebd1278448660e80dfd678a9",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-capability-specialized-analysis.mjs",
+          "byteLength": 3352,
+          "sha256": "sha256:9cb01be7fb4ca619dce5a8e7535f1cf747ec031fc08fdc976f7cbdd61dfea3e8",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-constants-core.mjs",
+          "byteLength": 1538,
+          "sha256": "sha256:8c4fb2d328eaedb224a4e47a693cd37d1dba444a1cfe811f94babe37d9e47d36",
+          "localImports": []
+        },
+        {
+          "path": "scripts/submission-core.mjs",
+          "byteLength": 10526,
+          "sha256": "sha256:1db065089df43cb41915df48544f81e84db7df697574649d4db9bcf2e80c1738",
+          "localImports": [
+            "scripts/builder-template-contract.mjs",
+            "scripts/metadata-core.mjs",
+            "scripts/no-custom-hook-route-core.mjs",
+            "scripts/normative-policy-core.mjs",
+            "scripts/package-dependency-contract.mjs",
+            "scripts/project-surfaces-core.mjs",
+            "scripts/public-claims-core.mjs",
+            "scripts/restricted-json-schema-core.mjs",
+            "scripts/review-target-contract.mjs",
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs",
+            "scripts/submission-assets-launch-analysis.mjs",
+            "scripts/submission-assurance-analysis.mjs",
+            "scripts/submission-capabilities-analysis.mjs",
+            "scripts/submission-capability-specialized-analysis.mjs",
+            "scripts/submission-constants-core.mjs",
+            "scripts/submission-cross-chain-identity-analysis.mjs",
+            "scripts/submission-cross-chain-state-analysis.mjs",
+            "scripts/submission-data-handoff-analysis.mjs",
+            "scripts/submission-hook-accounting-analysis.mjs",
+            "scripts/submission-hook-analysis.mjs",
+            "scripts/submission-integration-client-analysis.mjs",
+            "scripts/submission-model-metadata-analysis.mjs",
+            "scripts/submission-operations-dependencies-analysis.mjs",
+            "scripts/submission-programmable-fee-analysis.mjs",
+            "scripts/submission-provenance-core.mjs",
+            "scripts/submission-report-core.mjs",
+            "scripts/submission-routing-policy-analysis.mjs",
+            "scripts/submission-target-validation-core.mjs",
+            "scripts/submission-value-core.mjs",
+            "scripts/token-behavior-validation-core.mjs",
+            "scripts/token-mechanics-policy-core.mjs",
+            "scripts/token-mechanics-resolution-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-cross-chain-identity-analysis.mjs",
+          "byteLength": 16808,
+          "sha256": "sha256:b0be1b9522d394c3230a8716bebbd920563a58703847a8b031d2c8d2219df527",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-cross-chain-state-analysis.mjs",
+          "byteLength": 11659,
+          "sha256": "sha256:690712f78dc54cca51e0fee41b228140f493cfa34bec5a7fc84b7cee93ffd3ce",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-data-handoff-analysis.mjs",
+          "byteLength": 15080,
+          "sha256": "sha256:82ebae05cdaf848ffea975c83b64fad4f62761fdd6d8183c913a9eb1b121ee28",
+          "localImports": [
+            "scripts/project-surfaces-core.mjs",
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs",
+            "scripts/token-mechanics-policy-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-hook-accounting-analysis.mjs",
+          "byteLength": 19699,
+          "sha256": "sha256:722518111db598293f6b6dbeeae231030d4980edf196d2e3ee2d18e3944e2477",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-hook-analysis.mjs",
+          "byteLength": 23108,
+          "sha256": "sha256:0ef244b45d06f2986c9e572f989dd784706861fe45a31a1e8da3199d5f17ae12",
+          "localImports": [
+            "scripts/no-custom-hook-route-core.mjs",
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs",
+            "scripts/submission-value-core.mjs",
+            "scripts/token-mechanics-resolution-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-integration-client-analysis.mjs",
+          "byteLength": 23639,
+          "sha256": "sha256:0efbdc79420b1cce0e7c19d1ad10141b33329be3cb8f8916790bb3ef3788a4f1",
+          "localImports": [
+            "scripts/package-dependency-contract.mjs",
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-model-metadata-analysis.mjs",
+          "byteLength": 24749,
+          "sha256": "sha256:8111deed0fbec1bd0d5396a7e564c4215858ad530805fd6ba877a55c30e3b926",
+          "localImports": [
+            "scripts/builder-template-contract.mjs",
+            "scripts/metadata-core.mjs",
+            "scripts/public-claims-core.mjs",
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-operations-dependencies-analysis.mjs",
+          "byteLength": 7605,
+          "sha256": "sha256:39de04de031a9476f626aa63589ac3df03d866babbe804ffea80708b62b7b8fc",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-programmable-fee-analysis.mjs",
+          "byteLength": 21352,
+          "sha256": "sha256:135c1320f0a1e70eb7c46a98f04fc86eb2965edcb7a5313075863ab00af3a1f2",
+          "localImports": [
+            "scripts/submission-analysis-helpers.mjs",
+            "scripts/submission-constants-core.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-provenance-core.mjs",
+          "byteLength": 4780,
+          "sha256": "sha256:1c7af73d8df96ac7fa0c6935150e9724e8da345c9b3737fc3e74a5ede2b7d093",
+          "localImports": []
+        },
+        {
+          "path": "scripts/submission-report-core.mjs",
+          "byteLength": 21232,
+          "sha256": "sha256:779d22888b8315e7193283cdc9be5f572addb527585b1bc14f9b767221ecd8fe",
+          "localImports": [
+            "scripts/normative-policy-core.mjs",
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-constants-core.mjs",
+            "scripts/submission-provenance-core.mjs",
+            "scripts/submission-value-core.mjs",
+            "scripts/token-mechanics-resolution-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-routing-policy-analysis.mjs",
+          "byteLength": 15477,
+          "sha256": "sha256:0a5249a44a51586f03d6ae3bb698246feeffe30a163ebc69215ff141410bdf66",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-analysis-helpers.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-target-validation-core.mjs",
+          "byteLength": 6161,
+          "sha256": "sha256:55cf72e113a544caeb4fda5397abd80144aa25b0bcba8581d7616a79f3a9e763",
+          "localImports": [
+            "scripts/official-launchpad-core.mjs",
+            "scripts/submission-analysis-helpers.mjs",
+            "scripts/submission-constants-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submission-value-core.mjs",
+          "byteLength": 1894,
+          "sha256": "sha256:40019bd5038cde48ad5abc50317040bf80690024ec3ee84263b4c1eb0b1791f6",
+          "localImports": []
+        },
+        {
+          "path": "scripts/submit-launch-compatibility-validation.mjs",
+          "byteLength": 6612,
+          "sha256": "sha256:28e2843aad43c3a836c49d5dfae9d80072e2e89b926259e1c86edf088b56ed39",
+          "localImports": [
+            "scripts/metadata-core.mjs",
+            "scripts/registry-intake-contract.mjs",
+            "scripts/submit-launch-policy-contract.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submit-launch-contract-core.mjs",
+          "byteLength": 22286,
+          "sha256": "sha256:caab2114cbf764c529fd6c8bf81d868cbaad87eec7b00c86b339796da0512ec0",
+          "localImports": [
+            "scripts/metadata-core.mjs",
+            "scripts/registry-intake-contract.mjs",
+            "scripts/restricted-json-schema-core.mjs",
+            "scripts/strict-json-core.mjs",
+            "scripts/submit-launch-compatibility-validation.mjs",
+            "scripts/submit-launch-policy-contract.mjs"
+          ]
+        },
+        {
+          "path": "scripts/submit-launch-policy-contract.mjs",
+          "byteLength": 16681,
+          "sha256": "sha256:9f94ca7e8baf636010db619123ce3e5ee9ed4ef22525cfd6fea9a8d171fe533c",
+          "localImports": [
+            "scripts/registry-intake-contract.mjs",
+            "scripts/restricted-json-schema-core.mjs",
+            "scripts/strict-json-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/template-catalog-composition.mjs",
+          "byteLength": 27506,
+          "sha256": "sha256:83f58603b6e9482942cfc92c522b9a884e89528e7207f7cc3f8ac40d82110e8f",
+          "localImports": [
+            "scripts/template-catalog-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/template-catalog-core.mjs",
+          "byteLength": 588,
+          "sha256": "sha256:22bdb2295e263f1626f710bd6c3a3abbb0d602f62316441c3a51e98fa7c77ac3",
+          "localImports": [
+            "scripts/template-catalog-composition.mjs",
+            "scripts/template-catalog-loader.mjs",
+            "scripts/template-catalog-materializer.mjs",
+            "scripts/template-catalog-renderer.mjs",
+            "scripts/template-catalog-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/template-catalog-loader.mjs",
+          "byteLength": 29409,
+          "sha256": "sha256:7fd73f10eb0ba7984cb2ebaaf4e8eaaa50879ad82ef802b6a8a9615423053e31",
+          "localImports": [
+            "scripts/cli-args.mjs",
+            "scripts/template-catalog-composition.mjs",
+            "scripts/template-catalog-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/template-catalog-materializer.mjs",
+          "byteLength": 49981,
+          "sha256": "sha256:9d828e3fe5eca49b655b45488dd2605298a4de59ebaf00db84e8717d827a5e0e",
+          "localImports": [
+            "scripts/canonical-json-core.mjs",
+            "scripts/strict-json-core.mjs",
+            "scripts/template-catalog-composition.mjs",
+            "scripts/template-catalog-renderer.mjs",
+            "scripts/template-catalog-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/template-catalog-renderer.mjs",
+          "byteLength": 17838,
+          "sha256": "sha256:714ac7fa49bbeb696217dc27859138ae121bed368c2e339977d5c3c64b99de02",
+          "localImports": [
+            "scripts/template-catalog-composition.mjs",
+            "scripts/template-catalog-shared.mjs"
+          ]
+        },
+        {
+          "path": "scripts/template-catalog-shared.mjs",
+          "byteLength": 12602,
+          "sha256": "sha256:e3651dc9dcf4be2580e347f621efc2f7e71121ffbcf690ececd002bb8c75efd0",
+          "localImports": [
+            "scripts/strict-json-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/token-behavior-validation-core.mjs",
+          "byteLength": 11120,
+          "sha256": "sha256:385207972b5fb9e3eda27ca5cc63053f9e7da50ba1f47d15d8372bd98c3f249b",
+          "localImports": [
+            "scripts/project-surfaces-core.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/token-mechanics-policy-core.mjs",
+          "byteLength": 29308,
+          "sha256": "sha256:2a542205e098602cb0981a3335be8a8c1e2d030f5722ab85449b49dd5f3df826",
+          "localImports": [
+            "scripts/settlement-policy-core.mjs",
+            "scripts/submission-value-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/token-mechanics-resolution-core.mjs",
+          "byteLength": 9920,
+          "sha256": "sha256:d595df6c197f52ed69de91dbb2a2ddef7ab6c575e0a9a2172bf8747cd6a00d56",
+          "localImports": [
+            "scripts/submission-value-core.mjs",
+            "scripts/token-mechanics-policy-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/trade-capability-manifest-core.mjs",
+          "byteLength": 40000,
+          "sha256": "sha256:4ecff39f351ad4f05cc66580ad8638cd78844e2837929f408f1cc2d7f58b3eec",
+          "localImports": [
+            "scripts/canonical-json-core.mjs",
+            "scripts/evm-encoding-core.mjs",
+            "scripts/fee-conformance-core.mjs",
+            "scripts/restricted-json-schema-core.mjs",
+            "scripts/strict-json-core.mjs",
+            "scripts/v4-deployment-evidence-core.mjs",
+            "scripts/v4-hook-semantic-contract-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/v4-deployment-evidence-core.mjs",
+          "byteLength": 29336,
+          "sha256": "sha256:7dfa69bc3f86eb53b68491033ea13d427dacace69f1b0e5ac84c1691b04ba7e3",
+          "localImports": [
+            "scripts/canonical-json-core.mjs",
+            "scripts/evm-encoding-core.mjs",
+            "scripts/strict-json-core.mjs",
+            "scripts/submission-core.mjs",
+            "scripts/v4-hook-semantic-contract-core.mjs"
+          ]
+        },
+        {
+          "path": "scripts/v4-hook-semantic-contract-core.mjs",
+          "byteLength": 39349,
+          "sha256": "sha256:c5dc1dfb427fbe5751e808bf3f3f1657ae37c780d37ba9a044fa22ea2586880c",
+          "localImports": [
+            "scripts/canonical-json-core.mjs"
+          ]
+        }
+      ],
+      "closureSha256": "sha256:cbdafb0340c8c8b1fbe89a3676f10565ca6cdae058dc38e571772433fa1d2fd9"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -9555,7 +11834,7 @@
         {
           "path": "scripts/semantic-rule-test-evidence-core.mjs",
           "byteLength": 9306,
-          "sha256": "sha256:279b949281d61f63e27bb39ebdbcb477bbe5e677ff15c3de5dc47f143f770390",
+          "sha256": "sha256:d1adff973508adb35a6cd0e8ee65d8d91aec58fbfe6e00a75cb04e741c57a358",
           "localImports": [
             "scripts/strict-json-core.mjs"
           ]
@@ -9567,7 +11846,7 @@
           "localImports": []
         }
       ],
-      "closureSha256": "sha256:712ca7b39c909635d08a16fcb9e9897d1da86b5f94bf770c22c816e84b40f41b"
+      "closureSha256": "sha256:77b8f80260a239238ca4604c0dd59c28fbfaa2b1851eb89c82b54ee1a92e8674"
     },
     {
       "profile": "static-local-esm-import-closure-v1",
@@ -11199,18 +13478,18 @@
     }
   ],
   "inventory": {
-    "contractCount": 55,
-    "schemaCount": 55,
-    "activeContractCount": 40,
+    "contractCount": 59,
+    "schemaCount": 59,
+    "activeContractCount": 44,
     "frozenContractCount": 15,
-    "validatorBindingCount": 55,
-    "validatorModuleCount": 28,
-    "validatorClosureCount": 28,
-    "validatorClosureModuleBindingCount": 1061,
-    "validatorClosureDistinctModuleCount": 187,
-    "schemaPathsSha256": "sha256:4c472a22c4c110f37dc51bd98e7be2cdbfa768e43f8d713c893956bd3f9154cf",
-    "validatorBindingsSha256": "sha256:3b538de66a2ab6896f5fe39861d9e116c413547f5666217017df4103cd2f4b35",
-    "validatorClosuresSha256": "sha256:e0a78b9736514cf317ef87b88de37ab88f030704aa2e1f5e05511d32d56af7c9"
+    "validatorBindingCount": 59,
+    "validatorModuleCount": 31,
+    "validatorClosureCount": 31,
+    "validatorClosureModuleBindingCount": 1290,
+    "validatorClosureDistinctModuleCount": 194,
+    "schemaPathsSha256": "sha256:08d3ed96d453db0862f2a9963b28049cd9552f7595b68413a3fb24d102840098",
+    "validatorBindingsSha256": "sha256:a6b262bb8e8b9fc39c4536f34c221cacf5da0e0578637d54f1866169c1c506a9",
+    "validatorClosuresSha256": "sha256:dc122536da87a761c4433c9ade54755f973fd56f09fb391ec9f9ce757535c57a"
   },
-  "registrySha256": "sha256:769f2dd044e66ce285590b6316ef069a8d25a095bbc4def8761145bbf348a78d"
+  "registrySha256": "sha256:7276df1e934383b6ac69c228e706d8a1b5b3a684bb317e30a79bbb3ae2f46f31"
 }

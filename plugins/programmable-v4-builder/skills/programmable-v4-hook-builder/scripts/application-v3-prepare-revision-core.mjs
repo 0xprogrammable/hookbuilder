@@ -3,10 +3,11 @@ import {
   canonicalJson,
   sha256Bytes
 } from "./open-world-v2-core.mjs";
+import { validateApplicationContractDocument } from "./application-v3-contract-adapter.mjs";
 import {
-  derivePublicPrApplicationV3PreviousBinding,
-  validatePublicPrApplicationV3
-} from "./public-pr-application-v3-core.mjs";
+  deriveApplicationV3RevisionFromV3,
+  requireCurrentApplicationRevisionSelection
+} from "./application-v3-revision-migration.mjs";
 import { parseBoundedStrictJson } from "./strict-json-core.mjs";
 
 export const APPLICATION_V3_REVISION_PLAN_CONTRACT = "public-pr-application-v3-revision-plan";
@@ -68,8 +69,18 @@ export class ApplicationV3PrepareRevisionError extends Error {
  * The caller owns all repository and network I/O. This function accepts only
  * immutable predecessor bytes and never mutates either input.
  */
-export function prepareApplicationV3Revision({ applicationDraft, predecessor } = {}) {
+export function prepareApplicationV3Revision({
+  applicationDraft,
+  predecessor,
+  applicationSelection
+} = {}) {
   requireApplicationDraft(applicationDraft);
+  if (applicationDraft.contract.version === "3.2.0") {
+    requireCurrentApplicationRevisionSelection(applicationSelection, {
+      requestedRoute: applicationDraft.launchRequest?.requestedRoute,
+      fail
+    });
+  }
   if (Object.hasOwn(applicationDraft, "applicationRevision")) {
     fail(
       "PREPARE_REVISION_MANUAL_REVISION_FORBIDDEN",
@@ -83,10 +94,14 @@ export function prepareApplicationV3Revision({ applicationDraft, predecessor } =
     );
   }
   const application = cloneCanonical(applicationDraft);
-  const derivation = deriveRevision({ applicationDraft: application, predecessor });
+  const derivation = deriveRevision({
+    applicationDraft: application,
+    predecessor,
+    applicationSelection
+  });
   application.applicationRevision = derivation.applicationRevision;
   application.lineage = derivation.lineage;
-  if (validatePublicPrApplicationV3(application)?.valid !== true) {
+  if (validateApplicationContractDocument({ application, applicationSelection })?.valid !== true) {
     fail(
       "PREPARE_REVISION_RESULT_INVALID",
       "the derived application does not satisfy the complete Application V3 contract"
@@ -120,12 +135,19 @@ export function prepareApplicationV3Revision({ applicationDraft, predecessor } =
   return deepFreeze({ application: frozenApplication, plan });
 }
 
-function deriveRevision({ applicationDraft, predecessor }) {
+function deriveRevision({ applicationDraft, predecessor, applicationSelection }) {
   if (!isPlainObject(predecessor) || typeof predecessor.kind !== "string") {
     failPredecessorInvalid();
   }
   if (predecessor.kind === "none") {
     if (!hasOnlyKeys(predecessor, ["kind"])) failPredecessorInvalid();
+    if (applicationDraft.contract.version === "3.2.0") {
+      requireCurrentApplicationRevisionSelection(applicationSelection, {
+        requestedRoute: applicationDraft.launchRequest?.requestedRoute,
+        priorVersion: null,
+        fail
+      });
+    }
     return {
       applicationRevision: "1",
       lineage: { kind: "new", previous: null },
@@ -136,7 +158,18 @@ function deriveRevision({ applicationDraft, predecessor }) {
     };
   }
   if (predecessor.kind === "v3") {
-    return deriveFromV3({ applicationDraft, predecessor });
+    return deriveApplicationV3RevisionFromV3({
+      applicationDraft,
+      predecessor,
+      applicationSelection,
+      sourceBindingFields: APPLICATION_V3_SOURCE_BINDING_FIELDS,
+      parseCanonicalPredecessorBytes,
+      requirePullRequestNumber,
+      incrementCanonicalDecimal,
+      cloneCanonical,
+      failPredecessorInvalid,
+      fail
+    });
   }
   if (predecessor.kind === "v2") {
     return deriveFromV2({ applicationDraft, predecessor });
@@ -148,95 +181,6 @@ function deriveRevision({ applicationDraft, predecessor }) {
     );
   }
   failPredecessorInvalid();
-}
-
-function deriveFromV3({ applicationDraft, predecessor }) {
-  const registryKeys = ["kind", "location", "applicationBytes", "packageSha256"];
-  const draftKeys = [...registryKeys, "pullRequestNumber"];
-  if (
-    !["registry-base", "open-draft"].includes(predecessor.location)
-    || !SHA256_PATTERN.test(predecessor.packageSha256 ?? "")
-    || (predecessor.location === "registry-base" && !hasOnlyKeys(predecessor, registryKeys))
-    || (predecessor.location === "open-draft" && !hasOnlyKeys(predecessor, draftKeys))
-  ) {
-    failPredecessorInvalid();
-  }
-  const pullRequestNumber = predecessor.location === "open-draft"
-    ? requirePullRequestNumber(predecessor.pullRequestNumber)
-    : null;
-  const previousApplication = parseCanonicalPredecessorBytes(predecessor.applicationBytes);
-  if (
-    previousApplication?.contract?.id !== "public-pr-application-v3"
-    || previousApplication?.contract?.version !== "3.1.0"
-    || previousApplication?.schemaVersion !== 3
-    || previousApplication.applicationId !== applicationDraft.applicationId
-    || previousApplication?.builder?.githubUserId !== applicationDraft?.builder?.githubUserId
-  ) {
-    fail(
-      "PREPARE_REVISION_PREDECESSOR_IDENTITY_MISMATCH",
-      "the predecessor does not match the target application identity"
-    );
-  }
-  const predecessorValidation = validatePublicPrApplicationV3(previousApplication);
-  if (predecessorValidation?.valid !== true) failPredecessorInvalid();
-  const applicationSha256 = sha256Bytes(predecessor.applicationBytes);
-  let previousBinding;
-  try {
-    previousBinding = derivePublicPrApplicationV3PreviousBinding({
-      application: previousApplication,
-      applicationSha256,
-      packageSha256: predecessor.packageSha256
-    });
-  } catch {
-    failPredecessorInvalid();
-  }
-  requireV3PreviousBinding(previousBinding);
-
-  const comparablePrevious = cloneCanonical(previousApplication);
-  delete comparablePrevious.applicationRevision;
-  delete comparablePrevious.lineage;
-  if (canonicalJson(comparablePrevious) === canonicalJson(applicationDraft)) {
-    fail(
-      "PREPARE_REVISION_NO_CHANGES",
-      "the requested revision has no semantic changes"
-    );
-  }
-  const sourceChanged = canonicalJson(sourceBindingProjection(previousApplication.source))
-    !== canonicalJson(sourceBindingProjection(applicationDraft.source));
-  if (
-    !sourceChanged
-    && canonicalJson(normativeProjection(previousApplication))
-      !== canonicalJson(normativeProjection(applicationDraft))
-  ) {
-    fail(
-      "PREPARE_REVISION_NORMATIVE_CHANGE_REQUIRES_SOURCE_UPDATE",
-      "same-source revisions may change only derived review and security evidence"
-    );
-  }
-  const applicationRevision = incrementCanonicalDecimal(previousApplication.applicationRevision);
-  const lineage = {
-    kind: sourceChanged ? "source-update" : "recheck",
-    previous: cloneCanonical(previousBinding)
-  };
-  return {
-    applicationRevision,
-    lineage,
-    mode: predecessor.location === "open-draft"
-      ? "open-draft-update"
-      : "merged-registry-successor",
-    predecessor: {
-      applicationContract: previousBinding.applicationContract,
-      applicationRevision: previousBinding.applicationRevision,
-      applicationSha256,
-      packageSha256: predecessor.packageSha256,
-      location: predecessor.location
-    },
-    sourceChanged,
-    target: {
-      githubNextAction: predecessor.location === "open-draft" ? "update" : "submit",
-      pullRequestNumber
-    }
-  };
 }
 
 function deriveFromV2({ applicationDraft, predecessor }) {
@@ -253,6 +197,12 @@ function deriveFromV2({ applicationDraft, predecessor }) {
     || !SHA256_PATTERN.test(predecessor.packageSha256 ?? "")
   ) {
     failPredecessorInvalid();
+  }
+  if (applicationDraft?.contract?.version !== "3.1.0") {
+    fail(
+      "PREPARE_REVISION_V2_DIRECT_CURRENT_MIGRATION_UNSUPPORTED",
+      "Historical V2 must first preserve the released V3.1 migration contract before a V3.2 successor"
+    );
   }
   const previousApplication = parseCanonicalPredecessorBytes(predecessor.applicationBytes);
   const source = previousApplication?.source?.primary;
@@ -390,83 +340,6 @@ function parseV2SubmissionBytes(bytes) {
   }
 }
 
-function sourceBindingProjection(source) {
-  if (!isPlainObject(source) || !isPlainObject(source.primary) || !Array.isArray(source.companions)) {
-    fail(
-      "PREPARE_REVISION_DRAFT_INVALID",
-      "the application draft does not satisfy the Application V3 preparation boundary"
-    );
-  }
-  return {
-    schemaVersion: source.schemaVersion,
-    primary: sourceRepositoryBindingProjection(source.primary),
-    companions: source.companions.map(sourceRepositoryBindingProjection)
-  };
-}
-
-function sourceRepositoryBindingProjection(repository) {
-  if (!isPlainObject(repository)) {
-    fail(
-      "PREPARE_REVISION_DRAFT_INVALID",
-      "the application draft does not satisfy the Application V3 preparation boundary"
-    );
-  }
-  const projection = {};
-  for (const field of APPLICATION_V3_SOURCE_BINDING_FIELDS) {
-    if (!Object.hasOwn(repository, field)) {
-      fail(
-        "PREPARE_REVISION_DRAFT_INVALID",
-        "the application draft does not satisfy the Application V3 preparation boundary"
-      );
-    }
-    projection[field] = cloneCanonical(repository[field]);
-  }
-  return projection;
-}
-
-function normativeProjection(application) {
-  const projection = cloneCanonical(application);
-  delete projection.applicationRevision;
-  delete projection.lineage;
-  delete projection.fidelity;
-  delete projection.securityBindings;
-  delete projection.reviewPackage;
-  if (isPlainObject(projection.source)) {
-    delete projection.source.verificationReports;
-    for (const repository of [projection.source.primary, ...(projection.source.companions ?? [])]) {
-      if (isPlainObject(repository)) delete repository.githubActionsRunIds;
-    }
-  }
-  return projection;
-}
-
-function requireV3PreviousBinding(binding) {
-  if (
-    !isPlainObject(binding)
-    || binding.applicationContract !== "public-pr-application-v3"
-    || binding.applicationSchemaVersion !== 3
-    || !POSITIVE_DECIMAL_PATTERN.test(binding.applicationRevision ?? "")
-    || !SHA256_PATTERN.test(binding.applicationSha256 ?? "")
-    || !SHA256_PATTERN.test(binding.packageSha256 ?? "")
-    || !/^[1-9][0-9]{0,63}$/u.test(binding.sourceNumericRepositoryId ?? "")
-    || !GIT_OBJECT_PATTERN.test(binding.sourceCommit ?? "")
-    || !GIT_OBJECT_PATTERN.test(binding.sourceTree ?? "")
-    || typeof binding.submissionSchemaId !== "string"
-    || typeof binding.submissionStandard !== "string"
-    || typeof binding.submissionPath !== "string"
-    || binding.submissionPath.length === 0
-    || !SHA256_PATTERN.test(binding.submissionSha256 ?? "")
-    || !new Set(["unresolved", "applicable", "not-applicable", "not-selected"]).has(binding.feeApplicability)
-    || (binding.feeApplicability === "not-selected"
-      ? binding.feePolicyId !== null || binding.feePolicyVersion !== null
-      : typeof binding.feePolicyId !== "string" || typeof binding.feePolicyVersion !== "string")
-    || !(binding.feePolicyInstanceSha256 === null || SHA256_PATTERN.test(binding.feePolicyInstanceSha256 ?? ""))
-    || (binding.feeApplicability === "not-selected" && binding.feePolicyInstanceSha256 !== null)
-  ) {
-    failPredecessorInvalid();
-  }
-}
-
 function incrementCanonicalDecimal(value) {
   if (!POSITIVE_DECIMAL_PATTERN.test(value ?? "")) failPredecessorInvalid();
   return (BigInt(value) + 1n).toString();
@@ -482,7 +355,7 @@ function requireApplicationDraft(value) {
     !isPlainObject(value)
     || value.schemaVersion !== 3
     || value.contract?.id !== "public-pr-application-v3"
-    || value.contract?.version !== "3.1.0"
+    || !new Set(["3.1.0", "3.2.0"]).has(value.contract?.version)
     || typeof value.applicationId !== "string"
     || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value.applicationId)
   ) {

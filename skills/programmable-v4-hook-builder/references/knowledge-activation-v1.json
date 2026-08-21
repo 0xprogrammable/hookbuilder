@@ -207,6 +207,24 @@
       "reason": "Start release evaluation from exact build profiles and immutable toolchain evidence before lifecycle detail."
     },
     {
+      "id": "capability-current-submit-launch-contract",
+      "routeKind": "capability",
+      "routeId": "current-submit-launch-contract",
+      "stage": 50,
+      "order": 30,
+      "reference": "submit-launch-resolver.md",
+      "reason": "Diagnose one exact Submit Launch snapshot, currentness drift, or an unsupported handler without loading unrelated product repositories."
+    },
+    {
+      "id": "capability-application-contract-migration",
+      "routeKind": "capability",
+      "routeId": "application-contract-migration",
+      "stage": 50,
+      "order": 40,
+      "reference": "application-compatibility-and-migration.md",
+      "reason": "Resolve current versus legacy application contracts and the closed V3.1 to V3.2 migration without widening project intent."
+    },
+    {
       "id": "surface-application",
       "routeKind": "surface",
       "routeId": "application",

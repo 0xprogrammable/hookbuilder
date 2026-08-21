@@ -204,6 +204,7 @@ test("new public machine contracts bind their canonical semantic validators", ()
     mode: validator.mode
   }]));
   const expected = new Map([
+    ["applicant-compatibility-v2", { modulePath: "scripts/applicant-compatibility-contract-core.mjs", exportName: "parseApplicantCompatibilityContract", mode: "package-semantic" }],
     ["architecture-candidates-v1", { modulePath: "scripts/project-contracts-core.mjs", exportName: "validateArchitectureCandidates", mode: "package-semantic" }],
     ["capability-contract-v1", { modulePath: "scripts/composition-checker-core.mjs", exportName: "validateCapabilityContractV1", mode: "direct" }],
     ["command-receipt-v1", { modulePath: "scripts/repository-completion-core.mjs", exportName: "validateRepositoryPlan", mode: "package-semantic" }],
@@ -218,9 +219,12 @@ test("new public machine contracts bind their canonical semantic validators", ()
     ["project-sandbox-trust-root-v1", { modulePath: "scripts/project-sandbox-host-core.mjs", exportName: "validateProjectSandboxTrustRootV1", mode: "direct" }],
     ["project-state-v1", { modulePath: "scripts/project-state-core.mjs", exportName: "validateProjectState", mode: "package-semantic" }],
     ["project-toolchain-lock-v1", { modulePath: "scripts/repository-completion-core.mjs", exportName: "validateRepositoryPlan", mode: "package-semantic" }],
+    ["open-world-submission-v2-1", { modulePath: "scripts/open-world-v2-contract-adapter.mjs", exportName: "validateOpenWorldSubmissionContract", mode: "package-semantic" }],
+    ["public-pr-application-v3-2", { modulePath: "scripts/application-v3-contract-adapter.mjs", exportName: "validateApplicationContractDocument", mode: "package-semantic" }],
     ["repository-plan-v1", { modulePath: "scripts/repository-completion-core.mjs", exportName: "validateRepositoryPlan", mode: "package-semantic" }],
     ["semantic-rule-registry-v1", { modulePath: "scripts/semantic-rule-registry-core.mjs", exportName: "validateSemanticRuleRegistry", mode: "direct" }],
     ["trade-capability-manifest-v1", { modulePath: "scripts/trade-capability-manifest-core.mjs", exportName: "validateTradeCapabilityManifestV1", mode: "direct" }],
+    ["trade-capability-manifest-v2", { modulePath: "scripts/open-world-v2-contract-adapter.mjs", exportName: "validateTradeCapabilityManifestV2", mode: "direct" }],
     ["v4-deployment-evidence-v1", { modulePath: "scripts/v4-deployment-evidence-core.mjs", exportName: "validateV4DeploymentEvidence", mode: "package-semantic" }],
     ["v4-deployment-preimage-v1", { modulePath: "scripts/v4-deployment-evidence-core.mjs", exportName: "validateV4DeploymentEvidence", mode: "package-semantic" }]
   ]);

@@ -2,6 +2,32 @@
 
 All notable Builder changes are recorded here. Historical releases remain immutable.
 
+## 0.12.0 - 2026-08-20
+
+### Added
+
+- Added one stage-aware resolver for the current Submit Launch contract. It binds the repository identity, protected
+  branch, commit, tree, active contracts, compatibility contract, schemas, and launch policy from one exact snapshot.
+- Added local adapters for the current Application V3.2, Submission V2.1, and Trade V2 contracts. Route state is
+  derived from closed application data instead of an Applicant-supplied exemption or evidence label.
+
+### Changed
+
+- Policy parameters now come from the resolved Submit Launch snapshot. Updating a wallet, BPS value, rule, or evidence
+  pointer within the supported contract shape no longer requires a Hookbuilder release.
+- The normal submission path carries one snapshot and stage evaluation into its confirmation boundary and rechecks the
+  protected head before a write. A moved head produces zero GitHub mutations.
+
+### Evidence boundary
+
+- Resolution reads signed-in or public GitHub data as inert bytes; it does not execute remote JavaScript, scan the
+  Website or Indexer, or turn cache contents into authority.
+- Build work may remain explicitly policy-unresolved offline. Submission, launch-readiness, and production-promotion
+  claims require the applicable fresh current contract, and no result grants review, approval, deployment, signing,
+  funds, or launch authority.
+- This source section describes the `v0.12.0` candidate. The last verified public GitHub Release remains `v0.11.0`
+  until an exact `v0.12.0` tag, release, assets, and fresh installation are independently verified.
+
 ## 0.11.2 - 2026-08-18
 
 ### Added

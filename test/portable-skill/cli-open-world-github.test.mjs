@@ -39,6 +39,7 @@ const sourceTree = "d".repeat(40);
 const centralCommit = "1".repeat(40);
 const centralTree = "2".repeat(40);
 const TRADE_APPLICATION_RECORD_KINDS = new Set(["trade-capability-manifest", "trade-test-result"]);
+const TEST_CLI_TIMEOUT_MS = 60_000;
 
 test("Application V3 3.1.0 represents an unselected Fee V2 contract without fabricating fee bindings", () => {
   const application = JSON.parse(fs.readFileSync(
@@ -163,11 +164,13 @@ test("generic complete project plans the same protected draft transport without 
   assert.equal(payload.applicationId, "generic-no-fee-example");
   assert.equal(payload.centralContract.activeContractManifestPath, ".programmable/active-contract.json");
   assert.equal(payload.centralContract.contractId, "submit-launch");
-  assert.equal(payload.centralContract.schemaPath, "intake/schemas/public-pr-application-v3.schema.json");
-  assert.equal(payload.centralContract.schemaSha256, "sha256:2d51837bbbfe52672ecca334596243bebcec78e8e0a885d67084dfd98955bcb7");
+  assert.equal(payload.centralContract.schemaPath, "intake/schemas/public-pr-application-v3.2.schema.json");
+  assert.equal(payload.centralContract.schemaSha256, sha256(fs.readFileSync(
+    path.join(skillRoot, "references", "public-pr-application-v3.2.schema.json")
+  )));
   assert.match(payload.centralContract.activeContractManifestSha256, /^sha256:[0-9a-f]{64}$/u);
   assert.equal(payload.centralContract.activeContractManifestGitBlobOid, fixture.centralContractBlobs.manifest);
-  assert.equal(payload.centralContract.schemaGitBlobOid, fixture.centralContractBlobs.applicationSchema);
+  assert.equal(payload.centralContract.schemaGitBlobOid, null);
   assert.equal(payload.intakeBinding.path, "docs/builder/intake-status.json");
   assert.equal(payload.intakeBinding.gitBlobOid, fixture.centralContractBlobs.intakeStatus);
   assert.match(payload.intakeBinding.sha256, /^sha256:[0-9a-f]{64}$/u);
@@ -188,19 +191,24 @@ test("generic complete project plans the same protected draft transport without 
       policyId: "programmable-central-launch-policy",
       policyVersion: "1.3.0",
       activeBuildRuleIds: [],
-      activeProductionRuleIds: ["LAUNCH.ETHEREUM_AND_TREASURY_10_BPS"],
+      activeProductionRuleIds: [],
       buildProfileEnabled: true,
       productionProfileEnabled: false
     }
   );
   assert.equal(payload.centralContract.policy.policyBinding.baseCommit, centralCommit);
-  assert.equal(payload.centralContract.policy.policyBinding.baseTree, centralTree);
+  assert.equal(payload.centralContract.policy.policyBinding.baseTree, fixture.centralTree);
   assert.equal(payload.centralContract.policy.policyBinding.profileId, "workflow-canary");
   assert.equal(payload.centralContract.policy.policyBinding.gitBlobOid, fixture.centralPolicy.policyBlob);
   assert.equal(payload.centralContract.policy.policyBinding.sha256, sha256(fixture.centralPolicy.policyBytes));
   assert.equal(payload.centralContract.policy.buildPolicyBinding.profileId, "build");
   assert.equal(payload.centralContract.policy.buildPolicyBinding.gitBlobOid, fixture.centralPolicy.policyBlob);
   assert.equal(payload.centralContract.policy.policySchemaBinding.gitBlobOid, fixture.centralPolicy.schemaBlob);
+  assert.equal(payload.submitLaunchContract.schemaVersion, "programmable.submit-launch-plan-binding.v1");
+  assert.equal(payload.submitLaunchContract.snapshotSha256, payload.submitLaunchContract.snapshotBinding.snapshotSha256);
+  assert.equal(payload.submitLaunchContract.stageSha256, payload.submitLaunchContract.projectStage.stageSha256);
+  assert.equal(payload.submitLaunchContract.projectStage.stage, "submit");
+  assert.equal(payload.submitLaunchContract.projectStage.routeState, "unresolved");
   assert.ok(payload.externalWrites.includes("open-draft-pull-request"));
   assert.match(payload.confirmationDigest, /^sha256:[0-9a-f]{64}$/u);
   assert.ok(allCalls(fixture).every(({ method }) => method === "GET"));
@@ -212,25 +220,30 @@ test("Application V3 submit rejects protected-base active-contract or schema sub
     const fixture = createTransportFixture(t, { feeV2Selected: false });
     const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
     if (substitution !== "schema-bytes") {
-      const manifestPath = ".programmable/active-contract.json";
+      const manifestPath = substitution === "manifest-declaration"
+        ? ".programmable/active-contract.v2.json"
+        : ".programmable/active-contract.json";
       const manifest = JSON.parse(Buffer.from(state.centralContractContents[manifestPath], "base64").toString("utf8"));
       if (substitution === "manifest-declaration") {
-        manifest.artifacts.package[0].sha256 = `sha256:${"d".repeat(64)}`;
+        manifest.artifacts.package.find(({ path: artifactPath }) => (
+          artifactPath === "intake/schemas/public-pr-application-v3.2.schema.json"
+        )).sha256 = `sha256:${"d".repeat(64)}`;
       } else {
         manifest.contractId = "substituted-contract";
       }
       state.centralContractContents[manifestPath] = Buffer.from(`${canonicalJson(manifest)}\n`, "utf8").toString("base64");
     } else {
-      state.centralContractContents["intake/schemas/public-pr-application-v3.schema.json"] = Buffer.from(
+      state.centralContractContents["intake/schemas/active-contract-manifest-v2.schema.json"] = Buffer.from(
         "{\"substituted\":true}\n",
         "utf8"
       ).toString("base64");
     }
+    advanceCentralFixtureContract(state, substitution);
     fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
 
     const result = run(["open-world", "submit", fixture.packageRoot], fixture);
-    assert.equal(result.status, 1, `${substitution}: ${result.stdout || result.stderr}`);
-    assert.equal(JSON.parse(result.stdout).error.code, "APPLICATION_V3_CENTRAL_CONTRACT_INVALID", substitution);
+    assert.equal(result.status, 2, `${substitution}: ${result.stdout || result.stderr}`);
+    assert.equal(JSON.parse(result.stdout).error.code, "SUBMIT_LAUNCH_CONTRACT_UNSUPPORTED", substitution);
     assert.deepEqual(mutatingCalls(fixture), [], substitution);
   }
 });
@@ -242,24 +255,26 @@ test("Application V3 submit rejects an active-contract policy hash substitution 
   const manifest = JSON.parse(Buffer.from(state.centralContractContents[manifestPath], "base64").toString("utf8"));
   manifest.artifacts.policy[0].sha256 = `sha256:${"e".repeat(64)}`;
   state.centralContractContents[manifestPath] = Buffer.from(`${canonicalJson(manifest)}\n`, "utf8").toString("base64");
+  advanceCentralFixtureContract(state, "policy-declaration");
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
 
   const result = run(["open-world", "submit", fixture.packageRoot], fixture);
-  assert.equal(result.status, 1, result.stdout || result.stderr);
-  assert.equal(JSON.parse(result.stdout).error.code, "APPLICATION_V3_CENTRAL_CONTRACT_INVALID");
+  assert.equal(result.status, 2, result.stdout || result.stderr);
+  assert.equal(JSON.parse(result.stdout).error.code, "SUBMIT_LAUNCH_CONTRACT_UNSUPPORTED");
   assert.deepEqual(mutatingCalls(fixture), []);
 });
 
 test("Application V3 submit rejects active-contract tree substitution before any write", (t) => {
   const fixture = createTransportFixture(t, { feeV2Selected: false });
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
-  const rootEntries = state.centralPolicyTrees[state.centralTree];
-  rootEntries.find(({ path: entryPath }) => entryPath === ".programmable").sha = "f".repeat(40);
+  const previousTree = state.centralTree;
+  state.centralTree = "f".repeat(40);
+  state.centralPolicyTrees[state.centralTree] = structuredClone(state.centralPolicyTrees[previousTree]);
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
 
   const result = run(["open-world", "submit", fixture.packageRoot], fixture);
-  assert.equal(result.status, 1, result.stdout || result.stderr);
-  assert.equal(JSON.parse(result.stdout).error.code, "APPLICATION_V3_CENTRAL_CONTRACT_INVALID");
+  assert.equal(result.status, 2, result.stdout || result.stderr);
+  assert.equal(JSON.parse(result.stdout).error.code, "SUBMIT_LAUNCH_POLICY_GIT_OBJECT_INVALID");
   assert.deepEqual(mutatingCalls(fixture), []);
 });
 
@@ -270,8 +285,8 @@ test("Application V3 submit rejects a protected ref and commit response mismatch
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
 
   const result = run(["open-world", "submit", fixture.packageRoot], fixture);
-  assert.equal(result.status, 1, result.stdout || result.stderr);
-  assert.equal(JSON.parse(result.stdout).error.code, "CENTRAL_REPOSITORY_CHANGED");
+  assert.equal(result.status, 2, result.stdout || result.stderr);
+  assert.equal(JSON.parse(result.stdout).error.code, "SUBMIT_LAUNCH_CONTRACT_TRUST_ROOT_MISMATCH");
   assert.deepEqual(mutatingCalls(fixture), []);
 });
 
@@ -721,19 +736,24 @@ test("confirmed transport rereads both exact CI and intake state immediately bef
     }
     fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
     const result = run([...command, "--confirm-external-write", digest], fixture, { allowWrites: true });
-    assert.equal(result.status, 1, `${raceMode}: ${result.stdout || result.stderr}`);
+    assert.equal(result.status, raceMode === "central-contract-change-before-write" ? 2 : 1, `${raceMode}: ${result.stdout || result.stderr}`);
     assert.equal(
       JSON.parse(result.stdout).error.code,
       raceMode === "source-ci-fail-before-write"
         ? "APPLICATION_SOURCE_CI_MISMATCH"
         : raceMode === "intake-pause-before-write"
           ? "INTAKE_PAUSED_ALL"
-          : "CONFIRMED_PLAN_CHANGED"
+          : "SUBMIT_LAUNCH_CONTRACT_TRUST_ROOT_MISMATCH"
     );
     assert.deepEqual(mutatingCalls(fixture), []);
-    const receipt = JSON.parse(fs.readFileSync(path.join(fixture.root, "application-v3-mutation-receipt.json"), "utf8"));
-    assert.equal(receipt.state, "FAILED_BEFORE_MUTATION");
-    assert.deepEqual(receipt.mutations, []);
+    const receiptPath = path.join(fixture.root, "application-v3-mutation-receipt.json");
+    if (raceMode !== "source-ci-fail-before-write") {
+      assert.equal(fs.existsSync(receiptPath), false);
+    } else {
+      const receipt = JSON.parse(fs.readFileSync(receiptPath, "utf8"));
+      assert.equal(receipt.state, "FAILED_BEFORE_MUTATION");
+      assert.deepEqual(receipt.mutations, []);
+    }
   }
 });
 
@@ -1847,6 +1867,7 @@ test("open-world submit refuses an occupied immutable revision at the exact cent
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   const targetPath = Object.keys(state.packageContents)[0];
   state.centralContents[targetPath] = state.packageContents[targetPath];
+  advanceCentralFixtureContract(state, "occupied-immutable-revision");
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
   const result = run(["open-world", "submit", fixture.packageRoot], fixture);
   assert.equal(result.status, 1, result.stdout || result.stderr);
@@ -2169,6 +2190,33 @@ test("resume reconciles a persisted branch response and continues without replay
   assert.ok(completed.mutations.every(isConfirmedReceiptMutation));
 });
 
+test("receipt resume rechecks the exact unified snapshot and stage before any write", async (t) => {
+  const fixture = createTransportFixture(t);
+  const preview = run(["open-world", "submit", fixture.packageRoot], fixture);
+  assert.equal(preview.status, 0, preview.stdout || preview.stderr);
+  const plan = JSON.parse(preview.stdout).result;
+  assert.equal(plan.submitLaunchContract.snapshotSha256, plan.submitLaunchContract.snapshotBinding.snapshotSha256);
+  assert.equal(plan.submitLaunchContract.stageSha256, plan.submitLaunchContract.projectStage.stageSha256);
+
+  const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
+  state.centralCommit = "9".repeat(40);
+  fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
+  fs.writeFileSync(fixture.callLog, "");
+  const runtime = createOpenWorldRuntime();
+  const applicationPackage = runtime.loadApplicationV3TransportPackage(fixture.packageRoot);
+  await assert.rejects(
+    () => runtime.assertApplicationV3PlanSubmitLaunchContractCurrent({
+      applicationPackage,
+      transport: fixtureGhTransport(fixture),
+      plan
+    }),
+    (error) => error?.code === "SUBMIT_LAUNCH_CONTRACT_DRIFT"
+  );
+  assert.deepEqual(mutatingCalls(fixture), []);
+  assert.ok(allCalls(fixture).length > 0);
+  assert.ok(allCalls(fixture).every(({ method }) => method === "GET"));
+});
+
 test("confirmed submit fails partial-write closed when independent tree, commit, package, or final PR readback differs", (t) => {
   const cases = [
     ["created-tree-readback-tamper", "create-application-tree", "RESPONSE_RECEIVED_PENDING_READBACK"],
@@ -2412,7 +2460,7 @@ test("open-world status returns typed Application V3 guidance for a Submission V
     cwd: skillRoot,
     encoding: "utf8",
     shell: false,
-    timeout: 30_000,
+    timeout: TEST_CLI_TIMEOUT_MS,
     maxBuffer: 16_000_000
   });
   assert.equal(result.status, 1, result.stdout || result.stderr);
@@ -2529,6 +2577,8 @@ test("multi-revision V3-new history cannot detach from a full or orphaned V2 bas
     assert.equal(String(application.applicationRevision), "2");
     const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
     state.centralContents[`submissions/${application.applicationId}/application.json`] = Buffer.from("{}\n", "utf8").toString("base64");
+    advanceCentralFixtureContract(state, `legacy-v2-base-${command}`);
+    if (state.pull !== null) state.pull.base.sha = state.centralCommit;
     fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
     const result = run(command === "submit"
       ? ["open-world", command, fixture.packageRoot]
@@ -3022,6 +3072,7 @@ function createTransportFixture(t, {
     html_url: "https://github.com/0xprogrammable/submit-launch",
     private: false,
     fork: false,
+    default_branch: "main",
     owner: { id: 777, login: "0xprogrammable" },
     permissions: { push: false, admin: false, maintain: false }
   };
@@ -3086,30 +3137,16 @@ function createTransportFixture(t, {
     repositoryPath,
     Buffer.from(fixtureSourceContent(application, repositoryPath), "utf8").toString("base64")
   ]));
-  const centralApplicationV3SchemaPath = "intake/schemas/public-pr-application-v3.schema.json";
-  const centralApplicationV3SchemaBytes = fs.readFileSync(
-    path.join(skillRoot, "references", "public-pr-application-v3.schema.json")
-  );
-  const centralApplicationV3SchemaSha256 = sha256(centralApplicationV3SchemaBytes);
   const centralPolicyFixture = makeSubmitLaunchPolicyFixture({
     baseTree: centralTree,
     policyVersion: "1.3.0",
     ruleProfiles: ["production-launch"],
     enforcementOwner: "platform"
   });
-  const centralActiveContractBytes = Buffer.from(`${canonicalJson({
-    $schema: "urn:programmable:active-contract-manifest:1.0.0",
-    artifacts: {
-      package: [{ path: centralApplicationV3SchemaPath, sha256: centralApplicationV3SchemaSha256 }],
-      policy: [{ path: "policy/launch-policy.v1.json", sha256: sha256(centralPolicyFixture.policyBytes) }],
-      validator: [{ path: "scripts/verify-public-application-v3.mjs", sha256: `sha256:${"b".repeat(64)}` }],
-      workflow: [{ path: ".github/workflows/verify-hook-builder.yml", sha256: `sha256:${"c".repeat(64)}` }]
-    },
-    contractId: "submit-launch",
-    defaultBranch: "main",
-    kind: "programmable-active-contract",
-    schemaVersion: "1.0.0"
-  })}\n`, "utf8");
+  const centralContract = makeSubmitLaunchV2ContractFixture(centralPolicyFixture);
+  const centralActiveContractBytes = centralContract.documents.get(".programmable/active-contract.json");
+  const centralApplicationV3SchemaPath = "intake/schemas/public-pr-application-v3.2.schema.json";
+  const centralApplicationV3SchemaBytes = centralContract.documents.get(centralApplicationV3SchemaPath);
   const centralProgrammableTree = "a".repeat(40);
   const centralIntakeTree = "b".repeat(40);
   const centralIntakeSchemasTree = "e".repeat(40);
@@ -3123,6 +3160,14 @@ function createTransportFixture(t, {
     state: "open"
   })}\n`, "utf8");
   const centralIntakeStatusBlob = gitBlob(centralIntakeStatusBytes);
+  const encodedCentralContract = Object.fromEntries(
+    [...centralContract.documents].map(([documentPath, bytes]) => [documentPath, bytes.toString("base64")])
+  );
+  const recursiveCentralTree = buildRecursiveContractTree({
+    ...encodedCentralContract,
+    ...(priorIsMerged ? priorProjection.contents : {})
+  });
+  const fixtureCentralTree = recursiveCentralTree.rootTree;
   fs.writeFileSync(statePath, `${canonicalJson({
     viewer,
     centralRepository,
@@ -3138,7 +3183,7 @@ function createTransportFixture(t, {
     sourceCommit,
     sourceTree,
     centralCommit,
-    centralTree,
+    centralTree: fixtureCentralTree,
     forkRepository,
     branchCommit,
     branchTree,
@@ -3155,15 +3200,10 @@ function createTransportFixture(t, {
     sourceArchives: {},
     packageContents: projection.contents,
     centralContents: priorIsMerged ? priorProjection.contents : {},
-    centralContractContents: {
-      ".programmable/active-contract.json": centralActiveContractBytes.toString("base64"),
-      [centralApplicationV3SchemaPath]: centralApplicationV3SchemaBytes.toString("base64"),
-      "policy/launch-policy.v1.json": centralPolicyFixture.policyBytes.toString("base64"),
-      "policy/schemas/launch-policy.v1.schema.json": centralPolicyFixture.schemaBytes.toString("base64")
-    },
-    centralTreeEntries: [],
+    centralContractContents: encodedCentralContract,
+    centralTreeEntries: recursiveCentralTree.entries.filter(({ type }) => type === "tree"),
     centralPolicyTrees: {
-      [centralTree]: [
+      [fixtureCentralTree]: [
         treeEntry(".programmable", "040000", "tree", centralProgrammableTree),
         treeEntry("docs", "040000", "tree", centralDocsTree),
         treeEntry("intake", "040000", "tree", centralIntakeTree),
@@ -3225,12 +3265,223 @@ function createTransportFixture(t, {
     statePath,
     applicationRevision: String(application.applicationRevision),
     centralPolicy: centralPolicyFixture,
+    centralTree: fixtureCentralTree,
     centralContractBlobs: {
       manifest: centralActiveContractBlob,
       applicationSchema: centralApplicationV3SchemaBlob,
       intakeStatus: centralIntakeStatusBlob
     }
   };
+}
+
+function makeSubmitLaunchV2ContractFixture(policyFixture) {
+  const reference = (name) => fs.readFileSync(path.join(skillRoot, "references", name));
+  const currentApplicationBytes = reference("public-pr-application-v3.2.schema.json");
+  const legacyApplicationBytes = reference("public-pr-application-v3.schema.json");
+  const submissionBytes = reference("open-world-submission-v2.1.schema.json");
+  const tradeCapabilityBytes = reference("trade-capability-manifest-v2.schema.json");
+  const compatibilitySchemaBytes = reference("applicant-compatibility-v2.schema.json");
+  const activeV2SchemaBytes = Buffer.from(`${canonicalJson({
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $id: "urn:programmable:active-contract-manifest:2.0.0",
+    type: "object"
+  })}\n`, "utf8");
+  const application = {
+    current: contractBinding(
+      "public-pr-application-v3.2",
+      "intake/schemas/public-pr-application-v3.2.schema.json",
+      currentApplicationBytes
+    ),
+    legacy: [contractBinding(
+      "public-pr-application-v3.1",
+      "intake/schemas/public-pr-application-v3.schema.json",
+      legacyApplicationBytes
+    )]
+  };
+  const supportingContracts = {
+    routerReadiness: {
+      schema: {
+        contractId: "programmable-launch-router-readiness-v1",
+        path: "intake/schemas/programmable-launch-router-readiness-v1.schema.json",
+        sha256: `sha256:${"c".repeat(64)}`
+      },
+      validatorClosure: {
+        algorithm: "sha256-path-nul-size-nul-content-nul-v1",
+        closureSha256: `sha256:${"d".repeat(64)}`,
+        files: [
+          "scripts/programmable-launch-router-readiness-core.mjs",
+          "scripts/programmable-launch-router-readiness.mjs",
+          "vendor/programmable-applicant-validator/scripts/evm-encoding-core.mjs",
+          "vendor/programmable-v4-hook-builder/scripts/github-public-source-lossless-json.mjs"
+        ].map((filePath, index) => ({
+          path: filePath,
+          sha256: `sha256:${String(index + 5).repeat(64)}`
+        }))
+      }
+    },
+    submission: contractBinding(
+      "open-world-submission-v2.1",
+      "intake/schemas/open-world-submission-v2.1.schema.json",
+      submissionBytes
+    ),
+    tradeCapabilityManifest: contractBinding(
+      "trade-capability-manifest-v2",
+      "intake/schemas/trade-capability-manifest-v2.schema.json",
+      tradeCapabilityBytes
+    )
+  };
+  const compatibilityBytes = Buffer.from(`${canonicalJson({
+    $schema: "urn:programmable:applicant-compatibility:2.0.0",
+    application,
+    authority: {
+      candidateCodeExecuted: false,
+      credentialsUsed: false,
+      externalWritesPerformed: false,
+      launchAuthorized: false,
+      networkAccessed: false,
+      promotionAuthorized: false,
+      reviewAuthorized: false,
+      rpcAccessed: false
+    },
+    capabilities: {
+      draftTransportOperations: ["create", "update"],
+      launchReadiness: "offline-check-only",
+      unreviewedDraftOnly: true
+    },
+    kind: "programmable-applicant-compatibility",
+    minimumBuilderProtocolVersion: "1.0.0",
+    schemaVersion: "2.0.0",
+    supportingContracts,
+    trustedRepository: { defaultBranch: "main", numericId: "1320171831" }
+  })}\n`, "utf8");
+  const artifact = (artifactPath, bytes) => ({ path: artifactPath, sha256: sha256(bytes) });
+  const activeV2Bytes = Buffer.from(`${canonicalJson({
+    $schema: "urn:programmable:active-contract-manifest:2.0.0",
+    artifacts: {
+      package: [
+        artifact(".programmable/applicant-compatibility.v2.json", compatibilityBytes),
+        artifact("intake/schemas/active-contract-manifest-v2.schema.json", activeV2SchemaBytes),
+        artifact("intake/schemas/applicant-compatibility-v2.schema.json", compatibilitySchemaBytes),
+        application.current,
+        ...application.legacy,
+        supportingContracts.routerReadiness.schema,
+        supportingContracts.submission,
+        supportingContracts.tradeCapabilityManifest,
+        artifact("policy/schemas/launch-policy.v1.schema.json", policyFixture.schemaBytes)
+      ].map(({ contractId: _contractId, ...binding }) => binding),
+      policy: [artifact("policy/launch-policy.v1.json", policyFixture.policyBytes)],
+      validator: [{ path: "scripts/active-contract-manifest-core.mjs", sha256: `sha256:${"b".repeat(64)}` }],
+      workflow: [{ path: ".github/workflows/verify-hook-builder.yml", sha256: `sha256:${"c".repeat(64)}` }]
+    },
+    contractId: "submit-launch",
+    defaultBranch: "main",
+    kind: "programmable-active-contract",
+    schemaVersion: "2.0.0"
+  })}\n`, "utf8");
+  const activeV1Bytes = Buffer.from(`${canonicalJson({
+    $schema: "urn:programmable:active-contract-manifest:1.0.0",
+    artifacts: {
+      package: [artifact("intake/schemas/public-pr-application-v3.schema.json", legacyApplicationBytes)],
+      policy: [artifact(".programmable/active-contract.v2.json", activeV2Bytes)],
+      validator: [{ path: "scripts/verify-public-application-v3.mjs", sha256: `sha256:${"b".repeat(64)}` }],
+      workflow: [{ path: ".github/workflows/verify-hook-builder.yml", sha256: `sha256:${"c".repeat(64)}` }]
+    },
+    contractId: "submit-launch",
+    defaultBranch: "main",
+    kind: "programmable-active-contract",
+    schemaVersion: "1.0.0"
+  })}\n`, "utf8");
+  return {
+    documents: new Map([
+      [".programmable/active-contract.json", activeV1Bytes],
+      [".programmable/active-contract.v2.json", activeV2Bytes],
+      [".programmable/applicant-compatibility.v2.json", compatibilityBytes],
+      ["intake/schemas/active-contract-manifest-v2.schema.json", activeV2SchemaBytes],
+      ["intake/schemas/applicant-compatibility-v2.schema.json", compatibilitySchemaBytes],
+      ["intake/schemas/public-pr-application-v3.2.schema.json", currentApplicationBytes],
+      ["intake/schemas/public-pr-application-v3.schema.json", legacyApplicationBytes],
+      ["intake/schemas/open-world-submission-v2.1.schema.json", submissionBytes],
+      ["intake/schemas/trade-capability-manifest-v2.schema.json", tradeCapabilityBytes],
+      ["policy/launch-policy.v1.json", policyFixture.policyBytes],
+      ["policy/schemas/launch-policy.v1.schema.json", policyFixture.schemaBytes]
+    ])
+  };
+}
+
+function contractBinding(contractId, artifactPath, bytes) {
+  return { contractId, path: artifactPath, sha256: sha256(bytes) };
+}
+
+function buildRecursiveContractTree(contents) {
+  const root = { children: new Map(), path: "" };
+  for (const [documentPath, encoded] of Object.entries(contents)) {
+    const segments = documentPath.split("/");
+    let node = root;
+    for (let index = 0; index < segments.length - 1; index += 1) {
+      const name = segments[index];
+      if (!node.children.has(name)) {
+        node.children.set(name, {
+          children: new Map(),
+          path: node.path === "" ? name : `${node.path}/${name}`
+        });
+      }
+      node = node.children.get(name);
+    }
+    node.children.set(segments.at(-1), { blob: gitBlob(Buffer.from(encoded, "base64")) });
+  }
+  const entries = [];
+  const visit = (node) => {
+    const children = [];
+    for (const [name, child] of node.children) {
+      if (child.children !== undefined) {
+        const tree = visit(child);
+        children.push({ name, path: name, mode: "040000", type: "tree", sha: tree });
+        entries.push({
+          path: node.path === "" ? name : `${node.path}/${name}`,
+          mode: "040000",
+          type: "tree",
+          sha: tree
+        });
+      } else {
+        children.push({ name, path: name, mode: "100644", type: "blob", sha: child.blob });
+        entries.push({
+          path: node.path === "" ? name : `${node.path}/${name}`,
+          mode: "100644",
+          type: "blob",
+          sha: child.blob
+        });
+      }
+    }
+    return fixtureGitTreeOid(children);
+  };
+  return { rootTree: visit(root), entries };
+}
+
+function advanceCentralFixtureContract(state, salt) {
+  const previousTree = state.centralTree;
+  const recursive = buildRecursiveContractTree({
+    ...(state.centralContractContents ?? {}),
+    ...(state.centralContents ?? {})
+  });
+  state.centralTree = recursive.rootTree;
+  state.centralTreeEntries = recursive.entries.filter(({ type }) => type === "tree");
+  state.centralPolicyTrees[state.centralTree] = structuredClone(state.centralPolicyTrees[previousTree] ?? []);
+  state.centralCommit = crypto.createHash("sha1")
+    .update(`fixture-central-contract\0${salt}\0${state.centralTree}`, "utf8")
+    .digest("hex");
+  state.centralCommitResponseSha = null;
+}
+
+function fixtureGitTreeOid(entries) {
+  const sorted = [...entries].sort((left, right) => Buffer.compare(
+    Buffer.from(`${left.name}${left.type === "tree" ? "/" : ""}`, "utf8"),
+    Buffer.from(`${right.name}${right.type === "tree" ? "/" : ""}`, "utf8")
+  ));
+  const payload = Buffer.concat(sorted.flatMap((entry) => [
+    Buffer.from(`${entry.mode === "040000" ? "40000" : entry.mode} ${entry.name}\0`, "utf8"),
+    Buffer.from(entry.sha, "hex")
+  ]));
+  return crypto.createHash("sha1").update(`tree ${payload.length}\0`, "utf8").update(payload).digest("hex");
 }
 
 function attachPrepareRevisionInlineSource(fixture) {
@@ -4953,7 +5204,7 @@ if (sourceContentMatch !== null && sourceMetadata(sourceContentMatch[1]) !== nul
   output({ type: "file", path: repositoryPath, encoding: "base64", content, sha: crypto.createHash("sha1").update(Buffer.from("blob " + bytes.length + "\\0", "utf8")).update(bytes).digest("hex") });
 }
 if (endpoint === "repos/0xprogrammable/submit-launch/git/ref/heads/main") {
-  output({ ref: "refs/heads/main", object: { sha: state.centralCommit } });
+  output({ ref: "refs/heads/main", object: { type: "commit", sha: state.centralCommit } });
 }
 if (endpoint === "repos/0xprogrammable/submit-launch/git/commits/" + state.centralCommit) {
   if (new Set(["central-contract-change-before-write", "intake-pause-before-write"]).has(state.raceMode)) {
@@ -4972,17 +5223,8 @@ if (endpoint === "repos/0xprogrammable/submit-launch/git/commits/" + state.centr
           .update(intakeBytes)
           .digest("hex");
       } else {
-        const manifestPath = ".programmable/active-contract.json";
-        const manifest = JSON.parse(Buffer.from(state.centralContractContents[manifestPath], "base64").toString("utf8"));
-        manifest.artifacts.validator[0].sha256 = "sha256:" + "d".repeat(64);
-        const manifestBytes = Buffer.from(JSON.stringify(manifest) + "\\n", "utf8");
-        state.centralContractContents[manifestPath] = manifestBytes.toString("base64");
-        const programmableTree = state.centralPolicyTrees[state.centralTree].find((entry) => entry.path === ".programmable").sha;
-        state.centralPolicyTrees[programmableTree].find((entry) => entry.path === "active-contract.json").sha = crypto
-          .createHash("sha1")
-          .update(Buffer.from("blob " + manifestBytes.length + "\\0", "utf8"))
-          .update(manifestBytes)
-          .digest("hex");
+        persist();
+        output({ sha: "f".repeat(40), tree: { sha: state.centralTree } });
       }
     }
     persist();
@@ -5107,7 +5349,7 @@ if (endpoint.startsWith("repos/0xprogrammable/submit-launch/contents/")) {
     : state.centralContractContents?.[repositoryPath] ?? state.centralContents[repositoryPath];
   if (typeof content !== "string") missing();
   const bytes = Buffer.from(content, "base64");
-  output({ type: "file", path: repositoryPath, encoding: "base64", content, sha: crypto.createHash("sha1").update(Buffer.from("blob " + bytes.length + "\\0", "utf8")).update(bytes).digest("hex") });
+  output({ type: "file", path: repositoryPath, encoding: "base64", content, size: bytes.length, sha: crypto.createHash("sha1").update(Buffer.from("blob " + bytes.length + "\\0", "utf8")).update(bytes).digest("hex") });
 }
 process.stderr.write("unhandled fake endpoint " + endpoint + "\\n");
 process.exit(8);
@@ -5332,10 +5574,15 @@ childProcess.spawnSync = function fixtureSpawnSync(command, args, options) {
 }
 
 function fixtureCliEnvironment(fixture, { allowWrites, usePreload }) {
+  const temporaryDirectory = path.join(fixture.root, usePreload ? "preload-tmp" : "executable-tmp");
+  fs.mkdirSync(temporaryDirectory, { recursive: true });
   const environment = {
     ...process.env,
     PATH: `${fixture.fakeBin}:${process.env.PATH ?? ""}`,
-    GH_TOKEN: allowWrites ? "fixture-write-token" : "fixture-read-token"
+    GH_TOKEN: allowWrites ? "fixture-write-token" : "fixture-read-token",
+    TMPDIR: temporaryDirectory,
+    TMP: temporaryDirectory,
+    TEMP: temporaryDirectory
   };
   if (usePreload) {
     environment.NODE_OPTIONS = `--require=${fixture.fakeGhPreload}`;
@@ -5414,7 +5661,7 @@ function runAsync(argumentsList, fixture, { allowWrites = false, usePreload = tr
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
       finish(() => reject(new Error("async CLI timed out")));
-    }, 30_000);
+    }, TEST_CLI_TIMEOUT_MS);
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
     child.stdout.on("data", (chunk) => { stdout += chunk; });

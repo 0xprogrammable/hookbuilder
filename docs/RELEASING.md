@@ -4,16 +4,20 @@ Releases are immutable supply-chain events, not documentation edits.
 
 ## Current identities
 
-- Current release-package and installation identity: `v0.11.2`. Treat it as public only after the exact tag, GitHub
-  release and installed bytes are verified.
-- Bundled lifecycle reports retain `publicationStateVerified: false`; source identity alone is not a published or live
-  state assertion.
-- Prior immutable release identities: `v0.11.1`, `v0.11.0`, `v0.10.3`, `v0.10.2`, `v0.10.1`, `v0.10.0`, `v0.9.3`, `v0.9.2`, `v0.9.1`, `v0.9.0`, `v0.8.0`, `v0.7.0`, `v0.6.0`, and `v0.5.1`.
+- Local release-package candidate: `v0.12.0`. Its bundled lifecycle report retains
+  `publicationStateVerified: false`; source identity alone is not a published or live state assertion.
+- Latest verified public GitHub Release: `v0.11.0`, published on 2026-08-17. Public installation guidance stays pinned
+  to that release until a later tag, GitHub Release, assets, and installed bytes are independently verified.
+- `v0.11.1` is an immutable tag without a GitHub Release. `v0.11.2` is a historical main-only source identity without
+  a public tag or GitHub Release. Neither is the latest published release.
+- Earlier immutable release identities are `v0.10.3`, `v0.10.2`, `v0.10.1`, `v0.10.0`, `v0.9.3`, `v0.9.2`,
+  `v0.9.1`, `v0.9.0`, `v0.8.0`, `v0.7.0`, `v0.6.0`, and `v0.5.1`.
 - Canonical version authority: `config/plugin.json`. `package.json`, `package-lock.json`, the portable runtime constant,
   MCP identity, generated plugin manifests, marketplaces, and the release-planning template are mirrors. The
   repository and plugin checks fail on version drift.
 
 Never change the immutable `v0.5.1`, `v0.6.0`, `v0.7.0`, `v0.8.0`, `v0.9.0`, `v0.9.1`, `v0.9.2`, `v0.9.3`, `v0.10.0`, `v0.10.1`, `v0.10.2`, `v0.10.3`, `v0.11.0`, or `v0.11.1` tags, release notes, assets, or changelog sections after publication.
+Do not rewrite the historical `v0.11.2` main-only source record to imply that a tag or GitHub Release existed.
 Future work must use a new version and preserve released package bytes.
 
 ## Versioning
@@ -58,8 +62,8 @@ input for monotonic version checks, provenance, and exact public identity; it ne
 Run the local infrastructure and packaging rehearsal:
 
 ```bash
-candidate_output=/absolute/path/to/programmable-v4-builder-v0.11.2-candidate
-npm run release:candidate -- --tag v0.11.2 --output-dir "$candidate_output"
+candidate_output=/absolute/path/to/programmable-v4-builder-v0.12.0-candidate
+npm run release:candidate -- --tag v0.12.0 --output-dir "$candidate_output"
 ```
 
 The `release:candidate` name is retained for CLI compatibility. A successful run is not a release-candidate verdict.
@@ -137,7 +141,7 @@ publication, create one immutable GitHub release. Run the Skill publication vali
 create a mutable release:
 
 ```bash
-release_tag=v0.11.2
+release_tag=v0.12.0
 gh skill publish --dry-run
 test "$(git rev-parse HEAD)" = "$(gh api repos/0xprogrammable/hookbuilder/commits/main --jq .sha)"
 test -z "$(git status --porcelain=v1 --untracked-files=all)"
@@ -155,7 +159,7 @@ gh release create "$release_tag" "$candidate_output"/artifacts/* \
   --verify-tag \
   --fail-on-no-commits \
   --title "Programmable v4 Builder $release_tag" \
-  --notes-file docs/releases/v0.11.2.md \
+  --notes-file docs/releases/v0.12.0.md \
   --latest
 
 gh release verify "$release_tag" --repo 0xprogrammable/hookbuilder

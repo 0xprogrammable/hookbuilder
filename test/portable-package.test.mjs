@@ -56,8 +56,8 @@ test("canonical inclusion manifest owns the lean installed package boundary", ()
   assert.equal(inventory.repositoryOnly.bytes, repositoryTests.repositoryBytes);
   assert.equal(inventory.repositoryOnly.sourcesVerified, true);
   assert.equal(inventory.repositoryOnly.sources[0].sha256, repositoryTests.repositorySha256);
-  assert.ok(inventory.packageFiles.length <= 633);
-  assert.ok(inventory.packageBytes <= 8_900_000);
+  assert.ok(inventory.packageFiles.length <= 650);
+  assert.ok(inventory.packageBytes <= 9_300_000);
 });
 
 test("manifest rejects executable-mode drift before publication", (t) => {

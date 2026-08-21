@@ -5,7 +5,7 @@
 <h1 align="center">Programmable v4 Builder</h1>
 
 <p align="center">
-  A portable Agent Skill for turning a product idea or an existing repository into a complete, reviewable Programmable project with explicit evidence.
+  Turn an idea or an existing repository into a complete, reviewable Programmable project.
 </p>
 
 <p align="center">
@@ -16,12 +16,13 @@
   <a href="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/0xprogrammable/hookbuilder/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-F8F0E9?labelColor=010103"></a>
   <a href="https://agentskills.io/specification"><img alt="Agent Skills compatible" src="https://img.shields.io/badge/Agent%20Skills-compatible-F8F0E9?labelColor=010103"></a>
-  <a href="CHANGELOG.md"><img alt="Release package 0.11.2" src="https://img.shields.io/badge/release-v0.11.2-F8F0E9?labelColor=010103"></a>
+  <a href="https://github.com/0xprogrammable/hookbuilder/releases/latest"><img alt="Latest GitHub release" src="https://img.shields.io/github/v/release/0xprogrammable/hookbuilder?label=release&color=F8F0E9&labelColor=010103"></a>
 </p>
 
 <p align="center">
-  <a href="#install-the-published-release">Install</a> ·
-  <a href="docs/AGENT_SKILL.md">Use the Builder</a> ·
+  <a href="#install-the-builder">Install</a> ·
+  <a href="docs/GETTING_STARTED.md">Get started</a> ·
+  <a href="#submit-a-project">Submit a project</a> ·
   <a href="CONTRIBUTING.md">Contribute</a> ·
   <a href="SECURITY.md">Security</a>
 </p>
@@ -29,229 +30,187 @@
 > [!IMPORTANT]
 > **Release status**
 >
-> Release package `v0.11.2` supports Node.js 22+ for the portable Skill; source and release gates require Node.js 24+. Its bundled status retains
-> `publicationStateVerified: false`; verify the public tag, GitHub release, and installed bytes before treating it as
-> published or live. Package checks and public CI do not establish model behavior, an independent audit, project approval,
-> deployment, routing, registration, or launch authority.
+> The latest published GitHub Release is `v0.11.0`. The current `main` branch is newer development source, not a stable
+> release. A new version is released only after its immutable tag, GitHub Release, artifacts, checks and installed bytes
+> are verified. Repository CI or a local installation alone does not make a release public.
 
-Programmable v4 Builder is an evidence-first [Agent Skill](https://agentskills.io/specification). It accepts a plain
-idea or an existing public repository. Hooks, tokens, apps, games, services, standalone settlement systems, and mixed
-projects can all be modeled.
+Programmable v4 Builder is a portable [Agent Skill](https://agentskills.io/specification). Give it a product idea or a
+repository. It preserves the intended product, chooses the smallest complete architecture, builds the required
+components and records what was actually checked.
 
-The Builder does not limit unfamiliar work to a fixed catalog. Starters and capability packs speed up repeated work;
-unknown ideas remain eligible for architecture review. Local checks stay separate from maintainer review, launch
-authority, deployment, provider support, and public availability.
+Hooks are only one possible component. A project may also contain tokens, apps, games, services, indexers, custom
+settlement, several repositories or no hook at all. Templates speed up familiar work; they do not decide what may be
+built. An unfamiliar capability remains eligible for architecture and review.
 
-## Install the immutable release
+The Builder is optional. Independently built projects use the same public
+[Submit a Launch requirements](https://github.com/0xprogrammable/submit-launch/blob/main/docs/COMPLETE_LAUNCH_REQUIREMENTS.md)
+and review path.
 
-After confirming that GitHub exposes the immutable `v0.11.2` release, preview that exact Skill before installing it:
+## Install the Builder
+
+Preview the latest published release before installing it:
 
 ```bash
 gh skill preview 0xprogrammable/hookbuilder \
-  programmable-v4-hook-builder@v0.11.2
+  programmable-v4-hook-builder@v0.11.0
 ```
 
-Install the same immutable release for Codex:
+Install that immutable release for Codex:
 
 ```bash
 gh skill install 0xprogrammable/hookbuilder \
   skills/programmable-v4-hook-builder \
   --agent codex \
   --scope user \
-  --pin v0.11.2
+  --pin v0.11.0
 ```
 
-GitHub's `gh skill` commands are in preview. Clean package placement has been checked for Codex, Claude Code, and
-GitHub Copilot; host behavior remains a separate question. See
-[Portability and lifecycle](docs/PORTABILITY_AND_LIFECYCLE.md) before choosing another destination.
+GitHub's `gh skill` commands are in preview. Installations for other hosts may use a different destination. Read the
+[portability guide](docs/PORTABILITY_AND_LIFECYCLE.md) before installing elsewhere.
 
-From the installed Skill directory, verify its package:
+From the installed Skill directory, verify the package:
 
 ```bash
 node scripts/verify-skill.mjs --installed
 ```
 
-At the start of each build, `cli.mjs policy` reads the exact current `0xprogrammable/submit-launch:main` build rules.
-Those returned Rule IDs are the only Programmable launch requirements; bundled security guidance cannot add another.
+## Start with one request
 
-Then give your agent one clear request:
+You do not need to know Uniswap callback names, permission bits, schemas or repository layout. Describe the product and
+the outcome you want:
 
 ```text
-Use the Programmable v4 Builder skill. Build and check this project, then prepare its exact application for Submit a Launch. Submit the draft only when I explicitly authorize the GitHub write: <idea or public GitHub URL>
+Use the Programmable v4 Builder skill. Build and check this project, then prepare it for Submit a Launch. Ask me only about choices that would materially change the product: <idea or public GitHub URL>
 ```
+
+For a shorter walkthrough, read [Get started](docs/GETTING_STARTED.md).
 
 ## What the Builder does
 
-| Stage | Output |
+| Stage | Result |
 | --- | --- |
-| Understand | Preserves the stated product intent and isolates the owner choices that materially change it. |
-| Design | Produces the smallest complete architecture, capability graph, value flow, and repository plan. |
-| Build | Uses composable starters and capability packs without treating them as an allowlist. |
-| Check | Runs deterministic validation, intent-fidelity checks, security boundaries, and executable evidence where available. |
-| Bind | Closes over the exact public source repositories, commits, trees, files, and required evidence. |
-| Prepare | Freezes the exact source revision and evidence needed by a separate Applicant review request. |
+| Understand | Preserves the idea and isolates only the product choices that need an owner. |
+| Resolve | Reads the current Submit a Launch contract and selects only the requirements for this project's stage and route. |
+| Design | Chooses the smallest architecture that preserves the intended behavior. |
+| Build | Creates the complete contract, app, service, game or mixed repository surfaces the project needs. |
+| Check | Runs available deterministic checks and records missing or unverified evidence without inventing a pass. |
+| Prepare | Freezes the exact public source and prepares one review-only application draft. |
 
-The Builder loads only the protocol, runtime, liquidity, service, and security material relevant to the confirmed
-project. Every canonical catalog capability must have an explicit knowledge route or routing fails closed. The optional
-Project Compiler `--brief` view shortens presentation only; it preserves the full report identity, result, and evidence
-boundary.
+The Builder loads detailed protocol and security material only after the project proves that it needs it. Missing tools or
+an unsupported integration pause the affected work as `INTEGRATION_PENDING`; they do not turn a new idea into a forbidden
+product category.
 
-```mermaid
-flowchart TD
-  A["Idea or public repository"] --> B["Intent and material owner choices"]
-  B --> C["Architecture and repository plan"]
-  C --> D["Implementation and local checks"]
-  D --> E["Exact source revision and evidence"]
-  E --> R["Submit a Launch application"]
-  R --> F["Programmable maintainer review"]
-  F -. "separate authority and evidence" .-> G["Launch authorization"]
-  G -. "separate authority and evidence" .-> H["Deployment and public availability"]
-```
+## Current launch requirements
 
-Inspect the local router on the development source:
+Submit a Launch owns the current Programmable-specific requirements. The Builder resolves one exact protected revision,
+uses its manifest-bound contract and applies only the returned stage plan. It does not keep a second list of fees,
+addresses, routers or Rule IDs.
 
-```bash
-node skills/programmable-v4-hook-builder/scripts/cli.mjs context --mode explore
-```
+The route matters:
 
-## Submit a hook for review
+- A no-market project does not invent a market, fee route or launch stamp.
+- A project using an external route remains eligible, but it cannot claim a Programmable launch label.
+- An unresolved route remains pending; missing evidence never becomes a silent exemption.
+- A project requesting the official Programmable Ethereum route must use the current application contract and satisfy
+  the requirements returned for launch readiness.
 
-All new one-off applications go through the Builder to
-[`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch), immutable GitHub repository ID
-`1320171831`. Project source stays in the builder's own public repository.
+If the protected contract changes, the Builder discards the affected plan and resolves it again. If a future contract or
+handler is not supported, only that stage pauses. Local source work that does not depend on the missing contract may
+continue.
 
-Every complete project with exact public source and a valid closed package uses the public Application V3 path.
-`PROJECT_PREFLIGHT_VALID` is optional stronger execution evidence, not a Draft admission requirement. The local
-`application` command derives a closed 3.1.0 package from Submission V2, exact source, review, security, and verifier evidence. When no legacy
-Fee V2 contract was selected, the package declares `feeApplicability: "not-selected"` and omits rather than fabricates
-Fee V2 records. The no-write handoff preview and local validator remain available for inspecting the exact bytes. See
-the [generic handoff contract](skills/programmable-v4-hook-builder/references/application-handoff.md).
+The canonical machine policy and its human guide live in
+[`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch). The Builder never replaces them.
 
-For the normal Applicant journey, run one command and follow only the returned safe next action:
+## Submit a project
+
+For a completed project with exact public GitHub source, use one command:
 
 ```bash
 node "$SKILL_ROOT/scripts/cli.mjs" submit-project "$REPOSITORY_ROOT"
 ```
 
-It discovers one tracked Submission V2 subject, resumes one outside-source workspace, binds the protected compatibility
-contract, and returns a read-only plan before requesting one exact confirmation digest. Reinvoke the same command for
-status. The internal namespaced `open-world` commands remain available under `advanced` for diagnosis, not as the
-normal user journey. A Draft never means reviewed, approved, deployed, or live.
+The command resolves the current accepted application contract, checks the project and returns a read-only Draft plan.
+Run the exact safe next command it returns. A GitHub write occurs only after the owner authorizes the freshly computed
+confirmation digest.
 
-The top-level `prepare-pr`, `submit`, `update`, and `status` commands preserve the historical six-file transport only.
-Do not use them for a new project. New submissions use the namespaced Application V3.1 commands above, and no
-application pull request should be assembled by hand.
+The current official-route application uses Application V3.2 and Submission 2.1. Existing V3.1 drafts remain eligible
+under their original contract, but they cannot establish the official Programmable route or launch readiness. Moving one
+forward creates a new V3.2 revision; it does not rewrite the old application.
 
-`prepare-canary` is a separate hidden, non-production workflow-test path. It returns the exact canonical
-`application.json` bytes and plan digest. Automated local writing currently fails closed because the portable client
-does not yet bundle a descriptor-bound writer; it never writes GitHub or grants launch authority. See the
-[workflow-canary client contract](skills/programmable-v4-hook-builder/references/workflow-canary-application.md).
+The same Submit a Launch repository accepts projects built without this Skill. Those applicants should begin with the
+[standalone submission guide](https://github.com/0xprogrammable/submit-launch/blob/main/README.md).
 
-The older Applicant files in this Hookbuilder repository are frozen legacy continuations. Only pull requests #10,
-#11, #12, #14, #15, #18, #19, and #20 may continue on that path, and only against Hookbuilder `main`. Every new
-application belongs in Submit a Launch.
-Neither path approves, deploys, signs, routes, or launches a project. See the
-[Submit a Launch guide](docs/PUBLIC_GITHUB_PR_BETA.md).
-
-## Build it with us
-
-The Builder is maintained by Programmable and developed in public. Contributions are welcome when they improve its
-accuracy, composability, efficiency, testability, portability, or documentation without weakening evidence bounds.
-
-| If you found or need | Start here |
-| --- | --- |
-| A reproducible defect | [Open a bug report](https://github.com/0xprogrammable/hookbuilder/issues/new?template=bug.yml) |
-| A missing capability, source, or integration | [Propose a capability](https://github.com/0xprogrammable/hookbuilder/issues/new?template=capability.yml) |
-| A code, documentation, template, or evaluation change | [Read the contribution guide](CONTRIBUTING.md) |
-| A possible vulnerability | [Report it privately](SECURITY.md) |
-
-Each rule has one owning layer. Change the canonical contract and its tests instead of copying policy into several
-files. Pull requests should name the problem, owning layer, checks run, and remaining evidence boundary.
+A Draft is only a request for review. It is not approval, an audit, deployment, Registry promotion, public routing or a
+launch.
 
 ## Evidence boundaries
 
 | A result can establish | It does not establish |
 | --- | --- |
-| A specific local check passed for exact bytes | An independent audit or a guarantee that code is safe |
-| A package was placed and verified for one host directory | That the host selected or executed the Skill correctly |
-| An exact Applicant review request was prepared | Maintainer acceptance, launch authorization, or deployment |
-| Deployment or source/runtime evidence exists | Provider indexing, quoting, simulation, execution, or public availability |
-| A project resembles an existing template or model | Duplication, ineligibility, or unsafe behavior |
+| A check passed for exact local bytes | An independent audit or a guarantee of safety |
+| A package was installed and verified in one host directory | That every host selects or runs the Skill correctly |
+| An exact application Draft was prepared or opened | Review, approval, deployment or launch authority |
+| Deployment evidence exists | Indexing, routing, liquidity, provider support or public availability |
 
-The Builder builds and checks. It does not approve routes, execute trades, audit, deploy, list, endorse, or launch.
-Every external write, signature, deployment, publication, credentialed provider action, and material cost requires
-separate authority.
+Every external write, signature, deployment, publication, credentialed provider action and material cost requires its
+own authority and evidence.
+
+## Build it with us
+
+Programmable v4 Builder is developed in public. Contributions are welcome when they improve accuracy, composability,
+efficiency, portability, documentation or evidence without narrowing the kinds of projects people can build.
+
+| If you found or need | Start here |
+| --- | --- |
+| A reproducible defect | [Open a bug report](https://github.com/0xprogrammable/hookbuilder/issues/new?template=bug.yml) |
+| A missing capability or integration | [Propose a capability](https://github.com/0xprogrammable/hookbuilder/issues/new?template=capability.yml) |
+| A code or documentation change | [Read the contribution guide](CONTRIBUTING.md) |
+| A possible vulnerability | [Report it privately](SECURITY.md) |
+
+Each fact has one owner. Change the canonical contract and regenerate its projections instead of copying policy or
+version data across the repository.
 
 <details>
-<summary><strong>Technical contracts kept explicit on <code>main</code></strong></summary>
-
-- Fee applicability follows the exact project graph. Zero-scope work must not invent a market, PoolKey, hook, or fee
-  receipt.
-- Each Programmable-canonical execution scope preserves the inclusive 10 bps share of executed gross quote-side swap
-  or fill volume exactly once. Claim authority and platform administration remain separate roles.
-- Fee V2 names four settlement profiles. The bundled Solidity kernel evidences only `standard-amm`; every other profile
-  needs its own implementation, custody proof, tests, and review.
-- Public Applicant review requires exact public GitHub source. Local, private, ZIP-packaged, pasted, or non-GitHub
-  source can support exploration but cannot enter the public review path.
-- Applicant requests and local Launch Bundles remain review-only and `NOT_AUTHORIZED`; neither grants production or
-  launch authority.
-
-Read the canonical details in [Open-World V2 architecture](docs/OPEN_WORLD_V2_ARCHITECTURE.md),
-[Security and review](docs/SECURITY_AND_REVIEW.md), and
-[Programmable platform boundaries](docs/PLATFORM_INTEGRATION.md).
-
-</details>
-
-## Repository map
+<summary><strong>Repository map</strong></summary>
 
 ```text
 skills/programmable-v4-hook-builder/   canonical portable Skill
-  references/                         routed knowledge, schemas, and policy
-  assets/                             starters, capability packs, reference kernels
-  scripts/                            deterministic tools and package tests
-evals/                                adversarial agent evaluations
-docs/                                 usage, architecture, security, release records
-submissions/                          frozen legacy Applicant contracts and continuations
-config/plugin.json                    canonical host metadata
-plugins/programmable-v4-builder/      generated, byte-verified Codex payload
-mcp/ and .mcp.json                    canonical Codex-only MCP companion
+  references/                         routed knowledge and machine contracts
+  assets/                             starters, capability packs and reference kernels
+  scripts/                            deterministic tools and package checks
+docs/                                 human and maintainer documentation
+evals/                                adversarial and journey evaluations
+plugins/programmable-v4-builder/      generated Codex plugin payload
 ```
 
-The portable Skill and root MCP files are canonical. Generated manifests and the Codex payload remain byte-aligned
-with them. See [Architecture](docs/ARCHITECTURE.md) before changing package or host metadata.
+The canonical Skill is the source. Generated plugin files must be regenerated and byte-checked rather than edited by
+hand.
+
+</details>
 
 ## Verify from source
 
-Node.js 24 or newer is required and CI verifies the Node 24 line. The repository has no npm runtime or development dependencies.
+Source and release checks require Node.js 24 or newer. The portable Skill supports Node.js 22 or newer.
 
 ```bash
 npm test
 gh skill publish --dry-run
 ```
 
-The two bundled reference fee kernels additionally use Foundry:
-
-```bash
-cd skills/programmable-v4-hook-builder/assets/reference-kernels/programmable-volume-fee-v1
-forge test
-cd ../programmable-volume-fee-v2
-forge test
-```
-
-Model-backed evaluations are separate because they require provider credentials and may cost money. `npm test` still
-validates their structure; an unavailable model result or provider receipt is never treated as passed.
+The bundled Solidity reference kernels have separate Foundry checks. Model-backed evaluations also remain separate
+because they require provider credentials and may cost money. An unavailable provider result is never counted as passed.
 
 ## Documentation
 
-| Goal | Documents |
+| Goal | Read |
 | --- | --- |
-| Use the Builder | [Agent Skill guide](docs/AGENT_SKILL.md) · [Applicant submission beta](docs/PUBLIC_GITHUB_PR_BETA.md) |
-| Understand the system | [Architecture](docs/ARCHITECTURE.md) · [Open-World V2](docs/OPEN_WORLD_V2_ARCHITECTURE.md) · [Knowledge routing](docs/KNOWLEDGE_SYSTEM.md) |
-| Extend it safely | [Templates and extensions](docs/TEMPLATES_AND_EXTENSIONS.md) · [Security and review](docs/SECURITY_AND_REVIEW.md) · [Contribution guide](CONTRIBUTING.md) |
-| Inspect portability and releases | [Portability and lifecycle](docs/PORTABILITY_AND_LIFECYCLE.md) · [Release gates](docs/OPEN_WORLD_V2_RELEASE_GATES.md) · [Release process](docs/RELEASING.md) |
-
-Submit a Launch is the canonical public Applicant pull-request surface. Project source stays in the Applicant's own
-public GitHub repository; review remains separate from platform contracts, routing, deployment, and the Explorer.
+| Start a project | [Get started](docs/GETTING_STARTED.md) |
+| Understand the Agent Skill | [Agent Skill guide](docs/AGENT_SKILL.md) |
+| Submit a completed project | [Submit a Launch](docs/PUBLIC_GITHUB_PR_BETA.md) |
+| Understand current contract resolution | [Submit Launch resolver](skills/programmable-v4-hook-builder/references/submit-launch-resolver.md) |
+| Understand application migration | [Application compatibility and migration](skills/programmable-v4-hook-builder/references/application-compatibility-and-migration.md) |
+| Extend the system | [Architecture](docs/ARCHITECTURE.md) · [Contribution guide](CONTRIBUTING.md) |
+| Review release evidence | [Release gates](docs/OPEN_WORLD_V2_RELEASE_GATES.md) · [Release process](docs/RELEASING.md) |
 
 ## License and independence
 

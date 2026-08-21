@@ -1,124 +1,81 @@
-import crypto from "node:crypto";
-import { performance } from "node:perf_hooks";
-
 import {
-  APPLICANT_COMPATIBILITY_PATH,
-  LEGACY_ACTIVE_CONTRACT_PATH,
-  LOCAL_APPLICANT_VALIDATOR_PACKAGE,
-  resolveApplicantCompatibilityContract
-} from "./applicant-compatibility-contract-core.mjs";
-import { createGitHubPublicFetchTransportV1 } from "./github-public-source-core.mjs";
-import { SUBMIT_LAUNCH_INTAKE_CONTRACT } from "./registry-intake-contract.mjs";
-import { RESOLVE_CONTRACT_V1 } from "./resolve-contract-definitions.mjs";
-import {
-  requestJson,
-  resolveBlob,
-  resolveDefaultBranchHead,
-  validateRecursiveTree,
-  validateRepositoryMetadata
-} from "./resolve-contract-github.mjs";
-import { apiPrefix } from "./resolve-contract-shared.mjs";
-import { normalizeContractRepositoryV1 } from "./resolve-contract-validation.mjs";
+  parseApplicationContractFromSnapshot,
+  selectApplicationAdapter
+} from "./application-v3-contract-adapter.mjs";
+import { resolveCurrentSubmitLaunchContract } from "./submit-launch-policy-github.mjs";
 
-const BUILDER_PROTOCOL_VERSION = "1.0.0";
-const MAXIMUM_COMPATIBILITY_BYTES = 256 * 1024;
-const MAXIMUM_SCHEMA_BYTES = 2 * 1024 * 1024;
+const ROUTE_TO_REQUEST = Object.freeze({
+  "no-market": "none",
+  external: "other",
+  unresolved: null,
+  "official-programmable-ethereum": "programmable-ethereum-mainnet"
+});
 
-export async function resolveProtectedApplicantCompatibility({
-  transport = undefined,
-  timeoutMs = RESOLVE_CONTRACT_V1.defaultTimeoutMs
-} = {}) {
-  if (
-    !Number.isSafeInteger(timeoutMs)
-    || timeoutMs < RESOLVE_CONTRACT_V1.minimumTimeoutMs
-    || timeoutMs > RESOLVE_CONTRACT_V1.maximumTimeoutMs
-    || (transport !== undefined && typeof transport !== "function")
-  ) throw new TypeError("Applicant compatibility GitHub options are outside the supported bounds");
-
-  const repository = SUBMIT_LAUNCH_INTAKE_CONTRACT.repository;
-  const target = normalizeContractRepositoryV1(repository.slug);
-  const state = {
-    deadline: performance.now() + timeoutMs,
-    requests: 0,
-    responseBytes: 0,
-    transport: transport ?? createGitHubPublicFetchTransportV1()
-  };
-  const metadata = await requestJson(
-    state,
-    apiPrefix(target),
-    "repository",
-    RESOLVE_CONTRACT_V1.maximumJsonResponseBytes
-  );
-  const repositoryBinding = validateRepositoryMetadata(metadata, target);
-  if (
-    repositoryBinding.numericRepositoryId !== repository.numericId
-    || repositoryBinding.defaultBranch !== repository.defaultBranch
-  ) throw applicantCompatibilityFailure("BUILDER_CENTRAL_COMPATIBILITY_MISMATCH");
-
-  const firstHead = await resolveDefaultBranchHead(state, target, repositoryBinding.defaultBranch);
-  const tree = await requestJson(
-    state,
-    `${apiPrefix(target)}/git/trees/${firstHead.treeObjectId}?recursive=1`,
-    "tree",
-    RESOLVE_CONTRACT_V1.maximumTreeResponseBytes
-  );
-  const entries = new Map(validateRecursiveTree(tree, firstHead.treeObjectId).map((entry) => [entry.path, entry]));
-  const schemaEntry = entries.get(repository.applicationV3SchemaPath);
-  const compatibilityEntry = entries.get(APPLICANT_COMPATIBILITY_PATH) ?? null;
-  const activeContractEntry = entries.get(LEGACY_ACTIVE_CONTRACT_PATH) ?? null;
-  if (schemaEntry === undefined || (compatibilityEntry === null && activeContractEntry === null)) {
-    throw applicantCompatibilityFailure("BUILDER_CENTRAL_COMPATIBILITY_MISMATCH");
-  }
-
-  const schemaBytes = (await resolveBlob(state, target, schemaEntry, MAXIMUM_SCHEMA_BYTES)).bytes;
-  if (sha256(schemaBytes) !== repository.applicationV3SchemaSha256) {
-    throw applicantCompatibilityFailure("BUILDER_CENTRAL_COMPATIBILITY_MISMATCH");
-  }
-  const compatibilityBytes = compatibilityEntry === null
-    ? null
-    : (await resolveBlob(state, target, compatibilityEntry, MAXIMUM_COMPATIBILITY_BYTES)).bytes;
-  const activeContractBytes = compatibilityEntry !== null || activeContractEntry === null
-    ? null
-    : (await resolveBlob(state, target, activeContractEntry, MAXIMUM_COMPATIBILITY_BYTES)).bytes;
-  const resolution = resolveApplicantCompatibilityContract({
-    compatibilityBytes,
-    activeContractBytes,
-    expected: {
-      applicationContractId: "public-pr-application-v3.1",
-      applicationSchemaPath: repository.applicationV3SchemaPath,
-      applicationSchemaSha256: repository.applicationV3SchemaSha256,
-      builderProtocolVersion: BUILDER_PROTOCOL_VERSION,
-      defaultBranch: repository.defaultBranch,
-      legacyActiveContractId: "submit-launch",
-      repositoryNumericId: repository.numericId,
-      validatorPackage: LOCAL_APPLICANT_VALIDATOR_PACKAGE
-    }
+/**
+ * Resolve exactly one protected Submit Launch snapshot, then select its local
+ * data-only Application adapter. No second ref/commit read occurs here.
+ */
+export async function resolveProtectedApplicantCompatibility(options = {}) {
+  const normalized = normalizeOptions(options);
+  const snapshot = await resolveCurrentSubmitLaunchContract({
+    stage: normalized.stage,
+    routeState: normalized.routeState,
+    ...(normalized.authenticatedTransport === undefined
+      ? {}
+      : { authenticatedTransport: normalized.authenticatedTransport }),
+    ...(normalized.publicTransport === undefined
+      ? {}
+      : { publicTransport: normalized.publicTransport }),
+    ...(normalized.cacheDirectory === undefined
+      ? {}
+      : { cacheDirectory: normalized.cacheDirectory }),
+    includeFullSnapshot: normalized.includeFullSnapshot
   });
+  return bindProtectedApplicantCompatibilitySnapshot({
+    snapshot,
+    priorVersion: normalized.priorVersion
+  });
+}
 
-  const finalHead = await resolveDefaultBranchHead(state, target, repositoryBinding.defaultBranch);
-  if (
-    finalHead.revisionObjectId !== firstHead.revisionObjectId
-    || finalHead.treeObjectId !== firstHead.treeObjectId
-  ) throw applicantCompatibilityFailure("BUILDER_CENTRAL_COMPATIBILITY_MISMATCH");
-  const selectedBytes = compatibilityBytes ?? activeContractBytes;
-  const contract = resolution.contract ?? resolution;
+/** Pure binder used after the one authoritative resolver call. */
+export function bindProtectedApplicantCompatibilitySnapshot({
+  snapshot,
+  priorVersion = null
+} = {}) {
+  const applicationContract = parseApplicationContractFromSnapshot(snapshot);
+  const requestedRoute = ROUTE_TO_REQUEST[snapshot.projectStage?.routeState];
+  if (requestedRoute === undefined) {
+    throw applicantCompatibilityFailure("APPLICATION_ROUTE_UNSUPPORTED");
+  }
+  const selection = selectApplicationAdapter({
+    applicationContract,
+    requestedRoute,
+    priorVersion
+  });
   return Object.freeze({
     ok: true,
-    binding: Object.freeze({
-      mode: resolution.mode,
-      repository: repository.slug,
-      repositoryId: repository.numericId,
-      defaultBranch: repository.defaultBranch,
-      centralBaseCommit: firstHead.revisionObjectId,
-      centralBaseTree: firstHead.treeObjectId,
-      contractPath: resolution.path,
-      contractSha256: sha256(selectedBytes),
-      applicationContractId: contract.application?.contractId ?? resolution.application.contractId,
-      applicationSchemaPath: repository.applicationV3SchemaPath,
-      applicationSchemaSha256: repository.applicationV3SchemaSha256,
-      validatorPackage: contract.validatorPackage ?? null,
-      capabilities: contract.capabilities ?? null,
-      minimumBuilderProtocolVersion: contract.minimumBuilderProtocolVersion ?? null
+    binding: deepFreeze({
+      mode: "COMPATIBILITY_V2",
+      repository: applicationContract.snapshot.repository,
+      repositoryId: applicationContract.snapshot.numericRepositoryId,
+      defaultBranch: applicationContract.snapshot.branch,
+      centralBaseCommit: applicationContract.snapshot.baseCommit,
+      centralBaseTree: applicationContract.snapshot.baseTree,
+      snapshotSha256: applicationContract.snapshot.snapshotSha256,
+      contractPath: applicationContract.snapshot.compatibilityPath,
+      contractSha256: applicationContract.snapshot.compatibilitySha256,
+      applicationContractId: selection.application.contractId,
+      applicationContractVersion: selection.application.version,
+      applicationSchemaPath: selection.application.schemaPath,
+      applicationSchemaSha256: selection.application.schemaSha256,
+      legacy: applicationContract.legacy,
+      supportingContracts: applicationContract.supportingContracts,
+      minimumBuilderProtocolVersion: applicationContract.minimumBuilderProtocolVersion,
+      selectedAdapter: selection,
+      projectStage: snapshot.projectStage,
+      currentness: snapshot.currentness,
+      validatorClosureImported: false,
+      authority: applicationContract.authority
     })
   });
 }
@@ -132,18 +89,64 @@ export async function preflightProtectedApplicantCompatibility(options = {}) {
       code: error?.code ?? "APPLICANT_COMPATIBILITY_PENDING",
       summary: error?.code === "BUILDER_PROTOCOL_TOO_OLD"
         ? "The installed Builder is older than the protected Applicant protocol."
-        : "The protected Submit Launch compatibility contract could not be bound to one stable exact base.",
-      repair: "Update the Builder or retry the same exact project after the protected compatibility read is available. No Draft write was attempted."
+        : "The current protected Submit Launch contract could not be bound to one stable exact snapshot.",
+      repair: "Update the Builder or retry the same exact project after the protected contract snapshot is available. No Draft write was attempted."
     });
   }
 }
 
+function normalizeOptions(value) {
+  const allowed = new Set([
+    "authenticatedTransport",
+    "cacheDirectory",
+    "includeFullSnapshot",
+    "priorVersion",
+    "publicTransport",
+    "repositoryRoot",
+    "routeState",
+    "source",
+    "stage",
+    "timeoutMs",
+    "transport"
+  ]);
+  if (
+    value === null
+    || typeof value !== "object"
+    || Array.isArray(value)
+    || Object.keys(value).some((key) => !allowed.has(key))
+    || (value.authenticatedTransport !== undefined
+      && (value.authenticatedTransport === null || typeof value.authenticatedTransport !== "object"))
+    || (value.publicTransport !== undefined && typeof value.publicTransport !== "function")
+    || (value.transport !== undefined && typeof value.transport !== "function")
+    || (value.publicTransport !== undefined && value.transport !== undefined)
+    || (value.includeFullSnapshot !== undefined && typeof value.includeFullSnapshot !== "boolean")
+    || (value.priorVersion !== undefined
+      && value.priorVersion !== null
+      && !new Set(["3.1.0", "3.2.0"]).has(value.priorVersion))
+    || !new Set(["build", "submit", "launch-readiness", "production-promotion"])
+      .has(value.stage ?? "submit")
+    || !Object.hasOwn(ROUTE_TO_REQUEST, value.routeState ?? "unresolved")
+  ) throw new TypeError("Applicant compatibility GitHub options are outside the supported bounds");
+  return Object.freeze({
+    authenticatedTransport: value.authenticatedTransport,
+    cacheDirectory: value.cacheDirectory,
+    includeFullSnapshot: value.includeFullSnapshot === true,
+    priorVersion: value.priorVersion ?? null,
+    publicTransport: value.publicTransport ?? value.transport,
+    routeState: value.routeState ?? "unresolved",
+    stage: value.stage ?? "submit"
+  });
+}
+
 function applicantCompatibilityFailure(code) {
-  const error = new Error("The protected Applicant compatibility binding is invalid or changed during resolution");
+  const error = new Error("The protected Applicant compatibility binding is invalid");
   error.code = code;
   return error;
 }
 
-function sha256(bytes) {
-  return `sha256:${crypto.createHash("sha256").update(bytes).digest("hex")}`;
+function deepFreeze(value, seen = new Set()) {
+  if (value === null || typeof value !== "object" || seen.has(value)) return value;
+  seen.add(value);
+  for (const child of Object.values(value)) deepFreeze(child, seen);
+  return Object.freeze(value);
 }

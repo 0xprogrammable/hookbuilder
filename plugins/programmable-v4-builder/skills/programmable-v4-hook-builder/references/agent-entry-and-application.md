@@ -1,11 +1,16 @@
 # Agent entry and application contract
 
-This reference preserves the frozen six-file **Public Applicant Beta** transport and separates it from current central
-policy consumption and a later **Connected Submission service**. The six-file `prepare-pr` path is historical replay
-only; it is not the current/default application transport and its local Fee V1/V2 fields define no current requirement.
-Current generic applications bind the protected central active contract and follow
-[github-application-v3.md](github-application-v3.md). The dedicated `prepare-canary` client remains a separate
-preview-only workflow-test path whose automated local-write boundary fails closed.
+This reference keeps three contracts separate:
+
+- **Current Applicant path:** `submit-project` resolves one integrity-checked Compatibility V2 snapshot and prefers its
+  Application V3.2, Submission 2.1 and Trade Capability Manifest V2 adapters.
+- **Frozen Public Applicant Beta:** the six-file `prepare-pr` path is historical replay only. Its Fee V1/V2 fields define
+  no current requirement.
+- **Connected Submission service:** a future product and security contract, not a current CLI or authority surface.
+
+Current applications follow [github-application-v3.md](github-application-v3.md). Application V3.1 remains a
+byte-identical offline legacy input and continues only through a linked V3.2 schema migration with the same source and
+intent. Later changes use a separate revision. `prepare-canary` remains an isolated preview-only workflow test.
 
 ## Contents
 
@@ -40,13 +45,13 @@ Programmable does not provide a separate chat interface. The builder uses Codex,
 or another capable coding agent. The skill supplies the workflow, universal engineering knowledge, local build schemas,
 validators, and a strict client for exact protected central-policy bytes.
 
-The skill is the technical engine. The website may provide discovery and installation entry points. The protected
-Application V3.1 contract, rather than the frozen six-file transport below, defines current generic Applicant input.
-The workflow canary is a separate test contract. A later Connected Submission service may add human identity binding,
-service-backed application status, review results, and an approved launch handoff.
+The skill is the technical engine. The website may provide discovery and installation entry points. The resolver-bound
+Application V3.2, Submission 2.1 and Trade Capability Manifest V2 contracts, rather than the frozen six-file transport
+below, define current Applicant input. A later Connected Submission service may add human identity binding,
+service-backed status, review results and an approved launch handoff.
 
 The skill must make the declared project reviewable whether it uses a product-selected hook, a no-hook path, or
-additional app, game, service, keeper, or indexer surfaces. Only applicable current central-policy Rule IDs determine
+additional app, game, service, keeper, or indexer surfaces. Only the applicable current Stage Plan determines
 Programmable requirements. The skill must never promise that generated code is perfect, safe, audited, accepted,
 deployed, or available.
 
@@ -102,6 +107,14 @@ Use $programmable-v4-hook-builder. Learn how Programmable works first, then help
 Do not replace it with a prompt that starts implementation immediately. A builder may append an idea in ordinary
 language, but the agent still begins in Explore mode.
 
+For an existing completed project, the normal submission entry is:
+
+```bash
+node "$SKILL_ROOT/scripts/cli.mjs" submit-project "$REPOSITORY_ROOT"
+```
+
+Do not begin with `prepare-pr`, a namespaced Application command or historical handoff choreography.
+
 The entry surface may offer:
 
 1. Install the complete skill package.
@@ -116,7 +129,7 @@ the skill contract.
 After invocation, the agent:
 
 1. Reads the complete loaded `SKILL.md`.
-2. Resolves the current Programmable platform manifest.
+2. Resolves one current manifest-bound contract and uses only the returned Stage Plan.
 3. States briefly what it can help create and what requires later human review.
 4. Asks for the intended project and token behavior in plain language.
 5. Brainstorms before implementation when the idea is still open.
@@ -144,8 +157,9 @@ The installed package owns:
 - Human authorization boundaries
 - Application and release-state semantics
 
-The installed package does not own mutable Programmable launch requirements. Exact protected Submit Launch policy and
-schema bytes own applicable Rule IDs, evidence, severity, outcomes, and any platform-specific fee requirement.
+The installed package does not own mutable Programmable launch requirements. The exact protected Submit Launch snapshot
+binds Applicant compatibility, policy and schemas; its Stage Plan owns applicable rules, evidence, severity, outcomes
+and any platform-specific fee requirement.
 
 ### Platform-owned current knowledge
 
@@ -159,9 +173,9 @@ A versioned, machine-readable Programmable manifest may own mutable discovery an
   policy bytes, not this manifest or local prose, own rule meaning
 - Application, claim, status, and launch-handoff endpoint versions after the Connected Submission service is activated
 
-The agent must not rely on an installed snapshot when a current manifest is required. Validate the manifest origin,
-schema, version, expiry, and integrity before using mutable facts. If the manifest is missing, expired, unsupported, or
-conflicts with chain evidence, stop the affected action and report the exact blocker.
+The agent must not rely on an installed snapshot when current facts are required. Resolve one protected commit and tree,
+validate every bound manifest, compatibility, policy and schema artifact, and use the compact Stage Plan. If resolution
+drifts, is unavailable or is unsupported, pause only the affected stage and report the exact blocker.
 
 No manifest or skill package contains secrets, private keys, wallet sessions, broad GitHub credentials, unpublished
 vulnerability details, or deployment authority.
@@ -660,14 +674,19 @@ semantics.
 
 ## Agent command contract
 
-The host-neutral entry point implements `context`, `templates`, `discover`, `start`, `profile`, `open-world`,
-`doctor`, `scaffold`, `check`, `fee`, `package`, `companion`, `prepare-canary`, `prepare-pr`, `submit`, `status`, `update`, `version`,
-`update-check`, `migrate`, and `plan-release`. Their installed `scripts/cli.mjs --help` and per-command `--help` output
-are authoritative for flags.
+The host-neutral entry point implements `context`, `templates`, `discover`, `start`, `profile`, `submit-project`,
+`open-world`, `doctor`, `scaffold`, `check`, `fee`, `package`, `companion`, `prepare-canary`, `prepare-pr`, `submit`,
+`status`, `update`, `version`, `update-check`, `migrate`, and `plan-release`. Installed `scripts/cli.mjs --help` and each
+command's `--help` are authoritative for flags.
+
+`submit-project <repository>` is the current normal Applicant command. Its contract is to resolve one integrity-checked
+snapshot, select the current Application V3.2, Submission 2.1 and Trade Capability Manifest V2 adapters, return one
+read-only plan or repair, and require a fresh exact confirmation before an external write. A local resolver or adapter
+result is not end-to-end transport proof. Namespaced `open-world` Application commands are implementation and repair
+surfaces, not a second public journey.
 
 `scaffold`, V1 `fee`, `package`, and the six-file `prepare-pr` path are frozen legacy compatibility commands. Their
-local Fee V1/V2 contracts do not define current Programmable requirements. Current builds resolve the protected central
-policy and select only applicable Rule IDs.
+local Fee V1/V2 contracts define no current requirement. Current builds use only the resolved Stage Plan.
 
 The following names describe later Connected Submission service capabilities. They are not current CLI commands:
 
@@ -718,9 +737,21 @@ Before the later Connected Submission flow is available, prove at least:
 
 ## Source-of-truth order
 
-This order applies to the later Connected Submission service. For frozen beta replay, resolve application workflow from
-the historical central GitHub pull request and its trusted checks, and resolve project source from the exact public
-GitHub identity inside the six-file application record. Neither source can create an approval or launch fact.
+For a current Applicant action, resolve facts in this order:
+
+1. One verified Current Contract Snapshot from protected Submit Launch `main`
+2. Its bound Applicant Compatibility V2 contract and current Application V3.2, Submission 2.1 and Trade Capability
+   Manifest V2 adapters
+3. The applicable Stage Plan
+4. Exact public source commits, trees, package bytes and evidence
+5. Verified remote Draft readback and protected checks
+
+Application V3.1 remains byte-identical, offline legacy and readiness-ineligible; the six-file Beta retains only its
+declared historical meaning. Neither a current nor historical Applicant contract can create approval, deployment,
+promotion or launch authority.
+
+For frozen Beta replay, resolve workflow from its historical central GitHub pull request and trusted checks, and source
+from the exact public GitHub identity inside the six-file application record.
 
 For the later service, resolve facts in this order:
 

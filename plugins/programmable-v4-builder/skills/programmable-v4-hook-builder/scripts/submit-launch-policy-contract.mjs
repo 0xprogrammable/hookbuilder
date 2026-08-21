@@ -13,6 +13,8 @@ import { parseBoundedStrictJson } from "./strict-json-core.mjs";
 
 export const SUBMIT_LAUNCH_POLICY_PROFILE_ID = "workflow-canary";
 export const SUBMIT_LAUNCH_BUILD_PROFILE_ID = "build";
+export const SUBMIT_LAUNCH_LAUNCH_READINESS_PROFILE_ID = "launch-readiness";
+export const SUBMIT_LAUNCH_PRODUCTION_PROFILE_ID = "production-launch";
 export const SUBMIT_LAUNCH_POLICY_SCHEMA_ID =
   "https://programmable.money/schemas/launch-policy.v1.schema.json";
 export const SUBMIT_LAUNCH_POLICY_BINDING_SCHEMA_VERSION =
@@ -231,12 +233,46 @@ function normalizeSubmitLaunchPolicyBindingForProfile(value, profileId) {
 }
 
 export function currentSubmitLaunchBuildRequirements(contract) {
+  return currentSubmitLaunchRequirementsForProfile(contract, SUBMIT_LAUNCH_BUILD_PROFILE_ID);
+}
+
+export function currentSubmitLaunchRequirementsForProfile(contract, profileId) {
+  assertTrustedPolicyContract(contract);
+  if (typeof profileId !== "string" || profileId.length < 1 || profileId.length > 80) {
+    fail("SUBMIT_LAUNCH_POLICY_PROFILE_INVALID", "Submit Launch requirement profile is invalid.");
+  }
+  const profiles = contract.policy.profiles.filter((profile) => profile.id === profileId);
+  if (profiles.length !== 1) {
+    fail("SUBMIT_LAUNCH_POLICY_PROFILE_INVALID", "Submit Launch requirement profile is not declared exactly once.");
+  }
+  return Object.freeze(contract.policy.rules
+    .filter((rule) => rule.status === "active" && rule.profiles.includes(profileId))
+    .map((rule) => deepFreeze(structuredClone(rule))));
+}
+
+export function currentSubmitLaunchRequirementInventory(contract) {
+  assertTrustedPolicyContract(contract);
+  const profiles = contract.policy.profiles.map((profile) => deepFreeze(structuredClone(profile)));
+  const requirements = contract.policy.rules
+    .filter((rule) => rule.status === "active")
+    .map((rule) => deepFreeze(structuredClone(rule)));
+  return deepFreeze({
+    profiles,
+    requirements,
+    profileRequirements: profiles.map((profile) => ({
+      enabled: profile.enabled,
+      profileId: profile.id,
+      requirementIds: requirements
+        .filter((rule) => rule.profiles.includes(profile.id))
+        .map((rule) => rule.id)
+    }))
+  });
+}
+
+function assertTrustedPolicyContract(contract) {
   if (!isPlainObject(contract) || !trustedPolicyContracts.has(contract)) {
     fail("SUBMIT_LAUNCH_POLICY_CONTRACT_REQUIRED", "Exact validated Submit Launch policy bytes are required.");
   }
-  return Object.freeze(contract.policy.rules
-    .filter((rule) => rule.status === "active" && rule.profiles.includes(SUBMIT_LAUNCH_BUILD_PROFILE_ID))
-    .map((rule) => deepFreeze(structuredClone(rule))));
 }
 
 export function normalizeSubmitLaunchPolicySchemaBinding(value) {

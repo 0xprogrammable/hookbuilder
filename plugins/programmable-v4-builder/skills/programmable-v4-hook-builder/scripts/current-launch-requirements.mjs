@@ -3,44 +3,45 @@
 import process from "node:process";
 
 import { CliFailure, emitFailure, emitSuccess } from "./cli-runtime.mjs";
-import {
-  currentSubmitLaunchBuildRequirements,
-  normalizeSubmitLaunchBuildPolicyBinding
-} from "./submit-launch-policy-contract.mjs";
-import { resolveCurrentSubmitLaunchPolicy } from "./submit-launch-policy-github.mjs";
+import { resolveCurrentSubmitLaunchContract } from "./submit-launch-policy-github.mjs";
 
-const usage = `Usage: current-launch-requirements.mjs
+const usage = `Usage: current-launch-requirements.mjs [--full]
 
-Read the exact protected 0xprogrammable/submit-launch:main policy and return its current build requirements.
+Read the exact 0xprogrammable/submit-launch:main contract and return the compact build-stage plan.
+--full also returns the bound manifest, Compatibility V2, policy, and schema data snapshot.
 This command is read-only. It grants no review, approval, deployment, routing, funds, or launch authority.`;
 
 const args = process.argv.slice(2);
 if (args.length === 1 && new Set(["--help", "-h"]).has(args[0])) {
   process.stdout.write(`${usage}\n`);
-} else if (args.length !== 0) {
+} else if (args.length > 1 || (args.length === 1 && args[0] !== "--full")) {
   process.exitCode = emitFailure("policy", new CliFailure(
     "USAGE_ERROR",
-    "policy accepts no options; its repository, branch, paths, and build profile are fixed"
+    "policy accepts only --full; its repository, branch, paths, stage, and authority are fixed"
   ));
 } else {
   try {
-    const resolved = await resolveCurrentSubmitLaunchPolicy();
-    const policyBinding = normalizeSubmitLaunchBuildPolicyBinding(resolved.buildPolicyBinding);
-    const requirements = currentSubmitLaunchBuildRequirements(resolved);
+    const resolved = await resolveCurrentSubmitLaunchContract({
+      stage: "build",
+      routeState: "unresolved",
+      includeFullSnapshot: args[0] === "--full"
+    });
     emitSuccess("policy", {
-      schemaVersion: "programmable.current-launch-requirements.v1",
-      policyBinding,
-      policySchemaBinding: resolved.policySchemaBinding,
-      requirements,
+      schemaVersion: "programmable.current-launch-requirements.v3",
+      snapshotBinding: resolved.snapshotBinding,
+      currentness: resolved.currentness,
+      applicationContract: resolved.applicationContract,
+      projectStage: resolved.projectStage,
+      refreshRequiredBefore: [
+        "architecture-commitment",
+        "applicant-draft-plan",
+        "launch-readiness",
+        "production-promotion"
+      ],
       networkAccessed: true,
-      source: "exact-protected-submit-launch-main",
-      authority: {
-        checkerOnly: true,
-        independentAudit: false,
-        launchAuthorized: false,
-        publicRoutingAuthorized: false,
-        realFundsAuthorized: false
-      }
+      source: "exact-submit-launch-main-contract",
+      authority: resolved.authority,
+      ...(resolved.fullSnapshot === undefined ? {} : { fullSnapshot: resolved.fullSnapshot })
     });
   } catch (error) {
     const code = typeof error?.code === "string" ? error.code : "CURRENT_POLICY_UNAVAILABLE";

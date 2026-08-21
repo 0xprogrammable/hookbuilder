@@ -1,15 +1,11 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
 import test from "node:test";
-import { fileURLToPath } from "node:url";
 
 import {
+  bindProtectedApplicantCompatibilitySnapshot,
   preflightProtectedApplicantCompatibility,
-  resolveProtectedApplicantCompatibility
 } from "../../skills/programmable-v4-hook-builder/scripts/applicant-compatibility-github.mjs";
-import { LOCAL_APPLICANT_VALIDATOR_PACKAGE } from "../../skills/programmable-v4-hook-builder/scripts/applicant-compatibility-contract-core.mjs";
 import {
   PROTECTED_UNIVERSAL_ADMISSION_SOURCE,
   resolveUniversalAdmissionContractAtExactSource
@@ -25,50 +21,37 @@ import {
 } from "../../skills/programmable-v4-hook-builder/scripts/universal-admission-contract-core.mjs";
 import { canonicalJson } from "../../skills/programmable-v4-hook-builder/scripts/submission-core.mjs";
 
-const testDirectory = path.dirname(fileURLToPath(import.meta.url));
-const skillRoot = path.resolve(testDirectory, "..", "..", "skills", "programmable-v4-hook-builder");
 const API = "https://api.github.com/repos/0xprogrammable/submit-launch";
 const REPOSITORY = "https://github.com/0xprogrammable/submit-launch";
 const COMMIT = "a".repeat(40);
 const TREE = "b".repeat(40);
 const NEXT_COMMIT = "c".repeat(40);
 const NEXT_TREE = "d".repeat(40);
-const SCHEMA_PATH = "intake/schemas/public-pr-application-v3.schema.json";
-const COMPATIBILITY_PATH = ".programmable/applicant-compatibility.v1.json";
-
-test("protected Applicant compatibility binds one exact stable central contract", async () => {
-  const fixture = createFixture();
-  const resolved = await resolveProtectedApplicantCompatibility({ transport: fixture.transport });
-  assert.equal(resolved.ok, true);
-  assert.deepEqual(resolved.binding, {
-    mode: "COMPATIBILITY_CONTRACT",
-    repository: "0xprogrammable/submit-launch",
-    repositoryId: "1320171831",
-    defaultBranch: "main",
-    centralBaseCommit: COMMIT,
-    centralBaseTree: TREE,
-    contractPath: COMPATIBILITY_PATH,
-    contractSha256: sha256(fixture.compatibilityBytes),
-    applicationContractId: "public-pr-application-v3.1",
-    applicationSchemaPath: SCHEMA_PATH,
-    applicationSchemaSha256: "sha256:2d51837bbbfe52672ecca334596243bebcec78e8e0a885d67084dfd98955bcb7",
-    validatorPackage: LOCAL_APPLICANT_VALIDATOR_PACKAGE,
-    capabilities: {
-      sourceClosureModes: ["inline", "manifest"],
-      draftTransportOperations: ["create", "update"],
-      missingObjectRecovery: true,
-      unreviewedDraftOnly: true
-    },
-    minimumBuilderProtocolVersion: "1.0.0"
+test("protected Applicant compatibility binds one Resolver snapshot to current local adapters", () => {
+  const snapshot = applicantSnapshot({ routeState: "official-programmable-ethereum" });
+  const resolved = bindProtectedApplicantCompatibilitySnapshot({
+    snapshot,
+    priorVersion: "3.1.0"
   });
-  assert.equal(fixture.requests.filter((url) => url.includes("/git/blobs/")).length, 2);
+  assert.equal(resolved.ok, true);
+  assert.equal(resolved.binding.mode, "COMPATIBILITY_V2");
+  assert.equal(resolved.binding.centralBaseCommit, COMMIT);
+  assert.equal(resolved.binding.centralBaseTree, TREE);
+  assert.equal(resolved.binding.applicationContractId, "public-pr-application-v3.2");
+  assert.equal(resolved.binding.applicationContractVersion, "3.2.0");
+  assert.equal(resolved.binding.applicationSchemaSha256, "sha256:69fd860c82c0426d853f96fbf8df53c70de0e824a258da940a5ef09a68c72988");
+  assert.equal(resolved.binding.supportingContracts.submission.version, "2.1.0");
+  assert.equal(resolved.binding.supportingContracts.tradeCapabilityManifest.version, "2.0.0");
+  assert.equal(resolved.binding.selectedAdapter.transition.kind, "schema-migration");
+  assert.equal(resolved.binding.selectedAdapter.launchReadiness.state, "offline-check-required");
+  assert.equal(resolved.binding.validatorClosureImported, false);
+  assert.ok(Object.isFrozen(resolved.binding));
 });
 
-test("protected Applicant compatibility fails closed when central main changes during resolution", async () => {
-  const fixture = createFixture({ changeHead: true });
-  const preflight = await preflightProtectedApplicantCompatibility({ transport: fixture.transport });
+test("protected Applicant compatibility preflight fails closed before network on invalid consumer options", async () => {
+  const preflight = await preflightProtectedApplicantCompatibility({ routeState: "caller-asserted-not-applicable" });
   assert.equal(preflight.ok, false);
-  assert.equal(preflight.code, "BUILDER_CENTRAL_COMPATIBILITY_MISMATCH");
+  assert.equal(preflight.code, "APPLICANT_COMPATIBILITY_PENDING");
   assert.match(preflight.repair, /No Draft write was attempted/u);
 });
 
@@ -225,84 +208,122 @@ test("Universal Admission contract snapshots intrinsic bytes without observing h
   assert.equal(oversizedGetterReads, 0);
 });
 
-function createFixture({ changeHead = false } = {}) {
-  const schemaBytes = fs.readFileSync(path.join(skillRoot, "references", "public-pr-application-v3.schema.json"));
-  assert.equal(sha256(schemaBytes), "sha256:2d51837bbbfe52672ecca334596243bebcec78e8e0a885d67084dfd98955bcb7");
-  const compatibilityBytes = Buffer.from(`${JSON.stringify({
-    $schema: "urn:programmable:applicant-compatibility:1.0.0",
-    application: {
-      contractId: "public-pr-application-v3.1",
-      schemaPath: SCHEMA_PATH,
-      schemaSha256: sha256(schemaBytes)
+function applicantSnapshot({ routeState = "unresolved" } = {}) {
+  const snapshotWithoutDigest = {
+    repository: "0xprogrammable/submit-launch",
+    numericRepositoryId: "1320171831",
+    branch: "main",
+    baseCommit: COMMIT,
+    baseTree: TREE,
+    activeContractV1: { path: ".programmable/active-contract.json", gitBlobOid: "1".repeat(40), sha256: `sha256:${"1".repeat(64)}` },
+    activeContractV2: {
+      path: ".programmable/active-contract.v2.json",
+      gitBlobOid: "2".repeat(40),
+      sha256: `sha256:${"2".repeat(64)}`,
+      schema: {
+        path: "intake/schemas/active-contract-manifest-v2.schema.json",
+        gitBlobOid: "3".repeat(40),
+        sha256: `sha256:${"3".repeat(64)}`
+      }
     },
-    capabilities: {
-      sourceClosureModes: ["inline", "manifest"],
-      draftTransportOperations: ["create", "update"],
-      missingObjectRecovery: true,
-      unreviewedDraftOnly: true
+    compatibility: { path: ".programmable/applicant-compatibility.v2.json", gitBlobOid: "4".repeat(40), sha256: `sha256:${"4".repeat(64)}` },
+    compatibilitySchema: {
+      path: "intake/schemas/applicant-compatibility-v2.schema.json",
+      gitBlobOid: "5".repeat(40),
+      sha256: "sha256:01de8cd2e99c1e7d76b701377b42ee33df492bcebdb869d6d71a3d2a148a9df8"
     },
-    kind: "programmable-applicant-compatibility",
-    minimumBuilderProtocolVersion: "1.0.0",
-    schemaVersion: "1.0.0",
-    trustedRepository: { numericId: "1320171831", defaultBranch: "main" },
-    validatorPackage: {
-      rootPath: "vendor/programmable-applicant-validator",
-      entrypointPath: "vendor/programmable-applicant-validator/scripts/public-applicant-validator.mjs",
-      receiptPath: "vendor/programmable-applicant-validator/validator-package-receipt.v1.json",
-      closureSha256: LOCAL_APPLICANT_VALIDATOR_PACKAGE.closureSha256
+    policy: {
+      schemaVersion: "programmable.launch-policy-binding.v1",
+      repository: "0xprogrammable/submit-launch",
+      numericRepositoryId: "1320171831",
+      baseCommit: COMMIT,
+      baseTree: TREE,
+      path: "policy/launch-policy.v1.json",
+      gitBlobOid: "6".repeat(40),
+      policyId: "programmable-launch-policy",
+      policyVersion: "1.0.0",
+      profileId: "workflow-canary",
+      sha256: `sha256:${"6".repeat(64)}`
+    },
+    policySchema: {
+      schemaVersion: "programmable.submit-launch-policy-schema-binding.v1",
+      repository: "0xprogrammable/submit-launch",
+      numericRepositoryId: "1320171831",
+      baseCommit: COMMIT,
+      baseTree: TREE,
+      path: "policy/schemas/launch-policy.v1.schema.json",
+      gitBlobOid: "7".repeat(40),
+      schemaId: "https://programmable.money/schemas/launch-policy.v1.schema.json",
+      sha256: `sha256:${"7".repeat(64)}`
     }
-  })}\n`, "utf8");
-  const blobs = new Map([
-    [SCHEMA_PATH, schemaBytes],
-    [COMPATIBILITY_PATH, compatibilityBytes]
-  ]);
-  const entries = [...blobs].map(([entryPath, bytes]) => ({
-    path: entryPath,
-    mode: "100644",
-    type: "blob",
-    sha: gitBlobObjectId(bytes),
-    size: bytes.length
-  }));
-  const byObjectId = new Map(entries.map((entry) => [entry.sha, blobs.get(entry.path)]));
-  const requests = [];
-  let headReads = 0;
-  const transport = async (request) => {
-    requests.push(request.url);
-    let value;
-    if (request.url === API) value = {
-      id: "1320171831",
-      private: false,
-      visibility: "public",
-      full_name: "0xprogrammable/submit-launch",
-      default_branch: "main",
-      html_url: REPOSITORY
-    };
-    else if (request.url === `${API}/git/ref/heads/main`) {
-      headReads += 1;
-      value = {
-        ref: "refs/heads/main",
-        object: { type: "commit", sha: changeHead && headReads > 1 ? NEXT_COMMIT : COMMIT }
-      };
-    } else if (request.url === `${API}/git/commits/${COMMIT}`) value = {
-      sha: COMMIT,
-      tree: { sha: TREE },
-      html_url: `${REPOSITORY}/commit/${COMMIT}`
-    };
-    else if (request.url === `${API}/git/commits/${NEXT_COMMIT}`) value = {
-      sha: NEXT_COMMIT,
-      tree: { sha: NEXT_TREE },
-      html_url: `${REPOSITORY}/commit/${NEXT_COMMIT}`
-    };
-    else if (request.url === `${API}/git/trees/${TREE}?recursive=1`) value = { sha: TREE, truncated: false, tree: entries };
-    else if (request.url.startsWith(`${API}/git/blobs/`)) {
-      const objectId = request.url.slice(`${API}/git/blobs/`.length);
-      const bytes = byObjectId.get(objectId);
-      if (bytes !== undefined) value = { sha: objectId, size: bytes.length, encoding: "base64", content: bytes.toString("base64") };
-    }
-    const status = value === undefined ? 404 : 200;
-    return { status, headers: {}, body: JSON.stringify(value ?? {}), redirected: false, responseUrl: request.url };
   };
-  return { compatibilityBytes, requests, transport };
+  const stageWithoutDigest = {
+    schemaVersion: "programmable.submit-launch-stage-plan.v1",
+    stage: "submit",
+    profileId: "build",
+    profileEnabled: true,
+    routeState,
+    status: routeState === "unresolved" ? "INTEGRATION_PENDING" : "READY",
+    requirementIds: [],
+    requirements: [],
+    unknownHandlerIds: []
+  };
+  return deepFreeze({
+    schemaVersion: "programmable.submit-launch-contract-snapshot.v1",
+    snapshotBinding: {
+      ...snapshotWithoutDigest,
+      snapshotSha256: canonicalDigest(snapshotWithoutDigest)
+    },
+    currentness: {
+      status: "CURRENT",
+      refCheckedBefore: true,
+      refCheckedAfter: true,
+      retryCount: 0,
+      cacheStatus: "DISABLED"
+    },
+    applicationContract: {
+      current: {
+        contractId: "public-pr-application-v3.2",
+        path: "intake/schemas/public-pr-application-v3.2.schema.json",
+        sha256: "sha256:69fd860c82c0426d853f96fbf8df53c70de0e824a258da940a5ef09a68c72988"
+      },
+      legacy: [{
+        contractId: "public-pr-application-v3.1",
+        path: "intake/schemas/public-pr-application-v3.schema.json",
+        sha256: "sha256:2d51837bbbfe52672ecca334596243bebcec78e8e0a885d67084dfd98955bcb7"
+      }],
+      supportingContracts: {
+        routerReadiness: {
+          schema: {
+            contractId: "programmable-launch-router-readiness-v1",
+            path: "intake/schemas/programmable-launch-router-readiness-v1.schema.json",
+            sha256: `sha256:${"8".repeat(64)}`
+          },
+          validatorClosure: {
+            algorithm: "sha256-path-nul-size-nul-content-nul-v1",
+            closureSha256: `sha256:${"9".repeat(64)}`,
+            files: []
+          }
+        },
+        submission: {
+          contractId: "open-world-submission-v2.1",
+          path: "intake/schemas/open-world-submission-v2.1.schema.json",
+          sha256: "sha256:fb30065f906903530ba74cb0a20cd398d36bb387143cb0bae30326450e88ea23"
+        },
+        tradeCapabilityManifest: {
+          contractId: "trade-capability-manifest-v2",
+          path: "intake/schemas/trade-capability-manifest-v2.schema.json",
+          sha256: "sha256:a466baae3111a33cc33a2651b13f37da7dcc2d13d2cedce993896d289a82950f"
+        }
+      },
+      minimumBuilderProtocolVersion: "1.0.0"
+    },
+    projectStage: {
+      ...stageWithoutDigest,
+      stageSha256: canonicalDigest(stageWithoutDigest)
+    },
+    authority: { checkerOnly: true, launchAuthorized: false, externalWritesPerformed: false }
+  });
 }
 
 function createUniversalAdmissionFixture({
@@ -453,4 +474,15 @@ function gitBlobObjectId(bytes) {
 
 function sha256(bytes) {
   return `sha256:${crypto.createHash("sha256").update(bytes).digest("hex")}`;
+}
+
+function canonicalDigest(value) {
+  return sha256(Buffer.from(canonicalJson(value), "utf8"));
+}
+
+function deepFreeze(value, seen = new Set()) {
+  if (value === null || typeof value !== "object" || seen.has(value)) return value;
+  seen.add(value);
+  for (const child of Object.values(value)) deepFreeze(child, seen);
+  return Object.freeze(value);
 }

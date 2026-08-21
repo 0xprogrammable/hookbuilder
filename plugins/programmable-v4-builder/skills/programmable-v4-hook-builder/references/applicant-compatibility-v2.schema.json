@@ -1,0 +1,291 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:programmable:applicant-compatibility:2.0.0",
+  "title": "Programmable Applicant Compatibility V2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "application",
+    "authority",
+    "capabilities",
+    "kind",
+    "minimumBuilderProtocolVersion",
+    "schemaVersion",
+    "supportingContracts",
+    "trustedRepository"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "urn:programmable:applicant-compatibility:2.0.0"
+    },
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "current",
+        "legacy"
+      ],
+      "properties": {
+        "current": {
+          "$ref": "#/$defs/applicationV3_2Binding"
+        },
+        "legacy": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/applicationV3_1Binding"
+            }
+          ],
+          "items": false
+        }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateCodeExecuted",
+        "credentialsUsed",
+        "externalWritesPerformed",
+        "launchAuthorized",
+        "networkAccessed",
+        "promotionAuthorized",
+        "reviewAuthorized",
+        "rpcAccessed"
+      ],
+      "properties": {
+        "candidateCodeExecuted": { "const": false },
+        "credentialsUsed": { "const": false },
+        "externalWritesPerformed": { "const": false },
+        "launchAuthorized": { "const": false },
+        "networkAccessed": { "const": false },
+        "promotionAuthorized": { "const": false },
+        "reviewAuthorized": { "const": false },
+        "rpcAccessed": { "const": false }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "draftTransportOperations",
+        "launchReadiness",
+        "unreviewedDraftOnly"
+      ],
+      "properties": {
+        "draftTransportOperations": {
+          "const": [
+            "create",
+            "update"
+          ]
+        },
+        "launchReadiness": {
+          "const": "offline-check-only"
+        },
+        "unreviewedDraftOnly": {
+          "const": true
+        }
+      }
+    },
+    "kind": {
+      "const": "programmable-applicant-compatibility"
+    },
+    "minimumBuilderProtocolVersion": {
+      "pattern": "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "2.0.0"
+    },
+    "supportingContracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "routerReadiness",
+        "submission",
+        "tradeCapabilityManifest"
+      ],
+      "properties": {
+        "submission": {
+          "$ref": "#/$defs/submissionV2_1Binding"
+        },
+        "tradeCapabilityManifest": {
+          "$ref": "#/$defs/tradeManifestV2Binding"
+        },
+        "routerReadiness": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema",
+            "validatorClosure"
+          ],
+          "properties": {
+            "schema": {
+              "$ref": "#/$defs/routerReadinessBinding"
+            },
+            "validatorClosure": {
+              "$ref": "#/$defs/validatorClosure"
+            }
+          }
+        }
+      }
+    },
+    "trustedRepository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "defaultBranch",
+        "numericId"
+      ],
+      "properties": {
+        "defaultBranch": {
+          "const": "main"
+        },
+        "numericId": {
+          "const": "1320171831"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "applicationV3_1Binding": {
+      "allOf": [
+        { "$ref": "#/$defs/artifactBinding" },
+        {
+          "type": "object",
+          "properties": {
+            "contractId": { "const": "public-pr-application-v3.1" },
+            "path": { "const": "intake/schemas/public-pr-application-v3.schema.json" }
+          }
+        }
+      ]
+    },
+    "applicationV3_2Binding": {
+      "allOf": [
+        { "$ref": "#/$defs/artifactBinding" },
+        {
+          "type": "object",
+          "properties": {
+            "contractId": { "const": "public-pr-application-v3.2" },
+            "path": { "const": "intake/schemas/public-pr-application-v3.2.schema.json" }
+          }
+        }
+      ]
+    },
+    "artifactBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractId",
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "contractId": { "type": "string" },
+        "path": { "type": "string" },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "routerReadinessBinding": {
+      "allOf": [
+        { "$ref": "#/$defs/artifactBinding" },
+        {
+          "type": "object",
+          "properties": {
+            "contractId": { "const": "programmable-launch-router-readiness-v1" },
+            "path": { "const": "intake/schemas/programmable-launch-router-readiness-v1.schema.json" }
+          }
+        }
+      ]
+    },
+    "submissionV2_1Binding": {
+      "allOf": [
+        { "$ref": "#/$defs/artifactBinding" },
+        {
+          "type": "object",
+          "properties": {
+            "contractId": { "const": "open-world-submission-v2.1" },
+            "path": { "const": "intake/schemas/open-world-submission-v2.1.schema.json" }
+          }
+        }
+      ]
+    },
+    "tradeManifestV2Binding": {
+      "allOf": [
+        { "$ref": "#/$defs/artifactBinding" },
+        {
+          "type": "object",
+          "properties": {
+            "contractId": { "const": "trade-capability-manifest-v2" },
+            "path": { "const": "intake/schemas/trade-capability-manifest-v2.schema.json" }
+          }
+        }
+      ]
+    },
+    "validatorClosure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "closureSha256",
+        "files"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "sha256-path-nul-size-nul-content-nul-v1"
+        },
+        "closureSha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "files": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/validatorFileBinding"
+            },
+            {
+              "$ref": "#/$defs/validatorFileBinding"
+            },
+            {
+              "$ref": "#/$defs/validatorFileBinding"
+            },
+            {
+              "$ref": "#/$defs/validatorFileBinding"
+            }
+          ],
+          "items": false
+        }
+      }
+    },
+    "validatorFileBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "enum": [
+                  "scripts/programmable-launch-router-readiness-core.mjs",
+                  "scripts/programmable-launch-router-readiness.mjs",
+            "vendor/programmable-applicant-validator/scripts/evm-encoding-core.mjs",
+            "vendor/programmable-v4-hook-builder/scripts/github-public-source-lossless-json.mjs"
+          ]
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "sha256": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    }
+  }
+}

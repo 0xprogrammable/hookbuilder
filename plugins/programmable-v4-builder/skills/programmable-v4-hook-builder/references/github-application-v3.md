@@ -1,38 +1,38 @@
-# GitHub application v3
+# GitHub Application contract
 
-> Application V3.1 is the accepted generic Applicant contract for protected Draft PRs to
-> `0xprogrammable/submit-launch:main`. Never create a new Applicant PR in Hookbuilder.
+> The current protected Draft contract is Application V3.2 with Submission 2.1. Application V3.1 is an immutable legacy
+> compatibility input, not the normal path and not proof of current official-route readiness.
 
-Use this path for every completed generic Programmable project and for an exact source-bound policy-neutral proposal,
-including hooks, applications, services, games, multi-repository systems and unfamiliar custom architectures. Unknown
-project kinds remain eligible and enter review; they are not rejected or forced into a template because they are novel.
+Use this contract for every completed Programmable project with exact public source, including hooks, applications,
+services, games, multi-repository systems and unfamiliar custom architectures. Unknown project kinds remain eligible;
+they are not rejected or forced into a template because they are novel. Hookbuilder is optional.
 
-Do not require `PROJECT_PREFLIGHT_VALID` or a trusted external sandbox to create an unreviewed Applicant Draft.
-Local or applicant-supplied test evidence remains unverified until independent review. Preserve that limitation in
-the review package and keep the application `unreviewed`; authenticated sandbox completion is optional stronger
-evidence, not admission authority.
+The normal entry is one command:
 
-Fee V2 fields below are exact compatibility only. They apply only when preserved project intent or
-an applicable current central-policy Rule ID selects that exact legacy package; Submission V2 cannot create the
-requirement itself.
+```bash
+node "$SKILL_ROOT/scripts/cli.mjs" submit-project "$REPOSITORY_ROOT"
+```
 
-Use this reference only for `submission.v2.json` and `public-pr-application-v3`. Do not route a v2 project through the
-historical v1 `prepare-pr` contract, six-file `application.json` package or maximum-eight-companion path.
+It resolves one integrity-checked Compatibility V2 snapshot, selects its declared Application V3.2, Submission 2.1 and
+Trade Capability Manifest V2 adapters, and applies the `submit` Stage Plan. Run only the safe next command it returns.
+Do not require `PROJECT_PREFLIGHT_VALID` or a trusted external sandbox to create an unreviewed Applicant Draft. Both are
+optional stronger evidence. Local or applicant-supplied test evidence remains unverified until independent review.
 
-The protected Submit a Launch workflow validates the accepted V3.1 schema and exact revision package with trusted base
-code. Local generation or validation alone is not submission; only remote readback of the exact Draft PR and its checks
-proves transport. Website eligibility remains a separate later authority for the same unchanged approved source SHA,
-and the Builder never derives it locally.
+V3.1 packages remain valid only where the current compatibility contract declares them as offline legacy. Preserve
+their bytes and reports. Continue one as a new, linked V3.2 schema-migration revision with the identical source binding
+and no unrelated product, intent or normative change. Put later changes in a separate linked V3.2 revision. Never treat
+the old package as current launch readiness.
+
+Fee V2 fields below are exact compatibility only. They apply only when preserved project intent and the current Stage
+Plan select that package. The Submission contract cannot create a platform requirement by itself.
+
+The protected Submit a Launch workflow validates the resolved current schema and exact revision package with trusted
+base code. Local generation or validation is not submission; only remote readback of the exact Draft PR and its checks
+proves transport. Website eligibility remains a separate later authority, and the Builder never derives it locally.
 
 Application V3 is GitHub-only. Every source surface must be an exact public GitHub repository. Another Git host, private
-repository, ZIP, pasted source, upload form or email is not an alternate V3 transport; it needs a different versioned
-contract and threat model. Keep the idea `ELIGIBLE_FOR_REVIEW`, report `INTEGRATION_PENDING`, and materialize or write
-no public Application V3 package for that source.
-
-The separate Universal Admission queue discovery preflight does not widen or rewrite Application V3.1. Its currently
-published protected contract is disabled, so explicit `submit-project --transport queue` performs exact readback only
-and stops before V3 preparation, envelope materialization, confirmation or transport mutation. GitHub Draft remains an
-explicit low-volume adapter; it is never a silent fallback after a queue request.
+repository, ZIP, pasted source, upload form or email needs a different versioned contract and threat model. Keep the
+idea eligible, mark only this integration `INTEGRATION_PENDING`, and create no public Application V3 package for it.
 
 ## Contents
 
@@ -46,19 +46,22 @@ explicit low-volume adapter; it is never a silent fallback after a queue request
 
 ## Application contract
 
-Generate `application.v3.json` only through the installed V3.1 generator. Bind:
+Never choose an Application schema from installed prose. `submit-project` resolves the protected Applicant
+Compatibility V2 contract and selects the current V3.2 adapter. Generate `application.v3.json` only through that bound
+adapter. Bind:
 
 - application id, revision and explicit lineage;
 - builder identity and public-data acknowledgements;
 - the exact idea-source repository/path/digest as the sole normative intent source;
 - intent and fidelity state without inherited approval;
-- `submission.v2.json` by repository, path and digest;
+- the declared Submission 2.1 package by repository, path and digest;
+- the bound Trade Capability Manifest V2, requested route and applicable evidence without inventing a market;
 - optional Fee V2 schema/applicability/instance only when that exact legacy package was explicitly selected;
 - security schema plus source-assessed security and verification records derived after source freeze;
 - exact review-package records and evidence; and
 - every primary/companion repository by local id, GitHub numeric id, URI, commit and tree.
 
-Preserve every embedded V2 `chainId` as a canonical positive `uint256` decimal string. Application, Registry acceptance
+Preserve every embedded Submission `chainId` as a canonical positive `uint256` decimal string. Application, Registry acceptance
 and Launch Bundle V2 must never narrow it to a JSON number or JavaScript safe integer.
 
 Encode `applicationRevision` itself as a canonical positive decimal string (`"1"`, not a JSON number) across Application
@@ -70,7 +73,7 @@ integers.
 For a V3 predecessor, derive `lineage.previous` with
 `derivePublicPrApplicationV3PreviousBinding`; do not hand-author its fields. The helper binds only facts provable from
 the immutable predecessor root and package bytes: application identity/revision/digests, primary source repository
-id/commit/tree, Submission V2 schema/standard/path/digest, Fee V2 id/version, and the predecessor's exact
+id/commit/tree, declared Submission schema/standard/path/digest, Fee V2 id/version, and the predecessor's exact
 `feeApplicability` plus nullable `feePolicyInstanceSha256`. The current Registry base belongs to the transport plan and pull request, so it is not a
 historical predecessor field. Never relabel the Keccak-based `programmableFeePolicyHash` as SHA-256; it remains an
 exact global-policy field in the predecessor Application root.
@@ -87,7 +90,7 @@ omit trade manifests and trade-test results. If exact trade evidence exists, adv
 attaching it to a proposal. Source verification still does not prove trade capability, audit, deployment, approval, or launch.
 
 Only after the legacy Fee V2 package is explicitly selected, derive its compatibility field from the exact bound
-Submission V2 graph:
+declared Submission graph:
 
 - `proposal` requires `unresolved` and null fee-instance path, repository and digest;
 - a prototype with at least one `programmable-canonical` scope requires `applicable` plus a real instance path,
@@ -145,40 +148,31 @@ where the contract permits it; they never become an unsupported-product or unsaf
 
 ## Revision and lineage preparation
 
-Keep `applicationRevision` and `lineage` absent from the canonical revision draft. Derive both from the highest exact
-eligible Registry or open-draft predecessor; never copy, increment or repair them by hand. From the installed skill:
+`submit-project` is the normal entry. Use a namespaced preparation command only when its safe next action requests a
+package repair; its current `--help` owns the flags. Never reconstruct the older three-command choreography from this
+reference.
 
-```bash
-REVISION_DRAFT="/absolute/outside-source/application-v3-draft.json"
-REVISION_ROOT="/absolute/outside-source/prepared-revision"
-node "$SKILL_ROOT/scripts/cli.mjs" open-world prepare-revision "$REVISION_DRAFT" \
-  --source-root primary="$REPOSITORY_ROOT" \
-  --output "$REVISION_ROOT" \
-  --write
-```
+Keep `applicationRevision` and `lineage` absent from the canonical revision draft. The bound adapter derives both from
+the highest exact eligible Registry or open-Draft predecessor; never copy, increment or repair them by hand. A new
+project produces V3.2. A V3.1 predecessor produces an append-only schema-migration revision with the identical source,
+product intent and normative bindings. A product or intent change belongs in a later linked V3.2 revision. A V3.2
+predecessor produces an ordinary linked revision.
 
-Repeat `--source-root <repository-ref>=<git-root>` for every current repository. Preview is the default. The command uses
-authenticated GET-only GitHub requests and exact local raw-Git replay; it performs no candidate-code execution, GitHub
-write, approval, submission or launch action. `--write` creates one new output root containing only
-`application.v3.json` through an atomic rename. The output cannot be inside the Builder worktree, the input-draft
-directory, a source worktree, a linked-worktree Git directory, a shared Git common directory or an object store.
+Preparation is read-only by default. Any explicit local output must be a new root outside the Builder, source,
+linked-worktree Git, shared Git and object-store directories and must use atomic replacement. It performs no candidate
+execution, GitHub mutation, approval, submission or launch action.
 
-Run this command again after every source, source-closure, evidence or recheck change. If the predecessor uses the same
-numeric GitHub repository identity, the current mapped object database may replay its earlier commit automatically.
-Use repeatable `--predecessor-source-root <repository-ref>=<git-root>` only for a selected removed or replaced historical
-repository whose exact objects are not available from the current mappings. A mixed manifest/inline predecessor needs
-the explicit old root for a removed inline companion. An entirely inline predecessor that can be replayed from the
-immutable remote package must not receive a needless old-root mapping. Missing historical objects are a typed
-`INTEGRATION_PENDING` availability state; a supplied but corrupt, mismatched or incomplete object graph is invalid.
+Recompute after every source, closure, evidence or current-contract change. Missing historical objects are
+`INTEGRATION_PENDING`; supplied corrupt, mismatched or incomplete objects are invalid. Preserve every predecessor byte
+and conclusion.
 
 ## Application-package preparation
 
-Feed the resulting `$REVISION_ROOT/application.v3.json` into `cli.mjs open-world application`. Inspect `--help` for the
-complete review/security inputs and repeatable current-source mappings. This second operation is zero-network and must:
+The current adapter assembles the closed package as a zero-network operation. It must:
 
 - preview by default and perform no write, network request, push, submission or approval;
 - accept only already-derived immutable repository identities, revision/lineage and exact local Git objects;
-- validate the complete v2 package and source closure;
+- validate the declared Submission package and source closure;
 - derive source-assessed security and repository verification reports only after all source commits are fixed;
 - preserve a policy-neutral proposal as `proposal` with Fee V2 `not-selected` and no invented prototype or trade evidence;
 - generate canonical deterministic `application.v3.json` bytes;
@@ -188,36 +182,29 @@ complete review/security inputs and repeatable current-source mappings. This sec
 Do not hand-edit a prepared application to bypass a finding. Regenerate it from the exact corrected source revision.
 Application-package preparation never opens a pull request and never claims that the Registry validated the Git objects
 remotely. Every destination must be a new root outside every input, source worktree and Git-control directory. Passing
-that package to submit/update is a later operation.
-
-Validate a closed package before transport from any working directory, including an installed skill with no Git
-checkout:
-
-```bash
-node "$SKILL_ROOT/scripts/cli.mjs" open-world validate-application "$APPLICATION_PACKAGE"
-```
-
-Repeat `--source-root <repository-ref>=<git-root>` for every repository when a fresh local source-closure replay is
-required. Without mappings, the command still validates the closed schema and semantic bindings, canonical package
-bytes, privacy scan and every persisted source-verification report. It performs no network request, filesystem write or
-candidate-code execution.
+that package to the confirmation-gated Draft transport is a later operation. A validation-only adapter can replay local
+source closure when exact source roots are present; without them it still validates schema and semantic bindings,
+canonical package bytes, privacy and persisted verification reports. It performs no network write or candidate-code
+execution.
 
 ## External-write boundary
 
-Every completed generic project follows one path after its exact public source and closed local package validate:
+Every completed project follows one path after its exact public source and closed local package validate:
 
 ```text
 APPLICATION_PACKAGE_VALID -> submit plan -> explicit confirmation -> protected Draft PR
 ```
 
-Keep GitHub preparation and GitHub mutation separate. Use only namespaced `cli.mjs open-world submit`, `update`, and
-`status`; top-level application commands remain the released V1 path. The first V3 submit or update invocation must be
-a read-only plan
-that reports:
+Keep GitHub preparation and mutation separate. Invoke or resume only:
+
+```bash
+node "$SKILL_ROOT/scripts/cli.mjs" submit-project "$REPOSITORY_ROOT"
+```
+
+Do not begin the normal journey with a namespaced transport. The first result is a read-only plan that reports:
 
 - target repository, protected base commit/tree, application id/revision, branch/pull-request action and every write;
-- the exact protected active-contract, Application schema, central policy/schema and their digests;
-- active build and production Rule IDs without treating either set as approval or launch authority; and
+- the exact protected contract snapshot, selected Application and Submission adapters and Stage Plan;
 - payload bytes/digests plus one current confirmation digest.
 
 The fixed public target is
@@ -229,30 +216,24 @@ Require explicit user authority for that exact digest before creating a fork, ad
 pull request. Recompute the plan immediately before execution and fail closed if source, base, identity, package,
 intake state or requested writes changed. Never reuse a stale confirmation.
 
-Every confirmed submit or update requires `--mutation-receipt <absolute-json>` outside the application package. The
-client holds one exclusive `<receipt>.lock` for the complete confirmed execution or confirmed resume, records each
-mutation before its request, records returned identifiers before readback, and atomically replaces and fsyncs the
-receipt after every state transition. It never retries a POST or PATCH. Only bounded GitHub GETs may retry transient or
-rate-limited failures.
-
-Use `--resume --mutation-receipt <absolute-json>` without a confirmation digest for GET-only reconciliation. This mode
-does not create, fsync, rewrite or remove the receipt lock or receipt. If a prior crash left a lock, the result reports
-its safe metadata, owner-process observation, possible-stale assessment and manual recovery guidance while retaining
-the lock exactly. Confirm that no live process owns it, preserve both files, complete GET-only remote reconciliation,
-and obtain maintainer review before manually removing it. Continuing after reconciliation reacquires the exclusive lock
-and requires the receipt's exact original confirmation digest; an unknown tree or commit POST outcome is never replayed
-automatically.
+The command owns its persistent workspace, receipt and reconciliation details. Its transport records every attempted
+mutation before the request, persists returned identities before readback and never blindly retries a write. Ambiguous
+outcomes reconcile through bounded GET-only reads. Run only the safe next command returned for that exact state.
 
 Planning, reconciliation and execution verify the trusted Registry intake object and every declared source CI run. A CI
 run counts only when its repository identity, head repository identity, exact head SHA, workflow id/path, completed
-state and successful conclusion all match the application binding. `open-world status` independently re-reads the
+state and successful conclusion all match the application binding. `submit-project` independently re-reads the
 remote package and review state; optional local source roots add evidence but are not a substitute for remote status.
 
 The confirmed client may perform only the writes listed in the plan. It must never mark the pull request ready, approve,
 merge, deploy, sign, launch, change an account or move funds.
 
-`open-world status` is read-only. Report a Draft PR only after it re-reads the exact remote package, pull request and
-checks. That proof still establishes transport only, never review, approval, deployment or launch.
+Reinvoking `submit-project` without a pending authorized mutation is read-only status. Report a Draft PR only after the
+command re-reads the exact remote package, pull request and checks. That proves transport only, never review, approval,
+deployment or launch.
+
+A local resolver or adapter result is not end-to-end submission proof. Only the released combined path plus exact
+remote Draft readback can establish that boundary.
 
 ## Review and status
 
@@ -274,7 +255,7 @@ location, evidence, impact and repair path. The builder may attach counter-evide
 finding. A Registry/maintainer disposition must bind the application revision, finding identity, evidence and
 accountable reviewer; preserve the original observation and never carry the disposition into another commit.
 
-For a project change, create a new public commit, rerun invalidated checks, regenerate v2 artifacts and
+For a project change, create a new public commit, rerun invalidated checks, regenerate the declared Submission artifacts and
 `application.v3.json`, then use the released read-only update-plan path and explicitly authorize only its current
 digest. Keep prior revisions and conclusions visible as history.
 
@@ -283,7 +264,7 @@ by itself create canonical acceptance, deploy, index, quote or launch the projec
 endorsement.
 
 A merged GitHub thread is not canonical acceptance by itself. Acceptance requires a Registry-controlled record that
-binds the exact application, source, Submission V2, fee applicability and conditional Fee V2 instance, security
+binds the exact application, source, declared Submission, fee applicability and conditional Fee V2 instance, security
 assessment, verification reports, findings and maintainer decision. Registry Acceptance V3 permits `applicable` with a
 real fee instance or exact zero-scope `not-applicable` with null instance fields. It omits its own containing commit/tree;
 the later outer launch input binds its exact Registry repository, commit, tree, path, blob and digest. Before that record
@@ -308,7 +289,7 @@ become process-local authority. Production must independently repeat this verifi
 
 ## Historical applications
 
-Keep published v1 application bytes, six-file packages, pull requests, receipts and statuses immutable. Do not rename
-`application.json` to `application.v3.json`, reinterpret a v1 fee receipt as Fee V2 evidence or silently widen old
-source limits. Migrate forward through a separate v2 revision with explicit lineage, legacy-unconfirmed intent,
-unassessed fidelity and no inherited acceptance.
+Keep every published V1 and V3.1 application, six-file package, pull request, receipt and status immutable. Do not rename
+`application.json`, reinterpret an old fee receipt or silently widen historical source limits. Continue through a
+separate V3.2 revision with explicit schema-migration lineage, unresolved evidence where necessary and no inherited
+acceptance or current-route readiness.

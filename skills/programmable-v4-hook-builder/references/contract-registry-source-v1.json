@@ -3,6 +3,18 @@
   "schemaVersion": "1.0.0",
   "contracts": [
     {
+      "contractId": "applicant-compatibility-v2",
+      "schemaPath": "references/applicant-compatibility-v2.schema.json",
+      "schemaId": "urn:programmable:applicant-compatibility:2.0.0",
+      "lifecycle": "active",
+      "payloadDigestProfile": "contract-defined",
+      "validator": {
+        "modulePath": "scripts/applicant-compatibility-contract-core.mjs",
+        "exportName": "parseApplicantCompatibilityContract",
+        "mode": "package-semantic"
+      }
+    },
+    {
       "contractId": "application-api-v1",
       "schemaPath": "references/application-api.schema.json",
       "schemaId": "https://programmable.family/schemas/custom-hook-application-api-1.0.0.json",
@@ -327,6 +339,18 @@
       }
     },
     {
+      "contractId": "open-world-submission-v2-1",
+      "schemaPath": "references/open-world-submission-v2.1.schema.json",
+      "schemaId": "urn:programmable:v4-hook-submission:2.1.0",
+      "lifecycle": "active",
+      "payloadDigestProfile": "contract-defined",
+      "validator": {
+        "modulePath": "scripts/open-world-v2-contract-adapter.mjs",
+        "exportName": "validateOpenWorldSubmissionContract",
+        "mode": "package-semantic"
+      }
+    },
+    {
       "contractId": "permit2-launch-witness-v1",
       "schemaPath": "references/permit2-launch-witness-v1.schema.json",
       "schemaId": "urn:programmable:permit2-launch-witness:1.0.0",
@@ -455,6 +479,18 @@
       "validator": {
         "modulePath": "scripts/repository-completion-core.mjs",
         "exportName": "validateRepositoryPlan",
+        "mode": "package-semantic"
+      }
+    },
+    {
+      "contractId": "public-pr-application-v3-2",
+      "schemaPath": "references/public-pr-application-v3.2.schema.json",
+      "schemaId": "https://programmable.money/schemas/public-pr-application-v3.2.json",
+      "lifecycle": "active",
+      "payloadDigestProfile": "contract-defined",
+      "validator": {
+        "modulePath": "scripts/application-v3-contract-adapter.mjs",
+        "exportName": "validateApplicationContractDocument",
         "mode": "package-semantic"
       }
     },
@@ -623,6 +659,18 @@
       "validator": {
         "modulePath": "scripts/trade-capability-manifest-core.mjs",
         "exportName": "validateTradeCapabilityManifestV1",
+        "mode": "direct"
+      }
+    },
+    {
+      "contractId": "trade-capability-manifest-v2",
+      "schemaPath": "references/trade-capability-manifest-v2.schema.json",
+      "schemaId": "urn:programmable:trade-capability-manifest:2.0.0",
+      "lifecycle": "active",
+      "payloadDigestProfile": "contract-defined",
+      "validator": {
+        "modulePath": "scripts/open-world-v2-contract-adapter.mjs",
+        "exportName": "validateTradeCapabilityManifestV2",
         "mode": "direct"
       }
     },

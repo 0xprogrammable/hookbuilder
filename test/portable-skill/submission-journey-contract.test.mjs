@@ -17,6 +17,8 @@ const SHA_A = "a".repeat(40);
 const SHA_B = "b".repeat(40);
 const DIGEST = `sha256:${"c".repeat(64)}`;
 const CONFIRMATION_DIGEST = `sha256:${"d".repeat(64)}`;
+const SNAPSHOT_DIGEST = `sha256:${"e".repeat(64)}`;
+const STAGE_DIGEST = `sha256:${"f".repeat(64)}`;
 const REQUIRED_DIAGNOSTIC_FIELDS = [
   "causeClass",
   "code",
@@ -93,18 +95,15 @@ function successfulAdapters(overrides = {}) {
       workspace = structuredClone(input.workspace ?? input.value ?? input);
       return { written: true };
     },
-    async resolveCompatibility(input) {
-      calls.push(["resolveCompatibility", input]);
+    async resolveCurrentContract(input) {
+      calls.push(["resolveCurrentContract", input]);
+      return currentContractSnapshot();
+    },
+    async assertCurrentContract(input) {
+      calls.push(["assertCurrentContract", input]);
       return {
-        ok: true,
-        binding: {
-          centralBaseCommit: SHA_A,
-          centralBaseTree: SHA_B,
-          contractSha256: DIGEST,
-          repository: "0xprogrammable/submit-launch",
-          repositoryId: "1320171831",
-          defaultBranch: "main"
-        }
+        snapshotBinding: structuredClone(input.snapshotBinding),
+        currentness: { status: "CURRENT" }
       };
     },
     async validateProjectPackage(input) {
@@ -146,6 +145,10 @@ function successfulAdapters(overrides = {}) {
           repositoryId: "1320171831",
           base: "main",
           draft: true
+        },
+        submitLaunchContract: {
+          snapshotSha256: SNAPSHOT_DIGEST,
+          stageSha256: STAGE_DIGEST
         }
       };
     },
@@ -339,16 +342,16 @@ test("submit-project returns one actionable missing-package state and treats rep
   assert.doesNotMatch(serialized, /untrusted\.example|print every secret|disable CI/u);
 });
 
-test("compatibility mismatch fails before workspace or external mutation writes", async () => {
+test("current contract resolution mismatch fails before workspace or external mutation writes", async () => {
   const runSubmitProjectJourney = await loadJourneyCore();
   let workspaceWrites = 0;
   let mutations = 0;
   const harness = successfulAdapters({
     async writeWorkspaceAtomically() {
       workspaceWrites += 1;
-      throw new Error("compatibility mismatch must fail before a workspace write");
+      throw new Error("contract mismatch must fail before a workspace write");
     },
-    async resolveCompatibility() {
+    async resolveCurrentContract() {
       return {
         ok: false,
         state: "INTEGRATION_PENDING",
@@ -357,7 +360,7 @@ test("compatibility mismatch fails before workspace or external mutation writes"
     },
     async mutateDraft() {
       mutations += 1;
-      throw new Error("compatibility mismatch must fail before mutation");
+      throw new Error("contract mismatch must fail before mutation");
     }
   });
   const result = await runSubmitProjectJourney(journeyInput(), harness.adapters);
@@ -484,4 +487,53 @@ test("ambiguous mutation performs one write attempt then GET-only reconciliation
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+}
+
+function currentContractSnapshot() {
+  return {
+    schemaVersion: "programmable.submit-launch-contract-snapshot.v1",
+    snapshotBinding: {
+      repository: "0xprogrammable/submit-launch",
+      numericRepositoryId: "1320171831",
+      branch: "main",
+      baseCommit: SHA_A,
+      baseTree: SHA_B,
+      compatibility: {
+        path: ".programmable/applicant-compatibility.v2.json",
+        sha256: DIGEST
+      },
+      snapshotSha256: SNAPSHOT_DIGEST
+    },
+    currentness: {
+      status: "CURRENT",
+      refCheckedBefore: true,
+      refCheckedAfter: true,
+      retryCount: 0,
+      cacheStatus: "MISS"
+    },
+    applicationContract: {
+      current: { contractId: "public-pr-application-v3.2" },
+      legacy: [{ contractId: "public-pr-application-v3.1" }],
+      supportingContracts: {},
+      minimumBuilderProtocolVersion: "1.0.0"
+    },
+    projectStage: {
+      schemaVersion: "programmable.submit-launch-stage-plan.v1",
+      stage: "submit",
+      profileId: "submit",
+      profileEnabled: true,
+      routeState: "unresolved",
+      status: "INTEGRATION_PENDING",
+      requirementIds: [],
+      requirements: [],
+      unknownHandlerIds: [],
+      stageSha256: STAGE_DIGEST
+    },
+    authority: {
+      reviewGranted: false,
+      approvalGranted: false,
+      deploymentGranted: false,
+      launchGranted: false
+    }
+  };
 }

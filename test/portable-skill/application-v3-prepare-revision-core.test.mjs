@@ -4,6 +4,10 @@ import test from "node:test";
 import { canonicalJson } from "../../skills/programmable-v4-hook-builder/scripts/submission-core.mjs";
 import { sha256Bytes } from "../../skills/programmable-v4-hook-builder/scripts/open-world-v2-core.mjs";
 import {
+  parseApplicationContractFromSnapshot,
+  selectApplicationAdapter
+} from "../../skills/programmable-v4-hook-builder/scripts/application-v3-contract-adapter.mjs";
+import {
   APPLICATION_V3_RECHECK_DIFF_ALLOWLIST,
   APPLICATION_V3_SOURCE_BINDING_FIELDS,
   ApplicationV3PrepareRevisionError,
@@ -17,6 +21,9 @@ const V3_TEMPLATE = JSON.parse(fs.readFileSync(
   new URL("../../skills/programmable-v4-hook-builder/assets/templates/open-world-v2/public-pr-application-v3.example.json", import.meta.url),
   "utf8"
 ));
+const CURRENT_NEW_SELECTION = currentApplicationSelection({ priorVersion: null });
+const CURRENT_MIGRATION_SELECTION = currentApplicationSelection({ priorVersion: "3.1.0" });
+const CURRENT_REVISION_SELECTION = currentApplicationSelection({ priorVersion: "3.2.0" });
 
 test("publishes the exact source-binding projection and same-source recheck allowlist", () => {
   assert.deepEqual(APPLICATION_V3_SOURCE_BINDING_FIELDS, [
@@ -206,6 +213,163 @@ test("derives recheck for a same-source V3 change and plans an exact open-draft 
     githubNextAction: "update",
     pullRequestNumber: 42
   });
+});
+
+test("migrates V3.1 to V3.2 as one append-only schema-migration revision", () => {
+  const predecessorApplication = createV3Application({ applicationRevision: "41" });
+  const predecessorBytes = canonicalBytes(predecessorApplication);
+  const originalPredecessorBytes = Buffer.from(predecessorBytes);
+  const applicationDraft = createV32DraftFromV31(predecessorApplication);
+  const originalDraft = structuredClone(applicationDraft);
+
+  const result = prepareApplicationV3Revision({
+    applicationDraft,
+    applicationSelection: CURRENT_MIGRATION_SELECTION,
+    predecessor: {
+      kind: "v3",
+      location: "open-draft",
+      pullRequestNumber: 42,
+      applicationBytes: predecessorBytes,
+      packageSha256: HASH_B
+    }
+  });
+
+  assert.deepEqual(predecessorBytes, originalPredecessorBytes);
+  assert.deepEqual(applicationDraft, originalDraft);
+  assert.equal(result.application.contract.version, "3.2.0");
+  assert.equal(result.application.contract.submissionStandard, "2.1.0");
+  assert.equal(result.application.applicationRevision, "42");
+  assert.equal(result.application.lineage.kind, "schema-migration");
+  assert.equal(result.application.lineage.previous.applicationContractVersion, "3.1.0");
+  assert.equal(result.application.lineage.previous.applicationSha256, sha256Bytes(predecessorBytes));
+  assert.equal(result.application.lineage.previous.submissionStandard, "2.0.0");
+  assert.equal(result.plan.mode, "contract-schema-migration");
+  assert.deepEqual(result.plan.predecessor, {
+    applicationContract: "public-pr-application-v3",
+    applicationContractVersion: "3.1.0",
+    applicationRevision: "41",
+    applicationSha256: sha256Bytes(predecessorBytes),
+    packageSha256: HASH_B,
+    location: "open-draft"
+  });
+  assert.deepEqual(result.plan.target, {
+    githubNextAction: "update",
+    pullRequestNumber: 42
+  });
+});
+
+test("V3.2 preparation requires the exact manifest-bound selection", () => {
+  const predecessorApplication = createV3Application({ applicationRevision: "3" });
+  const input = {
+    applicationDraft: createV32DraftFromV31(predecessorApplication),
+    predecessor: {
+      kind: "v3",
+      location: "registry-base",
+      applicationBytes: canonicalBytes(predecessorApplication),
+      packageSha256: HASH_B
+    }
+  };
+  assertPrepareError(
+    () => prepareApplicationV3Revision(input),
+    "PREPARE_REVISION_CURRENT_CONTRACT_ADAPTER_REQUIRED"
+  );
+  assertPrepareError(
+    () => prepareApplicationV3Revision({
+      ...input,
+      applicationSelection: CURRENT_NEW_SELECTION
+    }),
+    "PREPARE_REVISION_CURRENT_CONTRACT_ADAPTER_REQUIRED"
+  );
+});
+
+test("V3.1 to V3.2 migration rejects unrelated normative or source changes", () => {
+  const predecessorApplication = createV3Application({ applicationRevision: "10" });
+  const predecessor = {
+    kind: "v3",
+    location: "registry-base",
+    applicationBytes: canonicalBytes(predecessorApplication),
+    packageSha256: HASH_B
+  };
+  const changedSummary = createV32DraftFromV31(predecessorApplication);
+  changedSummary.summary = "A different product claim cannot hide inside schema migration.";
+  assertPrepareError(
+    () => prepareApplicationV3Revision({
+      applicationDraft: changedSummary,
+      applicationSelection: CURRENT_MIGRATION_SELECTION,
+      predecessor
+    }),
+    "PREPARE_REVISION_SCHEMA_MIGRATION_SCOPE_EXCEEDED"
+  );
+
+  const changedSource = createV32DraftFromV31(predecessorApplication);
+  changedSource.source.primary.treeObjectId = "f".repeat(40);
+  assertPrepareError(
+    () => prepareApplicationV3Revision({
+      applicationDraft: changedSource,
+      applicationSelection: CURRENT_MIGRATION_SELECTION,
+      predecessor
+    }),
+    "PREPARE_REVISION_SCHEMA_MIGRATION_SCOPE_EXCEEDED"
+  );
+});
+
+test("rejects V3.2 to V3.1 downgrade before deriving legacy lineage", () => {
+  const v31 = createV3Application({ applicationRevision: "4" });
+  const migrated = prepareApplicationV3Revision({
+    applicationDraft: createV32DraftFromV31(v31),
+    applicationSelection: CURRENT_MIGRATION_SELECTION,
+    predecessor: {
+      kind: "v3",
+      location: "registry-base",
+      applicationBytes: canonicalBytes(v31),
+      packageSha256: HASH_B
+    }
+  }).application;
+  const legacyDraft = createDraftFromV3(v31);
+  legacyDraft.reviewPackage.records[0].sha256 = HASH_C;
+  assertPrepareError(
+    () => prepareApplicationV3Revision({
+      applicationDraft: legacyDraft,
+      predecessor: {
+        kind: "v3",
+        location: "registry-base",
+        applicationBytes: canonicalBytes(migrated),
+        packageSha256: HASH_C
+      }
+    }),
+    "PREPARE_REVISION_CONTRACT_DOWNGRADE_FORBIDDEN"
+  );
+});
+
+test("keeps V3.2 successors on the current contract with exact versioned lineage", () => {
+  const v31 = createV3Application({ applicationRevision: "7" });
+  const v32 = prepareApplicationV3Revision({
+    applicationDraft: createV32DraftFromV31(v31),
+    applicationSelection: CURRENT_MIGRATION_SELECTION,
+    predecessor: {
+      kind: "v3",
+      location: "registry-base",
+      applicationBytes: canonicalBytes(v31),
+      packageSha256: HASH_B
+    }
+  }).application;
+  const nextDraft = createDraftFromV3(v32);
+  nextDraft.reviewPackage.records[0].sha256 = HASH_C;
+  const result = prepareApplicationV3Revision({
+    applicationDraft: nextDraft,
+    applicationSelection: CURRENT_REVISION_SELECTION,
+    predecessor: {
+      kind: "v3",
+      location: "registry-base",
+      applicationBytes: canonicalBytes(v32),
+      packageSha256: HASH_C
+    }
+  });
+  assert.equal(result.application.contract.version, "3.2.0");
+  assert.equal(result.application.applicationRevision, "9");
+  assert.equal(result.application.lineage.kind, "recheck");
+  assert.equal(result.application.lineage.previous.applicationContractVersion, "3.2.0");
+  assert.equal(result.plan.mode, "merged-registry-successor");
 });
 
 test("rejects an exact V3 semantic no-op without exposing predecessor or draft content", () => {
@@ -584,6 +748,175 @@ function createDraftFromV3(application) {
   delete draft.applicationRevision;
   delete draft.lineage;
   return draft;
+}
+
+function createV32DraftFromV31(application, requestedRoute = "none") {
+  const draft = createDraftFromV3(application);
+  draft.contract = {
+    id: "public-pr-application-v3",
+    version: "3.2.0",
+    submissionStandard: "2.1.0",
+    validatorProfile: "intent-open-world-v2"
+  };
+  draft.launchRequest = {
+    requestedRoute,
+    category: null,
+    launchKind: null,
+    routePlan: null,
+    routerReadinessSchema: null
+  };
+  for (const field of [
+    "feePolicySchemaId",
+    "programmableFeePolicyId",
+    "programmableFeePolicyVersion",
+    "programmableFeePolicyHashPreimage",
+    "programmableFeePolicyHash",
+    "feePolicySchemaPath",
+    "feePolicySchemaRepositoryRef",
+    "feePolicySchemaSha256",
+    "feePolicyInstancePath",
+    "feePolicyInstanceRepositoryRef",
+    "feePolicyInstanceSha256"
+  ]) draft.policyBindings[field] = null;
+  draft.policyBindings.feeApplicability = "not-selected";
+  draft.reviewPackage.requiredKinds = draft.reviewPackage.requiredKinds
+    .filter((kind) => kind !== "fee-policy-schema");
+  draft.reviewPackage.records = draft.reviewPackage.records
+    .filter((record) => record.kind !== "fee-policy-schema");
+  return draft;
+}
+
+function currentApplicationSelection({ priorVersion } = {}) {
+  const baseCommit = "a".repeat(40);
+  const baseTree = "b".repeat(40);
+  const snapshotWithoutDigest = {
+    repository: "0xprogrammable/submit-launch",
+    numericRepositoryId: "1320171831",
+    branch: "main",
+    baseCommit,
+    baseTree,
+    activeContractV1: { path: ".programmable/active-contract.json", gitBlobOid: "1".repeat(40), sha256: `sha256:${"1".repeat(64)}` },
+    activeContractV2: {
+      path: ".programmable/active-contract.v2.json",
+      gitBlobOid: "2".repeat(40),
+      sha256: `sha256:${"2".repeat(64)}`,
+      schema: {
+        path: "intake/schemas/active-contract-manifest-v2.schema.json",
+        gitBlobOid: "3".repeat(40),
+        sha256: `sha256:${"3".repeat(64)}`
+      }
+    },
+    compatibility: { path: ".programmable/applicant-compatibility.v2.json", gitBlobOid: "4".repeat(40), sha256: `sha256:${"4".repeat(64)}` },
+    compatibilitySchema: {
+      path: "intake/schemas/applicant-compatibility-v2.schema.json",
+      gitBlobOid: "5".repeat(40),
+      sha256: "sha256:01de8cd2e99c1e7d76b701377b42ee33df492bcebdb869d6d71a3d2a148a9df8"
+    },
+    policy: {
+      schemaVersion: "programmable.launch-policy-binding.v1",
+      repository: "0xprogrammable/submit-launch",
+      numericRepositoryId: "1320171831",
+      baseCommit,
+      baseTree,
+      path: "policy/launch-policy.v1.json",
+      gitBlobOid: "6".repeat(40),
+      policyId: "programmable-launch-policy",
+      policyVersion: "1.0.0",
+      profileId: "workflow-canary",
+      sha256: `sha256:${"6".repeat(64)}`
+    },
+    policySchema: {
+      schemaVersion: "programmable.submit-launch-policy-schema-binding.v1",
+      repository: "0xprogrammable/submit-launch",
+      numericRepositoryId: "1320171831",
+      baseCommit,
+      baseTree,
+      path: "policy/schemas/launch-policy.v1.schema.json",
+      gitBlobOid: "7".repeat(40),
+      schemaId: "https://programmable.money/schemas/launch-policy.v1.schema.json",
+      sha256: `sha256:${"7".repeat(64)}`
+    }
+  };
+  const stageWithoutDigest = {
+    schemaVersion: "programmable.submit-launch-stage-plan.v1",
+    stage: "submit",
+    profileId: "build",
+    profileEnabled: true,
+    routeState: "no-market",
+    status: "READY",
+    requirementIds: [],
+    requirements: [],
+    unknownHandlerIds: []
+  };
+  const snapshot = deepFreeze({
+    schemaVersion: "programmable.submit-launch-contract-snapshot.v1",
+    snapshotBinding: {
+      ...snapshotWithoutDigest,
+      snapshotSha256: digestCanonical(snapshotWithoutDigest)
+    },
+    currentness: {
+      status: "CURRENT",
+      refCheckedBefore: true,
+      refCheckedAfter: true,
+      retryCount: 0,
+      cacheStatus: "DISABLED"
+    },
+    applicationContract: {
+      current: {
+        contractId: "public-pr-application-v3.2",
+        path: "intake/schemas/public-pr-application-v3.2.schema.json",
+        sha256: "sha256:69fd860c82c0426d853f96fbf8df53c70de0e824a258da940a5ef09a68c72988"
+      },
+      legacy: [{
+        contractId: "public-pr-application-v3.1",
+        path: "intake/schemas/public-pr-application-v3.schema.json",
+        sha256: "sha256:2d51837bbbfe52672ecca334596243bebcec78e8e0a885d67084dfd98955bcb7"
+      }],
+      supportingContracts: {
+        routerReadiness: {
+          schema: {
+            contractId: "programmable-launch-router-readiness-v1",
+            path: "intake/schemas/programmable-launch-router-readiness-v1.schema.json",
+            sha256: `sha256:${"8".repeat(64)}`
+          },
+          validatorClosure: {
+            algorithm: "sha256-path-nul-size-nul-content-nul-v1",
+            closureSha256: `sha256:${"9".repeat(64)}`,
+            files: []
+          }
+        },
+        submission: {
+          contractId: "open-world-submission-v2.1",
+          path: "intake/schemas/open-world-submission-v2.1.schema.json",
+          sha256: "sha256:fb30065f906903530ba74cb0a20cd398d36bb387143cb0bae30326450e88ea23"
+        },
+        tradeCapabilityManifest: {
+          contractId: "trade-capability-manifest-v2",
+          path: "intake/schemas/trade-capability-manifest-v2.schema.json",
+          sha256: "sha256:a466baae3111a33cc33a2651b13f37da7dcc2d13d2cedce993896d289a82950f"
+        }
+      },
+      minimumBuilderProtocolVersion: "1.0.0"
+    },
+    projectStage: {
+      ...stageWithoutDigest,
+      stageSha256: digestCanonical(stageWithoutDigest)
+    },
+    authority: { checkerOnly: true, launchAuthorized: false, externalWritesPerformed: false }
+  });
+  const applicationContract = parseApplicationContractFromSnapshot(snapshot);
+  return selectApplicationAdapter({ applicationContract, requestedRoute: "none", priorVersion });
+}
+
+function digestCanonical(value) {
+  return sha256Bytes(Buffer.from(canonicalJson(value), "utf8"));
+}
+
+function deepFreeze(value, seen = new Set()) {
+  if (value === null || typeof value !== "object" || seen.has(value)) return value;
+  seen.add(value);
+  for (const child of Object.values(value)) deepFreeze(child, seen);
+  return Object.freeze(value);
 }
 
 function previousBindingFixture(applicationRevision, application) {
