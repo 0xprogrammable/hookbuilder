@@ -4,11 +4,11 @@ import childProcess from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
-import zlib from "node:zlib";
 import { fileURLToPath } from "node:url";
 import { verifyExternalEvidenceBundle } from "./evals/e2e-external-evidence-core.mjs";
 import {
   buildReleaseSpdx,
+  createDeterministicGzipArchive,
   MAX_RELEASE_EVIDENCE_BYTES,
   RELEASE_KERNELS,
   sha256,
@@ -141,7 +141,7 @@ const tar = git([
   `--prefix=${archiveRoot}/`,
   `${commit}:${skillRoot}`
 ], { encoding: null });
-const archive = zlib.gzipSync(tar, { level: 9, mtime: 0 });
+const archive = createDeterministicGzipArchive(tar);
 writeBinary(archiveName, archive);
 
 const manifest = {
