@@ -502,6 +502,28 @@
       ]
     },
     {
+      "id": "current-submit-launch-contract",
+      "matches": [
+        "current-contract-snapshot",
+        "submit-launch-policy-drift",
+        "unsupported-submit-launch-handler"
+      ],
+      "references": [
+        "submit-launch-resolver.md"
+      ]
+    },
+    {
+      "id": "application-contract-migration",
+      "matches": [
+        "application-v3-migration",
+        "application-version-selection",
+        "unknown-application-major"
+      ],
+      "references": [
+        "application-compatibility-and-migration.md"
+      ]
+    },
+    {
       "id": "dependency-reproducibility",
       "matches": [
         "dependency-upgrade",

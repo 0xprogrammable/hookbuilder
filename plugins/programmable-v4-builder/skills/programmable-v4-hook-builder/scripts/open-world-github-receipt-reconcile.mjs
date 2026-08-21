@@ -4,6 +4,7 @@ export function installOpenWorldGitHubReceiptReconcile(runtime) {
   const applicationV3CommitMessage = (...args) => runtime.applicationV3CommitMessage(...args);
   const applicationV3ExternalActionForMutation = (...args) => runtime.applicationV3ExternalActionForMutation(...args);
   const assertApplicationV3PullIdentity = (...args) => runtime.assertApplicationV3PullIdentity(...args);
+  const assertApplicationV3PlanSubmitLaunchContractCurrent = (...args) => runtime.assertApplicationV3PlanSubmitLaunchContractCurrent(...args);
   const assertConfirmedCentralSnapshot = (...args) => runtime.assertConfirmedCentralSnapshot(...args);
   const assertCreatedApplicationV3CommitReadback = (...args) => runtime.assertCreatedApplicationV3CommitReadback(...args);
   const assertCreatedApplicationV3TreeReadback = (...args) => runtime.assertCreatedApplicationV3TreeReadback(...args);
@@ -23,7 +24,6 @@ export function installOpenWorldGitHubReceiptReconcile(runtime) {
   const normalizeOpenWorldFailure = (...args) => runtime.normalizeOpenWorldFailure(...args);
   const persistApplicationV3MutationReceipt = (...args) => runtime.persistApplicationV3MutationReceipt(...args);
   const publicGitHubMutationLedger = (...args) => runtime.publicGitHubMutationLedger(...args);
-  const readApplicationV3CentralContract = (...args) => runtime.readApplicationV3CentralContract(...args);
   const reconcileCreatedApplicationV3Pull = (...args) => runtime.reconcileCreatedApplicationV3Pull(...args);
   const verifyRemoteApplicationV3SourceBindings = (...args) => runtime.verifyRemoteApplicationV3SourceBindings(...args);
   const verifyRemoteApplicationV3V2PolicyBindings = (...args) => runtime.verifyRemoteApplicationV3V2PolicyBindings(...args);
@@ -521,14 +521,11 @@ export function installOpenWorldGitHubReceiptReconcile(runtime) {
       throw new CliFailure("CONFIRMED_PLAN_CHANGED", "the exact source or CI evidence changed after confirmation", { exitCode: 1 });
     }
     await assertConfirmedCentralSnapshot({ applicationPackage, transport, plan });
-    const centralContract = await readApplicationV3CentralContract({
+    await assertApplicationV3PlanSubmitLaunchContractCurrent({
+      applicationPackage,
       transport,
-      commit: plan.target.baseCommit,
-      tree: plan.target.baseTree
+      plan
     });
-    if (canonicalJson(centralContract) !== canonicalJson(plan.centralContract)) {
-      throw new CliFailure("CONFIRMED_PLAN_CHANGED", "the exact protected Application V3 contract changed after confirmation", { exitCode: 1 });
-    }
     return { viewer, sources };
   }
 

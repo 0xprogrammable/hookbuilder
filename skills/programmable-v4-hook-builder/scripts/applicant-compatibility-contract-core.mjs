@@ -8,7 +8,8 @@ const safePathPattern = /^(?!\/)(?!.*(?:^|\/)\.git(?:\/|$))(?!.*(?:^|\/)\.\.(?:\
 const exactCapabilityModes = Object.freeze(["inline", "manifest"]);
 const exactDraftOperations = Object.freeze(["create", "update"]);
 
-export const APPLICANT_COMPATIBILITY_PATH = ".programmable/applicant-compatibility.v1.json";
+export const APPLICANT_COMPATIBILITY_PATH = ".programmable/applicant-compatibility.v2.json";
+export const LEGACY_APPLICANT_COMPATIBILITY_PATH = ".programmable/applicant-compatibility.v1.json";
 export const LEGACY_ACTIVE_CONTRACT_PATH = ".programmable/active-contract.json";
 export const LOCAL_APPLICANT_VALIDATOR_PACKAGE = Object.freeze({
   rootPath: "vendor/programmable-applicant-validator",
@@ -26,13 +27,22 @@ export class ApplicantCompatibilityError extends Error {
 }
 
 export function parseApplicantCompatibilityContract(bytes, expected) {
-  const binding = validateExpectedBinding(expected);
   const value = parseDocument(
     bytes,
     "APPLICANT_COMPATIBILITY_JSON_INVALID",
     "Applicant compatibility JSON is malformed or exceeds its bounded profile"
   );
-  validateCompatibilityShape(value);
+  if (value?.$schema === "urn:programmable:applicant-compatibility:2.0.0") {
+    const binding = validateExpectedBindingV2(expected);
+    validateCompatibilityShapeV2(value);
+    validateCompatibilityBindingsV2(value, binding);
+    if (compareSemver(binding.builderProtocolVersion, value.minimumBuilderProtocolVersion) < 0) {
+      fail("BUILDER_PROTOCOL_TOO_OLD", "The installed Builder protocol is older than the protected minimum");
+    }
+    return deepFreeze(value);
+  }
+  const binding = validateExpectedBindingV1(expected);
+  validateCompatibilityShapeV1(value);
   if (
     value.trustedRepository.numericId !== binding.repositoryNumericId
     || value.trustedRepository.defaultBranch !== binding.defaultBranch
@@ -60,14 +70,15 @@ export function resolveApplicantCompatibilityContract({
   activeContractBytes = null,
   expected
 } = {}) {
-  const binding = validateExpectedBinding(expected);
   if (compatibilityBytes !== null && compatibilityBytes !== undefined) {
+    const contract = parseApplicantCompatibilityContract(compatibilityBytes, expected);
     return deepFreeze({
-      mode: "COMPATIBILITY_CONTRACT",
-      path: APPLICANT_COMPATIBILITY_PATH,
-      contract: parseApplicantCompatibilityContract(compatibilityBytes, binding)
+      mode: contract.schemaVersion === "2.0.0" ? "COMPATIBILITY_V2" : "COMPATIBILITY_V1",
+      path: contract.schemaVersion === "2.0.0" ? APPLICANT_COMPATIBILITY_PATH : LEGACY_APPLICANT_COMPATIBILITY_PATH,
+      contract
     });
   }
+  const binding = validateExpectedBindingV1(expected);
   if (activeContractBytes === null || activeContractBytes === undefined) {
     fail("APPLICANT_COMPATIBILITY_NOT_FOUND", "Neither the Applicant compatibility contract nor its legacy active-contract fallback is available");
   }
@@ -93,7 +104,7 @@ export function resolveApplicantCompatibilityContract({
   });
 }
 
-function validateCompatibilityShape(value) {
+function validateCompatibilityShapeV1(value) {
   if (
     !isPlainObject(value)
     || !exactKeys(value, [
@@ -134,7 +145,7 @@ function validateLegacyActiveContract(value, expected) {
   }
 }
 
-function validateExpectedBinding(value) {
+function validateExpectedBindingV1(value) {
   if (
     !isPlainObject(value)
     || !exactKeys(value, [
@@ -157,6 +168,152 @@ function validateExpectedBinding(value) {
     || !validValidatorPackage(value.validatorPackage)
   ) fail("APPLICANT_COMPATIBILITY_EXPECTATION_INVALID", "Expected Applicant compatibility bindings are malformed");
   return value;
+}
+
+function validateCompatibilityShapeV2(value) {
+  if (
+    !isPlainObject(value)
+    || !exactKeys(value, [
+      "$schema",
+      "application",
+      "authority",
+      "capabilities",
+      "kind",
+      "minimumBuilderProtocolVersion",
+      "schemaVersion",
+      "supportingContracts",
+      "trustedRepository"
+    ])
+    || value.$schema !== "urn:programmable:applicant-compatibility:2.0.0"
+    || value.kind !== "programmable-applicant-compatibility"
+    || value.schemaVersion !== "2.0.0"
+    || !semverPattern.test(value.minimumBuilderProtocolVersion ?? "")
+    || !validTrustedRepository(value.trustedRepository)
+    || !validApplicationV2Projection(value.application)
+    || !validCapabilitiesV2(value.capabilities)
+    || !validAuthorityV2(value.authority)
+    || !validSupportingContractsV2(value.supportingContracts)
+  ) fail("APPLICANT_COMPATIBILITY_SHAPE_INVALID", "Applicant compatibility does not match the closed v2 contract");
+}
+
+function validateCompatibilityBindingsV2(value, expected) {
+  if (
+    value.trustedRepository.numericId !== expected.repositoryNumericId
+    || value.trustedRepository.defaultBranch !== expected.defaultBranch
+  ) fail("TRUSTED_REPOSITORY_BINDING_MISMATCH", "Applicant compatibility does not bind the expected protected repository identity");
+  if (
+    !sameArtifactBinding(value.application.current, expected.application.current)
+    || value.application.legacy.length !== expected.application.legacy.length
+    || value.application.legacy.some((binding, index) => !sameArtifactBinding(binding, expected.application.legacy[index]))
+  ) fail("APPLICATION_CONTRACT_BINDING_MISMATCH", "Applicant compatibility does not bind the expected current and legacy Application contracts");
+  if (
+    !sameArtifactBinding(value.supportingContracts.submission, expected.supportingContracts.submission)
+    || !sameArtifactBinding(value.supportingContracts.tradeCapabilityManifest, expected.supportingContracts.tradeCapabilityManifest)
+    || !sameArtifactBinding(value.supportingContracts.routerReadiness.schema, expected.supportingContracts.routerReadinessSchema)
+  ) fail("SUPPORTING_CONTRACT_BINDING_MISMATCH", "Applicant compatibility does not bind the expected local data-contract adapters");
+}
+
+function validateExpectedBindingV2(value) {
+  if (
+    !isPlainObject(value)
+    || !exactKeys(value, [
+      "application",
+      "builderProtocolVersion",
+      "defaultBranch",
+      "repositoryNumericId",
+      "supportingContracts"
+    ])
+    || !decimalPattern.test(value.repositoryNumericId ?? "")
+    || !validBranch(value.defaultBranch)
+    || !semverPattern.test(value.builderProtocolVersion ?? "")
+    || !validExpectedApplicationV2(value.application)
+    || !validExpectedSupportingContractsV2(value.supportingContracts)
+  ) fail("APPLICANT_COMPATIBILITY_EXPECTATION_INVALID", "Expected Applicant compatibility V2 bindings are malformed");
+  return value;
+}
+
+function validApplicationV2Projection(value) {
+  return isPlainObject(value)
+    && exactKeys(value, ["current", "legacy"])
+    && validArtifactBinding(value.current)
+    && Array.isArray(value.legacy)
+    && value.legacy.length === 1
+    && value.legacy.every(validArtifactBinding);
+}
+
+function validExpectedApplicationV2(value) {
+  return validApplicationV2Projection(value);
+}
+
+function validCapabilitiesV2(value) {
+  return isPlainObject(value)
+    && exactKeys(value, ["draftTransportOperations", "launchReadiness", "unreviewedDraftOnly"])
+    && sameStringList(value.draftTransportOperations, exactDraftOperations)
+    && value.launchReadiness === "offline-check-only"
+    && value.unreviewedDraftOnly === true;
+}
+
+function validAuthorityV2(value) {
+  const keys = [
+    "candidateCodeExecuted",
+    "credentialsUsed",
+    "externalWritesPerformed",
+    "launchAuthorized",
+    "networkAccessed",
+    "promotionAuthorized",
+    "reviewAuthorized",
+    "rpcAccessed"
+  ];
+  return isPlainObject(value)
+    && exactKeys(value, keys)
+    && keys.every((key) => value[key] === false);
+}
+
+function validSupportingContractsV2(value) {
+  return isPlainObject(value)
+    && exactKeys(value, ["routerReadiness", "submission", "tradeCapabilityManifest"])
+    && validArtifactBinding(value.submission)
+    && validArtifactBinding(value.tradeCapabilityManifest)
+    && isPlainObject(value.routerReadiness)
+    && exactKeys(value.routerReadiness, ["schema", "validatorClosure"])
+    && validArtifactBinding(value.routerReadiness.schema)
+    && validValidatorClosureDeclaration(value.routerReadiness.validatorClosure);
+}
+
+function validExpectedSupportingContractsV2(value) {
+  return isPlainObject(value)
+    && exactKeys(value, ["routerReadinessSchema", "submission", "tradeCapabilityManifest"])
+    && validArtifactBinding(value.routerReadinessSchema)
+    && validArtifactBinding(value.submission)
+    && validArtifactBinding(value.tradeCapabilityManifest);
+}
+
+function validArtifactBinding(value) {
+  return isPlainObject(value)
+    && exactKeys(value, ["contractId", "path", "sha256"])
+    && identifierPattern.test(value.contractId ?? "")
+    && safePath(value.path)
+    && digestPattern.test(value.sha256 ?? "");
+}
+
+function sameArtifactBinding(actual, expected) {
+  return actual.contractId === expected.contractId
+    && actual.path === expected.path
+    && actual.sha256 === expected.sha256;
+}
+
+function validValidatorClosureDeclaration(value) {
+  return isPlainObject(value)
+    && exactKeys(value, ["algorithm", "closureSha256", "files"])
+    && value.algorithm === "sha256-path-nul-size-nul-content-nul-v1"
+    && digestPattern.test(value.closureSha256 ?? "")
+    && Array.isArray(value.files)
+    && value.files.length > 0
+    && value.files.length <= 32
+    && value.files.every((file) => isPlainObject(file)
+      && exactKeys(file, ["path", "sha256"])
+      && safePath(file.path)
+      && digestPattern.test(file.sha256 ?? ""));
 }
 
 function sameValidatorPackage(actual, expected) {

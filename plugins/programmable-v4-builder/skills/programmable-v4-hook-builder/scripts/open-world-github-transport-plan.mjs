@@ -1,23 +1,7 @@
 import { CENTRAL_GITHUB_BASE_BRANCH, CENTRAL_GITHUB_NUMERIC_REPOSITORY_ID, CENTRAL_GITHUB_REPOSITORY, CENTRAL_GITHUB_REPOSITORY_NAME, CliFailure, INTAKE_STATUS_PATH, canonicalJson, parseIntakeStatusBytes, sha256Bytes, sha256Canonical } from "./open-world-shared.mjs";
-import {
-  SUBMIT_LAUNCH_ACTIVE_CONTRACT_MANIFEST_PATH,
-  SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_PATH,
-  SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_SHA256,
-  SUBMIT_LAUNCH_POLICY_PATH,
-  SUBMIT_LAUNCH_POLICY_SCHEMA_PATH
-} from "./registry-intake-contract.mjs";
-import { parseBoundedStrictJsonBytes } from "./strict-json-core.mjs";
-import { validateActiveContractManifestV1 } from "./resolve-contract-validation.mjs";
-import {
-  MAX_SUBMIT_LAUNCH_POLICY_BYTES,
-  MAX_SUBMIT_LAUNCH_POLICY_SCHEMA_BYTES,
-  parseAndBindSubmitLaunchPolicyContract,
-  currentSubmitLaunchBuildRequirements
-} from "./submit-launch-policy-contract.mjs";
 import { resolveSubmitLaunchProtectedArtifactsFromVerifiedGitObjects } from "./submit-launch-policy-github.mjs";
+import { createSubmitLaunchTransportContractBinding } from "./open-world-submit-launch-contract-binding.mjs";
 
-const MAX_ACTIVE_CONTRACT_MANIFEST_BYTES = 64 * 1024;
-const MAX_APPLICATION_V3_SCHEMA_BYTES = 512 * 1024;
 const MAX_APPLICATION_V3_INTAKE_STATUS_BYTES = 64 * 1024;
 
 export function installOpenWorldGitHubTransportPlan(runtime) {
@@ -49,6 +33,12 @@ export function installOpenWorldGitHubTransportPlan(runtime) {
   const verifyApplicationV3History = (...args) => runtime.verifyApplicationV3History(...args);
   const verifyRemoteApplicationV3SourceBindings = (...args) => runtime.verifyRemoteApplicationV3SourceBindings(...args);
   const verifyRemoteApplicationV3V2PolicyBindings = (...args) => runtime.verifyRemoteApplicationV3V2PolicyBindings(...args);
+  const {
+    currentSubmitLaunchContractForApplication,
+    assertApplicationV3PlanSubmitLaunchContractCurrent,
+    projectSubmitLaunchContractBinding,
+    projectLegacyCentralContract
+  } = createSubmitLaunchTransportContractBinding({ isPlainObject });
 
   async function planApplicationV3GitHubTransport({
     operation,
@@ -123,6 +113,7 @@ export function installOpenWorldGitHubTransportPlan(runtime) {
       intake: remote.intake,
       intakeBinding: remote.intakeBinding,
       centralContract: remote.centralContract,
+      submitLaunchContract: projectSubmitLaunchContractBinding(remote.submitLaunchContract),
       sources: remote.sources,
       localSourceReplay,
       lineageVerification: remote.lineageVerification,
@@ -199,148 +190,6 @@ export function installOpenWorldGitHubTransportPlan(runtime) {
     });
   }
 
-  async function readApplicationV3CentralContract({ transport, commit, tree }) {
-    let artifacts;
-    try {
-      artifacts = await resolveSubmitLaunchProtectedArtifactsFromVerifiedGitObjects({
-        baseTree: tree,
-        requests: [
-          {
-            filePath: SUBMIT_LAUNCH_ACTIVE_CONTRACT_MANIFEST_PATH,
-            maximumBytes: MAX_ACTIVE_CONTRACT_MANIFEST_BYTES
-          },
-          {
-            filePath: SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_PATH,
-            maximumBytes: MAX_APPLICATION_V3_SCHEMA_BYTES
-          },
-          { filePath: SUBMIT_LAUNCH_POLICY_PATH, maximumBytes: MAX_SUBMIT_LAUNCH_POLICY_BYTES },
-          { filePath: SUBMIT_LAUNCH_POLICY_SCHEMA_PATH, maximumBytes: MAX_SUBMIT_LAUNCH_POLICY_SCHEMA_BYTES }
-        ],
-        readTree: (treeObjectId) => transport.getGitTree(
-          CENTRAL_GITHUB_REPOSITORY,
-          treeObjectId,
-          { recursive: false }
-        ),
-        readBlob: async (blobObjectId, filePath) => {
-          const response = await transport.getContent(
-            CENTRAL_GITHUB_REPOSITORY,
-            filePath,
-            commit,
-            { allowNotFound: false }
-          );
-          if (response === null || response.sha !== blobObjectId) {
-            throw new CliFailure(
-              "APPLICATION_V3_CENTRAL_CONTRACT_INVALID",
-              `the exact protected base returned a mismatched ${filePath} Git blob`,
-              { exitCode: 1 }
-            );
-          }
-          return decodeGitHubContent(response, filePath);
-        }
-      });
-    } catch (error) {
-      if (error instanceof CliFailure) throw error;
-      throw new CliFailure(
-        "APPLICATION_V3_CENTRAL_CONTRACT_INVALID",
-        "the exact protected tree does not publish the active Application V3 contract, schema, and policy closure",
-        { exitCode: 1, cause: error }
-      );
-    }
-    const byPath = new Map(artifacts.map((artifact) => [artifact.filePath, artifact]));
-    const manifestArtifact = byPath.get(SUBMIT_LAUNCH_ACTIVE_CONTRACT_MANIFEST_PATH);
-    const schemaArtifact = byPath.get(SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_PATH);
-    const policyArtifact = byPath.get(SUBMIT_LAUNCH_POLICY_PATH);
-    const policySchemaArtifact = byPath.get(SUBMIT_LAUNCH_POLICY_SCHEMA_PATH);
-    const manifestBytes = manifestArtifact.bytes;
-    const schemaBytes = schemaArtifact.bytes;
-    let manifest;
-    try {
-      manifest = validateActiveContractManifestV1(parseBoundedStrictJsonBytes(manifestBytes, {
-        maxSourceBytes: 65_536,
-        maxDepth: 64,
-        maxNodes: 10_000,
-        maxNumberCharacters: 128
-      }), { defaultBranch: CENTRAL_GITHUB_BASE_BRANCH });
-    } catch {
-      throw new CliFailure(
-        "APPLICATION_V3_CENTRAL_CONTRACT_INVALID",
-        "the exact protected base active-contract manifest is invalid",
-        { exitCode: 1 }
-      );
-    }
-    const schemaDeclarations = manifest.artifacts.package.filter(({ path: artifactPath }) => (
-      artifactPath === SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_PATH
-    ));
-    const schemaSha256 = sha256Bytes(schemaBytes);
-    if (
-      manifest.contractId !== "submit-launch"
-      || schemaDeclarations.length !== 1
-      || schemaDeclarations[0].sha256 !== SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_SHA256
-      || schemaSha256 !== SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_SHA256
-    ) {
-      throw new CliFailure(
-        "APPLICATION_V3_CENTRAL_CONTRACT_INVALID",
-        "the exact protected base does not bind the supported Application V3 schema bytes",
-        { exitCode: 1 }
-      );
-    }
-    let policyContract;
-    try {
-      policyContract = parseAndBindSubmitLaunchPolicyContract({
-        baseCommit: commit,
-        baseTree: tree,
-        policyBytes: policyArtifact.bytes,
-        policyGitBlobOid: policyArtifact.gitBlobOid,
-        schemaBytes: policySchemaArtifact.bytes,
-        schemaGitBlobOid: policySchemaArtifact.gitBlobOid
-      });
-    } catch (error) {
-      if (error instanceof CliFailure) throw error;
-      throw new CliFailure(
-        "APPLICATION_V3_CENTRAL_POLICY_INVALID",
-        "the exact protected base does not publish a valid, replayable launch-policy binding",
-        { exitCode: 1, cause: error }
-      );
-    }
-    const policyDeclarations = manifest.artifacts.policy.filter(({ path: artifactPath }) => (
-      artifactPath === SUBMIT_LAUNCH_POLICY_PATH
-    ));
-    if (policyDeclarations.length !== 1 || policyDeclarations[0].sha256 !== policyContract.policySha256) {
-      throw new CliFailure(
-        "APPLICATION_V3_CENTRAL_POLICY_INVALID",
-        "the exact protected base active-contract manifest does not bind the resolved launch-policy bytes",
-        { exitCode: 1 }
-      );
-    }
-    const activeBuildRules = currentSubmitLaunchBuildRequirements(policyContract);
-    const activeProductionRuleIds = policyContract.policy.rules
-      .filter(({ status, profiles }) => status === "active" && profiles.includes("production-launch"))
-      .map(({ id }) => id)
-      .sort(compareUtf8);
-    return Object.freeze({
-      activeContractManifestPath: SUBMIT_LAUNCH_ACTIVE_CONTRACT_MANIFEST_PATH,
-      activeContractManifestGitBlobOid: manifestArtifact.gitBlobOid,
-      activeContractManifestSha256: sha256Bytes(manifestBytes),
-      contractId: manifest.contractId,
-      schemaPath: SUBMIT_LAUNCH_APPLICATION_V3_SCHEMA_PATH,
-      schemaGitBlobOid: schemaArtifact.gitBlobOid,
-      schemaSha256,
-      policy: Object.freeze({
-        path: SUBMIT_LAUNCH_POLICY_PATH,
-        schemaPath: SUBMIT_LAUNCH_POLICY_SCHEMA_PATH,
-        policyId: policyContract.policy.policyId,
-        policyVersion: policyContract.policy.policyVersion,
-        policyBinding: policyContract.policyBinding,
-        buildPolicyBinding: policyContract.buildPolicyBinding,
-        policySchemaBinding: policyContract.policySchemaBinding,
-        activeBuildRuleIds: Object.freeze(activeBuildRules.map(({ id }) => id).sort(compareUtf8)),
-        activeProductionRuleIds: Object.freeze(activeProductionRuleIds),
-        buildProfileEnabled: policyContract.policy.profiles.find(({ id }) => id === "build")?.enabled === true,
-        productionProfileEnabled: policyContract.policy.profiles.find(({ id }) => id === "production-launch")?.enabled === true
-      })
-    });
-  }
-
   function enforceApplicationV3Intake({ intake, operation, application, history, pullRequest }) {
     if (intake.state === "open") return;
     if (intake.state === "prelaunch") {
@@ -383,6 +232,10 @@ export function installOpenWorldGitHubTransportPlan(runtime) {
     pullRequestNumber,
     localSourceReplay = null
   }) {
+    const submitLaunchContract = await currentSubmitLaunchContractForApplication({
+      applicationPackage,
+      transport
+    });
     const viewer = normalizeGitHubViewer(await transport.getViewer());
     const builder = applicationPackage.application.builder;
     if (
@@ -471,13 +324,23 @@ export function installOpenWorldGitHubTransportPlan(runtime) {
     if (base.sha !== baseRef.commit) {
       throw new CliFailure("CENTRAL_REPOSITORY_CHANGED", "the protected Submit a Launch ref and commit response disagree", { exitCode: 1 });
     }
+    if (
+      base.sha !== submitLaunchContract.snapshotBinding.baseCommit
+      || base.tree !== submitLaunchContract.snapshotBinding.baseTree
+    ) {
+      throw new CliFailure(
+        "SUBMIT_LAUNCH_CONTRACT_DRIFT",
+        "the protected Submit Launch head changed after the bound contract evaluation",
+        { exitCode: 1 }
+      );
+    }
     const intakeSnapshot = await readApplicationV3IntakeStatus({
       transport,
       commit: base.sha,
       tree: base.tree
     });
     const { intake, binding: intakeBinding } = intakeSnapshot;
-    const centralContract = await readApplicationV3CentralContract({ transport, commit: base.sha, tree: base.tree });
+    const centralContract = projectLegacyCentralContract(submitLaunchContract);
     let history = null;
     if (operation === "submit") {
       for (const { path: targetPath } of applicationPackage.files) {
@@ -602,6 +465,7 @@ export function installOpenWorldGitHubTransportPlan(runtime) {
         intake,
         intakeBinding,
         centralContract,
+        submitLaunchContract,
         fork,
         branch,
         pullRequest: null,
@@ -693,6 +557,7 @@ export function installOpenWorldGitHubTransportPlan(runtime) {
       intake,
       intakeBinding,
       centralContract,
+      submitLaunchContract,
       fork,
       branch: updateBranch,
       branchRef,
@@ -704,7 +569,7 @@ export function installOpenWorldGitHubTransportPlan(runtime) {
   Object.assign(runtime, {
     planApplicationV3GitHubTransport,
     readApplicationV3IntakeStatus,
-    readApplicationV3CentralContract,
+    assertApplicationV3PlanSubmitLaunchContractCurrent,
     enforceApplicationV3Intake,
     inspectApplicationV3GitHubTransport
   });

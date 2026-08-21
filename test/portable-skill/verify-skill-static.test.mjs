@@ -774,7 +774,7 @@ test("trusted verifier rejects an oversized package before scanning its text", (
     const result = runUntrustedVerifier(candidateRoot);
 
     assert.notEqual(result.status, 0, result.stdout);
-    assert.match(result.stderr, /portable package is \d+ bytes; keep it at or below 8900000/);
+    assert.match(result.stderr, /portable package is \d+ bytes; keep it at or below 9300000/);
     assert.doesNotMatch(result.stderr, /local filesystem path/);
   } finally {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
@@ -795,7 +795,7 @@ test("trusted verifier rejects excessive file count before checking candidate sc
     const result = runUntrustedVerifier(candidateRoot);
 
     assert.notEqual(result.status, 0, result.stdout);
-    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 633/);
+    assert.match(result.stderr, /portable package has \d+ files; keep it at or below 650/);
     assert.doesNotMatch(result.stderr, /invalid-syntax|SyntaxError/);
   } finally {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });

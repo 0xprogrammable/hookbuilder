@@ -172,7 +172,7 @@ test("canonical config version and generated package identities agree", () => {
   assert.equal(packageDocument.homepage, "https://github.com/0xprogrammable/hookbuilder#readme");
   assert.equal(Object.hasOwn(packageDocument, "dependencies"), false);
   assert.equal(Object.hasOwn(packageDocument, "devDependencies"), false);
-  assert.equal(metadata.version, "0.11.2");
+  assert.equal(metadata.version, "0.12.0");
   assert.equal(packageLock.name, packageDocument.name);
   assert.equal(packageLock.version, packageDocument.version);
   assert.equal(packageLock.packages[""].name, packageDocument.name);
@@ -252,8 +252,9 @@ test("global skill boundaries apply v4 mechanics conditionally and distinguish d
   assert.match(skill, /Disclose privileged mint\/seizure\/fee\/pause\/upgrade\/payout powers\./u);
   assert.match(skill, /Escalate novel\/value-bearing ambiguity/u);
   assert.match(skill, /node "\$BUILDER_CLI" policy/u);
-  assert.match(skill, /Use every `build` Rule ID from `0xprogrammable\/submit-launch`; add none/u);
-  assert.match(skill, /If unavailable, keep source\s+`POLICY_UNRESOLVED` and block only submit\/approval\/launch/u);
+  assert.match(skill, /Resolve one manifest-bound Current Contract Snapshot/u);
+  assert.match(skill, /Use only its Stage Plan[\s\S]{0,100}never copy policy values/u);
+  assert.match(skill, /`POLICY_UNRESOLVED`[\s\S]{0,100}pauses only that stage/u);
   assert.match(skill, /Before materializing read no other reference/u);
   assert.match(skill, /Active workspaces may\s+run one `LOCAL_ONLY` offline check/u);
   assert.match(skill, /Only exact-byte `PROJECT_PREFLIGHT_VALID` completes Autopilot/u);
@@ -277,7 +278,7 @@ test("plugin manifests are generated from canonical metadata and package version
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(result.stdout);
   assert.equal(report.status, "PLUGIN_MANIFESTS_VALID");
-  assert.equal(report.version, "0.11.2");
+  assert.equal(report.version, "0.12.0");
   assert.deepEqual(report.outputs, [
     ".codex-plugin/plugin.json",
     ".agents/plugins/marketplace.json",
@@ -291,10 +292,10 @@ test("plugin manifests are generated from canonical metadata and package version
   assert.equal(report.payload.sourceByteVerified, true);
   assert.equal(report.payload.sourceModeVerified, true);
   assert.deepEqual(report.payload.portableSkill, {
-    files: 633,
-    bytes: 8_874_261,
+    files: 650,
+    bytes: 9_258_953,
     repositoryOnlyFiles: 105,
-    repositoryOnlyBytes: 3_167_802,
+    repositoryOnlyBytes: 3_256_684,
     repositorySourcesVerified: true
   });
 });
@@ -500,10 +501,10 @@ test("trusted-base intake routing rejects every new Hookbuilder application with
   assert.match(codeowners, /^submissions\/requests\/\*\* @0xprogrammable$/mu);
   assert.match(support, /0xprogrammable\/submit-launch/u);
   assert.match(support, /against Hookbuilder `main` only/u);
-  assert.match(publicGuide, /canonical public review path for every completed one-off Programmable project/u);
-  assert.match(publicGuide, /Every generic project then uses/u);
-  assert.match(publicGuide, /The first submit call is read-only/u);
-  assert.match(publicGuide, /Draft PR against `0xprogrammable\/submit-launch:main`/u);
+  assert.match(publicGuide, /public review path for completed Programmable projects/u);
+  assert.match(publicGuide, /Hookbuilder is optional/u);
+  assert.match(publicGuide, /The first plan performs no GitHub write/u);
+  assert.match(publicGuide, /create or update one Draft pull request in[\s\S]{0,120}`0xprogrammable\/submit-launch`/u);
   assert.equal(HOOKBUILDER_LEGACY_APPLICANT_BASE_BRANCH, "main");
   for (const pullRequest of HOOKBUILDER_LEGACY_APPLICANT_PULL_REQUESTS) {
     assert.match(support, new RegExp(`#${pullRequest}(?:,| and|\\.)`, "u"));
@@ -734,7 +735,7 @@ test("release output containment rejects an in-repository ..x directory and perm
     process.execPath,
     [
       script,
-      "--tag", "v0.11.2",
+      "--tag", "v0.12.0",
       "--output-dir", path.join(repositoryRoot, "..x-release-output"),
       "--kernel-evidence", evidence
     ],
@@ -748,7 +749,7 @@ test("release output containment rejects an in-repository ..x directory and perm
   fs.writeFileSync(path.join(outside, "sentinel"), "keep non-empty\n");
   const escaped = childProcess.spawnSync(
     process.execPath,
-    [script, "--tag", "v0.11.2", "--output-dir", outside, "--kernel-evidence", evidence],
+    [script, "--tag", "v0.12.0", "--output-dir", outside, "--kernel-evidence", evidence],
     { cwd: repositoryRoot, encoding: "utf8", shell: false, stdio: ["ignore", "pipe", "pipe"] }
   );
   assert.notEqual(escaped.status, 0);

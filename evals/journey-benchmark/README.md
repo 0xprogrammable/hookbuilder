@@ -83,7 +83,7 @@ path, regular file or symlink target fails closed and removes that newly created
     {
       "id": "v0-11-2-candidate",
       "role": "candidate",
-      "skillPath": "/absolute/frozen/v0.11.2/skill",
+      "skillPath": "/absolute/frozen/v0.12.0/skill",
       "adapterArgv": ["/absolute/trusted/subject-adapter", "--host", "codex"],
       "host": { "name": "codex", "version": "exact-host-version", "provider": "exact-provider", "model": "subject-model-a" }
     },

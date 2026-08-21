@@ -1,102 +1,111 @@
 # Submit a Launch
 
-Submit a Launch is the canonical public review path for every completed one-off Programmable project. Application V3.1
-accepts hooks, applications, services, games, multi-repository systems and unfamiliar custom architectures without a
-project allowlist. Novelty can require independent review, but it does not make a project ineligible to submit.
+Submit a Launch is the public review path for completed Programmable projects. Hooks, apps, services, games,
+multi-repository systems and unfamiliar custom architectures use the same open application contract.
 
-Project source stays in the builder's own public GitHub repository. Hookbuilder binds its exact repository identity,
-commit, tree, source closure, tests and evidence into one immutable Application V3 revision, then opens a protected
-Draft pull request in [`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch), immutable
-GitHub repository ID `1320171831`.
+Hookbuilder is optional. A project built with another tool or by hand follows the same
+[Submit a Launch requirements](https://github.com/0xprogrammable/submit-launch/blob/main/docs/COMPLETE_LAUNCH_REQUIREMENTS.md).
 
-## Complete journey
+## Before submission
 
-Finish the project, freeze its exact public source and produce a locally valid closed Application V3 package before
-submission. Do not require `PROJECT_PREFLIGHT_VALID` or a trusted external sandbox to create an unreviewed Applicant Draft.
-Local or applicant-supplied test evidence remains unverified until independent review. Authenticated sandbox completion
-may strengthen the evidence but is not Applicant admission authority. Every generic project then uses:
+Prepare:
 
-```text
-prepare-revision -> application -> submit plan -> explicit confirmation -> protected Draft PR -> status
-```
+- one complete project package;
+- exact public GitHub source for every repository in scope;
+- a clean, immutable source commit and tree;
+- the tests and evidence that actually exist; and
+- an honest route state: no market, external, unresolved or official Programmable Ethereum.
 
-`prepare-revision` resolves the exact next application revision and lineage. `application` replays the fixed local Git
-objects and creates the closed review package. Both commands preview before an explicit local `--write`.
+Do not require `PROJECT_PREFLIGHT_VALID` or a trusted external sandbox to create an unreviewed Applicant Draft. Both are
+optional stronger evidence. Local or applicant-supplied test evidence remains unverified until independent review.
 
-```bash
-node "$SKILL_ROOT/scripts/cli.mjs" open-world prepare-revision \
-  "/absolute/outside-source/application-v3-draft.json" \
-  --source-root "primary=$REPOSITORY_ROOT" \
-  --output "/absolute/outside-source/prepared-revision" \
-  --write
+## Use one command
 
-node "$SKILL_ROOT/scripts/cli.mjs" open-world application \
-  "$V2_PACKAGE" \
-  --application-draft "/absolute/outside-source/prepared-revision/application.v3.json" \
-  --review-package "$REVIEW_PACKAGE" \
-  --security-assessment "$SECURITY_ASSESSMENT" \
-  --security-evidence-bindings "$SECURITY_EVIDENCE_BINDINGS" \
-  --source-root "primary=$REPOSITORY_ROOT" \
-  --output "$APPLICATION_V3_PACKAGE" \
-  --write
-
-node "$SKILL_ROOT/scripts/cli.mjs" open-world submit "$APPLICATION_V3_PACKAGE" --dry-run
-```
-
-Repeat `--source-root <repository-ref>=<git-root>` for every companion repository. Inspect each command's `--help` for
-the complete current input contract.
-
-The first submit call is read-only. It returns the exact base revision, fork branch, Draft PR action, package digests,
-external writes and one fresh confirmation digest. Only after explicit user authority for that digest may the same
-package be submitted:
+From a completed project built with this Skill, run:
 
 ```bash
-node "$SKILL_ROOT/scripts/cli.mjs" open-world submit "$APPLICATION_V3_PACKAGE" \
-  --mutation-receipt "/absolute/outside-package/application-v3-mutation-receipt.json" \
-  --confirm-external-write "sha256:<exact-fresh-confirmation-digest>"
+node "$SKILL_ROOT/scripts/cli.mjs" submit-project "$REPOSITORY_ROOT"
 ```
 
-The confirmed client may create or use the authenticated builder's fork, create one application branch and create one
-Draft PR against `0xprogrammable/submit-launch:main`. It never marks the PR ready, approves, merges, deploys, signs,
-routes, launches, changes an account or moves funds. `open-world update` uses the same confirmation boundary for a new
-immutable revision; `open-world status` is read-only.
+The command:
 
-## Protected intake contract
+1. binds the clean public source revision;
+2. resolves one current Submit Launch contract snapshot;
+3. selects the current accepted application contract;
+4. applies the `submit` stage plan;
+5. validates or resumes one application package; and
+6. returns one read-only Draft plan or one repair.
 
-| Field | Value |
+Run only the safe next command it returns. Reinvoke the same command for status. Internal package assembly, queue
+experiments and legacy transports are not part of the normal journey.
+
+## Confirm the exact Draft
+
+The first plan performs no GitHub write. It identifies the target, proposed change and one fresh confirmation digest.
+Review that plan before authorizing the exact returned command.
+
+The confirmed path may create or update one Draft pull request in
+[`0xprogrammable/submit-launch`](https://github.com/0xprogrammable/submit-launch). It cannot mark the Draft ready,
+approve, merge, deploy, sign, route, promote, launch or move funds.
+
+A changed source revision or current contract invalidates the old plan. Resolve the new state and review a new digest;
+never reuse a stale confirmation.
+
+## Current and legacy application contracts
+
+The current official-route path uses Application V3.2 with Submission 2.1. The protected Active Contract V2 binds the
+current Applicant Compatibility V2 contract, which identifies the accepted application, submission and validation
+artifacts.
+
+V3.1 remains accepted as a legacy compatibility input. It does not establish the current official Programmable route or
+launch readiness. Continue a V3.1 application by adding a new V3.2 revision linked through schema-migration lineage.
+Keep the prior revision and its reports byte-for-byte unchanged.
+
+An unknown future application major version is not guessed. The affected submission stage becomes
+`INTEGRATION_PENDING` until a versioned adapter exists; unrelated local source work remains eligible.
+
+Read [Application compatibility and migration](../skills/programmable-v4-hook-builder/references/application-compatibility-and-migration.md)
+for the complete boundary.
+
+## Route outcomes
+
+| Route | Submit result |
 | --- | --- |
-| Repository | `0xprogrammable/submit-launch` |
-| Immutable GitHub ID | `1320171831` |
-| Base branch | `main` |
-| Revision directory | `submissions/<application-id>/v3/revisions/<application-revision>/` |
-| Root document | `application.v3.json` |
-| Pull-request state | Draft only |
+| No market | Eligible without a fabricated fee route, Router plan or stamp. |
+| External | Eligible without a Programmable Classic or Custom label. |
+| Unresolved | Eligible as an honest Draft; route-dependent readiness remains pending. |
+| Official Programmable Ethereum | Uses the current application contract and must satisfy the returned launch-readiness plan before launch. |
 
-One application PR adds exactly one immutable revision directory containing `application.v3.json` and its exact bound
-application-package records. Trusted base workflow code fetches and validates bounded candidate data without executing
-the applicant repository, package hooks, Git hooks, workflows or scripts. A changed central base, source revision,
-package, identity, intake state or planned write invalidates confirmation.
+Submit a Launch owns the current requirements. Neither the Skill nor this guide copies fee, treasury, Router or Rule-ID
+values.
 
-Do not hand-create or reshape the package in the central repository. Regenerate it from the exact source revision and
-use the namespaced V3.1 transport. The old six-file `prepare-pr` path remains legacy compatibility only and must not be
-used for a generic project. `handoff preview` is a diagnostic fallback when V3.1 preparation is blocked, not a parallel
-submission format.
+## Read the result
+
+| State | Meaning |
+| --- | --- |
+| `NEEDS_PROJECT_PACKAGE` | Complete the named project or application input. |
+| `POLICY_UNRESOLVED` | The current central contract is unavailable; no stale checklist is substituted. |
+| `INTEGRATION_PENDING` | The named contract, handler or integration is unsupported for this stage. |
+| `READY_FOR_CONFIRMATION` | Review the exact read-only plan and confirmation digest. |
+| `CHECKS_RUNNING` | Protected checks are still running on the Draft. |
+| `REVIEW_REQUIRED` | The Draft is waiting for independent review. |
+| `CHANGES_REQUESTED` | Repair the exact submitted revision and prepare a new bound plan. |
+
+The result should expose at most the root causes needed for the next action. Full source, contract, policy and transport
+bindings remain available as machine-readable evidence rather than a wall of console text.
 
 ## What a Draft proves
 
-Remote readback of the exact Draft PR proves only that a revision was submitted for review. Keep these states separate:
+A verified Draft readback proves only that one exact application revision was submitted for review:
 
 - submitted is not reviewed;
 - reviewed is not approved;
 - approved is not deployed;
-- deployed is not indexed, routed, available or launched; and
-- a green check or merged review thread is not an audit or safety guarantee.
+- deployed is not indexed, routed, promoted or publicly available; and
+- a green check is not an audit or safety guarantee.
 
-Unknown mechanics stay eligible and can be routed to architecture or independent review. Findings must bind the exact
-revision and evidence; the Builder cannot disposition its own findings or issue launch authority.
+A new source commit, contract snapshot or application revision creates a new review target. Old applications and reports
+remain immutable.
 
-## Historical paths
-
-Existing V1 and six-file V2 application records remain immutable compatibility history. New generic projects use
-Application V3.1 in Submit a Launch. New Applicant PRs never target Hookbuilder, and template intake remains a separate
-contract.
+For transport and trust details, read [Applicant journey](../skills/programmable-v4-hook-builder/references/applicant-journey.md)
+and [Submit Launch resolver](../skills/programmable-v4-hook-builder/references/submit-launch-resolver.md).

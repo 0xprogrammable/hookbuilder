@@ -13,7 +13,7 @@ const SHA256 = /^[0-9a-f]{64}$/u;
 
 export const SEMANTIC_RULE_TEST_EVIDENCE_V1_PATH = "references/semantic-rule-test-evidence-v1.json";
 export const SEMANTIC_RULE_TEST_EVIDENCE_V1_SCHEMA_ID = "urn:programmable:semantic-rule-test-evidence-v1:1.0.0";
-export const SEMANTIC_RULE_TEST_EVIDENCE_V1_SHA256 = "6a06d0dbee7ccf7aff12f75c77514b6cdf5335ee7f01830c5efe075c0c0b3f82";
+export const SEMANTIC_RULE_TEST_EVIDENCE_V1_SHA256 = "a654ca4477077d4fabc5dfaea8d7d322f4c92dd008e82adc8afa756c2bc09ea7";
 
 export function createSemanticRuleTestEvidenceReader({
   repositoryRoot = null,

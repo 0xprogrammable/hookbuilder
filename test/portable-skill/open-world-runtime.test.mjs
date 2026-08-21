@@ -18,7 +18,7 @@ test("the decomposed open-world runtime installs every historical command functi
     "executePrepareRevision",
     "executeGitHubTransport",
     "executeGitHubStatus",
-    "readApplicationV3CentralContract",
+    "assertApplicationV3PlanSubmitLaunchContractCurrent",
     "discoverApplicationV3OpenDraft",
     "verifyApplicationV3LocalTransportSources",
     "verifyRemoteApplicationV3SourceBindings",

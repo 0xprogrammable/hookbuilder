@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -14,11 +15,15 @@ import {
   parseSubmitLaunchPolicyContract
 } from "../../skills/programmable-v4-hook-builder/scripts/submit-launch-policy-contract.mjs";
 import {
+  assertCurrentSubmitLaunchContractCurrent,
+  preflightCurrentSubmitLaunchRequirements,
+  resolveCurrentSubmitLaunchContract,
   resolveCurrentSubmitLaunchPolicy,
   resolveSubmitLaunchPolicyFromVerifiedGitObjects,
   resolveSubmitLaunchPolicyWithPublicTransport,
   resolveSubmitLaunchPolicyWithTransport
 } from "../../skills/programmable-v4-hook-builder/scripts/submit-launch-policy-github.mjs";
+import { createSubmitLaunchVerifiedCache } from "../../skills/programmable-v4-hook-builder/scripts/submit-launch-policy-cache.mjs";
 import { canonicalJson } from "../../skills/programmable-v4-hook-builder/scripts/submission-core.mjs";
 import { validateAgainstSchema } from "../../skills/programmable-v4-hook-builder/scripts/restricted-json-schema-core.mjs";
 import {
@@ -413,18 +418,6 @@ test("public policy resolution needs no gh login and keeps every request anonymo
   assert.equal(resolved.policyBinding.baseTree, BASE_TREE);
   assert.equal(requests.length, 8);
 
-  const unavailableAuthenticatedTransport = authenticatedPolicyTransport({
-    getRepository: async () => {
-      throw Object.assign(new Error("authenticated read unavailable"), { code: "GITHUB_GET_RETRY_EXHAUSTED" });
-    }
-  });
-  const fallback = await resolveCurrentSubmitLaunchPolicy({
-    authenticatedTransport: unavailableAuthenticatedTransport,
-    publicTransport: transport
-  });
-  assert.equal(fallback.policyBinding.sha256, digest(fixture.policyBytes));
-  assert.equal(requests.length, 16);
-
   const mismatchedAuthenticatedTransport = authenticatedPolicyTransport({
     getRepository: async () => ({ ...centralRepositoryResponse(), id: 999999999 })
   });
@@ -433,9 +426,337 @@ test("public policy resolution needs no gh login and keeps every request anonymo
       authenticatedTransport: mismatchedAuthenticatedTransport,
       publicTransport: transport
     }),
+    hasCode("SUBMIT_LAUNCH_CONTRACT_TRUST_ROOT_MISMATCH")
+  );
+  assert.equal(requests.length, 8);
+});
+
+test("manifest-first contract resolution binds one commit/tree and executes no remote code", async () => {
+  const fixture = makeSubmitLaunchContractFixture({ salt: "manifest-first" });
+  const resolved = await resolveCurrentSubmitLaunchContract({
+    authenticatedTransport: fixture.transport,
+    cacheDirectory: false,
+    stage: "launch-readiness",
+    routeState: "official-programmable-ethereum"
+  });
+
+  assert.equal(resolved.schemaVersion, "programmable.submit-launch-contract-snapshot.v1");
+  assert.equal(resolved.snapshotBinding.baseCommit, BASE_COMMIT);
+  assert.equal(resolved.snapshotBinding.baseTree, fixture.baseTree);
+  assert.equal(resolved.applicationContract.current.contractId, "public-pr-application-v3.2");
+  assert.deepEqual(resolved.applicationContract.legacy.map(({ contractId }) => contractId), [
+    "public-pr-application-v3.1"
+  ]);
+  assert.equal(resolved.projectStage.status, "READY");
+  assert.deepEqual(resolved.projectStage.requirementIds, [
+    "LAUNCH.ETHEREUM_AND_TREASURY_10_BPS",
+    "LAUNCH.ETHEREUM_ROUTER_PROVENANCE_READINESS"
+  ]);
+  assert.equal(Object.hasOwn(resolved, "fullSnapshot"), false);
+  assert.equal(fixture.repositoryReads, 1);
+  assert.equal(fixture.refReads, 2);
+  assert.equal(fixture.commitReads, 1);
+  assert.equal(fixture.treeReads, 1);
+  assert.equal(fixture.contentReads.length, 7);
+  assert.equal(fixture.contentReads.every((filePath) => filePath.endsWith(".json")), true);
+  assert.equal(fixture.contentReads.some((filePath) => filePath.endsWith(".mjs")), false);
+  const protectedPaths = [
+    resolved.snapshotBinding.activeContractV1.path,
+    resolved.snapshotBinding.activeContractV2.path,
+    resolved.snapshotBinding.activeContractV2.schema.path,
+    resolved.snapshotBinding.compatibility.path,
+    resolved.snapshotBinding.compatibilitySchema.path,
+    resolved.snapshotBinding.policy.path,
+    resolved.snapshotBinding.policySchema.path
+  ];
+  assert.equal(new Set(protectedPaths).size, 7);
+  assert.equal(resolved.snapshotBinding.policy.baseCommit, resolved.snapshotBinding.baseCommit);
+  assert.equal(resolved.snapshotBinding.policy.baseTree, resolved.snapshotBinding.baseTree);
+  assert.equal(resolved.snapshotBinding.policySchema.baseCommit, resolved.snapshotBinding.baseCommit);
+  assert.equal(resolved.snapshotBinding.policySchema.baseTree, resolved.snapshotBinding.baseTree);
+
+  const snapshotPreimage = structuredClone(resolved.snapshotBinding);
+  delete snapshotPreimage.snapshotSha256;
+  assert.equal(
+    resolved.snapshotBinding.snapshotSha256,
+    digest(Buffer.from(canonicalUtf8Json(snapshotPreimage), "utf8"))
+  );
+  const stagePreimage = structuredClone(resolved.projectStage);
+  delete stagePreimage.stageSha256;
+  assert.equal(
+    resolved.projectStage.stageSha256,
+    digest(Buffer.from(canonicalUtf8Json(stagePreimage), "utf8"))
+  );
+
+  const compatibilityProjection = await resolveCurrentSubmitLaunchPolicy({
+    authenticatedTransport: fixture.transport,
+    cacheDirectory: false
+  });
+  assert.equal(compatibilityProjection.policyBinding.baseCommit, BASE_COMMIT);
+});
+
+test("current contract options reject relative cache authority before any GitHub read", async () => {
+  const fixture = makeSubmitLaunchContractFixture({ salt: "invalid-options" });
+  await assert.rejects(
+    () => resolveCurrentSubmitLaunchContract({
+      authenticatedTransport: fixture.transport,
+      cacheDirectory: "relative/cache",
+      stage: "build",
+      routeState: "unresolved"
+    }),
+    hasCode("SUBMIT_LAUNCH_CONTRACT_OPTIONS_INVALID")
+  );
+  assert.equal(fixture.repositoryReads, 0);
+  assert.equal(fixture.refReads, 0);
+});
+
+test("stage projection is route-aware and unknown handlers affect only their stage", async () => {
+  const fixture = makeSubmitLaunchContractFixture({ salt: "stage-table" });
+  const resolve = (stage, routeState) => resolveCurrentSubmitLaunchContract({
+    authenticatedTransport: fixture.transport,
+    cacheDirectory: false,
+    stage,
+    routeState
+  });
+  assert.equal((await resolve("build", "unresolved")).projectStage.status, "READY");
+  assert.equal((await resolve("submit", "unresolved")).projectStage.status, "READY");
+  assert.equal((await resolve("launch-readiness", "no-market")).projectStage.status, "NOT_APPLICABLE");
+  assert.equal((await resolve("launch-readiness", "external")).projectStage.status, "NOT_APPLICABLE");
+  assert.equal((await resolve("launch-readiness", "unresolved")).projectStage.status, "INTEGRATION_PENDING");
+  assert.equal(
+    (await resolve("production-promotion", "official-programmable-ethereum")).projectStage.status,
+    "PROFILE_DISABLED"
+  );
+
+  const unknown = makeSubmitLaunchContractFixture({
+    salt: "unknown-handler",
+    readinessHandlerId: "future-router-readiness-v9"
+  });
+  const readiness = await resolveCurrentSubmitLaunchContract({
+    authenticatedTransport: unknown.transport,
+    cacheDirectory: false,
+    stage: "launch-readiness",
+    routeState: "official-programmable-ethereum"
+  });
+  const build = await resolveCurrentSubmitLaunchContract({
+    authenticatedTransport: unknown.transport,
+    cacheDirectory: false,
+    stage: "build",
+    routeState: "unresolved"
+  });
+  assert.equal(readiness.projectStage.status, "INTEGRATION_PENDING");
+  assert.deepEqual(readiness.projectStage.unknownHandlerIds, ["future-router-readiness-v9"]);
+  assert.equal(build.projectStage.status, "READY");
+  assert.deepEqual(build.projectStage.unknownHandlerIds, []);
+});
+
+test("resolution deduplicates promises, retries one moving ref, and emits an exact drift receipt", async () => {
+  const deduped = makeSubmitLaunchContractFixture({ salt: "dedupe" });
+  const options = {
+    authenticatedTransport: deduped.transport,
+    cacheDirectory: false,
+    stage: "submit",
+    routeState: "unresolved"
+  };
+  const [left, right] = await Promise.all([
+    resolveCurrentSubmitLaunchContract(options),
+    resolveCurrentSubmitLaunchContract(options)
+  ]);
+  assert.equal(left, right);
+  assert.equal(deduped.refReads, 2);
+  const receipt = await assertCurrentSubmitLaunchContractCurrent(left.snapshotBinding, {
+    authenticatedTransport: deduped.transport
+  });
+  assert.equal(receipt.status, "CURRENT");
+  assert.equal(receipt.snapshotSha256, left.snapshotBinding.snapshotSha256);
+  const tamperedBinding = structuredClone(left.snapshotBinding);
+  tamperedBinding.compatibility.sha256 = `sha256:${"9".repeat(64)}`;
+  await assert.rejects(
+    () => assertCurrentSubmitLaunchContractCurrent(tamperedBinding, {
+      authenticatedTransport: deduped.transport
+    }),
+    hasCode("SUBMIT_LAUNCH_CONTRACT_OPTIONS_INVALID")
+  );
+  deduped.setCommit("9".repeat(40));
+  await assert.rejects(
+    () => assertCurrentSubmitLaunchContractCurrent(left.snapshotBinding, {
+      authenticatedTransport: deduped.transport
+    }),
+    hasCode("SUBMIT_LAUNCH_CONTRACT_DRIFT")
+  );
+
+  const moving = makeSubmitLaunchContractFixture({
+    salt: "one-retry",
+    refSequence: [BASE_COMMIT, "8".repeat(40), "8".repeat(40), "8".repeat(40)]
+  });
+  const retried = await resolveCurrentSubmitLaunchContract({
+    authenticatedTransport: moving.transport,
+    cacheDirectory: false,
+    stage: "build",
+    routeState: "unresolved"
+  });
+  assert.equal(retried.currentness.retryCount, 1);
+  assert.equal(retried.snapshotBinding.baseCommit, "8".repeat(40));
+  assert.equal(moving.repositoryReads, 1);
+  assert.equal(moving.refReads, 4);
+  assert.equal(moving.commitReads, 2);
+  assert.equal(moving.treeReads, 1);
+
+  const unstable = makeSubmitLaunchContractFixture({
+    salt: "unstable",
+    refSequence: [BASE_COMMIT, "7".repeat(40), "6".repeat(40), "5".repeat(40)]
+  });
+  await assert.rejects(
+    () => resolveCurrentSubmitLaunchContract({
+      authenticatedTransport: unstable.transport,
+      cacheDirectory: false,
+      stage: "build",
+      routeState: "unresolved"
+    }),
+    hasCode("SUBMIT_LAUNCH_CONTRACT_UNSTABLE")
+  );
+});
+
+test("verified cache reuse and offline preflight preserve stage-specific semantics", async () => {
+  const cacheDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "submit-launch-contract-cache-"));
+  const fixture = makeSubmitLaunchContractFixture({ salt: "cache" });
+  try {
+    const first = await resolveCurrentSubmitLaunchContract({
+      authenticatedTransport: fixture.transport,
+      cacheDirectory,
+      stage: "build",
+      routeState: "unresolved"
+    });
+    const contentReads = fixture.contentReads.length;
+    const coldCounts = {
+      repository: fixture.repositoryReads,
+      refs: fixture.refReads,
+      commits: fixture.commitReads,
+      trees: fixture.treeReads,
+      blobs: fixture.contentReads.length
+    };
+    const second = await resolveCurrentSubmitLaunchContract({
+      authenticatedTransport: fixture.transport,
+      cacheDirectory,
+      stage: "build",
+      routeState: "unresolved"
+    });
+    assert.equal(first.snapshotBinding.snapshotSha256, second.snapshotBinding.snapshotSha256);
+    assert.equal(second.currentness.cacheStatus, "HIT");
+    assert.equal(fixture.contentReads.length, contentReads);
+    assert.deepEqual(coldCounts, { repository: 1, refs: 2, commits: 1, trees: 1, blobs: 7 });
+    assert.equal(Object.values(coldCounts).reduce((sum, count) => sum + count, 0), 12);
+    const warmCounts = {
+      repository: fixture.repositoryReads - coldCounts.repository,
+      refs: fixture.refReads - coldCounts.refs,
+      commits: fixture.commitReads - coldCounts.commits,
+      trees: fixture.treeReads - coldCounts.trees,
+      blobs: fixture.contentReads.length - coldCounts.blobs
+    };
+    assert.deepEqual(warmCounts, { repository: 1, refs: 2, commits: 1, trees: 0, blobs: 0 });
+    assert.equal(Object.values(warmCounts).reduce((sum, count) => sum + count, 0), 4);
+  } finally {
+    fs.rmSync(cacheDirectory, { recursive: true, force: true });
+  }
+
+  const unavailable = authenticatedPolicyTransport({
+    getRepository: async () => {
+      throw Object.assign(new Error("offline"), { code: "GITHUB_GET_RETRY_EXHAUSTED" });
+    }
+  });
+  const publicTransport = async () => {
+    throw new Error("offline");
+  };
+  const build = await preflightCurrentSubmitLaunchRequirements({
+    authenticatedTransport: unavailable,
+    publicTransport,
+    cacheDirectory: false,
+    stage: "build",
+    repositoryRoot: "/ignored/consumer/context",
+    source: "submit-project"
+  });
+  const submit = await preflightCurrentSubmitLaunchRequirements({
+    authenticatedTransport: unavailable,
+    publicTransport,
+    cacheDirectory: false,
+    stage: "submit"
+  });
+  assert.equal(build.ok, true);
+  assert.equal(build.projectStage.status, "POLICY_UNRESOLVED");
+  assert.equal(submit.ok, false);
+});
+
+test("verified cache ignores corrupted files and symlink substitutions", async () => {
+  const cacheDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "submit-launch-cache-tamper-"));
+  const outsideDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "submit-launch-cache-outside-"));
+  try {
+    const expected = Buffer.from("expected protected JSON bytes\n", "utf8");
+    const expectedOid = gitBlobOid(expected);
+    const corruptTarget = path.join(
+      cacheDirectory,
+      "git-blobs-v1",
+      expectedOid.slice(0, 2),
+      expectedOid.slice(2)
+    );
+    fs.mkdirSync(path.dirname(corruptTarget), { recursive: true, mode: 0o700 });
+    fs.writeFileSync(corruptTarget, Buffer.from("tampered\n", "utf8"), { mode: 0o600 });
+    const corruptCache = createSubmitLaunchVerifiedCache({ directory: cacheDirectory });
+    assert.equal(await corruptCache.read(expectedOid, 1024), null);
+
+    const linked = Buffer.from("different expected JSON bytes\n", "utf8");
+    const linkedOid = gitBlobOid(linked);
+    const linkedTarget = path.join(
+      cacheDirectory,
+      "git-blobs-v1",
+      linkedOid.slice(0, 2),
+      linkedOid.slice(2)
+    );
+    const outside = path.join(outsideDirectory, "outside.bin");
+    fs.mkdirSync(path.dirname(linkedTarget), { recursive: true, mode: 0o700 });
+    fs.writeFileSync(outside, linked, { mode: 0o600 });
+    fs.symlinkSync(outside, linkedTarget);
+    const symlinkCache = createSubmitLaunchVerifiedCache({ directory: cacheDirectory });
+    assert.equal(await symlinkCache.read(linkedOid, 1024), null);
+  } finally {
+    fs.rmSync(cacheDirectory, { recursive: true, force: true });
+    fs.rmSync(outsideDirectory, { recursive: true, force: true });
+  }
+});
+
+test("recursive tree discovery rejects truncation and oversized responses before blob reads", async () => {
+  const truncated = makeSubmitLaunchContractFixture({ salt: "truncated-recursive-tree" });
+  const readTruncatedTree = truncated.transport.getGitTree;
+  truncated.transport.getGitTree = async (...args) => ({
+    ...await readTruncatedTree(...args),
+    truncated: true
+  });
+  await assert.rejects(
+    () => resolveCurrentSubmitLaunchContract({
+      authenticatedTransport: truncated.transport,
+      cacheDirectory: false,
+      stage: "build",
+      routeState: "unresolved"
+    }),
     hasCode("SUBMIT_LAUNCH_POLICY_GIT_OBJECT_INVALID")
   );
-  assert.equal(requests.length, 16);
+  assert.equal(truncated.contentReads.length, 0);
+
+  const oversized = makeSubmitLaunchContractFixture({ salt: "oversized-recursive-tree" });
+  const readOversizedTree = oversized.transport.getGitTree;
+  oversized.transport.getGitTree = async (...args) => ({
+    ...await readOversizedTree(...args),
+    padding: "x".repeat(8 * 1024 * 1024)
+  });
+  await assert.rejects(
+    () => resolveCurrentSubmitLaunchContract({
+      authenticatedTransport: oversized.transport,
+      cacheDirectory: false,
+      stage: "build",
+      routeState: "unresolved"
+    }),
+    hasCode("SUBMIT_LAUNCH_POLICY_GIT_OBJECT_INVALID")
+  );
+  assert.equal(oversized.contentReads.length, 0);
 });
 
 test("binding comparison reports policy drift for any exact policy or schema change", () => {
@@ -484,6 +805,345 @@ test("fixed transport rejects a branch ref and commit response that disagree", a
   );
   assert.deepEqual(fixture.treeReads, []);
 });
+
+function makeSubmitLaunchContractFixture({
+  salt = "default",
+  readinessHandlerId = "programmable-router-readiness-v1",
+  refSequence = []
+} = {}) {
+  const legacy = makeSubmitLaunchPolicyFixture();
+  const checkerAuthority = structuredClone(legacy.policy.profiles[0].authority);
+  const disabledAuthority = {
+    checkerOnly: false,
+    independentAudit: false,
+    launchAuthorized: false,
+    productionDiscoveryAllowed: false,
+    publicRoutingAllowed: false,
+    realUserFundsAllowed: false
+  };
+  const policy = structuredClone(legacy.policy);
+  policy.effective.startsAt = "2026-08-20T00:00:00Z";
+  policy.policyVersion = "2.0.0";
+  policy.profiles = [
+    { authority: checkerAuthority, enabled: true, id: "build", outcome: "BUILT_NOT_REVIEWED" },
+    {
+      authority: checkerAuthority,
+      enabled: true,
+      id: "launch-readiness",
+      outcome: "LAUNCH_READINESS_CHECKED_NOT_AUTHORIZED"
+    },
+    { authority: disabledAuthority, enabled: false, id: "production-launch", outcome: null },
+    { authority: checkerAuthority, enabled: true, id: "workflow-canary", outcome: "CANARY_WORKFLOW_PASSED" }
+  ];
+  policy.rules = [
+    {
+      applicability: { equals: true, field: "routerProvenanceRequired", mode: "when" },
+      enforcement: { handlerId: "ethereum-treasury-10-bps-v1", mode: "deterministic", owner: "platform" },
+      evidence: ["programmable-launch-requirement"],
+      id: "LAUNCH.ETHEREUM_AND_TREASURY_10_BPS",
+      introducedIn: "1.3.0",
+      parameters: {
+        basis: "gross-canonical-pool-volume",
+        chainId: 1,
+        hundredthsOfBip: 1000,
+        network: "ethereum-mainnet",
+        treasury: "0x4957f49620AFf3Adbbe8195a4f633E49cc93376c"
+      },
+      profiles: ["launch-readiness", "production-launch"],
+      requirement: `Route the manifest-bound fee for ${salt}.`,
+      retiredIn: null,
+      severity: "blocker",
+      status: "active"
+    },
+    {
+      applicability: { equals: true, field: "routerProvenanceRequired", mode: "when" },
+      enforcement: { handlerId: readinessHandlerId, mode: "deterministic", owner: "applicant" },
+      evidence: ["programmable-router-readiness"],
+      id: "LAUNCH.ETHEREUM_ROUTER_PROVENANCE_READINESS",
+      introducedIn: "2.0.0",
+      parameters: {
+        chainId: 1,
+        discoveryDocumentUrl: "https://developers.programmable.family/.well-known/programmable.json",
+        launchEntryPoint: "launchAndStampV1",
+        routerManifestPointer: "/launchStampRouter"
+      },
+      profiles: ["launch-readiness", "production-launch"],
+      requirement: "Bind the exact reviewed revision to canonical Router evidence.",
+      retiredIn: null,
+      severity: "blocker",
+      status: "active"
+    },
+    {
+      applicability: { equals: true, field: "routerProvenanceRequired", mode: "when" },
+      enforcement: { handlerId: "programmable-router-promotion-v1", mode: "deterministic", owner: "platform" },
+      evidence: ["programmable-router-promotion"],
+      id: "LAUNCH.ETHEREUM_FINALIZED_ROUTER_STAMP_BEFORE_PROMOTION",
+      introducedIn: "2.0.0",
+      parameters: {
+        chainId: 1,
+        discoveryDocumentUrl: "https://developers.programmable.family/.well-known/programmable.json",
+        promotionTargets: ["api-v2", "indexer", "public-discovery", "registry"],
+        routerManifestPointer: "/launchStampRouter"
+      },
+      profiles: ["production-launch"],
+      requirement: "Require finalized Router evidence before promotion.",
+      retiredIn: null,
+      severity: "blocker",
+      status: "active"
+    }
+  ];
+  const policySchema = structuredClone(legacy.schema);
+  policySchema.properties.profiles.minItems = 4;
+  policySchema.properties.profiles.maxItems = 4;
+  policySchema.$comment = salt;
+  const policyBytes = Buffer.from(`${canonicalJson(policy)}\n`);
+  const policySchemaBytes = Buffer.from(`${JSON.stringify(policySchema, null, 2)}\n`);
+  const activeV2Schema = {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $id: "urn:programmable:active-contract-manifest:2.0.0",
+    $comment: salt,
+    type: "object"
+  };
+  const compatibilitySchema = {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    $id: "urn:programmable:applicant-compatibility:2.0.0",
+    $comment: salt,
+    type: "object"
+  };
+  const activeV2SchemaBytes = Buffer.from(`${JSON.stringify(activeV2Schema)}\n`);
+  const compatibilitySchemaBytes = Buffer.from(`${JSON.stringify(compatibilitySchema)}\n`);
+  const compatibility = {
+    $schema: "urn:programmable:applicant-compatibility:2.0.0",
+    application: {
+      current: {
+        contractId: "public-pr-application-v3.2",
+        path: "intake/schemas/public-pr-application-v3.2.schema.json",
+        sha256: `sha256:${"a".repeat(64)}`
+      },
+      legacy: [{
+        contractId: "public-pr-application-v3.1",
+        path: "intake/schemas/public-pr-application-v3.schema.json",
+        sha256: `sha256:${"b".repeat(64)}`
+      }]
+    },
+    authority: {
+      candidateCodeExecuted: false,
+      credentialsUsed: false,
+      externalWritesPerformed: false,
+      launchAuthorized: false,
+      networkAccessed: false,
+      promotionAuthorized: false,
+      reviewAuthorized: false,
+      rpcAccessed: false
+    },
+    capabilities: {
+      draftTransportOperations: ["create", "update"],
+      launchReadiness: "offline-check-only",
+      unreviewedDraftOnly: true
+    },
+    kind: "programmable-applicant-compatibility",
+    minimumBuilderProtocolVersion: "1.0.0",
+    schemaVersion: "2.0.0",
+    supportingContracts: {
+      routerReadiness: {
+        schema: {
+          contractId: "programmable-launch-router-readiness-v1",
+          path: "intake/schemas/programmable-launch-router-readiness-v1.schema.json",
+          sha256: `sha256:${"c".repeat(64)}`
+        },
+        validatorClosure: {
+          algorithm: "sha256-path-nul-size-nul-content-nul-v1",
+          closureSha256: digest(Buffer.from(salt, "utf8")),
+          files: [
+            {
+              path: "scripts/programmable-launch-router-readiness-core.mjs",
+              sha256: `sha256:${"e".repeat(64)}`
+            },
+            {
+              path: "scripts/programmable-launch-router-readiness.mjs",
+              sha256: `sha256:${"7".repeat(64)}`
+            },
+            {
+              path: "vendor/programmable-applicant-validator/scripts/evm-encoding-core.mjs",
+              sha256: `sha256:${"8".repeat(64)}`
+            },
+            {
+              path: "vendor/programmable-v4-hook-builder/scripts/github-public-source-lossless-json.mjs",
+              sha256: `sha256:${"9".repeat(64)}`
+            }
+          ]
+        }
+      },
+      submission: {
+        contractId: "open-world-submission-v2.1",
+        path: "intake/schemas/open-world-submission-v2.1.schema.json",
+        sha256: `sha256:${"f".repeat(64)}`
+      },
+      tradeCapabilityManifest: {
+        contractId: "trade-capability-manifest-v2",
+        path: "intake/schemas/trade-capability-manifest-v2.schema.json",
+        sha256: `sha256:${"1".repeat(64)}`
+      }
+    },
+    trustedRepository: { defaultBranch: "main", numericId: "1320171831" }
+  };
+  const compatibilityBytes = Buffer.from(`${JSON.stringify(compatibility)}\n`);
+  const v2 = {
+    $schema: "urn:programmable:active-contract-manifest:2.0.0",
+    artifacts: {
+      package: [
+        binding(".programmable/applicant-compatibility.v2.json", compatibilityBytes),
+        binding("intake/schemas/active-contract-manifest-v2.schema.json", activeV2SchemaBytes),
+        binding("intake/schemas/applicant-compatibility-v2.schema.json", compatibilitySchemaBytes),
+        compatibility.application.current,
+        ...compatibility.application.legacy,
+        compatibility.supportingContracts.routerReadiness.schema,
+        compatibility.supportingContracts.submission,
+        compatibility.supportingContracts.tradeCapabilityManifest,
+        binding("policy/schemas/launch-policy.v1.schema.json", policySchemaBytes)
+      ].map(({ contractId: _contractId, ...artifact }) => artifact),
+      policy: [binding("policy/launch-policy.v1.json", policyBytes)],
+      validator: [{ path: "scripts/active-contract-manifest-core.mjs", sha256: `sha256:${"2".repeat(64)}` }],
+      workflow: [{ path: ".github/workflows/verify-hook-builder.yml", sha256: `sha256:${"3".repeat(64)}` }]
+    },
+    contractId: "submit-launch",
+    defaultBranch: "main",
+    kind: "programmable-active-contract",
+    schemaVersion: "2.0.0"
+  };
+  const v2Bytes = Buffer.from(`${JSON.stringify(v2)}\n`);
+  const v1 = {
+    $schema: "urn:programmable:active-contract-manifest:1.0.0",
+    artifacts: {
+      package: [{ path: "intake/schemas/public-pr-application-v3.schema.json", sha256: `sha256:${"4".repeat(64)}` }],
+      policy: [binding(".programmable/active-contract.v2.json", v2Bytes)],
+      validator: [{ path: "scripts/verify-public-hook-application.mjs", sha256: `sha256:${"5".repeat(64)}` }],
+      workflow: [{ path: ".github/workflows/legacy.yml", sha256: `sha256:${"6".repeat(64)}` }]
+    },
+    contractId: "submit-launch",
+    defaultBranch: "main",
+    kind: "programmable-active-contract",
+    schemaVersion: "1.0.0"
+  };
+  const documents = new Map([
+    [".programmable/active-contract.json", Buffer.from(`${JSON.stringify(v1)}\n`)],
+    [".programmable/active-contract.v2.json", v2Bytes],
+    [".programmable/applicant-compatibility.v2.json", compatibilityBytes],
+    ["intake/schemas/active-contract-manifest-v2.schema.json", activeV2SchemaBytes],
+    ["intake/schemas/applicant-compatibility-v2.schema.json", compatibilitySchemaBytes],
+    ["policy/launch-policy.v1.json", policyBytes],
+    ["policy/schemas/launch-policy.v1.schema.json", policySchemaBytes]
+  ]);
+  const git = buildFlatGitFixture(documents);
+  let repositoryReads = 0;
+  let refReads = 0;
+  let commitReads = 0;
+  let treeReads = 0;
+  let currentCommit = BASE_COMMIT;
+  const commits = [...refSequence];
+  const contentReads = [];
+  const transport = {
+    async getRepository() {
+      repositoryReads += 1;
+      return centralRepositoryResponse();
+    },
+    async getRef() {
+      refReads += 1;
+      const commit = commits.length > 0 ? commits.shift() : currentCommit;
+      currentCommit = commit;
+      return { ref: "refs/heads/main", object: { type: "commit", sha: commit } };
+    },
+    async getGitCommit(_slug, commit) {
+      commitReads += 1;
+      return { sha: commit, tree: { sha: git.rootTree } };
+    },
+    async getGitTree(_slug, tree, options) {
+      treeReads += 1;
+      assert.equal(tree, git.rootTree);
+      assert.deepEqual(options, { recursive: true });
+      return structuredClone(git.recursiveTree);
+    },
+    async getContent(_slug, filePath) {
+      contentReads.push(filePath);
+      return contentResponse(filePath, documents.get(filePath));
+    }
+  };
+  return {
+    transport,
+    baseTree: git.rootTree,
+    contentReads,
+    get repositoryReads() { return repositoryReads; },
+    get refReads() { return refReads; },
+    get commitReads() { return commitReads; },
+    get treeReads() { return treeReads; },
+    setCommit(commit) {
+      currentCommit = commit;
+      commits.length = 0;
+    }
+  };
+}
+
+function binding(filePath, bytes) {
+  return { path: filePath, sha256: digest(bytes) };
+}
+
+function buildFlatGitFixture(documents) {
+  const root = { children: new Map(), path: "" };
+  for (const [filePath, bytes] of documents) {
+    const segments = filePath.split("/");
+    let node = root;
+    for (let index = 0; index < segments.length - 1; index += 1) {
+      const name = segments[index];
+      if (!node.children.has(name)) {
+        const childPath = node.path === "" ? name : `${node.path}/${name}`;
+        node.children.set(name, {
+          children: new Map(),
+          path: childPath
+        });
+      }
+      node = node.children.get(name);
+    }
+    node.children.set(segments.at(-1), { blob: gitBlobOid(bytes) });
+  }
+  const recursiveEntries = [];
+  const visit = (node) => {
+    const entries = [];
+    for (const [name, child] of node.children) {
+      if (child.children !== undefined) {
+        const childTree = visit(child);
+        child.tree = childTree;
+        entries.push({ path: name, mode: "040000", type: "tree", sha: child.tree });
+      } else {
+        entries.push({ path: name, mode: "100644", type: "blob", sha: child.blob });
+      }
+    }
+    const tree = testTreeOid(entries);
+    for (const entry of entries) {
+      recursiveEntries.push({
+        ...entry,
+        path: node.path === "" ? entry.path : `${node.path}/${entry.path}`
+      });
+    }
+    return tree;
+  };
+  const rootTree = visit(root);
+  return {
+    rootTree,
+    recursiveTree: { sha: rootTree, truncated: false, tree: recursiveEntries }
+  };
+}
+
+function testTreeOid(entries) {
+  const sorted = [...entries].sort((left, right) => Buffer.compare(
+    Buffer.from(`${left.path}${left.type === "tree" ? "/" : ""}`, "utf8"),
+    Buffer.from(`${right.path}${right.type === "tree" ? "/" : ""}`, "utf8")
+  ));
+  const payload = Buffer.concat(sorted.flatMap((entry) => [
+    Buffer.from(`${entry.mode === "040000" ? "40000" : entry.mode} ${entry.path}\0`, "utf8"),
+    Buffer.from(entry.sha, "hex")
+  ]));
+  return crypto.createHash("sha1").update(`tree ${payload.length}\0`, "utf8").update(payload).digest("hex");
+}
 
 function makeResolvedContract(fixture) {
   const parsed = parseSubmitLaunchPolicyContract({

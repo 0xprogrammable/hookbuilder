@@ -26,7 +26,7 @@ the maturity of Fee V2, routing, or generated projects.
 
 - Maintainability: 342 production modules, bounded size/import checks, five source-bound responsibility groups and six
   targeted mutation classes. These remain narrow proxies, not repository-wide coverage or mutation claims.
-- Contract Registry: 55 portable contracts, 28 validator closures, 1,061 transitive module bindings, 187 distinct modules, and
+- Contract Registry: 59 portable contracts, 31 validator closures, 1,290 transitive module bindings, 194 distinct modules, and
   fail-closed mutation, unresolved-import, and cycle tests.
 - Reference kernel: pinned local Uniswap/OpenZeppelin dependencies, eight ERC-20/native buy/sell exact-in/exact-out
   V4Quoter-to-Universal-Router modes, Permit2/native funding and SDK/Solidity encoding parity. The release generator's

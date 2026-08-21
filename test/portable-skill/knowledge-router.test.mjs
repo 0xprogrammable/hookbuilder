@@ -73,7 +73,7 @@ test("Autopilot starts from the compact compiler with the productive completion 
   assert.doesNotMatch(coldContext, /(?:Reference fee kernel|ProgrammableVolumeFeeHookV2\.sol|known exploit|audit report)/iu);
   assert.match(coldContext, /NOT_APPROVED/u);
   assert.match(coldContext, /NOT_SUBMITTED/u);
-  assert.match(coldContext, /require authority for secrets, cost, signing, deploy, publish, submit, merge or Registry writes/u);
+  assert.match(coldContext, /require authority for secrets, cost, signing, deploy, publish, submit, merge or Registry writes/iu);
   assert.match(skill, /project require-output --brief --repository-root "\$NEW_REPOSITORY" --state \.programmable\/project-states\/000006-submission-evidence\.v1\.json --previous-state \.programmable\/project-states\/000005-verification\.v1\.json --submission-root submission/u);
   assert.match(compiler, /project materialize/u);
   assert.match(compiler, /project\s+require-output/u);
@@ -112,8 +112,9 @@ test("Applicant Draft eligibility is independent from trusted sandbox completion
     assert.match(source, /Local or applicant-supplied test evidence remains unverified until independent review/u);
   }
   for (const source of initialSubmitReferences) {
-    assert.match(source, /an existing completed project may create or repair its complete\s+`submission\.v2\.json`/u);
-    assert.match(source, /continue through\s+`prepare-revision`, `application`, and the confirmation-gated Draft transport/u);
+    assert.match(source, /Use one visible command for a completed project with exact public GitHub source/u);
+    assert.match(source, /submit-project "\$REPOSITORY_ROOT"/u);
+    assert.match(source, /Do not expose\s+internal package assembly, queue experiments or legacy transport as the normal journey/u);
   }
   assert.match(application, /APPLICATION_PACKAGE_VALID -> submit plan -> explicit confirmation -> protected Draft PR/u);
   assert.doesNotMatch(application, /PROJECT_PREFLIGHT_VALID -> prepare-revision -> application -> submit plan/u);
@@ -129,6 +130,27 @@ test("an owner-defined Explore route stays within the cold-start budget", () => 
   assert.ok(result.contextBudget.estimatedTokens <= 4000);
   assert.deepEqual(result.unknownCapabilities, ["owner-defined-capability"]);
   assert.equal(result.reviewRoute, "architecture-review-required");
+});
+
+test("current-contract and migration diagnostics load only their narrow references", () => {
+  const resolver = planKnowledge({
+    mode: "repair",
+    capabilities: ["submit-launch-policy-drift"],
+    skillRoot
+  });
+  assert.equal(resolver.loadLater.some(({ path }) => path === "references/submit-launch-resolver.md"), true);
+  assert.equal(resolver.loadLater.some(({ path }) => path === "references/application-compatibility-and-migration.md"), false);
+
+  const migration = planKnowledge({
+    mode: "submit",
+    capabilities: ["application-v3-migration"],
+    skillRoot
+  });
+  assert.equal(migration.loadLater.some(({ path }) => path === "references/application-compatibility-and-migration.md"), true);
+  assert.equal(migration.loadLater.some(({ path }) => path === "references/submit-launch-resolver.md"), false);
+
+  const ordinarySubmit = planKnowledge({ mode: "submit", skillRoot });
+  assert.deepEqual(paths(ordinarySubmit), ["references/applicant-journey.md"]);
 });
 
 test("user-facing result modes defer the layered response contract without spending initial context", () => {

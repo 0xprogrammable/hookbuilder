@@ -194,7 +194,7 @@ test("stdio server performs initialize, list, ping, and an actual read-only doct
     params: { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "test", version: "1" } }
   });
   assert.equal(initialized.result.serverInfo.name, "programmable-v4-builder");
-  assert.equal(initialized.result.serverInfo.version, "0.11.2");
+  assert.equal(initialized.result.serverInfo.version, "0.12.0");
   child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized", params: {} })}\n`);
   const ping = await exchange({ jsonrpc: "2.0", id: 2, method: "ping", params: {} });
   assert.deepEqual(ping.result, {});

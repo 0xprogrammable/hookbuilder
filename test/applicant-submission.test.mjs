@@ -175,7 +175,10 @@ test("historical and generic transports keep the canonical Submit a Launch targe
     "references",
     "github-application-v3.md"
   ), "utf8");
-  assert.match(genericApplication.slice(0, 1_200), /accepted generic Applicant contract/u);
+  assert.match(
+    genericApplication.slice(0, 1_200),
+    /current protected Draft contract is Application V3\.2 with Submission 2\.1/u
+  );
   assert.doesNotMatch(genericApplication.slice(0, 1_200), /unreleased candidate/iu);
 
   const cli = fs.readFileSync(path.join(
