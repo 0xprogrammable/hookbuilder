@@ -1867,6 +1867,7 @@ test("open-world submit refuses an occupied immutable revision at the exact cent
   const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
   const targetPath = Object.keys(state.packageContents)[0];
   state.centralContents[targetPath] = state.packageContents[targetPath];
+  advanceCentralFixtureContract(state, "occupied-immutable-revision");
   fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
   const result = run(["open-world", "submit", fixture.packageRoot], fixture);
   assert.equal(result.status, 1, result.stdout || result.stderr);
@@ -5573,13 +5574,15 @@ childProcess.spawnSync = function fixtureSpawnSync(command, args, options) {
 }
 
 function fixtureCliEnvironment(fixture, { allowWrites, usePreload }) {
+  const temporaryDirectory = path.join(fixture.root, usePreload ? "preload-tmp" : "executable-tmp");
+  fs.mkdirSync(temporaryDirectory, { recursive: true });
   const environment = {
     ...process.env,
     PATH: `${fixture.fakeBin}:${process.env.PATH ?? ""}`,
     GH_TOKEN: allowWrites ? "fixture-write-token" : "fixture-read-token",
-    TMPDIR: fixture.root,
-    TMP: fixture.root,
-    TEMP: fixture.root
+    TMPDIR: temporaryDirectory,
+    TMP: temporaryDirectory,
+    TEMP: temporaryDirectory
   };
   if (usePreload) {
     environment.NODE_OPTIONS = `--require=${fixture.fakeGhPreload}`;
