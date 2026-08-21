@@ -1359,4 +1359,13 @@ function sha256(bytes) { return `sha256:${crypto.createHash("sha256").update(byt
 function sha256File(filePath) { return sha256(fs.readFileSync(filePath)); }
 function isInside(candidate, root) { const relative = path.relative(root, candidate); return relative === "" || (relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative)); }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();
+function isDirectExecution() {
+  if (typeof process.argv[1] !== "string") return false;
+  try {
+    return fs.realpathSync.native(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+}
+
+if (isDirectExecution()) await main();

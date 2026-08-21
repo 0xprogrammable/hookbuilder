@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPOSITORY_ROOT = path.resolve(SCRIPT_DIRECTORY, '../..');
@@ -548,7 +548,12 @@ export function validateForwardTests({ repositoryRoot = DEFAULT_REPOSITORY_ROOT 
 }
 
 function isDirectExecution() {
-  return process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
+  if (typeof process.argv[1] !== 'string') return false;
+  try {
+    return fs.realpathSync.native(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
 }
 
 if (isDirectExecution()) {

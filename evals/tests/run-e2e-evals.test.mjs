@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const TEST_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const REPOSITORY_ROOT = path.resolve(TEST_DIRECTORY, '../..');
@@ -56,6 +56,107 @@ test('validate-only reports deterministic corpus hashes without model execution'
   assert.match(payload.sealedRepositoryCorpusSha256, /^[0-9a-f]{64}$/u);
   assert.match(payload.crossMethodInventorySha256, /^[0-9a-f]{64}$/u);
   assert.equal(payload.modelExecution, 'not-run');
+});
+
+test('eval CLIs execute through a symlinked repository path', () => {
+  const temporaryRoot = temporaryDirectory('programmable-eval-cli-alias-test-');
+  const repositoryAlias = path.join(temporaryRoot, 'repository-alias');
+  try {
+    fs.symlinkSync(REPOSITORY_ROOT, repositoryAlias, process.platform === 'win32' ? 'junction' : 'dir');
+    const cases = [
+      {
+        id: 'e2e',
+        relativePath: 'scripts/evals/run-e2e-evals.mjs',
+        arguments: ['--validate-only'],
+      },
+      {
+        id: 'suite',
+        relativePath: 'scripts/evals/validate-evals.mjs',
+        arguments: [],
+      },
+      {
+        id: 'forward',
+        relativePath: 'scripts/evals/forward-test-core.mjs',
+        arguments: [],
+      },
+      {
+        id: 'blind-forward',
+        relativePath: 'scripts/evals/run-blind-forward-tests.mjs',
+        arguments: [],
+      },
+    ];
+    const observations = cases.map((testCase) => {
+      const result = childProcess.spawnSync(
+        process.execPath,
+        [path.join(repositoryAlias, testCase.relativePath), ...testCase.arguments],
+        {
+          cwd: REPOSITORY_ROOT,
+          encoding: 'utf8',
+          env: cleanEnvironment(),
+        },
+      );
+      const stdout = result.stdout === '' ? null : JSON.parse(result.stdout);
+      const stderr = result.stderr === '' ? null : JSON.parse(result.stderr);
+      return {
+        id: testCase.id,
+        exitCode: result.status,
+        stdoutStatus: stdout?.status ?? null,
+        stderrStatus: stderr?.status ?? null,
+        stderrCode: stderr?.code ?? null,
+      };
+    });
+    assert.deepEqual(observations, [
+      {
+        id: 'e2e',
+        exitCode: 0,
+        stdoutStatus: 'E2E_ENVELOPES_VALID',
+        stderrStatus: null,
+        stderrCode: null,
+      },
+      {
+        id: 'suite',
+        exitCode: 0,
+        stdoutStatus: 'EVAL_STRUCTURE_VALID',
+        stderrStatus: null,
+        stderrCode: null,
+      },
+      {
+        id: 'forward',
+        exitCode: 0,
+        stdoutStatus: 'FORWARD_TESTS_VALID',
+        stderrStatus: null,
+        stderrCode: null,
+      },
+      {
+        id: 'blind-forward',
+        exitCode: 2,
+        stdoutStatus: null,
+        stderrStatus: 'BLIND_FORWARD_ERROR',
+        stderrCode: 'ARGUMENT_INVALID',
+      },
+    ]);
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test('importing the E2E runner does not execute its CLI', () => {
+  const result = childProcess.spawnSync(
+    process.execPath,
+    [
+      '--input-type=module',
+      '--eval',
+      `await import(${JSON.stringify(pathToFileURL(RUNNER).href)}); process.stdout.write('IMPORTED_ONLY\\n');`,
+    ],
+    {
+      cwd: REPOSITORY_ROOT,
+      encoding: 'utf8',
+      env: cleanEnvironment(),
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, 'IMPORTED_ONLY\n');
+  assert.equal(result.stderr, '');
 });
 
 test('missing external execution configuration writes an explicit non-green scorecard', () => {
