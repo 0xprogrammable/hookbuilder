@@ -2576,6 +2576,8 @@ test("multi-revision V3-new history cannot detach from a full or orphaned V2 bas
     assert.equal(String(application.applicationRevision), "2");
     const state = JSON.parse(fs.readFileSync(fixture.statePath, "utf8"));
     state.centralContents[`submissions/${application.applicationId}/application.json`] = Buffer.from("{}\n", "utf8").toString("base64");
+    advanceCentralFixtureContract(state, `legacy-v2-base-${command}`);
+    if (state.pull !== null) state.pull.base.sha = state.centralCommit;
     fs.writeFileSync(fixture.statePath, `${canonicalJson(state)}\n`);
     const result = run(command === "submit"
       ? ["open-world", command, fixture.packageRoot]
@@ -5574,7 +5576,10 @@ function fixtureCliEnvironment(fixture, { allowWrites, usePreload }) {
   const environment = {
     ...process.env,
     PATH: `${fixture.fakeBin}:${process.env.PATH ?? ""}`,
-    GH_TOKEN: allowWrites ? "fixture-write-token" : "fixture-read-token"
+    GH_TOKEN: allowWrites ? "fixture-write-token" : "fixture-read-token",
+    TMPDIR: fixture.root,
+    TMP: fixture.root,
+    TEMP: fixture.root
   };
   if (usePreload) {
     environment.NODE_OPTIONS = `--require=${fixture.fakeGhPreload}`;
